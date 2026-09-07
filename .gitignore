@@ -23,7 +23,6 @@ test-results/
 # Artifacts and data
 new_plan/implementation/artifacts/**
 !new_plan/implementation/artifacts/.gitkeep
-new_plan/implementation/**/data/
 *.parquet
 *.duckdb
 *.pt
