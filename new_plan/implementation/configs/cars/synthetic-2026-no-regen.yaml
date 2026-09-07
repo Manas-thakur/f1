@@ -1,0 +1,42 @@
+# Synthetic 2026-style energy-recovery car sketch.
+# NOT a measured Formula 1 car. Every value is a plausible-order assumption
+# chosen so the reduced model runs; none is calibrated against real data.
+id: synthetic-2026-no-regen
+synthetic: true
+description: "Synthetic car with regeneration disabled, for the brake-without-recharge validation case."
+mass_kg: {value: 798.0, unit: "kg", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 500.0, upper_bound: 1200.0, note: "Car plus driver, order-of-magnitude assumption."}
+cda_m2: {value: 1.2, unit: "m^2", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 3.0, note: "Drag area in a low-drag configuration."}
+cla_m2: {value: 4.0, unit: "m^2", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, upper_bound: 12.0, note: "Downforce area; 0.5*rho*ClA*v^2 gives vertical load."}
+crr: {value: 0.012, unit: "1", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.001, upper_bound: 0.05, note: "Rolling resistance coefficient."}
+air_density_kgpm3: {value: 1.2, unit: "kg/m^3", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.8, upper_bound: 1.4, note: "Sea-level warm-day assumption."}
+ice_power_map:
+  - speed_mps: {value: 0.0, unit: "m/s", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+    power_w: {value: 0.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+  - speed_mps: {value: 10.0, unit: "m/s", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+    power_w: {value: 180000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+  - speed_mps: {value: 20.0, unit: "m/s", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+    power_w: {value: 300000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+  - speed_mps: {value: 40.0, unit: "m/s", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+    power_w: {value: 400000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+  - speed_mps: {value: 100.0, unit: "m/s", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+    power_w: {value: 400000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption}
+max_tractive_power_w: {value: 750000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Combined shaft power ceiling."}
+max_tractive_force_n: {value: 18000.0, unit: "N", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Torque limit; sets the low-speed branch breakpoint."}
+drivetrain_efficiency: {value: 0.96, unit: "1", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.5, upper_bound: 1.0, note: "Mechanical transmission efficiency, applied once."}
+max_brake_force_n: {value: 45000.0, unit: "N", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Friction brake capability before the tyre envelope binds."}
+eta_discharge: {value: 0.95, unit: "1", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.5, upper_bound: 1.0, note: "Battery terminal to DC bus."}
+eta_charge: {value: 0.94, unit: "1", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.5, upper_bound: 1.0, note: "DC bus to battery terminal."}
+battery_energy_min_j: {value: 0.0, unit: "J", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Lower bound of the declared operating window."}
+battery_energy_max_j: {value: 4000000.0, unit: "J", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Upper bound of the declared operating window."}
+max_deploy_power_w: {value: 350000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "DC-bus deployment ceiling."}
+max_harvest_power_w: {value: 350000.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "DC-bus recovery ceiling."}
+aux_load_w: {value: 2500.0, unit: "W", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Auxiliary electrical load drawn at the battery terminal."}
+regen_enabled: false
+regen_share: {value: 0.6, unit: "1", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, upper_bound: 1.0, note: "Share of braking power routed to the generator."}
+c_th_j_per_k: {value: 80000.0, unit: "J/K", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 1.0, note: "Lumped battery heat capacity."}
+h_w_per_k: {value: 900.0, unit: "W/K", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Lumped heat rejection coefficient."}
+ambient_temperature_k: {value: 303.15, unit: "K", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0, note: "Warm-day ambient."}
+derate_start_temperature_k: {value: 328.15, unit: "K", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0, note: "Electrical derate ramp start."}
+derate_end_temperature_k: {value: 343.15, unit: "K", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0, note: "Electrical derate ramp end; zero deployment above."}
+length_m: {value: 5.6, unit: "m", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 1.0, note: "Footprint length used for contact geometry."}
+width_m: {value: 2.0, unit: "m", source: "synthetic:afterlap-car-sketch-v1", verification: synthetic_assumption, lower_bound: 0.5, note: "Footprint width used for contact geometry."}
