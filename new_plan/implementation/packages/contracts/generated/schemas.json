@@ -1056,6 +1056,7 @@
             },
             "harvest_target_j": {
               "default": 0.0,
+              "description": "Energy to recover over this segment, measured as BATTERY ENERGY GAIN. This is the quantity the car actually stores. The regulatory recharge allowance is measured at the CU-K DC bus and differs by the charge efficiency, so a consumer converts explicitly rather than comparing the two numbers directly.",
               "minimum": 0.0,
               "title": "Harvest Target J",
               "type": "number"
@@ -1064,6 +1065,7 @@
               "$ref": "#/$defs/DeploymentProfile"
             },
             "requested_budget_j": {
+              "description": "Electrical energy to deploy over this segment, measured as energy leaving the battery. The regulated power ceiling applies at the ERS-K DC bus, so a checker converts before comparing.",
               "minimum": 0.0,
               "title": "Requested Budget J",
               "type": "number"
@@ -8357,6 +8359,7 @@
             },
             "harvest_target_j": {
               "default": 0.0,
+              "description": "Energy to recover over this segment, measured as BATTERY ENERGY GAIN. This is the quantity the car actually stores. The regulatory recharge allowance is measured at the CU-K DC bus and differs by the charge efficiency, so a consumer converts explicitly rather than comparing the two numbers directly.",
               "minimum": 0.0,
               "title": "Harvest Target J",
               "type": "number"
@@ -8365,6 +8368,7 @@
               "$ref": "#/$defs/DeploymentProfile"
             },
             "requested_budget_j": {
+              "description": "Electrical energy to deploy over this segment, measured as energy leaving the battery. The regulated power ceiling applies at the ERS-K DC bus, so a checker converts before comparing.",
               "minimum": 0.0,
               "title": "Requested Budget J",
               "type": "number"
