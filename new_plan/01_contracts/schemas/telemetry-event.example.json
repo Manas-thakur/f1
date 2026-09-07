@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "event_id": "fixture-001",
+  "session_id": "synthetic-battle-001",
+  "car_id": "car-01",
+  "sequence": 1,
+  "source_time_s": 12.0,
+  "received_time_s": 12.02,
+  "channel": "battery_energy_j",
+  "value": 2400000,
+  "unit": "J",
+  "provenance": "simulated",
+  "quality": "valid"
+}

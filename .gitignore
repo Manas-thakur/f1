@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+playwright-report/
+test-results/
+.pnpm-store/
+
+# Artifacts and data
+new_plan/implementation/artifacts/**
+!new_plan/implementation/artifacts/.gitkeep
+new_plan/implementation/**/data/
+*.parquet
+*.duckdb
+*.pt
+*.pth
+*.zip
+runs/
+tensorboard/
+
+# Local environment
+.env
+.env.*
+!.env.example
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
