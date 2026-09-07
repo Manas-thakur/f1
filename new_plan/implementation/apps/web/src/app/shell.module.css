@@ -1,0 +1,403 @@
+.shell {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  min-height: 100vh;
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------- module rail */
+
+.rail {
+  border-right: 1px solid var(--rule);
+  background: var(--surface);
+  padding: var(--s6) var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+  min-width: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font: 600 20px var(--font-display);
+  letter-spacing: -0.4px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.brandMark {
+  width: 14px;
+  height: 18px;
+  border-left: 4px solid var(--accent);
+  border-right: 4px solid var(--accent);
+  display: inline-block;
+  flex: none;
+}
+
+.railNav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+/* Plain named modules with a selected edge. No numbering: the workflow has no
+ * fixed ordering, so numbers would assert one that does not exist. */
+.railLink {
+  display: block;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.railLink:hover {
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.railLink[aria-current='page'] {
+  background: var(--raised);
+  color: var(--ink);
+  box-shadow: inset 3px 0 var(--accent);
+  font-weight: 600;
+}
+
+.railGroupLabel {
+  font-size: var(--text-micro);
+  color: var(--faint);
+  margin-bottom: var(--s2);
+  display: block;
+}
+
+.railBottom {
+  margin-top: auto;
+  display: grid;
+  gap: var(--s2);
+  font-size: var(--text-micro);
+  color: var(--muted);
+}
+
+/* -------------------------------------------------------------- workspace */
+
+.workspace {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+}
+
+.sessionStrip {
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+  padding: var(--s2) var(--s6);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  font-size: var(--text-secondary);
+  min-height: 46px;
+}
+
+.stripItem {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.stripLabel {
+  color: var(--muted);
+}
+
+.stripValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.stripPush {
+  margin-left: auto;
+}
+
+.main {
+  padding: var(--s6);
+  max-width: var(--content-max);
+  width: 100%;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.pageHead {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s6);
+  flex-wrap: wrap;
+}
+
+.pageHead p {
+  color: var(--muted);
+  margin-top: var(--s2);
+}
+
+.workArea {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(260px, 1fr);
+  gap: var(--s6);
+  align-items: start;
+  min-width: 0;
+}
+
+.workAreaSingle {
+  display: grid;
+  gap: var(--s6);
+  min-width: 0;
+}
+
+.stack {
+  display: grid;
+  gap: var(--s4);
+  min-width: 0;
+}
+
+.footer {
+  border-top: 1px solid var(--rule);
+  padding: var(--s3) var(--s6);
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  font: var(--text-micro) / 1.6 var(--font-mono);
+  color: var(--muted);
+  background: var(--surface);
+}
+
+/* ------------------------------------------------------- marketing layout */
+
+.webShell {
+  min-height: 100vh;
+  display: grid;
+  /* An explicit minmax(0, 1fr) column: a grid item's automatic minimum size is
+     min-content, so without this any fixed-width descendant widens the page. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  min-width: 0;
+}
+
+.webContainer {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--s6);
+  min-width: 0;
+}
+
+.webNav {
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.webNavInner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) 0;
+  flex-wrap: wrap;
+}
+
+.webNavLinks {
+  display: flex;
+  gap: var(--s4);
+  align-items: center;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.webSection {
+  padding: var(--s12) 0;
+  border-top: 1px solid var(--rule);
+  min-width: 0;
+}
+
+.webSection:first-of-type {
+  border-top: 0;
+}
+
+.webIntro {
+  display: grid;
+  gap: var(--s4);
+  max-width: 60ch;
+}
+
+.webIntro h1 {
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -1px;
+  max-width: 20ch;
+}
+
+.leadText {
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.specimen {
+  margin-top: var(--s8);
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3);
+}
+
+.specimenRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s4);
+  padding: var(--s4);
+  border: 1px solid var(--rule);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--surface);
+}
+
+.explainGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--s6);
+  min-width: 0;
+}
+
+.roleList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+.roleItem {
+  border-top: 1px solid var(--rule);
+  padding: var(--s4) 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+.roleItem h3 {
+  margin: 0;
+}
+
+.boundaryList {
+  margin: 0;
+  padding-left: var(--s4);
+  display: grid;
+  gap: var(--s2);
+  color: var(--muted);
+  max-width: var(--reading-max);
+}
+
+.ctaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s6);
+  flex-wrap: wrap;
+}
+
+.webFooter {
+  border-top: 1px solid var(--rule);
+  background: var(--surface);
+  padding: var(--s6) 0;
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+.webFooterInner {
+  display: flex;
+  gap: var(--s4);
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* ------------------------------------------------------------- responsive */
+
+@media (max-width: 1200px) {
+  .workArea {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .main {
+    padding: var(--s4);
+  }
+}
+
+@media (max-width: 768px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding: var(--s3);
+    gap: var(--s3);
+  }
+
+  .railNav ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s1);
+  }
+
+  .railBottom,
+  .railGroupLabel {
+    display: none;
+  }
+
+  .railLink[aria-current='page'] {
+    box-shadow: inset 0 -3px var(--accent);
+  }
+
+  .sessionStrip {
+    padding: var(--s2) var(--s4);
+  }
+
+  .stripPush {
+    margin-left: 0;
+  }
+
+  .webContainer {
+    padding: 0 var(--s4);
+  }
+
+  .webSection {
+    padding: var(--s8) 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .main {
+    padding: var(--s3);
+  }
+
+  .webContainer {
+    padding: 0 var(--s3);
+  }
+
+  .pageHead {
+    gap: var(--s3);
+  }
+}

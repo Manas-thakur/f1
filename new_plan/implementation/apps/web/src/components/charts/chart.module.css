@@ -1,0 +1,167 @@
+.frame {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+  display: grid;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3);
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: var(--text-h3);
+}
+
+.subtitle {
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+/* The trace well is dark so numeric evidence reads as instrumentation and not
+ * as another panel of interface chrome. */
+.well {
+  background: var(--well);
+  border-bottom: 1px solid var(--rule);
+  min-height: 160px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/*
+ * The plot mount is taken out of flow deliberately. uPlot writes a fixed pixel
+ * width onto its own wrapper; if that wrapper participated in layout it would
+ * set the min-content width of every ancestor, and the page would grow to fit
+ * the canvas instead of the canvas shrinking to fit the page. Absolute
+ * positioning makes the container the only thing that decides the width.
+ */
+.wellPlot {
+  position: absolute;
+  inset: var(--s2);
+  overflow: hidden;
+}
+
+.wellFallback {
+  position: absolute;
+  inset: var(--s2);
+  margin: 0;
+  color: var(--well-muted);
+  font-size: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.legend {
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.swatch {
+  display: inline-block;
+  width: 22px;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+  flex: none;
+}
+
+/* Reference series are dashed as well as differently coloured, so the two are
+ * distinguishable without relying on hue. */
+.swatch[data-role='reference'] {
+  border-top-style: dashed;
+}
+
+.swatch[data-role='context'] {
+  border-top-style: dotted;
+}
+
+.cursorRow {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-bottom: 1px solid var(--rule);
+}
+
+.cursorSlider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.cursorReadouts {
+  display: flex;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-secondary);
+}
+
+.summary {
+  padding: var(--s3);
+}
+
+.summary > summary {
+  cursor: pointer;
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+.summaryTableScroll {
+  overflow-x: auto;
+  margin-top: var(--s3);
+}
+
+.summaryTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-secondary);
+  text-align: left;
+}
+
+.summaryTable th,
+.summaryTable td {
+  padding: var(--s1) var(--s2);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+
+.summaryTable th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.eventList {
+  padding: 0 var(--s3) var(--s3);
+  margin: 0;
+  list-style: none;
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  font-size: var(--text-micro);
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
