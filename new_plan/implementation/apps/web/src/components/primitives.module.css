@@ -1,0 +1,529 @@
+/* Shared primitives. Subtle rules, compact spacing, no gradients or glows. */
+
+/* ---------------------------------------------------------------- Button */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  min-height: 34px;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: var(--text-body) / 1.3 var(--font-body);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--duration-fast) linear, border-color var(--duration-fast) linear;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--raised);
+  border-color: var(--rule-strong);
+}
+
+.button:active:not(:disabled) {
+  background: var(--sunken);
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  background: var(--raised);
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.primary:active:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.quiet:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.danger {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--bad-soft);
+}
+
+.button[data-state='pending'] {
+  cursor: progress;
+}
+
+.button[data-state='error'] {
+  border-color: var(--bad);
+}
+
+.button[data-state='success'] {
+  border-color: var(--good);
+}
+
+.buttonWrap {
+  display: inline-grid;
+  gap: var(--s1);
+  justify-items: start;
+}
+
+.buttonNote {
+  font-size: var(--text-secondary);
+  color: var(--muted);
+  max-width: 44ch;
+}
+
+.buttonNote[data-tone='error'] {
+  color: var(--bad);
+}
+
+.buttonNote[data-tone='success'] {
+  color: var(--good);
+}
+
+.spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ----------------------------------------------------------- StatusBadge */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px var(--s2);
+  border: 1px solid var(--neutral-badge-rule);
+  border-radius: var(--radius-sm);
+  background: var(--neutral-badge-bg);
+  color: var(--neutral-badge-ink);
+  font: var(--text-micro) / 1.5 var(--font-mono);
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.badge[data-tone='selection'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.badge[data-tone='verified'] {
+  border-color: var(--good);
+  color: var(--good);
+  background: var(--good-soft);
+}
+
+.badge[data-tone='failure'] {
+  border-color: var(--bad);
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.badge[data-tone='attention'] {
+  border-color: var(--warn);
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.badge[data-tone='reference'] {
+  border-color: var(--reference);
+  color: var(--reference);
+  background: var(--reference-soft);
+}
+
+/* ------------------------------------------------------------------ Field */
+
+.field {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: var(--text-secondary);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.fieldRequired {
+  color: var(--bad);
+  margin-left: 2px;
+}
+
+.fieldControl > input,
+.fieldControl > select,
+.fieldControl > textarea {
+  width: 100%;
+  padding: var(--s2);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+}
+
+.fieldControl > input:hover:not(:disabled),
+.fieldControl > select:hover:not(:disabled) {
+  border-color: var(--rule-strong);
+}
+
+.fieldControl > input:disabled,
+.fieldControl > select:disabled,
+.fieldControl > textarea:disabled {
+  background: var(--raised);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.field[data-state='error'] .fieldControl > input,
+.field[data-state='error'] .fieldControl > select,
+.field[data-state='error'] .fieldControl > textarea {
+  border-color: var(--bad);
+}
+
+.field[data-state='success'] .fieldControl > input,
+.field[data-state='success'] .fieldControl > select {
+  border-color: var(--good);
+}
+
+.fieldHint {
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+.fieldMessage {
+  font-size: var(--text-secondary);
+}
+
+.fieldMessage[data-tone='error'] {
+  color: var(--bad);
+}
+
+.fieldMessage[data-tone='success'] {
+  color: var(--good);
+}
+
+/* -------------------------------------------------------------- DataTable */
+
+.tableRegion {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.tableCaptionBar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3);
+  border-bottom: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+
+.tableCaptionBar h3 {
+  font-size: var(--text-h3);
+}
+
+.tableScroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.tableScroll:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.table th {
+  color: var(--muted);
+  font-size: var(--text-micro);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  text-transform: none;
+}
+
+.table th,
+.table td {
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr[data-selected='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.numeric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tableFoot {
+  padding: var(--s2) var(--s3);
+  border-top: 1px solid var(--rule);
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+/* ------------------------------------------------------------ ValueReadout */
+
+.readout {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.readoutLabel {
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+.readoutValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.readoutValue[data-size='small'] {
+  font-size: var(--text-body);
+}
+
+.readoutValue[data-available='false'] {
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--muted);
+  font-style: normal;
+}
+
+.readoutUnit {
+  font-size: var(--text-secondary);
+  color: var(--muted);
+  margin-left: var(--s1);
+}
+
+.readoutMeta {
+  display: flex;
+  gap: var(--s2);
+  flex-wrap: wrap;
+  font-size: var(--text-micro);
+  color: var(--muted);
+}
+
+.readout[data-state='stale'] .readoutValue,
+.readout[data-state='invalid'] .readoutValue {
+  color: var(--bad);
+}
+
+.readout[data-state='estimated'] .readoutValue {
+  color: var(--ink);
+}
+
+/* -------------------------------------------------------------- EmptyState */
+
+.empty {
+  display: grid;
+  gap: var(--s3);
+  justify-items: start;
+  padding: var(--s6);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  background: var(--sunken);
+}
+
+.emptyArtefact {
+  font-family: var(--font-mono);
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+/* --------------------------------------------------------- QualityIndicator */
+
+.quality {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--text-secondary);
+}
+
+.qualityMark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  background: currentColor;
+  flex: none;
+}
+
+.quality[data-quality='valid'] {
+  color: var(--good);
+}
+
+.quality[data-quality='degraded'] {
+  color: var(--warn);
+}
+
+.quality[data-quality='stale'],
+.quality[data-quality='missing'],
+.quality[data-quality='invalid'] {
+  color: var(--bad);
+}
+
+.quality[data-quality='unknown'] {
+  color: var(--muted);
+}
+
+.quality[data-quality='unknown'] .qualityMark {
+  background: transparent;
+}
+
+.qualityText {
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------- ProvenanceLabel */
+
+.provenance {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s1);
+  font-size: var(--text-micro);
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.provenanceStrong {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ Dialog */
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(32 40 47 / 45%);
+}
+
+.dialogContent {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(680px, calc(100vw - var(--s8)));
+  max-height: 85vh;
+  overflow: auto;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: var(--s6);
+}
+
+.dialogHead {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+
+.dialogDescription {
+  color: var(--muted);
+  font-size: var(--text-secondary);
+  margin-bottom: var(--s4);
+}
+
+.dialogFooter {
+  display: flex;
+  gap: var(--s2);
+  justify-content: flex-end;
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--rule);
+  flex-wrap: wrap;
+}
+
+/* -------------------------------------------------------------------- Panel */
+
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--s4);
+  min-width: 0;
+}
+
+.panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+  flex-wrap: wrap;
+}
+
+.notice {
+  border-left: 3px solid var(--accent);
+  background: var(--sunken);
+  padding: var(--s2) var(--s3);
+  font-size: var(--text-secondary);
+  color: var(--muted);
+}
+
+.notice[data-tone='attention'] {
+  border-left-color: var(--warn);
+}
+
+.notice[data-tone='failure'] {
+  border-left-color: var(--bad);
+}
