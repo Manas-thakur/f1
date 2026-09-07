@@ -53,6 +53,13 @@ extend-exclude = ["packages/contracts/generated", "apps/web"]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 ignore = ["B008", "RUF012"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["afterlap_contracts", "afterlap_core", "afterlap_api"]
+
+[tool.ruff.lint.per-file-ignores]
+# The staging-then-rename write deliberately keeps the handle past the with-block.
+"packages/core/afterlap_core/paths.py" = ["SIM115"]
+
 [tool.mypy]
 python_version = "3.12"
 warn_unused_configs = true
