@@ -30,8 +30,24 @@ class ProfileSegment(Contract):
     start_progress_m: float = Field(ge=0.0)
     end_progress_m: float = Field(ge=0.0)
     profile_id: DeploymentProfile
-    requested_budget_j: float = Field(ge=0.0)
-    harvest_target_j: float = Field(default=0.0, ge=0.0)
+    requested_budget_j: float = Field(
+        ge=0.0,
+        description=(
+            "Electrical energy to deploy over this segment, measured as energy leaving the "
+            "battery. The regulated power ceiling applies at the ERS-K DC bus, so a checker "
+            "converts before comparing."
+        ),
+    )
+    harvest_target_j: float = Field(
+        default=0.0,
+        ge=0.0,
+        description=(
+            "Energy to recover over this segment, measured as BATTERY ENERGY GAIN. This is the "
+            "quantity the car actually stores. The regulatory recharge allowance is measured at "
+            "the CU-K DC bus and differs by the charge efficiency, so a consumer converts "
+            "explicitly rather than comparing the two numbers directly."
+        ),
+    )
     execution_window_s: float = Field(gt=0.0, description="Time the driver has to begin this segment.")
 
     @model_validator(mode="after")
