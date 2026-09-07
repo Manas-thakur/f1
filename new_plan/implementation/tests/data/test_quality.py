@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from conftest import CAR_ID, observation, public_config, simulator_config
+from .conftest import CAR_ID, observation, public_config, simulator_config
 
 from afterlap_contracts import Quality
 from afterlap_core.data import (

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from conftest import (
+from .conftest import (
     CAR_ID,
     SESSION_ID,
     observation,

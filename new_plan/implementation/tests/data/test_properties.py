@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from conftest import SESSION_ID, observation, public_config, simulator_config
+from .conftest import SESSION_ID, observation, public_config, simulator_config
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 

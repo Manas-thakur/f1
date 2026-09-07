@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from conftest import observation, simulator_config
+from .conftest import observation, simulator_config
 
 from afterlap_contracts import SessionMode
 from afterlap_core.data import (
