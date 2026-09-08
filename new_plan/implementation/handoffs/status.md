@@ -66,26 +66,49 @@ not reach:
 
 | Agent | Scope | State |
 |---|---|---|
-| A05 | Estimation: own-car EKF, rival particle filter | dispatched |
-| A06 | Planning: enumerator, MPC, checker integration | pending wave 1 |
-| A08 | API, persistence, session runtime, lifecycle | pending wave 1 |
-| A13 | Evaluation harness and benchmarks | pending wave 2 |
+| A05 | Estimation: own-car EKF, rival particle filter | integrated |
+| A06 | Planning: enumerator, MPC, checker integration | integrated |
+| A08 | API, persistence, session runtime, lifecycle | integrated |
+| A13 | Evaluation harness and benchmarks | integrated |
 
 ## Wave 3
 
 | Agent | Scope | State |
 |---|---|---|
-| A07 | Gym environment, SAC, continuation ensemble | pending wave 2 |
-| A09/A10/A11 | Engineer console, lab/replay, driver display | pending wave 2 |
+| A07 | Gym environment, SAC, continuation ensemble | integrated, learning INCOMPLETE |
+| A09/A10/A11 | Engineer console, lab/replay, driver display | integrated |
 
 ## Wave 4
 
 | Agent | Scope | State |
 |---|---|---|
-| A14 | Operations, packaging, failure drills | pending wave 3 |
-| A15 | Presentation and release report | pending wave 3 |
+| A14 | Operations, packaging, failure drills | integrated |
+| A15 | Presentation and release report | integrated as handoffs/RELEASE_REPORT.md |
 
 ## Contract proposals received
 
 None yet. Workers submit them to `handoffs/<agent-id>-contract-proposal.md`;
 only the coordinator merges and increments the contract revision.
+
+
+---
+
+## Wave 4 — release
+
+`handoffs/RELEASE_REPORT.md` carries the gate-by-gate assessment, measured
+performance, stated limitations and the claims this release does not support.
+
+**985 Python tests, 322 web unit tests, 157 browser tests. All green.**
+
+### Outstanding, in priority order
+
+| Item | State |
+|---|---|
+| **A16 real circuits and conditions** | **not built.** `BUILD_WITH_AGENTS.md` was revised mid-build to require it and `new_plan/17_real_tracks_conditions/` holds 397 lines of specification plus a track-package schema, a season registry and a Monza example. No pipeline, geometry compiler, event overlay or condition model exists. The product does not meet its current specification. |
+| **Learning** | **incomplete.** Pipeline complete and reproducible; actor is a zero-tensor placeholder; no held-out study; promotion refused with `benchmark_report_absent`. Coverage, not compute, is the blocker: two scenario families withdraw on 100 % of decisions. |
+| Planner latency | **827 ms p95 against a 200 ms target.** Re-simulation is 86 % of the planner's own cost. |
+| Exogenous physical disturbance | Not implemented, so seed-level bootstrap variance is zero and held-out intervals are scenario-resampled only. |
+| Session-aware readiness (A14-4) | Open decision: the available patch changes container restart behaviour either way. |
+| Three uncalled metrics (A14-2) | `observe_planner`, `observe_observation_age`, `spool_depth` have no caller. |
+| Spawned worker persistence (A14-10) | An out-of-process session has no recorder and mints its own id. |
+| acados | Absent on this platform; CasADi/IPOPT is the active solver (D-02). |
