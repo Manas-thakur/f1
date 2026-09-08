@@ -43,6 +43,7 @@ from .adapters import (
     request_channel,
     simulator_capability,
     simulator_mapping,
+    simulator_session_mapping,
     validate_mapping_against_capability,
 )
 from .backpressure import (
@@ -197,6 +198,7 @@ __all__ = [
     "request_channel",
     "simulator_capability",
     "simulator_mapping",
+    "simulator_session_mapping",
     "sort_normalised",
     "validate_mapping_against_capability",
     "validate_structure",

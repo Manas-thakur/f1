@@ -78,7 +78,7 @@ from afterlap_core.data import (
     NormalisedRecord,
     SimulatorAdapter,
     SourcePipelineConfig,
-    simulator_mapping,
+    simulator_session_mapping,
 )
 from afterlap_core.estimation import EstimationContext, EstimatorState, create_state, update
 from afterlap_core.rules import (
@@ -332,7 +332,7 @@ class InProcessSessionRuntime:
                 SourcePipelineConfig(
                     session_id=manifest.id,
                     source_id=self._source.source_id,
-                    mapping=simulator_mapping(self._source.source_id),
+                    mapping=simulator_session_mapping(self._source.source_id),
                     capability=capability,
                     provenance=Provenance.SIMULATED,
                     clock=ClockMapping(source_id=self._source.source_id, offset_s=0.0),

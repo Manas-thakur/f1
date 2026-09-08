@@ -272,6 +272,26 @@ def simulator_mapping(source_id: str = "simulator") -> MappingTable:
     )
 
 
+def simulator_session_mapping(source_id: str = "simulator") -> MappingTable:
+    return MappingTable(
+        mapping_revision=SIMULATOR_MAPPING_REVISION,
+        source_id=source_id,
+        entries=(
+            FieldMapping("speed_mps", "speed_mps", "m/s"),
+            FieldMapping("progress_m", "progress_m", "m"),
+            FieldMapping("lap_distance_m", "lap_distance_m", "m"),
+            FieldMapping("battery_energy_j", "battery_energy_j", "J"),
+            FieldMapping("battery_temperature_k", "battery_temperature_k", "K"),
+            FieldMapping("gap_ahead_s", "gap_ahead_s", "s"),
+            FieldMapping("gap_behind_s", "gap_behind_s", "s"),
+        ),
+        forbidden_fields={
+            "world_state": "simulator truth is not an observation",
+            "rival_battery_energy_j": "rival truth is not observable without authorised measurement",
+        },
+    )
+
+
 class SimulatorAdapter(_BaseAdapter):
     """Adapter over an injected observation stream.
 
@@ -746,6 +766,7 @@ __all__ = [
     "request_channel",
     "simulator_capability",
     "simulator_mapping",
+    "simulator_session_mapping",
     "team_feed_capability",
     "team_feed_mapping",
     "validate_mapping_against_capability",
