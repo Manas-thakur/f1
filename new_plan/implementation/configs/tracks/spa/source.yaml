@@ -8,6 +8,12 @@ official_length_m:
   source_url: https://www.formula1.com/en/racing/2026/belgium
   retrieved_at: "2026-09-08T14:20:39.014366Z"
   sha256: d3ae4913867e9f039ab366f3ad4b139b071830c85c18e774c8be9e5354e8e043
+length_tolerance_fraction: 0.01
+length_tolerance_justification: >-
+  Geometry is the median driven line from OpenF1 location telemetry, not a surveyed centreline.
+  A racing line cuts apexes and runs wide on exits, so its arc length differs from the FIA
+  centreline by up to about one percent; the deviation is recorded in the validation report and
+  the package remains labelled openf1_location_telemetry with corridor unknown (D-12).
 openf1:
   sessions:
     - session_key: 9939

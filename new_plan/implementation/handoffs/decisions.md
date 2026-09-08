@@ -462,3 +462,31 @@ centreline, and the weather is a trackside station reading, not a certified
 condition. Redistribution of the compiled artefacts beyond research use needs
 a licence review; until then `artifacts/` stays out of the repository and only
 hashes travel with commits.
+
+## D-12 — a driven-line package may declare a justified length tolerance
+
+**Raised by:** A16-3. The Monza package compiled from OpenF1 location
+telemetry recomputes to 5759.0 m against the official 5793 m (0.586 % short),
+so under the default 0.5 % tolerance it stays `discovered` and no real circuit
+can drive the simulator.
+
+**Decision.** The default tolerance stays 0.5 % for centreline-class sources.
+A source manifest may declare `length_tolerance_fraction` together with a
+`length_tolerance_justification`; the six shipped manifests declare 1 % because
+a driven line cuts apexes and runs wide on exits, so its arc length is
+physically expected to differ from the FIA centreline by that order. The
+validator records the declared tolerance and the measured fraction in the
+report, the package keeps `openf1_location_telemetry` provenance and an
+`unknown` corridor, and nothing about the label changes: it is still a driven
+line, still non-commercial OpenF1 data, still `real_circuit_synthetic_energy`
+when run. A centreline-class source, if one is ever licensed, replaces the
+driven line under the stricter default.
+
+**Conditions evidence path.** `artifacts/tracks/<id>/conditions/calibration.json`
+is confirmed as the evidence the validator reads for `condition_calibrated`;
+A16-4 writes it only when a real weather tape has been bound to the circuit.
+
+**Chart-only power curves.** No draft-edit path is added. Curves rendered as
+charts stay `unknown` until a reviewer transcription tool with two-reviewer
+confirmation exists; until then the car document ceiling applies and the run
+records `event_curve_unknown`.

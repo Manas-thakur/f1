@@ -8,6 +8,12 @@ official_length_m:
   source_url: https://www.formula1.com/en/racing/2026/singapore
   retrieved_at: "2026-09-08T14:20:51.520725Z"
   sha256: ed417c6506a4eb4dec8559c56e3a796e028650b7c7093aebcc5a88bcf87c378f
+length_tolerance_fraction: 0.01
+length_tolerance_justification: >-
+  Geometry is the median driven line from OpenF1 location telemetry, not a surveyed centreline.
+  A racing line cuts apexes and runs wide on exits, so its arc length differs from the FIA
+  centreline by up to about one percent; the deviation is recorded in the validation report and
+  the package remains labelled openf1_location_telemetry with corridor unknown (D-12).
 openf1:
   sessions:
     - session_key: 9896
