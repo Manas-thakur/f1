@@ -22,6 +22,7 @@ from afterlap_contracts import (
     ControlLease,
     ErrorCode,
     ExecutionEvent,
+    OperatorAction,
     OperatorEvent,
     Recommendation,
     RuntimeCapabilities,
@@ -73,6 +74,11 @@ def _registry(request: Request):  # type: ignore[no-untyped-def]
             "session_runtime", "no session runtime registry is attached to this process"
         )
     return registry
+
+
+def _registry_optional(request: Request):  # type: ignore[no-untyped-def]
+    """The registry if one is attached, else None. Used where absence is normal."""
+    return getattr(request.app.state, "runtimes", None)
 
 
 def _session_row(db, session_id: str) -> Session:  # type: ignore[no-untyped-def]
@@ -367,6 +373,7 @@ def _remember_state(request: Request, session_id: str, tick) -> None:  # type: i
     response_model=RecommendationActionResponse,
 )
 async def act_on_recommendation(
+    request: Request,
     session_id: str,
     recommendation_id: str,
     payload: RecommendationActionRequest,
@@ -393,6 +400,20 @@ async def act_on_recommendation(
         reason=payload.reason,
     )
     db.flush()
+
+    # Tell the runtime when the engineer actually communicated, so the observed
+    # execution can carry delay_from_communication_s. Without this the
+    # operator-to-execution delay -- a metric the operations specification
+    # names -- was never measured, and every recorded execution reported None.
+    # Only after the durable transition has committed: a refused command must
+    # not move the runtime's clock.
+    if (
+        payload.action is OperatorAction.MARK_COMMUNICATED
+        and not outcome.replayed
+        and _registry_optional(request) is not None
+    ):
+        runtime = _registry(request).get(session_id)
+        runtime.mark_communicated(recommendation_id, row.session_time_s)
 
     return RecommendationActionResponse(
         recommendation=outcome.recommendation,
