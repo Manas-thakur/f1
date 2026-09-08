@@ -9,7 +9,6 @@ See [AGENTS.md](AGENTS.md) for engineering rules and [docs/README.md](docs/READM
 
 This repository is `Manas-thakur/f1` on GitHub.
 
-- Commits use author and committer `manas-thakur <manas@ocally.co>`.
 - Conventional-commit prefixes. One logical change per commit. Subject in imperative mood, 72 characters or fewer.
 - Branch from `main`, open a PR, squash-merge after checks pass.
 - Never push directly to `main`.
