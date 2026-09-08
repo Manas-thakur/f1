@@ -490,3 +490,40 @@ A16-4 writes it only when a real weather tape has been bound to the circuit.
 charts stay `unknown` until a reviewer transcription tool with two-reviewer
 confirmation exists; until then the car document ceiling applies and the run
 records `event_curve_unknown`.
+
+## D-13 — `track_geometry` is available at `geometry_validated`, not `simulation_eligible`
+
+**Raised by:** A16-8, which found the contract description and the readiness
+reality in conflict.
+
+**The conflict.** `RuntimeCapabilities.track_geometry` was described as
+"available only for a `simulation_eligible` real-circuit package". No circuit
+can reach that rung: it requires a surveyed corridor, and position telemetry
+cannot establish one. The description therefore made the capability
+permanently unavailable, which would report independently validated geometry
+as absent.
+
+**Decision.** `track_geometry` is `available` for a package at or above
+`geometry_validated` — the rung at which an independent validator has
+recomputed closure, arc length against the official figure, yaw and curvature
+consistency, and grade bounds from the stored arrays. It is `degraded` for a
+synthetic sketch, whose widths and curvature are invented. It is `unavailable`
+when no geometry loads, or when the package on disk no longer hashes to the
+hash the session pinned.
+
+The corridor is reported separately and is never conflated with this. Every
+compiled circuit has an unknown corridor, so `lateral_geometry` is
+`unavailable` with a named reason, regardless of session mode, and every
+overlap or contact claim is refused. A synthetic sketch is `degraded` there
+too, because `TrackConfig` structurally forbids a synthetic track from
+claiming surveyed lateral geometry; the previous code reported `available`
+purely because the mode was simulation, which was wrong.
+
+**Consequence.** A real-circuit session truthfully advertises validated
+geometry while refusing every lateral claim, and is labelled
+`real_circuit_synthetic_energy` because its car, battery and driver documents
+remain synthetic.
+
+**Affected contracts.** Description text only on
+`RuntimeCapabilities.track_geometry`; no field, type or default changed.
+Generated artefacts regenerated and the drift test passes.
