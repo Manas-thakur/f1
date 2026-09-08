@@ -328,3 +328,57 @@ separate event and is the only thing that reaches `executing`.
 the recorded event. The operator-to-execution delay is a metric the operations
 specification asks for, so it should be populated from the communication
 timestamp. Recorded as remaining work rather than fixed here.
+
+---
+
+## D-09 — the startup migration was migrating the wrong database and reporting success
+
+**Raised by:** coordinator, when two suites failed after D-07's schema-bootstrap
+fix landed. One failure was an obsolete premise; the other was
+`no such table: outbox`, which should have been impossible.
+
+**Observation.** `ensure_schema(engine)` returned `"schema at migration head
+for sqlite"` and created **zero tables** in the engine it was handed.
+
+`migrations/env.py` set `sqlalchemy.url` from `default_database_url()`
+*unconditionally*, overriding the URL that `ensure_schema` had just placed on
+the Alembic config. Alembic therefore migrated the process-default store while
+reporting success for whichever engine the caller passed.
+
+The manual server verification in D-07 passed only because the server's URL
+*is* the default one, so the two coincided. Any custom URL -- every test, and
+any deployment naming its own database -- silently got no schema.
+
+**Why this one matters more than its size.** This is precisely the failure mode
+the whole codebase is built to refuse: a success report with nothing behind it.
+It was introduced by the fix for a defect of exactly the same shape, and it was
+caught only because a test that had nothing to do with migrations began failing
+several layers away, inside the publisher.
+
+**Decision.** The environment falls back to the default URL only when the caller
+has not already named one.
+
+**Affected contracts.** None. `migrations/env.py` behaviour only.
+
+**Regression coverage.** `tests/persistence/test_schema_bootstrap.py` asserts
+that `ensure_schema` creates tables in the engine it was given, that migrating
+one database leaves an unrelated one untouched, that it is idempotent, and that
+each table the runtime depends on exists by name -- because a partial schema
+fails far from its cause.
+
+### Two tests whose premises this work invalidated
+
+Both were rewritten to keep what they were guarding rather than deleted.
+
+- `test_a_missing_capability_is_503_not_a_fabricated_success` passed only
+  because no session factory was attached by default. One now is, so the test
+  removes it deliberately; otherwise it asserted a scaffolding gap rather than
+  the behaviour it is named after. A companion test now covers the case that
+  replaced it: an unknown scenario is refused explicitly, not defaulted or
+  substituted.
+- `test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_one`
+  provoked its row through the lifecycle, which no longer produces one. The
+  publisher's defence still matters for a malformed or future-versioned row, so
+  the row is now inserted directly, and a second test asserts at the source
+  that an operator action produces no outbox row while remaining durable audit
+  evidence.

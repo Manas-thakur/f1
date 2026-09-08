@@ -134,16 +134,45 @@ def test_unknown_fields_fail_closed(client):
 
 
 def test_a_missing_capability_is_503_not_a_fabricated_success(client):
-    response = client.post(
-        "/api/v1/sessions",
-        json={"mode": "simulation", "scenario_id": "s", "ruleset_id": "r", "seed": 1},
-        headers={"Idempotency-Key": "k"},
-    )
+    """A capability that is genuinely absent must be reported, not worked around.
+
+    This used to pass because no session factory was attached by default. One
+    now is, so the absence has to be created deliberately -- otherwise the test
+    asserts a scaffolding gap rather than the behaviour it is named after.
+    """
+    app = client.app_instance  # type: ignore[attr-defined]
+    attached = app.state.session_factory
+    app.state.session_factory = None
+    try:
+        response = client.post(
+            "/api/v1/sessions",
+            json={"mode": "simulation", "scenario_id": "s", "ruleset_id": "r", "seed": 1},
+            headers={"Idempotency-Key": "k"},
+        )
+    finally:
+        app.state.session_factory = attached
+
     assert response.status_code == 503
     error = response.json()["error"]
     assert error["code"] == "capability_unavailable"
     assert error["retryable"] is True
     assert error["details"]["capability"] == "session_factory"
+
+
+def test_an_unknown_scenario_is_refused_explicitly(client):
+    """With a factory attached, an unknown scenario is a named refusal.
+
+    Not a default, not a substituted scenario, and not a 500.
+    """
+    response = client.post(
+        "/api/v1/sessions",
+        json={"mode": "simulation", "scenario_id": "no-such-scenario", "ruleset_id": "r", "seed": 1},
+        headers={"Idempotency-Key": "unknown-scenario"},
+    )
+    assert response.status_code == 404
+    error = response.json()["error"]
+    assert error["code"] == "not_found"
+    assert "no-such-scenario" in json.dumps(error)
 
 
 def test_a_session_without_a_runtime_reports_unavailable(client):
