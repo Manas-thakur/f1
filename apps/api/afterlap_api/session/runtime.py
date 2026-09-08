@@ -387,6 +387,10 @@ class InProcessSessionRuntime:
                 expected_reward_revision=self._objective_version,
                 baseline_identity=BASELINE_IDENTITY,
                 scenario_family=self._bundle.scenario.id,
+                expected_ruleset_hash=self._pack.ruleset_hash,
+                expected_track_id=manifest.track_id,
+                expected_track_package_hash=manifest.track_package_hash,
+                expected_conditions_id=manifest.conditions_id,
             )
 
             self._revision = 1

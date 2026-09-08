@@ -7708,6 +7708,19 @@
               "title": "Rule Family",
               "type": "string"
             },
+            "ruleset_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Content hash of the rule pack this bundle was trained against. `rule_family` names the pack; this pins its contents, because a pack whose limits moved is a different environment under the same id.",
+              "title": "Ruleset Hash"
+            },
             "schema_version": {
               "const": "1.0",
               "title": "Schema Version",
@@ -7724,6 +7737,15 @@
               ],
               "default": null
             },
+            "supported_conditions_ids": {
+              "default": [],
+              "description": "Conditions tapes inside the training split. Empty means none was used, so a session running under a tape is outside the regime this bundle was evaluated in.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Supported Conditions Ids",
+              "type": "array"
+            },
             "supported_scenario_families": {
               "default": [],
               "items": {
@@ -7731,6 +7753,23 @@
               },
               "title": "Supported Scenario Families",
               "type": "array"
+            },
+            "supported_track_ids": {
+              "default": [],
+              "description": "Circuits inside this bundle's training split. Empty means the split is undeclared, which is not a claim of coverage: a session on a compiled real circuit refuses a bundle that does not name it.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Supported Track Ids",
+              "type": "array"
+            },
+            "track_package_hashes": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Per-circuit compiled package hash the bundle trained against. Recompiled geometry under the same circuit id is different dynamics, so a hash that disagrees disables the learned contribution even when the id matches.",
+              "title": "Track Package Hashes",
+              "type": "object"
             },
             "training_code_revision": {
               "anyOf": [
@@ -8159,6 +8198,19 @@
           "title": "Rule Family",
           "type": "string"
         },
+        "ruleset_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Content hash of the rule pack this bundle was trained against. `rule_family` names the pack; this pins its contents, because a pack whose limits moved is a different environment under the same id.",
+          "title": "Ruleset Hash"
+        },
         "schema_version": {
           "const": "1.0",
           "title": "Schema Version",
@@ -8175,6 +8227,15 @@
           ],
           "default": null
         },
+        "supported_conditions_ids": {
+          "default": [],
+          "description": "Conditions tapes inside the training split. Empty means none was used, so a session running under a tape is outside the regime this bundle was evaluated in.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported Conditions Ids",
+          "type": "array"
+        },
         "supported_scenario_families": {
           "default": [],
           "items": {
@@ -8182,6 +8243,23 @@
           },
           "title": "Supported Scenario Families",
           "type": "array"
+        },
+        "supported_track_ids": {
+          "default": [],
+          "description": "Circuits inside this bundle's training split. Empty means the split is undeclared, which is not a claim of coverage: a session on a compiled real circuit refuses a bundle that does not name it.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported Track Ids",
+          "type": "array"
+        },
+        "track_package_hashes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Per-circuit compiled package hash the bundle trained against. Recompiled geometry under the same circuit id is different dynamics, so a hash that disagrees disables the learned contribution even when the id matches.",
+          "title": "Track Package Hashes",
+          "type": "object"
         },
         "training_code_revision": {
           "anyOf": [

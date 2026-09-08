@@ -315,6 +315,10 @@ export interface ModelManifest {
   "training_code_revision"?: string | null;
   "library_versions"?: Record<string, string>;
   "supported_scenario_families"?: Array<string>;
+  "ruleset_hash"?: string | null;
+  "supported_track_ids"?: Array<string>;
+  "track_package_hashes"?: Record<string, string>;
+  "supported_conditions_ids"?: Array<string>;
   "support_thresholds"?: SupportThresholds | null;
   "approval_status"?: ApprovalStatus;
   "benchmark_report_hash"?: string | null;
