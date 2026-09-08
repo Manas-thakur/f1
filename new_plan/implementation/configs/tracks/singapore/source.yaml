@@ -1,0 +1,21 @@
+# Source manifest for Marina Bay Street Circuit (singapore). Field names are fixed in handoffs/A16-1.md.
+# Declares which public sources the compiler may consume. Nothing here is geometry.
+track_id: singapore
+display_name: "Marina Bay Street Circuit"
+direction: counterclockwise  # declared expectation; the compiler confirms it from session progression
+official_length_m:
+  value: 4927
+  source_url: https://www.formula1.com/en/racing/2026/singapore
+  retrieved_at: "2026-09-08T14:20:51.520725Z"
+  sha256: ed417c6506a4eb4dec8559c56e3a796e028650b7c7093aebcc5a88bcf87c378f
+openf1:
+  sessions:
+    - session_key: 9896
+      year: 2025
+      session_name: Race
+      driver_number: null
+      note: "OpenF1 circuit_short_name Singapore; 2025-10-05"
+fia_documents: []  # no 2026 event documents published for this event at the snapshot date
+permissions:
+  geometry: "OpenF1 /location telemetry (api.openf1.org): public API, free for non-commercial use per openf1.org; priority-3 source. Empirical racing line only; it defines neither legal boundaries nor ERS state. No map artwork is traced."
+  documents: "FIA public decision documents from fia.com/documents/formula-1; reference-only, values transcribed by two reviewers against the hashed PDF. Formula1.com circuit page used for length/lap-count scale checks only; review terms before redistribution."

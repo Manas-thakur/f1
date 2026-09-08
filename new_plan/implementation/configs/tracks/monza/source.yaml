@@ -1,0 +1,33 @@
+# Source manifest for Autodromo Nazionale Monza (monza). Field names are fixed in handoffs/A16-1.md.
+# Declares which public sources the compiler may consume. Nothing here is geometry.
+track_id: monza
+display_name: "Autodromo Nazionale Monza"
+direction: clockwise  # declared expectation; the compiler confirms it from session progression
+official_length_m:
+  value: 5793
+  source_url: https://www.formula1.com/en/racing/2026/italy
+  retrieved_at: "2026-09-08T14:20:27.341429Z"
+  sha256: ec1c86ae9083630c7bd5acc86a93f494347e964a44651bed443d5724ebe52a80
+openf1:
+  sessions:
+    - session_key: 9912
+      year: 2025
+      session_name: Race
+      driver_number: null
+      note: "OpenF1 circuit_short_name Monza; 2025-09-07"
+fia_documents:
+  - event_id: 2026-italy
+    url: https://www.fia.com/system/files/decision-document/2026_italian_grand_prix_-_power_unit_information.pdf
+    title: "2026 Italian Grand Prix - Power Unit Information (Document 8, 03 Sep 2026)"
+  - event_id: 2026-italy
+    url: https://www.fia.com/system/files/decision-document/2026_italian_grand_prix_-_race_directors_competition_notes_v2.pdf
+    title: "2026 Italian Grand Prix - Race Director's Competition Notes V2 (Document 48, 05 Sep 2026)"
+  - event_id: 2026-italy
+    url: https://www.fia.com/system/files/decision-document/2026_italian_grand_prix_-_race_directors_competition_notes.pdf
+    title: "2026 Italian Grand Prix - Race Director's Competition Notes (Document 5, 03 Sep 2026)"
+  - event_id: 2026-italy
+    url: https://www.fia.com/system/files/decision-document/2026_italian_grand_prix_-_competition_notes_-_circuit_map_pit_lane_drawing_emergency_exits_map_and_red_zone.pdf
+    title: "2026 Italian Grand Prix - Circuit Map, Pit Lane Drawing, Emergency Exits Map and Red Zone (Document 6, 03 Sep 2026)"
+permissions:
+  geometry: "OpenF1 /location telemetry (api.openf1.org): public API, free for non-commercial use per openf1.org; priority-3 source. Empirical racing line only; it defines neither legal boundaries nor ERS state. No map artwork is traced."
+  documents: "FIA public decision documents from fia.com/documents/formula-1; reference-only, values transcribed by two reviewers against the hashed PDF. Formula1.com circuit page used for length/lap-count scale checks only; review terms before redistribution."
