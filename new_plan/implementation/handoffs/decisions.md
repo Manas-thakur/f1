@@ -170,3 +170,50 @@ fix fails five of its seven cases — so it is known to have teeth.
 `discharge_efficiency = 1.0` in `planning.segments.checker_state_for`, is no
 longer required. It remains harmless and can be relaxed whenever a realistic
 efficiency is wanted.
+
+---
+
+## D-06 — exogenous physical disturbances are not implemented, and the benchmark says so
+
+**Raised by:** A13, which found that seeds 42, 43 and 99 produce bit-identical
+trajectories and therefore contribute zero variance to the seed level of the
+hierarchical paired bootstrap.
+
+**Refined by coordinator measurement.** The finding is real but needs stating
+precisely, because "seeds are inert" is too strong:
+
+- the **physical trajectory** is bit-identical across seeds — own progress
+  matches to nine decimal places at 500 steps
+- the **observations** do differ — reported speed was 91.49 m/s under seed 42
+  and 91.69 m/s under seed 43 at the same instant
+- the complete captured state differs too, because the RNG stream state differs
+
+So seeds drive sensor noise, delay and quantisation. They do not drive physics.
+
+**Cause.** `KeyedRandom` and the named-stream registry exist and work, and the
+observation layer uses them. What does not exist is an exogenous *physical*
+disturbance producer: no wind, no grip variation, no per-driver response
+perturbation that reaches the equations of motion. `OPPONENTS_AND_BRANCHING.md`
+assumes such disturbances exist and are shared across paired branches.
+
+**Consequence, and why it matters more than it looks.** Paired branching is
+still correct — two branches from one snapshot share their disturbance keys and
+opponents genuinely re-decide from their own branch observations. But with no
+physical disturbance, the only stochastic channel reaching a *physical* outcome
+is the controller's reaction to noisy observations. A paired comparison
+therefore measures less variance than a real one would, and a confidence
+interval built by resampling seeds would be falsely tight.
+
+**Decision.** Do not fabricate a disturbance model to make the statistics look
+richer. A13 detects the condition explicitly, records
+`degenerate_seed_variance` in the benchmark report, and refuses to emit an
+interval whose seed level contributed nothing. That is the honest handling.
+
+**Affected contracts.** None. This is a capability limitation, recorded so that
+no release claim rests on seed-level variance that does not exist.
+
+**Remaining work.** Implementing wind, grip and driver-response perturbation
+keyed by `(scenario, seed, event_type, physical_time_bin)` — the infrastructure
+is already in place for it — and then re-establishing the bootstrap's seed level.
+Until that exists, held-out intervals are scenario-resampled only, and must be
+described that way.
