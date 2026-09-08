@@ -22,7 +22,7 @@ from __future__ import annotations
 import pytest
 
 from afterlap_contracts import CHANNELS_BY_NAME, DeploymentProfile, is_registered
-from afterlap_core.data import simulator_capability
+from afterlap_core.data import simulator_capability, simulator_mapping
 from afterlap_core.simulation import DriverAction, Simulator, load_bundle
 
 SCENARIO = "two-straight-counterattack"
@@ -39,9 +39,25 @@ def emitted_channels() -> frozenset[str]:
     return frozenset(dict(simulator.observe(car_id="own")["own"].channels))
 
 
-def test_every_declared_channel_is_actually_emitted(emitted_channels):
+@pytest.fixture(scope="module")
+def emitted_canonical_channels(emitted_channels) -> frozenset[str]:
+    """The emitted vendor fields translated to canonical channel names.
+
+    The capability declares canonical names while the simulator emits its own
+    field names, so the two can be compared only through the mapping that
+    exists to translate them. Comparing the raw names worked while every
+    mapping entry was an identity pair, which is exactly how the drift between
+    ``s_m`` and ``lap_distance_m`` stayed invisible.
+    """
+    mapping = simulator_mapping()
+    return frozenset(
+        entry.channel for field_name in emitted_channels if (entry := mapping.get(field_name)) is not None
+    )
+
+
+def test_every_declared_channel_is_actually_emitted(emitted_canonical_channels):
     declared = frozenset(simulator_capability().supported_channels)
-    missing = declared - emitted_channels
+    missing = declared - emitted_canonical_channels
     assert missing == frozenset(), (
         "simulator_capability declares channels the simulator never emits: "
         f"{sorted(missing)}. A consumer trusting this list cannot distinguish "
@@ -83,6 +99,4 @@ def test_electrical_power_is_emitted_and_signed_by_the_registry_convention():
 def test_declared_channels_are_all_in_the_canonical_registry():
     """A capability cannot advertise a name no consumer can interpret."""
     unregistered = [c for c in simulator_capability().supported_channels if not is_registered(c)]
-    assert unregistered == [] or set(unregistered) <= {"s_m", "lap"}, (
-        f"unregistered channels declared: {unregistered}"
-    )
+    assert unregistered == [], f"unregistered channels declared: {unregistered}"

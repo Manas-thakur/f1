@@ -41,7 +41,6 @@ export interface CreateExportRequestBody {
   readonly end_session_time_s?: number | null;
 }
 
-
 export interface CreateSessionRequestBody {
   readonly mode: SessionMode;
   readonly scenario_id: string;
@@ -49,6 +48,9 @@ export interface CreateSessionRequestBody {
   readonly seed: number;
   readonly model_bundle_id?: string | null;
   readonly label?: string | null;
+  readonly track_id?: string | null;
+  readonly event_id?: string | null;
+  readonly conditions_id?: string | null;
 }
 
 type FetchLike = typeof fetch;

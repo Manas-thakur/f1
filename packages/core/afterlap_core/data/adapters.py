@@ -244,26 +244,57 @@ class _BaseAdapter:
         return record
 
 
-SIMULATOR_MAPPING_REVISION = "sim-observation-map-1"
+SIMULATOR_MAPPING_REVISION = "sim-observation-map-2"
 
 
-def simulator_mapping(source_id: str = "simulator") -> MappingTable:
-    """Canonical simulator observation map.
+def simulator_mapping(source_id: str = "simulator", *, include_relational: bool = False) -> MappingTable:
+    """Canonical simulator observation map for an own-car stream.
 
     The simulator publishes SI values already, but the mapping still exists so
     that renaming a simulator field is a reviewed mapping-revision change rather
-    than an invisible behaviour change.
+    than an invisible behaviour change. Revision 2 is the first one that
+    actually does its job: the simulator's own field names had drifted from the
+    contract's canonical channel names, and because every entry here was an
+    identity pair the drift was invisible. The left column is now what
+    ``afterlap_core.simulation.observation`` really emits and the right column
+    is the registered channel.
+
+    Two emitted fields are deliberately unmapped rather than passed through.
+    ``lap`` is an integer lap count, not a measured channel, and
+    ``recharge_this_lap_j`` is a per-lap counter that resets, so publishing it
+    beside a cumulative channel would invite a consumer to add the two.
+
+    Relational quantities are absent by default because a bare own-car stream
+    does not emit them: the simulator puts ``gap_s`` and the relative channels
+    on a rival record. A session source that computes gaps from the grid asks
+    for ``include_relational=True`` and declares the same two channels through
+    the ``channels`` argument of :func:`simulator_capability`. The default pair
+    of mapping and capability therefore stays consistent, and so does the
+    session pair, without either promising a channel its own producer cannot
+    supply.
     """
+    relational = (
+        (
+            FieldMapping("gap_ahead_s", "gap_ahead_s", "s"),
+            FieldMapping("gap_behind_s", "gap_behind_s", "s"),
+        )
+        if include_relational
+        else ()
+    )
     return MappingTable(
         mapping_revision=SIMULATOR_MAPPING_REVISION,
         source_id=source_id,
         entries=(
             FieldMapping("speed_mps", "speed_mps", "m/s"),
-            FieldMapping("progress_m", "progress_m", "m"),
             FieldMapping("acceleration_mps2", "acceleration_mps2", "m/s^2"),
+            FieldMapping("s_m", "lap_distance_m", "m"),
+            FieldMapping("progress_m", "progress_m", "m"),
+            FieldMapping("lateral_d_m", "lateral_position_m", "m"),
             FieldMapping("battery_energy_j", "battery_energy_j", "J"),
             FieldMapping("electrical_power_w", "electrical_power_w", "W"),
             FieldMapping("battery_temperature_k", "battery_temperature_k", "K"),
+            FieldMapping("recharge_cumulative_j", "recharge_ledger_j", "J"),
+            *relational,
         ),
         forbidden_fields={
             "world_state": "simulator truth is not an observation",
@@ -273,23 +304,7 @@ def simulator_mapping(source_id: str = "simulator") -> MappingTable:
 
 
 def simulator_session_mapping(source_id: str = "simulator") -> MappingTable:
-    return MappingTable(
-        mapping_revision=SIMULATOR_MAPPING_REVISION,
-        source_id=source_id,
-        entries=(
-            FieldMapping("speed_mps", "speed_mps", "m/s"),
-            FieldMapping("progress_m", "progress_m", "m"),
-            FieldMapping("lap_distance_m", "lap_distance_m", "m"),
-            FieldMapping("battery_energy_j", "battery_energy_j", "J"),
-            FieldMapping("battery_temperature_k", "battery_temperature_k", "K"),
-            FieldMapping("gap_ahead_s", "gap_ahead_s", "s"),
-            FieldMapping("gap_behind_s", "gap_behind_s", "s"),
-        ),
-        forbidden_fields={
-            "world_state": "simulator truth is not an observation",
-            "rival_battery_energy_j": "rival truth is not observable without authorised measurement",
-        },
-    )
+    return simulator_mapping(source_id, include_relational=True)
 
 
 class SimulatorAdapter(_BaseAdapter):
@@ -360,29 +375,19 @@ def simulator_capability(
 ) -> SourceCapability:
     """Capability for a simulator observation stream (synthetic by definition).
 
-    The default list is exactly what ``afterlap_core.simulation.observation``
-    emits for an own car. Declaring a channel the source cannot actually supply
-    is the same dishonesty as calling a configured value measured, and
-    ``tests/data/test_capability_matches_emission.py`` fails if the two drift:
-    a consumer that trusts this list and finds nothing arriving has no way to
-    tell a missing channel from a broken feed.
+    The default list is derived from :func:`simulator_mapping`, so the two
+    cannot drift: the capability declares exactly the canonical channels the
+    mapping can produce from what the simulator emits. Declaring a channel the
+    source cannot actually supply is the same dishonesty as calling a
+    configured value measured, and a consumer that trusts this list and finds
+    nothing arriving has no way to tell a missing channel from a broken feed.
 
     Rival-derived quantities (``gap_s`` and the relative channels) are not
     listed here because they belong to a rival observation record rather than
-    to the own-car stream.
+    to the own-car stream. Pass ``channels`` explicitly to declare them when a
+    grid really supports them.
     """
-    supported = tuple(
-        channels
-        or (
-            "speed_mps",
-            "progress_m",
-            "s_m",
-            "acceleration_mps2",
-            "battery_energy_j",
-            "electrical_power_w",
-            "battery_temperature_k",
-        )
-    )
+    supported = tuple(channels if channels is not None else simulator_mapping(source_id).channels())
     return SourceCapability(
         source_id=source_id,
         mode=SessionMode.SIMULATION,

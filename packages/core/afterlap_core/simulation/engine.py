@@ -44,6 +44,7 @@ from ..timebase import EventPriority, EventQueue, SessionClock, crossing_time, l
 from . import physics
 from .battery import EnergyLedger, LedgerPlan, SaturationEvent
 from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, load_bundle
+from .energy_limits import ElectricalLimits, EventEnergyLimits
 from .observation import Observation, observe
 from .policies import DriverAction, OpponentPolicy, build_policy
 from .state import (
@@ -156,6 +157,9 @@ class StepReport:
     checkpoints: list[CheckpointRecord] = field(default_factory=list)
     policy_actions: dict[str, DriverAction] = field(default_factory=dict)
     profile_downgrades: list[dict[str, Any]] = field(default_factory=list)
+    electrical_limits: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Per car: which source bound each deployment/recovery ceiling this step
+    (``ElectricalLimits.describe``). Provenance, never an input to the dynamics."""
     envelope_exceedances: list[dict[str, Any]] = field(default_factory=list)
     """Recorded rather than hidden: the reduced model has no understeer escape,
     so a state where lateral demand exceeds the tyre envelope is reported as an
@@ -169,18 +173,23 @@ class Simulator:
         self._world: WorldState | None = None
         self._geometry: TrackGeometry | None = None
         self._sensor_config: ObservationConfig | None = None
+        self._event_limits: EventEnergyLimits = EventEnergyLimits.none()
+        self._electrical_limits: dict[str, ElectricalLimits] = {}
 
     def reset(
         self,
         manifest_or_scenario: str | ScenarioConfig | ScenarioBundle,
         seed: int | None = None,
         environment: EnvironmentField | None = None,
+        event_overlay: Any | None = None,
     ) -> Simulator:
         """Load a scenario and build the initial world state.
 
         ``seed`` overrides the scenario's own seed; the override is recorded in
         the snapshot so a run can always be traced back to the seed that
-        produced it.
+        produced it. ``event_overlay`` overrides the overlay the scenario's
+        ``event_id`` would load from the track package; either way only values
+        confirmed by two reviewers ever tighten an electrical limit.
         """
         bundle = (
             manifest_or_scenario
@@ -188,6 +197,10 @@ class Simulator:
             else load_bundle(manifest_or_scenario)
         )
         scenario = bundle.scenario
+        self._event_limits = EventEnergyLimits.from_overlay(
+            event_overlay if event_overlay is not None else self._load_event_overlay(bundle)
+        )
+        self._electrical_limits = {}
         effective_seed = scenario.seed if seed is None else int(seed)
         world = WorldState(
             bundle=bundle,
@@ -258,6 +271,23 @@ class Simulator:
         self._sensor_config = scenario.observation
         self._record_truth_sample()
         return self
+
+    @staticmethod
+    def _load_event_overlay(bundle: ScenarioBundle) -> Any | None:
+        """The overlay named by ``scenario.event_id``; ``None`` when there is none to load."""
+        event_id = bundle.scenario.event_id
+        if event_id is None:
+            return None
+        from ..tracks.loader import TrackPackageError, load_event_overlay
+
+        try:
+            return load_event_overlay(bundle.track.id, event_id)
+        except TrackPackageError:
+            return None
+
+    def electrical_limits(self, car_id: str) -> ElectricalLimits | None:
+        """The limits in force at the last force evaluation of ``car_id``; ``None`` before the first step."""
+        return self._electrical_limits.get(car_id)
 
     @staticmethod
     def _clearance_m(bundle: ScenarioBundle, a: str, b: str) -> float:
@@ -527,7 +557,8 @@ class Simulator:
 
         curvature = track.curvature_at(s_m)
         grade = track.grade_at(s_m)
-        mu = track.mu_at(s_m) * environment.grip_multiplier(s_m, session_time_s)
+        grip_multiplier = environment.grip_multiplier(s_m, session_time_s)
+        mu = track.mu_at(s_m) * grip_multiplier
         heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
         air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))
 
@@ -544,17 +575,16 @@ class Simulator:
         envelope_speed = self._envelope_speed(car_id, s_m, braking_fraction)
         target_speed = action.pace_scale * envelope_speed
 
-        derate = physics.derate_factor(
-            world.cars[car_id].battery_temperature_k,
-            float(car.derate_start_temperature_k.value),
-            float(car.derate_end_temperature_k.value),
+        limits = ElectricalLimits(
+            car, self._event_limits, world.cars[car_id].battery_temperature_k, grip_multiplier
         )
+        self._electrical_limits[car_id] = limits
+        derate = limits.thermal_derate()
+        deploy_ceiling_w = limits.deploy_ceiling_dc_w(speed, overtake_eligible=False)
 
         max_brake_n = min(float(car.max_brake_force_n.value), braking_fraction * long_envelope_n)
         ice_full_w = car.ice_power_at(speed)
-        available_shaft_w = (ice_full_w + derate * float(car.max_deploy_power_w.value)) * float(
-            car.drivetrain_efficiency.value
-        )
+        available_shaft_w = (ice_full_w + deploy_ceiling_w) * float(car.drivetrain_efficiency.value)
         max_drive_n = physics.tractive_force(available_shaft_w, speed, float(car.max_tractive_force_n.value))
 
         if action.throttle is not None or action.brake is not None:
@@ -578,13 +608,9 @@ class Simulator:
         mechanical_brake_w = brake_force_n * speed
 
         if plan is None:
-            deploy_ceiling_w = derate * float(car.max_deploy_power_w.value)
             requested_deploy_w = DEPLOY_FRACTION[action.profile] * deploy_ceiling_w * throttle
             if car.regen_enabled:
-                mechanical_available_w = min(
-                    float(car.max_harvest_power_w.value),
-                    float(car.regen_share.value) * mechanical_brake_w,
-                )
+                mechanical_available_w = limits.harvest_ceiling_dc_w(speed, mechanical_brake_w)
                 requested_harvest_w = (
                     HARVEST_FRACTION[action.profile] * action.harvest_request * mechanical_available_w
                 )
@@ -682,6 +708,9 @@ class Simulator:
             before = len(ledger.saturation_events)
             ledger.commit(trial.plan, world.race.session_time_s)
             report.saturation_events.extend(ledger.saturation_events[before:])
+            limits = self._electrical_limits.get(car_id)
+            if limits is not None:
+                report.electrical_limits[car_id] = limits.describe()
 
             state.progress_m = trial.progress_m
             laps, s_m = laps_and_s(trial.progress_m, world.track.length)

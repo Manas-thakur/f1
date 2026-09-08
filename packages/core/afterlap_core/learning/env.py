@@ -62,12 +62,13 @@ from ..planning import (
     plan as run_planner,
 )
 from ..rules import RulePack, load_rule_pack
-from ..simulation import DriverAction, ScenarioBundle, Simulator, load_bundle
+from ..simulation import DriverAction, ScenarioBundle, Simulator
 from .actions import ActionBounds, DecodedPreferences, action_space, compute_bounds, decode_action
 from .bridge import BridgeTick, ObservationBridge
 from .config import EnvConfig, ScenarioSpec, load_env_config
 from .features import EncodedObservation, FeatureEncoder
 from .reward import RewardTerms, assert_field_size_supported, load_reward_manifest, step_reward
+from .sampler import resolve_bundle
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -259,7 +260,7 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         scenario_seed = int(scenario_seed)
         self._np_random_seed_used = scenario_seed
 
-        bundle = load_bundle(spec.scenario_id)
+        bundle = resolve_bundle(spec.scenario_id, seed=scenario_seed)
         assert_field_size_supported(self._reward, len(bundle.scenario.car_ids))
         simulator = Simulator()
         simulator.reset(bundle, seed=scenario_seed)
@@ -276,7 +277,13 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             remaining_distance_m=spec.race_distance_m,
         )
         if self._config.planner_mode != "disabled":
-            self._planning_world = PlanningWorld.from_scenario(spec.scenario_id, seed=scenario_seed)
+            rivals = bundle.scenario.rival_ids
+            self._planning_world = PlanningWorld(
+                bundle=bundle,
+                ego_car_id=bundle.scenario.ego_car_id,
+                rival_car_id=rivals[0] if rivals else None,
+                seed=scenario_seed,
+            )
         else:
             self._planning_world = None
 

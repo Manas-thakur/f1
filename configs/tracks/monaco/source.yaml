@@ -8,12 +8,6 @@ official_length_m:
   source_url: https://www.formula1.com/en/racing/2026/monaco
   retrieved_at: "2026-09-08T14:20:34.662732Z"
   sha256: 80c02aab260e736a40686d69b2f99798a5be53327620bc7212f24e025b40bf01
-length_tolerance_fraction: 0.01
-length_tolerance_justification: >-
-  Geometry is the median driven line from OpenF1 location telemetry, not a surveyed centreline.
-  A racing line cuts apexes and runs wide on exits, so its arc length differs from the FIA
-  centreline by up to about one percent; the deviation is recorded in the validation report and
-  the package remains labelled openf1_location_telemetry with corridor unknown (D-12).
 openf1:
   sessions:
     - session_key: 9979

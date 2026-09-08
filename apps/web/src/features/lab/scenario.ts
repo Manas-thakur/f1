@@ -5,7 +5,7 @@ export interface ScenarioDraft {
   readonly mode: SessionMode;
   readonly scenarioId: string;
   readonly rulesetId: string;
-  
+
   readonly seed: string;
   readonly modelBundleId: string;
   readonly label: string;
@@ -22,15 +22,6 @@ export const EMPTY_DRAFT: ScenarioDraft = {
   acknowledgedSynthetic: false,
 };
 
-
-export const SHIPPED_SCENARIO_IDS: readonly string[] = [
-  'two-straight-counterattack',
-  'oval-defend-hold',
-  'oval-low-energy',
-  'loop-regen-disabled',
-  'loop-no-energy-channel',
-];
-
 export const SHIPPED_RULESET_IDS: readonly string[] = [
   'synthetic-pack-v1',
   'synthetic-pack-v2-strict',
@@ -46,18 +37,21 @@ export interface ValidationIssue {
 }
 
 export interface ValidationContext {
-  
+
   readonly ruleManifest: RuleManifest | null;
-  
+
   readonly rulesetError: string | null;
   readonly rulesetLoading: boolean;
   readonly models: readonly ModelManifest[];
+  readonly scenarioIds?: readonly string[] | null;
+  readonly scenarioCatalogueError?: string | null;
+  readonly scenarioUnavailableReason?: string | null;
 }
 
 export interface ValidationResult {
   readonly issues: readonly ValidationIssue[];
   readonly canStart: boolean;
-  
+
   readonly synthetic: boolean;
 }
 
@@ -90,12 +84,30 @@ export function validateScenario(
       severity: 'error',
       message: 'Scenario ids are lower-case identifiers, for example two-straight-counterattack.',
     });
-  } else if (!SHIPPED_SCENARIO_IDS.includes(draft.scenarioId.trim())) {
+  } else if (context.scenarioIds === undefined || context.scenarioIds === null) {
     issues.push({
       field: 'scenarioId',
       severity: 'warning',
       message:
-        'This id is not one of the scenarios shipped in configs/scenarios. The control plane will reject it if it does not resolve.',
+        context.scenarioCatalogueError === undefined || context.scenarioCatalogueError === null
+          ? 'The scenario catalogue has not been read, so this id cannot be checked here. The control plane will reject it if it does not resolve.'
+          : `The scenario catalogue could not be read (${context.scenarioCatalogueError}), so this id cannot be checked here. No shipped list is used in its place, and the control plane will reject the id if it does not resolve.`,
+    });
+  } else if (!context.scenarioIds.includes(draft.scenarioId.trim())) {
+    issues.push({
+      field: 'scenarioId',
+      severity: 'warning',
+      message:
+        'This id is not one the control plane listed at GET /api/v1/scenarios. It will be rejected if it does not resolve.',
+    });
+  } else if (
+    context.scenarioUnavailableReason !== undefined &&
+    context.scenarioUnavailableReason !== null
+  ) {
+    issues.push({
+      field: 'scenarioId',
+      severity: 'error',
+      message: `The control plane reports this scenario as unrunnable: ${context.scenarioUnavailableReason}`,
     });
   }
 

@@ -23,7 +23,7 @@ from .db import ensure_schema
 from .deps import Database, Settings
 from .errors import install_error_handlers
 from .observability import RequestMetrics, configure_logging, metrics_response
-from .routes import experiments, exports, health, models, rulesets, sessions
+from .routes import catalog, experiments, exports, health, models, rulesets, sessions
 from .runtime import RuntimeRegistry
 from .session import OutboxPublisher, SessionFactory, SessionRecorder
 from .session.spool import BoundedSpool
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         )
 
     app.state.session_factory = SessionFactory(recorder_factory=_recorder)
-
+    app.state.track_paths = app.state.session_factory.paths
     app.state.publisher = OutboxPublisher(app.state.database.factory, app.state.hub)
     app.state.publisher.start()
 
@@ -125,6 +125,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(models.router, prefix=API_PREFIX, tags=["models"])
     app.include_router(experiments.router, prefix=API_PREFIX, tags=["experiments"])
     app.include_router(exports.router, prefix=API_PREFIX, tags=["exports"])
+    app.include_router(catalog.router, prefix=API_PREFIX, tags=["catalogue"])
 
     @app.get("/metrics", include_in_schema=False)
     async def _metrics() -> JSONResponse:

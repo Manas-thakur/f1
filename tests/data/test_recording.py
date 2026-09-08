@@ -17,11 +17,12 @@ from afterlap_core.data import (
     redact_text,
     redact_url,
 )
+from afterlap_core.data.adapters import SIMULATOR_MAPPING_REVISION
 from afterlap_core.data.recording import REDACTED
 
 from .conftest import SESSION_ID, observation, simulator_config
 
-MAPPING_REVISION = "sim-observation-map-1"
+MAPPING_REVISION = SIMULATOR_MAPPING_REVISION
 
 SECRETS = {
     "api_token": "tok_live_9f3ab7c21e",

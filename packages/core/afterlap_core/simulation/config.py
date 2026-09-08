@@ -251,6 +251,21 @@ class CarConfig(ConfigDocument):
     aux_load_w: Parameter
     regen_enabled: bool = True
     regen_share: Parameter
+    regen_grip_floor: Parameter | None = Field(
+        default=None,
+        description=(
+            "Grip multiplier at or below which no regenerative braking is usable (energy_limits). "
+            "None uses the module default; at the dry reference (1.0) the law has no effect."
+        ),
+    )
+    charge_acceptance_start_temperature_k: Parameter | None = Field(
+        default=None,
+        description="Battery charge-acceptance ramp start (energy_limits). None: no thermal harvest limit.",
+    )
+    charge_acceptance_end_temperature_k: Parameter | None = Field(
+        default=None,
+        description="Battery charge-acceptance ramp end; zero acceptance at or above. None: no limit.",
+    )
 
     c_th_j_per_k: Parameter
     h_w_per_k: Parameter
@@ -271,6 +286,17 @@ class CarConfig(ConfigDocument):
             raise ValueError("eta_charge must be in (0, 1]")
         if self.derate_end_temperature_k.value <= self.derate_start_temperature_k.value:
             raise ValueError("derate end temperature must exceed the start temperature")
+        acceptance = (self.charge_acceptance_start_temperature_k, self.charge_acceptance_end_temperature_k)
+        if (acceptance[0] is None) != (acceptance[1] is None):
+            raise ValueError("charge acceptance start and end temperatures must be declared together")
+        if (
+            acceptance[0] is not None
+            and acceptance[1] is not None
+            and acceptance[1].value <= acceptance[0].value
+        ):
+            raise ValueError("charge acceptance end temperature must exceed the start temperature")
+        if self.regen_grip_floor is not None and not 0.0 <= self.regen_grip_floor.value < 1.0:
+            raise ValueError("regen_grip_floor must lie in [0, 1)")
         speeds = [point.speed_mps.value for point in self.ice_power_map]
         if speeds != sorted(speeds) or len(set(speeds)) != len(speeds):
             raise ValueError("the ICE power map needs strictly increasing speed breakpoints")
@@ -494,6 +520,43 @@ def load_car(car_id: str, paths: Paths | None = None) -> CarConfig:
 
 def load_scenario(scenario_id: str, paths: Paths | None = None) -> ScenarioConfig:
     return ScenarioConfig.model_validate(load_config("scenarios", scenario_id, paths))
+
+
+def resolve_bundle(
+    scenario: str | ScenarioConfig,
+    paths: Paths | None = None,
+    *,
+    seed: int | None = None,
+    allow_network: bool = False,
+) -> ScenarioBundle:
+    """``load_bundle`` plus the conditions tape the scenario names.
+
+    This lives here, below both planning and learning, because all three of
+    the planner, the training environment and the control plane must resolve a
+    scenario the same way. When they did not, the planner re-simulated a
+    real-circuit scenario under still, dry reference air while the episode it
+    was advising ran under a measured weather tape, and nothing reported the
+    disagreement.
+
+    A scenario without ``conditions_id`` is returned untouched, with the
+    static reference environment, so every existing synthetic scenario keeps
+    its exact bundle identity.
+    """
+    bundle = load_bundle(scenario, paths)
+    conditions_id = bundle.scenario.conditions_id
+    if conditions_id is None:
+        return bundle
+    from ..conditions.loader import environment_for, load_conditions, load_conditions_config
+
+    tape = load_conditions(conditions_id, paths, allow_network=allow_network)
+    config = load_conditions_config(conditions_id, paths)
+    environment = environment_for(
+        tape,
+        bundle.track,
+        seed=bundle.scenario.seed if seed is None else int(seed),
+        rubber_fraction=config.rubber_fraction,
+    )
+    return bundle.model_copy(update={"environment": environment, "environment_hash": tape.content_hash})
 
 
 def load_bundle(scenario: str | ScenarioConfig, paths: Paths | None = None) -> ScenarioBundle:

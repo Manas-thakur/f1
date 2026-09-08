@@ -87,9 +87,9 @@
    * Local-first. No network font request is ever essential: every family
    * below resolves from a stock Windows, macOS or Linux install.
    */
-  --font-display: 'Segoe UI', Arial, Helvetica, sans-serif;
-  --font-body: 'Segoe UI', Arial, Helvetica, sans-serif;
-  --font-mono: Consolas, 'Courier New', 'DejaVu Sans Mono', monospace;
+  --font-display: Bahnschrift, 'Arial Narrow', sans-serif;
+  --font-body: Aptos, 'Segoe UI', Arial, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, monospace;
 
   --text-body: 14px;
   --text-secondary: 12px;

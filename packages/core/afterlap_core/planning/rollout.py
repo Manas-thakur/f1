@@ -55,9 +55,9 @@ from ..simulation import (
     Simulator,
     Treatment,
     capture_complete_state,
-    load_bundle,
     run_branch,
 )
+from ..simulation.config import resolve_bundle
 
 if TYPE_CHECKING:
     from .config import PlannerConfig
@@ -88,7 +88,7 @@ class PlanningWorld:
     def from_scenario(
         cls, scenario_id: str = "two-straight-counterattack", *, seed: int = 20260908
     ) -> PlanningWorld:
-        bundle = load_bundle(scenario_id)
+        bundle = resolve_bundle(scenario_id, seed=seed)
         rivals = bundle.scenario.rival_ids
         return cls(
             bundle=bundle,

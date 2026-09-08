@@ -10,6 +10,8 @@ import { formatAge, formatChannelValue } from '@/contracts/units';
 import { selectQualitySummary } from '@/state/selectors';
 import { useSessionStore } from '@/state/sessionStore';
 import { CONSOLE_OPERATOR_ID } from '../engineer/operator';
+import { DriverCircuitContext } from '../tracks/SessionCircuitIdentity';
+import { CORRIDOR_UNKNOWN_REASON } from '../tracks/readiness';
 import { useSessionRuntime, type SessionRuntimeOptions } from '../engineer/sessionRuntime';
 import { deriveDriverView, energyTarget } from './precedence';
 import styles from './driver.module.css';
@@ -20,7 +22,7 @@ export const DEFAULT_WATCHDOG_MS = 5_000;
 export interface DriverDisplayProps {
   readonly runtimeOptions?: SessionRuntimeOptions;
   readonly client?: ApiClient;
-  
+
   readonly watchdogMs?: number;
 }
 
@@ -70,6 +72,7 @@ export function DriverDisplay({
   const accepted = useSessionStore((s) => s.stream.acceptedEnvelopes);
   const lastSequence = useSessionStore((s) => s.server.lastSequence);
   const quality = useSessionStore(selectQualitySummary);
+  const capabilities = useSessionStore((s) => s.server.capabilities);
 
   const [commandError, setCommandError] = useState<ApiError | null>(null);
   const [lastExecution, setLastExecution] = useState<string | null>(null);
@@ -175,11 +178,13 @@ export function DriverDisplay({
               : (raceContext.flag_state ?? 'unknown')}
           </span>
           <span>eligibility {ruleContext?.eligibility ?? 'unknown'}</span>
+          <DriverCircuitContext manifest={manifest} capabilities={capabilities} />
         </div>
       </div>
 
+      <div className={styles.commandGrid}>
       <section
-        className={styles.primaryBlock}
+        className={`${styles.primaryBlock} ${styles.instructionBlock}`}
         data-state={view.state}
         aria-label="Primary instruction"
       >
@@ -192,23 +197,23 @@ export function DriverDisplay({
         <p className={styles.primaryText} data-testid="driver-primary">
           {view.primary}
         </p>
-        {view.trigger === null ? null : (
-          <p className={styles.subText}>FROM {view.trigger}</p>
-        )}
-        {view.endCheckpoint === null ? null : (
-          <p className={styles.subText}>UNTIL {view.endCheckpoint}</p>
-        )}
+        <div className={styles.commandConditions}>
+          {view.trigger === null ? null : <p className={styles.subText}>FROM {view.trigger}</p>}
+          {view.endCheckpoint === null ? null : <p className={styles.subText}>UNTIL {view.endCheckpoint}</p>}
+        </div>
         <p className={styles.reason}>{view.reason}</p>
       </section>
 
-      <section className={styles.primaryBlock} data-state={view.state} aria-label="Energy target">
-        <p className={styles.markRow}>
+      <section className={`${styles.primaryBlock} ${styles.targetBlock}`} data-state={view.state} aria-label="Energy target">
+        <p className={styles.numberLabel}>Energy target</p>
+        <p className={styles.targetText}>
           <span className={styles.mark} aria-hidden="true">
             {target.mark}
           </span>
           <span data-testid="energy-target">{target.text}</span>
         </p>
       </section>
+      </div>
 
       <div className={styles.numberRow}>
         <BigNumber label="Speed" channel="speed_mps" value={ownCar?.speed_mps.value ?? null} />
@@ -223,7 +228,18 @@ export function DriverDisplay({
           value={ownCar?.electrical_power_w.value ?? null}
         />
         <BigNumber label="Lap distance" channel="progress_m" value={ownCar?.progress_m.value ?? null} />
+        {}
+        <BigNumber
+          label="Lateral position"
+          channel="lateral_position_m"
+          value={null}
+          unavailableText="unavailable"
+        />
       </div>
+
+      <p className={styles.inputNote} data-testid="driver-corridor-unavailable">
+        {CORRIDOR_UNKNOWN_REASON}
+      </p>
 
       {view.agedContextOnly ? (
         <p className={styles.aged} data-testid="aged-context">

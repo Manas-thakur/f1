@@ -93,6 +93,9 @@ def main() -> None:
                 times.append(tk)
                 s_along.append((tk - t_rel) * speed)
             t_rel += duration
+        for k in range(int(np.ceil(3.0 / dt))):
+            times.append(t_rel + k * dt)
+            s_along.append((k * dt) * SPEED_MPS)
         times_arr = np.asarray(times)
         s_arr = np.asarray(s_along) % length
         theta = np.interp(s_arr, s_tab, theta_tab)

@@ -1,0 +1,213 @@
+/*
+ * Real-circuit selection, map and identity.
+ *
+ * A new file on purpose: it adds nothing to and changes nothing in
+ * workspace.module.css or driver.module.css. Every value is an existing token
+ * from styles/tokens.css — no new colours, no gradients, no decorative hues.
+ */
+
+.optionList {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s1) var(--s3);
+  align-items: start;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.option[data-selectable='false'] {
+  background: var(--sunken);
+  border-style: dashed;
+}
+
+.option[data-selected='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.option input[type='radio'] {
+  margin: 3px 0 0;
+}
+
+.optionBody {
+  display: grid;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.optionTitle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  font-weight: 600;
+}
+
+.optionId {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.factList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+  gap: var(--s1) var(--s3);
+  margin: 0;
+  font-size: var(--text-secondary);
+  min-width: 0;
+}
+
+.factList dt {
+  color: var(--muted);
+}
+
+.factList dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.hash {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  overflow-wrap: anywhere;
+}
+
+.blocked {
+  margin: 0;
+  font-size: var(--text-secondary);
+  color: var(--bad);
+  background: var(--bad-soft);
+  border-radius: var(--radius-sm);
+  padding: var(--s1) var(--s2);
+}
+
+.unavailable {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.attribution {
+  margin: 0;
+  font-size: var(--text-micro);
+  color: var(--faint);
+  max-width: var(--reading-max);
+}
+
+/* --- map ----------------------------------------------------------------- */
+
+.mapFrame {
+  display: grid;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.mapSurface {
+  background: var(--well);
+  border: 1px solid var(--well-rule);
+  border-radius: var(--radius);
+  padding: var(--s3);
+  min-width: 0;
+}
+
+.mapSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 60vh;
+}
+
+.mapTrace {
+  fill: none;
+  stroke: var(--series-progress-well);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapStart {
+  fill: none;
+  stroke: var(--well-ink);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.mapScale {
+  stroke: var(--well-muted);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The font size is set per drawing in CircuitMap: the view box is in metres,
+   so a fixed pixel size would be scaled to nothing on a long circuit. */
+.mapScaleText {
+  fill: var(--well-muted);
+  font-family: var(--font-mono);
+}
+
+.mapFoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+  font-size: var(--text-micro);
+  color: var(--muted);
+}
+
+/* --- identity strip ------------------------------------------------------ */
+
+.identityStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+  margin: 0;
+  font-size: var(--text-secondary);
+  min-width: 0;
+}
+
+.identityStrip > span {
+  display: inline-flex;
+  gap: var(--s1);
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.identityKey {
+  color: var(--muted);
+}
+
+.identityValue {
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.withdrawnList {
+  margin: 0;
+  padding-left: var(--s4);
+  display: grid;
+  gap: var(--s1);
+  font-size: var(--text-secondary);
+}
+
+.withdrawnList li {
+  color: var(--muted);
+}
+
+.withdrawnValue {
+  font-style: italic;
+}

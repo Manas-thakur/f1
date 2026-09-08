@@ -38,6 +38,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnv
 from ..paths import Paths, atomic_write_json
 from .callbacks import CheckpointCallback, MetricsCallback, NonFiniteLossGuard, TrainingMetrics
 from .checkpoints import CheckpointManifest, restore_into, verify_checkpoint
+from .circuits import load_circuit_split, split_readiness
 from .config import EnvConfig, SacConfig, load_env_config, load_sac_config
 from .env import AfterlapEnv
 from .reward import load_reward_manifest, objective_content_hash
@@ -314,6 +315,7 @@ def train(
     guard = NonFiniteLossGuard()
     callbacks = CallbackList([MetricsCallback(metrics), guard, checkpoint_cb])
 
+    circuit_split = load_circuit_split()
     manifest = {
         "run_id": identifier,
         "created_at": datetime.now(UTC).isoformat(),
@@ -327,6 +329,7 @@ def train(
         "reward_revision": reward.revision,
         "objective_hash": objective_content_hash(settings.objective_id),
         "feature_hash": _feature_hash(),
+        "circuit_split": circuit_split.as_manifest(split_readiness(circuit_split)),
         "hardware": _hardware(),
         "is_smoke_run": is_smoke_run,
         "resumed_from": None if resumed_manifest is None else str(resume_from),

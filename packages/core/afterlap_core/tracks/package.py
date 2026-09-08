@@ -183,12 +183,31 @@ class EventOverlay(_Frozen):
         default=(),
         description="Fields the reviewers could not read or confirm; they resolve to unknown downstream.",
     )
+    overlay_hash: str | None = Field(
+        default=None,
+        pattern=r"^[a-f0-9]{64}$",
+        description=(
+            "SHA-256 of this overlay's canonical JSON, written once at ingest and at each review "
+            "step. A consumer that needs the overlay's identity reads this rather than recomputing "
+            "it, so two call sites cannot disagree about what the overlay is."
+        ),
+    )
 
     @model_validator(mode="after")
     def _confirmed_requires_two_reviewers(self) -> EventOverlay:
         if self.review_status == "confirmed" and len(set(self.reviewers)) < 2:
             raise ValueError("a confirmed event overlay requires two distinct reviewers")
         return self
+
+    def content_hash(self) -> str:
+        """SHA-256 of the canonical JSON *excluding* ``overlay_hash`` itself."""
+        payload = self.model_dump(mode="json", exclude={"overlay_hash"})
+        text = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    def with_hash(self) -> EventOverlay:
+        """The same overlay carrying its own content hash."""
+        return self.model_copy(update={"overlay_hash": self.content_hash()})
 
     @property
     def is_confirmed(self) -> bool:

@@ -21,6 +21,10 @@ import {
   selectQualitySummary,
   selectTimeSensitiveDisabledReason,
 } from '@/state/selectors';
+import {
+  SessionCircuitPanel,
+  SessionCircuitStrip,
+} from '../tracks/SessionCircuitIdentity';
 import { BattleView } from './BattleView';
 import { DecisionHistory } from './DecisionHistory';
 import { EnergyTimeline } from './EnergyTimeline';
@@ -35,9 +39,18 @@ import { useRecommendationActions } from './useRecommendationActions';
 import styles from './workspace.module.css';
 
 const EVIDENCE_BUTTON_ID = 'engineer-open-evidence';
+const DECISION_STEPS = ['Observe', 'Review', 'Select', 'Communicate', 'Verify'] as const;
+
+function decisionStep(status: string | null | undefined): number {
+  if (status === 'completed' || status === 'executing') return 4;
+  if (status === 'communicated') return 3;
+  if (status === 'selected') return 2;
+  if (status === 'proposed') return 1;
+  return 0;
+}
 
 export interface EngineerConsoleProps {
-  
+
   readonly runtimeOptions?: SessionRuntimeOptions;
   readonly client?: ApiClient;
 }
@@ -141,6 +154,7 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
   const recommendation = useSessionStore((s) => s.server.recommendation);
   const estimate = useSessionStore((s) => s.server.estimate);
   const ruleContext = useSessionStore((s) => s.server.ruleContext);
+  const sessionManifest = useSessionStore((s) => s.server.manifest);
   const capabilities = useSessionStore((s) => s.server.capabilities);
   const telemetry = useSessionStore((s) => s.server.telemetry);
   const executions = useSessionStore((s) => s.server.executions);
@@ -244,6 +258,7 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
   const decisionErrorMessage = decisionQuery.isError
     ? 'The decision record could not be read from the control plane.'
     : null;
+  const activeDecisionStep = decisionStep(recommendation?.status);
 
   return (
     <div className={styles.page}>
@@ -254,6 +269,7 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
             One instruction with its trigger, end condition, channels, rule results and decision
             history. Selecting advice records a decision; it never actuates the car.
           </p>
+          <SessionCircuitStrip manifest={sessionManifest} capabilities={capabilities} />
         </div>
         <div className={styles.headActions}>
           <StatusBadge label="Console state" tone={status.feed === 'healthy' ? 'verified' : 'attention'}>
@@ -262,6 +278,17 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
           <ProvenanceLabel provenance={estimate?.own_car.speed_mps.provenance ?? null} />
         </div>
       </div>
+
+      <ol className={styles.decisionFlow} aria-label="Decision workflow">
+        {DECISION_STEPS.map((step, index) => (
+          <li
+            key={step}
+            data-state={index < activeDecisionStep ? 'complete' : index === activeDecisionStep ? 'current' : 'pending'}
+          >
+            <span aria-hidden="true">{index + 1}</span>{step}
+          </li>
+        ))}
+      </ol>
 
       <Notice
         live
@@ -338,9 +365,10 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
           />
         </div>
 
-        <div className={styles.stack}>
+        <aside className={`${styles.stack} ${styles.inspectorColumn}`} aria-label="Session sources">
+          <SessionCircuitPanel manifest={sessionManifest} capabilities={capabilities} />
           <SourcePanel />
-        </div>
+        </aside>
       </div>
 
       <EvidenceInspector

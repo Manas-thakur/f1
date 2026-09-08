@@ -100,8 +100,14 @@ class RuntimeCapabilities(Contract):
     track_geometry: CapabilityState = Field(
         default=CapabilityState.DEGRADED,
         description=(
-            "available only for a simulation_eligible real-circuit package; degraded for a "
-            "synthetic sketch or a real circuit below that rung; unavailable when no geometry loads."
+            "available for a real-circuit package at or above geometry_validated, which is the rung "
+            "at which the centreline has been independently checked for closure, length, curvature "
+            "and grade; degraded for a synthetic sketch, whose widths and curvature are invented; "
+            "unavailable when no geometry loads or the package no longer hashes to the session's. "
+            "This is deliberately not gated on simulation_eligible: that rung additionally requires "
+            "a surveyed corridor, which position telemetry cannot supply, so gating here would "
+            "report validated geometry as unavailable. The corridor is reported separately by "
+            "lateral_geometry, which is never available on an unsurveyed corridor."
         ),
     )
     notes: tuple[str, ...] = ()

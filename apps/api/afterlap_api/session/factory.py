@@ -31,10 +31,17 @@ from afterlap_core.feature_manifest import ENERGY_V1
 from afterlap_core.paths import Paths, sha256_json
 from afterlap_core.rules import RulePack, list_rule_packs, load_rule_pack
 from afterlap_core.simulation import ScenarioBundle, load_bundle
-from afterlap_core.simulation.config import load_scenario
+from afterlap_core.simulation.config import ScenarioConfig, load_car, load_scenario, load_track
 
 from ..db import LifecycleError
 from .baseline_planner import BaselinePlanner
+from .circuit import (
+    CircuitIdentity,
+    describe_track,
+    resolve_conditions,
+    resolve_event,
+    resolve_track_package,
+)
 from .observation_source import relational_channels_for, simulator_session_capability
 from .runtime import InProcessSessionRuntime, Planner, RuntimeConfig, default_runtime_config
 
@@ -62,6 +69,7 @@ class ResolvedArtefacts:
     objective_id: str
     objective_hash: str
     model: ModelManifest | None
+    circuit: CircuitIdentity | None = None
 
     @property
     def track_hash(self) -> str:
@@ -85,6 +93,36 @@ def available_scenarios(paths: Paths | None = None) -> tuple[str, ...]:
     return tuple(sorted(p.stem for p in root.glob("*.yaml"))) if root.is_dir() else ()
 
 
+def _bundle_for(scenario: ScenarioConfig, track_id: str, paths: Paths | None) -> ScenarioBundle:
+    """Resolve the bundle, honouring a request-level track override.
+
+    When the request names the scenario's own track this is exactly
+    ``load_bundle``. When it names a different circuit the scenario document is
+    left untouched -- its ``config_hash`` still identifies the document on disk
+    -- and only the resolved track is swapped, after checking that the
+    scenario's evaluation checkpoints exist on the substituted circuit. A
+    scenario that cannot be evaluated on the requested track is refused, not
+    silently evaluated against nothing.
+    """
+    if track_id == scenario.track_id:
+        return load_bundle(scenario, paths)
+
+    track = load_track(track_id, paths)
+    wanted = tuple(scenario.evaluation_checkpoints) + (
+        (scenario.retention_checkpoint_id,) if scenario.retention_checkpoint_id else ()
+    )
+    missing = [cp for cp in dict.fromkeys(wanted) if cp not in track.checkpoint_ids]
+    if missing:
+        raise SessionValidationError(
+            f"scenario {scenario.id!r} evaluates checkpoints {missing} which circuit {track_id!r} does "
+            f"not define; it offers {list(track.checkpoint_ids)[:12]}",
+            scenario_id=scenario.id,
+            track_id=track_id,
+        )
+    car_configs = {car_id: load_car(cfg_id, paths) for car_id, cfg_id in scenario.cars.items()}
+    return ScenarioBundle(scenario=scenario, track=track, car_configs=car_configs)
+
+
 def resolve_artefacts(
     *,
     scenario_id: str,
@@ -93,8 +131,18 @@ def resolve_artefacts(
     model_bundle_id: str | None = None,
     objective_id: str = DEFAULT_OBJECTIVE_ID,
     paths: Paths | None = None,
+    track_id: str | None = None,
+    event_id: str | None = None,
+    conditions_id: str | None = None,
+    seed: int = 0,
 ) -> ResolvedArtefacts:
-    """Load and hash every artefact, refusing anything unknown by name."""
+    """Load and hash every artefact, refusing anything unknown by name.
+
+    ``track_id``, ``event_id`` and ``conditions_id`` come from the request and
+    **override** the scenario document's own values. The override is recorded
+    on the manifest, so a session never silently runs on a different circuit
+    from the one its identity reports.
+    """
     try:
         scenario = load_scenario(scenario_id, paths)
     except FileNotFoundError as exc:
@@ -103,7 +151,24 @@ def resolve_artefacts(
             f"scenario {scenario_id!r} does not exist; available: {list(available_scenarios(paths))}",
             scenario_id=scenario_id,
         ) from exc
-    bundle = load_bundle(scenario, paths)
+
+    effective_track_id = track_id or scenario.track_id
+    package = resolve_track_package(effective_track_id, paths)
+    bundle = _bundle_for(scenario, effective_track_id, paths)
+
+    circuit = describe_track(bundle.track, package)
+    circuit = resolve_event(circuit, event_id or scenario.event_id, paths)
+    circuit, environment, _tape = resolve_conditions(
+        circuit,
+        conditions_id or scenario.conditions_id,
+        bundle.track,
+        seed=seed,
+        paths=paths,
+    )
+    if environment is not None:
+        bundle = bundle.model_copy(
+            update={"environment": environment, "environment_hash": circuit.conditions_hash}
+        )
 
     try:
         pack = load_rule_pack(ruleset_id, paths)
@@ -133,6 +198,7 @@ def resolve_artefacts(
         objective_id=objective_id,
         objective_hash=objective_hash,
         model=model,
+        circuit=circuit,
     )
 
 
@@ -198,11 +264,13 @@ def build_manifest(
 ) -> SessionManifest:
     """Immutable session identity with real content hashes."""
     observation = artefacts.bundle.scenario.observation
+    circuit = artefacts.circuit
     capability = simulator_session_capability(
         energy_channel_available=observation.energy_channel_available,
         rate_hz=observation_rate_hz,
         relational_channels=relational_channels_for(artefacts.bundle),
         observation_delay_s=float(observation.delay_s.value),
+        extra_limitations=() if circuit is None else circuit.notes,
     )
     return SessionManifest(
         schema_version=SCHEMA_VERSION,
@@ -219,6 +287,14 @@ def build_manifest(
         scenario_id=artefacts.bundle.scenario.id,
         synthetic=artefacts.bundle.scenario.synthetic and artefacts.pack.manifest.synthetic,
         label=label,
+        track_id=None if circuit is None else circuit.track_id,
+        event_id=None if circuit is None else circuit.event_id,
+        track_package_hash=None if circuit is None else circuit.track_package_hash,
+        event_package_hash=None if circuit is None else circuit.event_package_hash,
+        track_readiness=None if circuit is None else circuit.track_readiness,
+        geometry_provenance=None if circuit is None else circuit.geometry_provenance,
+        conditions_id=None if circuit is None else circuit.conditions_id,
+        conditions_hash=None if circuit is None else circuit.conditions_hash,
     )
 
 
@@ -242,6 +318,17 @@ class SessionFactory:
         self._objective_id = objective_id
         self._config = config
 
+    @property
+    def paths(self) -> Paths | None:
+        """The artefact tree sessions resolve from.
+
+        The read-only catalogue routes read this, so ``GET /tracks`` cannot
+        report a package from one tree while a session runs one from another --
+        which is precisely how a hash reported to an operator stops matching
+        the hash a session actually used.
+        """
+        return self._paths
+
     def create(self, payload: CreateSessionRequest) -> tuple[SessionManifest, InProcessSessionRuntime]:
         artefacts = resolve_artefacts(
             scenario_id=payload.scenario_id,
@@ -250,6 +337,10 @@ class SessionFactory:
             model_bundle_id=payload.model_bundle_id,
             objective_id=self._objective_id,
             paths=self._paths,
+            track_id=payload.track_id,
+            event_id=payload.event_id,
+            conditions_id=payload.conditions_id,
+            seed=payload.seed,
         )
         validate_combination(artefacts, payload.mode)
 
