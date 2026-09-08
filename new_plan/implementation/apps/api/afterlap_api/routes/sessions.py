@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -305,26 +305,45 @@ async def run_command(
     runtime = _registry(request).get(session_id)
     kind = payload.kind.value
 
+    status_after = row.status
+    tick = None
+
     if kind == "start":
-        row.status = "running"
+        status_after = "running"
         runtime.resume()
     elif kind == "pause":
-        row.status = "paused"
+        status_after = "paused"
         runtime.pause()
     elif kind == "resume":
-        row.status = "running"
+        status_after = "running"
         runtime.resume()
     elif kind == "stop":
-        row.status = "stopped"
+        status_after = "stopped"
         runtime.stop()
     elif kind == "step":
         tick = runtime.advance(payload.step_duration_s or 1.0)
-        row.session_time_s = tick.session_time_s
         _remember_state(request, session_id, tick)
 
-    row.revision += 1
-    row.last_sequence += 1
+    # The runtime records decisions and events through the recorder, which
+    # commits in its OWN transaction and increments this row's sequence there.
+    # The copy loaded before that call is therefore stale, and a
+    # read-modify-write on it silently discards the recorder's increments --
+    # the response reports a revision the row does not hold, and the client's
+    # next expected_revision is rejected as stale.
+    #
+    # Increment in SQL instead, so the arithmetic happens on current values
+    # whatever else committed in the meantime, then re-read what landed.
+    values: dict[str, object] = {
+        "revision": Session.revision + 1,
+        "last_sequence": Session.last_sequence + 1,
+        "status": status_after,
+    }
+    if kind == "step" and tick is not None:
+        values["session_time_s"] = tick.session_time_s
+
+    db.execute(update(Session).where(Session.id == session_id).values(**values))
     db.flush()
+    db.expire(row)
 
     return SessionCommandResponse(
         accepted=True, revision=row.revision, sequence=row.last_sequence, status=row.status
