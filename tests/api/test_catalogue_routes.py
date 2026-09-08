@@ -13,8 +13,8 @@ notice:
 * nothing is keyed on a circuit id: a compiled package the registry has never
   heard of is served the same way, because Member 1's 23 packages have to land
   without a code change;
-* what reaches the wire is evidence — source URLs, licences, hashes, refusal
-  reasons — and never a path on the server's disk.
+* what reaches the wire is evidence: source URLs, licences, hashes, refusal
+  reasons: and never a path on the server's disk.
 
 Every package under test is a synthetic analytic loop written under a registry
 id. See ``conftest.py``: nothing here is a claim about a real circuit.

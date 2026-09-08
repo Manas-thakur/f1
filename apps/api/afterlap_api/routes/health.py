@@ -7,12 +7,12 @@ is deliberately *not* ready.
 Three terms decide readiness, and they are reported separately so an operator
 can tell them apart:
 
-* **capabilities** — the startup doctor report. Necessary, not sufficient: it
+* **capabilities**: the startup doctor report. Necessary, not sufficient: it
   is measured once and says nothing about what has happened since.
-* **storage** — the lifecycle store is probed on every request. The doctor's
+* **storage**: the lifecycle store is probed on every request. The doctor's
   ``storage`` capability covers the artefact tree; a database that has since
   gone away is a different failure and gets its own key.
-* **sessions** — whether an attached session could produce a decision *now*.
+* **sessions**: whether an attached session could produce a decision *now*.
   A session withdrawing advice on an aged observation makes the process not
   ready, because the decision system it exists to be is not working.
 

@@ -12,11 +12,11 @@ shares with the API; the API serves it, and the worker's own process can read
 it back as a container healthcheck. Three states are distinguished, because
 they need three different operator actions:
 
-* **absent** — no worker has ever run against this artefact root. Not a fault.
+* **absent**: no worker has ever run against this artefact root. Not a fault.
   A single-process development install is expected to look like this.
-* **stale** — a heartbeat exists and has stopped advancing. The worker is
+* **stale**: a heartbeat exists and has stopped advancing. The worker is
   wedged, was killed, or lost the artefact volume.
-* **live** — the worker wrote recently, and the document says whether it is
+* **live**: the worker wrote recently, and the document says whether it is
   idle, running a job, or refusing work because the artefact root is full.
 
 A stale batch worker never makes the API unready. ``ARCHITECTURE.md`` puts

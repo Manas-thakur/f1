@@ -102,7 +102,7 @@ def _decide(bundle: ModelManifest | None, **session: object):  # type: ignore[no
 def test_a_bundle_that_agrees_on_every_pinned_field_is_enabled():
     """The positive case, so the drills below are not passing on an inert check."""
     decision = _decide(_approved())
-    print(f"\nagreeing bundle: enabled={decision.enabled} — {decision.detail}")
+    print(f"\nagreeing bundle: enabled={decision.enabled}: {decision.detail}")
     assert decision.enabled is True
     assert decision.finding is None
     assert decision.mismatches == ()

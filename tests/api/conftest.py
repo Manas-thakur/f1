@@ -15,10 +15,10 @@ in the geometry provenance says so in the payload itself.
 
 Four states are represented, matching the four the catalogue distinguishes:
 
-* **absent** — a registry id with no package directory at all;
-* **discovered** — a compiled package below the readiness rung that may drive;
-* **rejected** — a package the validator refused;
-* **validated** — ``geometry_validated``, the rung a session may run on.
+* **absent**: a registry id with no package directory at all;
+* **discovered**: a compiled package below the readiness rung that may drive;
+* **rejected**: a package the validator refused;
+* **validated**: ``geometry_validated``, the rung a session may run on.
 
 Imported relatively (``from .conftest import ...``) per coordinator decision
 D-03: `tests/` is not a Python package, and a small duplicated builder beats a

@@ -388,7 +388,7 @@ def check_model_compatibility(
     result says so without raising a degradation row. A bundle that *is* present
     but disagrees with the session's feature manifest, rule family, ruleset
     contents, reward revision, scenario support, circuit split or conditions
-    regime is a mismatch and the learned contribution is switched off — never
+    regime is a mismatch and the learned contribution is switched off: never
     silently trusted, never silently replaced.
 
     Every check fails closed, and an undeclared field is treated as *unknown*

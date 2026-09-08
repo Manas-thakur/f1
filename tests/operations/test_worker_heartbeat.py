@@ -44,7 +44,7 @@ def _app(tmp_path: Path) -> object:
 def test_no_worker_is_absent_and_says_so_rather_than_reporting_health(tmp_path: Path):
     """An install with no batch worker is not a failing install."""
     status = worker_status(tmp_path / "artifacts")
-    print(f"\nno worker: {status.status} — {status.detail}")
+    print(f"\nno worker: {status.status}: {status.detail}")
     assert status.status == "absent"
     assert status.age_s is None
     assert status.heartbeat is None
@@ -141,7 +141,7 @@ def test_the_api_reports_worker_health_without_making_itself_unready(tmp_path: P
         ).write(tmp_path / "artifacts")
 
         body = client.get("/api/v1/health/workers").json()["workers"][0]
-        print(f"\nwedged worker: {body['status']} — {body['detail']}")
+        print(f"\nwedged worker: {body['status']}: {body['detail']}")
         assert body["status"] == "stale"
         assert body["heartbeat"]["current_job_id"] == "exp-stuck"
 
