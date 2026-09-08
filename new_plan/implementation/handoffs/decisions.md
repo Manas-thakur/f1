@@ -283,3 +283,48 @@ rest on module suites alone. The loop was verified by driving the real API and
 clicking through the real console: a session reaches an actionable instruction,
 selection moves it to `selected` while execution still reads *not observed*,
 and `mark communicated` becomes available as a separate action.
+
+---
+
+## D-08 — the driver-action route wrote the execution event twice
+
+**Raised by:** coordinator, completing the operator lifecycle against the live
+server for release evidence.
+
+**Observation.** `POST /sessions/{id}/simulator/driver-action` returned 500 on
+every call: `UNIQUE constraint failed: execution_event.id`.
+
+The session runtime records an observed execution through its own recorder,
+which owns the durable write and its bounded spool. The route — written before
+the runtime existed — called `record_execution` a second time on the same
+event. Nothing caught it because the route tests exercise the route without a
+runtime attached, and the backend tests exercise the runtime without the route.
+
+**Second defect in the same handler.** The response returned the session's
+*newest* recommendation rather than the one the execution related to. By the
+time a driver acts, the runtime has usually published a fresh proposal, so a
+successful execution reported `proposed` — a fresh proposal presented as the
+outcome of executing an older instruction.
+
+**Decision.** The runtime owns the durable write; the route reads the resulting
+state back. The response resolves the recommendation by
+`execution.recommendation_id` rather than by recency.
+
+**Affected contracts.** None. `routes/sessions.py` behaviour only.
+
+**Evidence after the fix**, against a live server from an empty artifact root:
+
+```
+select            -> selected      (executions recorded: 0)
+mark_communicated -> communicated
+driver action     -> executing, 1 execution event
+                     profile=neutral  match=matched  start=26.35 s
+```
+
+Selection records a decision and does not execute; execution arrives later as a
+separate event and is the only thing that reaches `executing`.
+
+**Note for the operations drills.** `delay_from_communication_s` is `null` on
+the recorded event. The operator-to-execution delay is a metric the operations
+specification asks for, so it should be populated from the communication
+timestamp. Recorded as remaining work rather than fixed here.

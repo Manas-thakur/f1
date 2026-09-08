@@ -49,7 +49,7 @@ from afterlap_contracts.requests import (
     SessionListResponse,
 )
 
-from ..db import LifecycleError, acquire_lease, apply_operator_action, body_hash_of, record_execution
+from ..db import LifecycleError, acquire_lease, apply_operator_action, body_hash_of
 from ..db.models import ControlLease as ControlLeaseRow
 from ..db.models import Decision, ExecutionEventRow, Manifest, Session, SnapshotRow
 from ..db.repository import expire_due, require_lease
@@ -437,8 +437,20 @@ async def driver_action(
     execution = runtime.apply_driver_action(
         payload.profile_id, payload.observed_at_s, payload.recommendation_id
     )
-    updated = record_execution(db, execution=execution, session_time_s=row.session_time_s)
-    db.flush()
+
+    # The runtime already recorded this through its own recorder, which owns the
+    # durable write and its bounded spool. This route was written before the
+    # runtime existed and recorded it a second time, which violated
+    # execution_event's primary key and turned every driver action into a 500.
+    # Read the resulting lifecycle state back instead of writing it again, and
+    # return the recommendation this execution actually relates to. Returning
+    # the session's newest recommendation instead would report a fresh proposal
+    # as the outcome of executing an older one.
+    updated: Recommendation | None = None
+    if execution.recommendation_id is not None:
+        decision = db.get(Decision, execution.recommendation_id)
+        if decision is not None:
+            updated = Recommendation.model_validate(decision.payload)
     return DriverActionResponse(execution=execution, recommendation=updated)
 
 
