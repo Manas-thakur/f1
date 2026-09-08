@@ -1,0 +1,13 @@
+id: mexico-city-2025-race
+description: >
+  OpenF1 weather record for the 2025 Mexico City Grand Prix race session
+  (session_key 9877). High-altitude density validation case.
+source: openf1
+session_key: 9877
+altitude_m: 2285.0
+altitude_source: "RACE_CONDITION_MODEL.md (Autodromo Hermanos Rodriguez, 2,285 m); fallback only"
+gust:
+  enabled: false
+rubber_fraction: 0.0
+notes:
+  - "density here should sit near 0.95 kg/m^3 against ~1.17 at Monza; the tests assert the ordering"
