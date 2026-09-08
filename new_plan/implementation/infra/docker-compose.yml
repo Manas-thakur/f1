@@ -1,0 +1,176 @@
+# AFTERLAP local product packaging.
+#
+#   docker compose -f infra/docker-compose.yml --env-file infra/.env up --build
+#
+# Run it from the implementation workspace root: every build context below is
+# `..` relative to this file, which is that root.
+#
+# Design rules this file implements, each from a specification line rather than
+# from convenience:
+#
+#   * db, api, web and batch services *plus a migration job* (TECH_STACK.md,
+#     "Storage and local deployment"). The migration job is a separate
+#     one-shot service, not a shell step inside the API entrypoint, so a failed
+#     upgrade stops the stack instead of leaving the API answering 500s. The
+#     API still calls `ensure_schema` on startup — that is deliberate belt and
+#     braces after D-07 defect 1, and Alembic's `upgrade head` is idempotent.
+#   * separate named volumes for the database, trajectories and models. They
+#     carry explicit `name:` keys so they are owned by this task and are not
+#     silently shared with another compose project on the same machine.
+#   * nginx serves the built assets and proxies /api and /ws on one origin.
+#   * every host publish binds 127.0.0.1. Nothing here is reachable off the
+#     machine, and there is no authentication to bypass yet.
+#   * **no default production secret.** `AFTERLAP_DB_PASSWORD` has no default:
+#     `${VAR:?...}` makes compose refuse to start until it is set. Put it in
+#     infra/.env, which is untracked.
+
+name: afterlap
+
+x-artifact-volumes: &artifact-volumes
+  # One volume for the artefact root and nested volumes for the two
+  # high-volume trees, so trajectories and model weights can be sized,
+  # snapshotted and discarded independently of the operational evidence.
+  - type: volume
+    source: afterlap-artifacts
+    target: /app/artifacts
+  - type: volume
+    source: afterlap-trajectories
+    target: /app/artifacts/trajectories
+  - type: volume
+    source: afterlap-models
+    target: /app/artifacts/models
+
+x-python-env: &python-env
+  AFTERLAP_ENV: ${AFTERLAP_ENV:-development}
+  # psycopg 3 over the compose network. The password is required, never
+  # defaulted; see the header note.
+  AFTERLAP_DATABASE_URL: postgresql+psycopg://afterlap:${AFTERLAP_DB_PASSWORD:?set AFTERLAP_DB_PASSWORD in infra/.env - this stack ships no default secret}@db:5432/afterlap
+  PYTHONUNBUFFERED: "1"
+
+services:
+  db:
+    # PostgreSQL 17 per TECH_STACK.md. Explicit patch tag, not `17` or
+    # `latest`: a minor upgrade is a reviewable change to this file.
+    image: postgres:17.7-alpine
+    environment:
+      POSTGRES_DB: afterlap
+      POSTGRES_USER: afterlap
+      POSTGRES_PASSWORD: ${AFTERLAP_DB_PASSWORD:?set AFTERLAP_DB_PASSWORD in infra/.env - this stack ships no default secret}
+      # Deterministic collation, so an index ordering does not depend on the
+      # host locale.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - type: volume
+        source: afterlap-db
+        target: /var/lib/postgresql/data
+    ports:
+      # Loopback only, and off the default 5432 so it cannot collide with a
+      # PostgreSQL already running on the development machine. Comment this
+      # block out entirely for a deployment: nothing outside the compose
+      # network needs the database.
+      - "127.0.0.1:${AFTERLAP_DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U afterlap -d afterlap"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  migrate:
+    # The migration job. Same image as the API, so the schema the API expects
+    # and the schema the job creates cannot drift apart.
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    image: afterlap/api:local
+    command: ["python", "/app/scripts/migrate.py", "--wait-for-database", "60"]
+    environment: *python-env
+    volumes: *artifact-volumes
+    depends_on:
+      db:
+        condition: service_healthy
+    # A one-shot job: it must run to completion exactly once per `up`, and a
+    # non-zero exit has to stop the stack rather than loop.
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    image: afterlap/api:local
+    environment:
+      <<: *python-env
+      AFTERLAP_HOST: 0.0.0.0
+      AFTERLAP_PORT: "8000"
+    volumes: *artifact-volumes
+    ports:
+      # Loopback, and off 8000 so a native `uvicorn` dev server can run
+      # alongside the container without a port fight.
+      - "127.0.0.1:${AFTERLAP_API_PORT:-8010}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  batch:
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    image: afterlap/api:local
+    # Batch work claims jobs through database leases and must never consume
+    # the session runtime's reserved cores. `cpus` is a ceiling on this
+    # service, not a reservation for the API, so it is a floor under the
+    # runtime's share rather than a guarantee — see infra/README.md.
+    command:
+      - "python"
+      - "/app/scripts/batch_worker_main.py"
+      - "--poll-interval"
+      - "2.0"
+    environment:
+      <<: *python-env
+      # Experiment jobs are the first thing to stop when the artefact root
+      # fills up; operational evidence keeps the reserve below.
+      AFTERLAP_EXPERIMENT_QUOTA_BYTES: ${AFTERLAP_EXPERIMENT_QUOTA_BYTES:-2147483648}
+      AFTERLAP_OPERATIONAL_RESERVE_BYTES: ${AFTERLAP_OPERATIONAL_RESERVE_BYTES:-268435456}
+    volumes: *artifact-volumes
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # The image's healthcheck probes the API's readiness endpoint. This service
+    # runs no HTTP server, so it is disabled rather than left to fail: a
+    # container reporting unhealthy for a reason nobody intends is worse than
+    # one reporting nothing.
+    healthcheck:
+      disable: true
+    deploy:
+      resources:
+        limits:
+          cpus: "${AFTERLAP_BATCH_CPUS:-2.0}"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/web.Dockerfile
+    image: afterlap/web:local
+    ports:
+      - "127.0.0.1:${AFTERLAP_WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  afterlap-db:
+    name: afterlap-db
+  afterlap-artifacts:
+    name: afterlap-artifacts
+  afterlap-trajectories:
+    name: afterlap-trajectories
+  afterlap-models:
+    name: afterlap-models

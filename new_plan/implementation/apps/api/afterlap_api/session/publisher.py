@@ -142,6 +142,15 @@ class OutboxPublisher:
         return self._task
 
     async def stop_running(self) -> None:
+        """Stop polling, then flush what was committed after the last poll.
+
+        Cancelling without a final drain loses any lifecycle change committed
+        between the last poll and shutdown. The row survives -- that is what the
+        transactional outbox is for -- but a client connected right up to
+        shutdown never sees it, and graceful shutdown is a named acceptance
+        case. The drain runs before the task is cleared so a failure here is
+        visible rather than swallowed by cancellation.
+        """
         if self._task is None:
             return
         self._stop.set()
@@ -149,6 +158,11 @@ class OutboxPublisher:
         with contextlib.suppress(asyncio.CancelledError):
             await self._task
         self._task = None
+
+        with contextlib.suppress(Exception):
+            # A store that has already gone away cannot be drained; the rows
+            # stay unpublished and are picked up by the next process.
+            await self.drain_once()
 
 
 @dataclass(slots=True)

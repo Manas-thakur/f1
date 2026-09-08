@@ -27,6 +27,7 @@ from afterlap_contracts import (
 )
 from afterlap_contracts.requests import CreateSessionRequest
 from afterlap_core.config import load_config
+from afterlap_core.feature_manifest import ENERGY_V1
 from afterlap_core.paths import Paths, sha256_json
 from afterlap_core.rules import RulePack, list_rule_packs, load_rule_pack
 from afterlap_core.simulation import ScenarioBundle, load_bundle
@@ -268,6 +269,15 @@ class SessionFactory:
             recorder=recorder,
             model_bundle=artefacts.model,
             objective_version=artefacts.objective_id,
+            # Without these the model-compatibility check ran against None and
+            # accepted a bundle trained on any observation encoding or rule
+            # pack. The check now fails closed on an undeclared expectation, so
+            # omitting them would disable the learned contribution rather than
+            # wave it through -- but the session genuinely knows both, so it
+            # declares them.
+            # The runtime already derives the rule family from the loaded pack;
+            # the feature hash is the one expectation only the session knows.
+            expected_feature_hash=ENERGY_V1.content_hash(),
         )
         runtime.initialise(manifest, artefacts.bundle.scenario.id, payload.seed)
         return manifest, runtime

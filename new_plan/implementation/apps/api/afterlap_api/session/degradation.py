@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 from afterlap_contracts import (
+    ApprovalStatus,
     CapabilityState,
     CheckStatus,
     ConstraintResult,
@@ -411,10 +412,33 @@ def check_model_compatibility(
         )
 
     mismatches: list[str] = []
-    if expected_feature_hash is not None and bundle.feature_schema_hash != expected_feature_hash:
+
+    # A bundle contributes to live advice only when it has been approved
+    # through the promotion protocol. Manifest agreement is not approval:
+    # AGENTS.md forbids automatic promotion, and an `unevaluated` or `rejected`
+    # candidate reaching a published recommendation is exactly that.
+    if bundle.approval_status is not ApprovalStatus.APPROVED:
+        mismatches.append(
+            f"bundle approval status is {bundle.approval_status.value!r}, not 'approved'; "
+            "only a bundle promoted through the protocol may contribute"
+        )
+
+    # An unknown expectation fails closed. Treating `None` as "skip this check"
+    # meant a caller that simply forgot to pass the session's feature hash got
+    # a bundle accepted against *any* observation encoding -- the check was
+    # present and never ran.
+    if expected_feature_hash is None:
+        mismatches.append(
+            "the session did not declare a feature manifest hash, so the bundle's encoding cannot be verified"
+        )
+    elif bundle.feature_schema_hash != expected_feature_hash:
         mismatches.append(f"feature manifest {bundle.feature_schema_hash} != session {expected_feature_hash}")
-    if expected_rule_family is not None and bundle.rule_family != expected_rule_family:
+
+    if expected_rule_family is None:
+        mismatches.append("the session did not declare a rule family, so the bundle cannot be verified")
+    elif bundle.rule_family != expected_rule_family:
         mismatches.append(f"rule family {bundle.rule_family!r} != session {expected_rule_family!r}")
+
     if expected_reward_revision is not None and bundle.reward_revision != expected_reward_revision:
         mismatches.append(
             f"reward revision {bundle.reward_revision!r} != session {expected_reward_revision!r}"

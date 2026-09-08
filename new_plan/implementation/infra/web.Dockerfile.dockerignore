@@ -1,0 +1,26 @@
+# Per-Dockerfile ignore (BuildKit reads `<dockerfile>.dockerignore` first).
+# The build context is the implementation workspace root.
+.venv/
+**/.venv/
+node_modules/
+**/node_modules/
+artifacts/
+apps/api/
+packages/core/
+packages/contracts/afterlap_contracts/
+workers/
+configs/
+tests/
+handoffs/
+scripts/
+apps/web/dist/
+apps/web/test-results/
+apps/web/e2e/
+.git/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+**/__pycache__/
+**/*.pyc
+uv.lock
