@@ -11,6 +11,7 @@ import asyncio
 
 import pytest
 
+from afterlap_api.db import transaction
 from afterlap_api.session import DeduplicatingConsumer, OutboxPublisher
 from afterlap_api.stream import LOSSLESS_EVENTS, StreamHub
 from afterlap_contracts import (
@@ -191,7 +192,18 @@ def test_a_real_session_publishes_its_decision_events_losslessly(db_factory):
 
 
 def test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_one(db_factory):
-    """``operator_action`` has no StreamEventType; it is reported, not renamed."""
+    """A row the envelope cannot express is reported, never renamed.
+
+    Normal operation no longer produces such a row: ``apply_operator_action``
+    was writing an ``operator_action`` outbox row that no client could validate,
+    and that is now appended to the durable event log without a stream row at
+    all. The publisher's defence still matters, though -- a malformed or
+    future-versioned row must not be guessed into some other event type -- so
+    the row is inserted directly here rather than provoked through the
+    lifecycle.
+    """
+    from afterlap_api.db.models import OutboxRecord
+
     hub = StreamHub(buffer_size=256, client_queue=256)
     session = start_session(db_factory)
     session.advance(1.0)
@@ -204,6 +216,19 @@ def test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_o
 
     session.act(recommendation, OperatorAction.SELECT, idempotency_key="quarantine")
 
+    # An event type outside StreamEventType, as a stored row would look after a
+    # rollback to an older publisher or a hand-edited migration.
+    with transaction(db_factory) as db:
+        db.add(
+            OutboxRecord(
+                id="out-unrepresentable",
+                session_id=session.session_id,
+                sequence=999_999,
+                event_type="operator_action",
+                envelope={"schema_version": "1.0", "event_type": "operator_action"},
+            )
+        )
+
     async def scenario():  # type: ignore[no-untyped-def]
         subscriber, _ = await hub.subscribe(session.session_id, 0)
         publisher = OutboxPublisher(db_factory, hub)
@@ -211,12 +236,12 @@ def test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_o
         return report, publisher.undeliverable, _drain(subscriber)
 
     report, undeliverable, delivered = asyncio.run(scenario())
-    assert undeliverable, "the operator_action row was silently published as something else"
+    assert undeliverable, "the unrepresentable row was silently published as something else"
     fault = next(f for f in undeliverable if f.event_type == "operator_action")
-    assert "no StreamEventType" in fault.reason
     assert fault.outbox_id
-    # The lifecycle change the operator action produced *is* delivered, through
-    # its own recommendation_updated row, so nothing the client needs is lost.
+    # No invented envelope reached the client.
+    assert all(e.sequence != 999_999 for e in delivered)
+    # And the selection itself still arrives, through its own lifecycle row.
     selected = [
         e
         for e in delivered
@@ -226,6 +251,39 @@ def test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_o
     ]
     assert selected, "the selection never reached the client in any form"
     assert report.published > 0
+
+
+def test_an_operator_action_no_longer_produces_an_outbox_row(db_factory):
+    """The fix at the source, asserted where it is observable.
+
+    An operator action is audit evidence and stays in ``session_event``. It is
+    not queued for a stream that has no event type for it.
+    """
+    from sqlalchemy import select
+
+    from afterlap_api.db.models import OutboxRecord, SessionEvent
+    from afterlap_contracts import OperatorAction
+
+    session = start_session(db_factory)
+    session.advance(1.0)
+    tick = session.advance_until(actionable)
+    recommendation = tick.recommendation
+    assert recommendation is not None
+    session.take_lease()
+    session.act(recommendation, OperatorAction.SELECT, idempotency_key="no-outbox-row")
+
+    with transaction(db_factory) as db:
+        queued = [
+            r.event_type
+            for r in db.execute(select(OutboxRecord)).scalars()
+            if r.event_type == "operator_action"
+        ]
+        recorded = list(
+            db.execute(select(SessionEvent).where(SessionEvent.event_type == "operator_action")).scalars()
+        )
+
+    assert queued == [], "an operator action was queued for a stream that cannot carry it"
+    assert len(recorded) == 1, "the operator action must still be durable audit evidence"
 
 
 @pytest.mark.parametrize("event_type", sorted(LOSSLESS_EVENTS, key=lambda e: e.value))
