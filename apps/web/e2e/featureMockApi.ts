@@ -1,15 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 
-/**
- * The mocked control plane for the A09/A10/A11 routes.
- *
- * Contract-shaped JSON, written out here rather than imported from
- * `src/test/contractFixtures.ts` so the end-to-end suite has no dependency on
- * the app's module aliases. Everything is synthetic.
- *
- * The stream is mocked too, with `page.routeWebSocket`, so reconnect and
- * resync behaviour can be driven from a test.
- */
+
 export const SESSION_ID = 'synthetic-battle-001';
 export const LAST_SEQUENCE = 100;
 
@@ -485,13 +476,13 @@ export function resyncFrame(sequence: number): string {
 }
 
 export interface MockOptions {
-  /** Replace the snapshot the control plane returns. */
+  
   readonly snapshotOverrides?: Record<string, unknown>;
-  /** Answer the recommendation action route with this typed error. */
+  
   readonly actionError?: { code: string; message: string; status: number };
-  /** Serve the benchmark report body. Off by default: no such route exists. */
+  
   readonly serveReport?: boolean;
-  /** Frames pushed once the socket opens. */
+  
   readonly frames?: readonly string[];
 }
 
@@ -503,7 +494,7 @@ function typedError(route: Route, code: string, message: string, status: number)
   return json(route, { error: { code, message, retryable: false, request_id: 'e2e' } }, status);
 }
 
-/** Requests the page issued, for asserting what was *not* sent. */
+
 export interface RequestLog {
   readonly urls: string[];
 }
@@ -517,7 +508,7 @@ export async function mockFeatureApi(page: Page, options: MockOptions = {}): Pro
     }
   });
 
-  // Registered first so the specific routes below take precedence.
+
   await page.route('**/api/v1/**', (route) =>
     typedError(route, 'not_found', 'not mocked in the end-to-end suite', 404),
   );
@@ -530,8 +521,7 @@ export async function mockFeatureApi(page: Page, options: MockOptions = {}): Pro
   await page.route('**/api/v1/rulesets/**', (route) => json(route, { manifest: RULE_MANIFEST }));
   await page.route('**/api/v1/models**', (route) => json(route, MODELS));
 
-  // Playwright checks the most recently registered handler first, so these go
-  // from least to most specific: collection, then one job, then its report.
+
   await page.route('**/api/v1/experiments**', (route) =>
     route.request().method() === 'POST'
       ? json(route, { job: { ...EXPERIMENT_JOB.job, id: 'exp-new', status: 'queued' } }, 202)

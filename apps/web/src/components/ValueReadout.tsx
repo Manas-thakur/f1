@@ -5,7 +5,7 @@ import { ProvenanceLabel } from './ProvenanceLabel';
 import { QualityIndicator } from './QualityIndicator';
 import styles from './primitives.module.css';
 
-/** Data states a numeric readout distinguishes, beyond simply having a value. */
+
 export type ReadoutState =
   | 'valid'
   | 'empty'
@@ -17,9 +17,9 @@ export type ReadoutState =
 
 export interface ValueReadoutProps {
   readonly label: string;
-  /** Registered channel name; drives unit, scale and decimals. */
+  
   readonly channel: string;
-  /** SI value, or a contract ScalarValue, or null when unavailable. */
+  
   readonly value?: number | null;
   readonly scalar?: ScalarValue | null;
   readonly provenance?: Provenance | null;
@@ -28,9 +28,9 @@ export interface ValueReadoutProps {
   readonly sourceId?: string | null;
   readonly size?: 'default' | 'small';
   readonly decimals?: number;
-  /** Text shown when there is no value. Never a zero. */
+  
   readonly unavailableText?: string;
-  /** Explains why the value is missing, when known. */
+  
   readonly unavailableReason?: string;
   readonly showMeta?: boolean;
   readonly state?: ReadoutState;
@@ -56,13 +56,7 @@ function deriveState(
   return 'valid';
 }
 
-/**
- * One number with its unit, provenance and age.
- *
- * The rule this component exists to enforce: a null value renders as text
- * saying it is unavailable. It is never rendered as `0`, and it never borrows
- * the last value it happened to have.
- */
+
 export function ValueReadout({
   label,
   channel,

@@ -17,14 +17,16 @@ be evaluated at the cutoff.
 from __future__ import annotations
 
 from bisect import bisect_right
-from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import SessionMode
 from afterlap_core.timebase import SessionClock
 
-from .pipeline import NormalisedRecord
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
+
+    from .pipeline import NormalisedRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,8 +133,6 @@ class ReplayClock:
         self.wall_clock_elapsed_s = 0.0
         self._steps = 0
 
-    # -- state ----------------------------------------------------------
-
     @property
     def session_time_s(self) -> float:
         return self.clock.session_time_s
@@ -152,8 +152,6 @@ class ReplayClock:
     @property
     def step_count(self) -> int:
         return self._steps
-
-    # -- controls -------------------------------------------------------
 
     def pause(self) -> None:
         self.clock.pause()
@@ -234,8 +232,6 @@ class ReplaySession:
         self.snapshots = snapshots or SnapshotStore()
         self._cursor = 0
 
-    # -- introspection --------------------------------------------------
-
     @property
     def records(self) -> tuple[NormalisedRecord, ...]:
         return self._records
@@ -259,8 +255,6 @@ class ReplaySession:
     def records_at_cutoff(self, cutoff_s: float) -> tuple[NormalisedRecord, ...]:
         """Every record at or before ``cutoff_s``; never one after it."""
         return self._records[: bisect_right(self._times, cutoff_s)]
-
-    # -- transport ------------------------------------------------------
 
     def advance_to(self, cutoff_s: float) -> tuple[NormalisedRecord, ...]:
         """Deliver records in ``(current cursor, cutoff_s]`` and move the clock."""

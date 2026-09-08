@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -25,9 +25,11 @@ from afterlap_core.evaluation.controllers import ControlDecision, Controller, bu
 from afterlap_core.evaluation.harness import controller_rule_context
 from afterlap_core.rules import RulePack, load_rule_pack
 from afterlap_core.simulation import Simulator, load_bundle
-from afterlap_core.simulation.config import ScenarioBundle
-from afterlap_core.simulation.observation import Observation
 from afterlap_core.simulation.policies import DriverAction
+
+if TYPE_CHECKING:
+    from afterlap_core.simulation.config import ScenarioBundle
+    from afterlap_core.simulation.observation import Observation
 
 DT_S = 0.02
 DECISION_INTERVAL_S = 1.0
@@ -162,29 +164,6 @@ def run_slice(
     ]
     trace.snapshot = simulator.snapshot()
     return trace
-
-
-# --------------------------------------------------------------------------- #
-# The MPC row (A06), wired into the slice
-# --------------------------------------------------------------------------- #
-#
-# A06's planner is merged, so the MPC-only row of the comparison matrix can now
-# run inside this acceptance slice. Two honesty notes belong with it.
-#
-# 1. ``estimate_from_observation`` is a **synthetic pass-through adapter**, not
-#    A05's estimator. It carries the simulator's delayed, noisy observation into
-#    the ``StateEstimate`` shape the planner consumes and fills the remaining
-#    fields from the contract fixture factory. It therefore exercises the
-#    *planner in the loop*; it says nothing about estimation quality, and no
-#    interval it carries is a validated bound. A05's own handoff records rival
-#    energy interval coverage at 0.7885 against a nominal 0.90 label, so the
-#    fixture's ``coverage=0.9`` is a model quantile and is treated as one here.
-#
-# 2. Overtake eligibility is *declared* by the caller rather than derived from a
-#    detection-line crossing. This slice has no eligibility machine driving it;
-#    that wiring belongs to A04 and A08. Where a test needs an attack candidate
-#    to be admissible it says so explicitly, and the same declared eligibility is
-#    given to every controller in that comparison.
 
 
 def estimate_from_observation(
@@ -331,8 +310,6 @@ class MpcController:
             )
         selected = next(c for c in result.accepted if c.id == result.selected_plan_id)
         if selected.constraint_result.status is not CheckStatus.PASS:
-            # Belt and braces: the planner already refuses these, and unknown is
-            # not acceptance. If one ever arrived, it stops here.
             return ControlDecision(
                 controller=self.name,
                 status=PlanningStatus.NO_FEASIBLE_CANDIDATE,

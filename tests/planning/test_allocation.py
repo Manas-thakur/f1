@@ -104,8 +104,6 @@ def test_hand_computed_single_segment_allocation(config, objective):
         horizon_s=4.0,
         availability=0.8,
     )
-    # Independent arithmetic check of the closed form itself, so a mistake in the
-    # helper cannot silently agree with a mistake in the module.
     manual = 421875.0 * ((math.exp(-4.0 / 300.0) * 0.8) ** -0.75 - 1.0) / (0.95 * 75.0 / (0.6 * 300.0))
     assert expected_j == pytest.approx(manual, rel=1e-12)
     assert round(manual) == 206_825
@@ -119,13 +117,8 @@ def test_hand_computed_single_segment_allocation(config, objective):
         remaining_deadline_s=5.0,
     )
     assert solution.converged, solution.solver_status
-    # Tolerance: 1e-5 relative. IPOPT is run at tol=1e-8 on an order-one scaled
-    # problem, so this is roughly three decades of headroom over the solver's own
-    # convergence criterion and is not a fitted number.
     assert solution.deploy_j[0] == pytest.approx(expected_j, rel=1e-5)
     assert solution.harvest_j[0] == pytest.approx(0.0, abs=1e-6)
-    # The battery ledger is an exact identity, not an approximation: what leaves
-    # the battery is what the instruction requested (handoffs/decisions.md D-01).
     assert solution.terminal_energy_j == pytest.approx(2_400_000.0 - solution.deploy_j[0], rel=1e-15)
     assert solution.terminal_energy_j == pytest.approx(2_400_000.0 - expected_j, abs=1.0)
 
@@ -227,8 +220,6 @@ def test_more_energy_for_no_benefit_is_ranked_below_the_cheaper_plan(config, obj
 
     assert wasteful_loss > cheap_loss, "spending past the optimum must rank below it"
     assert half_loss > cheap_loss, "spending less than the optimum must also rank below it"
-    # Diminishing returns: the last 200 kJ buys strictly less time than the
-    # 200 kJ before it, which is why the extra spend cannot pay for itself.
     assert (cheap_time - wasteful_time) < (half_time - cheap_time)
 
 
@@ -273,8 +264,6 @@ def test_harvest_is_battery_gain_and_costs_time(config, objective):
     _, time_harvest, energy_harvest = scenario_losses(frame, scenarios, weights, (0.0,), (200_000.0,))
 
     assert time_harvest > time_no_harvest
-    # Battery gain, not charge-bus energy: the terminal ledger moves by exactly
-    # the requested joules with no conversion applied.
     assert energy_harvest - energy_no_harvest == pytest.approx(200_000.0, rel=1e-12)
 
 

@@ -119,11 +119,6 @@ class _Evidence:
             self.notes.append(f"{check}: {note}")
 
 
-# --------------------------------------------------------------------------- #
-# public entry point
-# --------------------------------------------------------------------------- #
-
-
 def validate_track(track_id: str, paths: Paths) -> TrackPackage:
     """Validate the compiled package for ``track_id`` and re-freeze it.
 
@@ -203,17 +198,10 @@ def validate_track(track_id: str, paths: Paths) -> TrackPackage:
     return validated
 
 
-# --------------------------------------------------------------------------- #
-# loading
-# --------------------------------------------------------------------------- #
-
-
 def _load_package_for_validation(track_id: str, paths: Paths) -> TrackPackage:
     path = package_path(track_id, paths)
     if not path.exists():
         raise TrackPackageError(f"no compiled package for {track_id!r} at {path}")
-    # model_validate applies the readiness-is-earned validator, so a status
-    # edited above its evidence raises here before anything is recomputed.
     package = TrackPackage.model_validate(json.loads(path.read_text(encoding="utf-8")))
     if package.track_id != track_id:
         raise TrackPackageError(f"package at {path} declares track_id {package.track_id!r}, not {track_id!r}")
@@ -289,11 +277,6 @@ def _load_arrays(path: Path, package: TrackPackage, evidence: _Evidence) -> dict
     return arrays
 
 
-# --------------------------------------------------------------------------- #
-# geometry checks -- all recomputed from x, y, z
-# --------------------------------------------------------------------------- #
-
-
 def _run_geometry_checks(
     arrays: dict[str, np.ndarray],
     package: TrackPackage,
@@ -307,7 +290,6 @@ def _run_geometry_checks(
     n = len(s)
     evidence.numbers["point_count"] = n
 
-    # -- finiteness ---------------------------------------------------------- #
     non_finite = [name for name in REQUIRED_ARRAYS if not np.all(np.isfinite(arrays[name]))]
     if non_finite:
         evidence.record("no_nan", "fail", f"non-finite values in {', '.join(non_finite)}")
@@ -322,14 +304,12 @@ def _run_geometry_checks(
             evidence.checks.setdefault(check, "unknown")
         return None, None, False
 
-    # -- declared length ------------------------------------------------------ #
     declared_length = float(arrays["length_m"][0]) if "length_m" in arrays else None
     evidence.numbers["declared_length_m"] = declared_length
     evidence.numbers["nominal_length_m"] = package.nominal_length_m
     if package.geometry.point_count not in (0, n):
         evidence.notes.append(f"package declares {package.geometry.point_count} points, file holds {n}")
 
-    # -- s monotonic at declared spacing -------------------------------------- #
     spacing = package.geometry.sample_spacing_m
     ds = np.diff(s)
     spacing_ok = (
@@ -347,7 +327,6 @@ def _run_geometry_checks(
         else f"s must start at 0, increase by {spacing} m each sample and end before length",
     )
 
-    # -- arc length from chords, closing back to the first sample ------------- #
     seg = np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2 + np.diff(z) ** 2)
     closing = math.sqrt((x[0] - x[-1]) ** 2 + (y[0] - y[-1]) ** 2 + (z[0] - z[-1]) ** 2)
     recomputed_length = float(np.sum(seg) + closing)
@@ -376,7 +355,6 @@ def _run_geometry_checks(
             f"({length_error_fraction:.5f}, tolerance {tolerance})",
         )
 
-    # -- closure: advance the last sample along its chord direction to s = L -- #
     length_for_closure = declared_length if declared_length is not None else recomputed_length
     remaining = length_for_closure - float(s[-1])
     chord = np.array([x[-1] - x[-2], y[-1] - y[-2], z[-1] - z[-2]])
@@ -393,9 +371,6 @@ def _run_geometry_checks(
         f"|r(0) - r(L)| = {closure_error_m:.4f} m (tolerance {CLOSURE_TOLERANCE_M} m)",
     )
 
-    # -- yaw against the tangent of x, y ----------------------------------------- #
-    # Central differences inside the lap, one-sided at the ends: the seam is
-    # judged by the closure check, not smeared into every consistency check.
     dx = np.gradient(x, spacing)
     dy = np.gradient(y, spacing)
     tangent = np.arctan2(dy, dx)
@@ -408,7 +383,6 @@ def _run_geometry_checks(
         f"max |yaw - atan2(dy, dx)| = {max_yaw_dev:.4f} rad",
     )
 
-    # -- curvature against d(yaw)/ds ------------------------------------------- #
     kappa_from_yaw = np.gradient(np.unwrap(yaw), spacing)
     kappa_dev = float(np.max(np.abs(kappa - kappa_from_yaw)))
     evidence.numbers["curvature_yaw_max_deviation_1pm"] = kappa_dev
@@ -418,7 +392,6 @@ def _run_geometry_checks(
         f"max |kappa - dyaw/ds| = {kappa_dev:.5f} 1/m",
     )
 
-    # -- bounds ------------------------------------------------------------------ #
     max_kappa = float(np.max(np.abs(kappa)))
     evidence.numbers["curvature_max_abs_1pm"] = max_kappa
     evidence.record(
@@ -434,7 +407,6 @@ def _run_geometry_checks(
         f"max |grade| = {max_grade:.4f} (bound {GRADE_BOUND})",
     )
 
-    # -- direction from the signed area (shoelace) ------------------------------- #
     signed_area = 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
     evidence.numbers["signed_area_m2"] = signed_area
     if package.direction is Direction.MIXED:
@@ -449,7 +421,6 @@ def _run_geometry_checks(
             f"package declares {package.direction.value}",
         )
 
-    # -- corridor presence ------------------------------------------------------- #
     widths_finite = (
         "width_left_m" in arrays
         and "width_right_m" in arrays
@@ -461,11 +432,6 @@ def _run_geometry_checks(
 
 def _wrap_angle(angle: np.ndarray) -> np.ndarray:
     return (angle + np.pi) % (2.0 * np.pi) - np.pi
-
-
-# --------------------------------------------------------------------------- #
-# non-geometry evidence
-# --------------------------------------------------------------------------- #
 
 
 def _check_sources(package: TrackPackage, evidence: _Evidence) -> None:
@@ -497,7 +463,7 @@ def _confirmed_overlay(
     seen: list[str] = []
     if events_dir.exists():
         for path in sorted(events_dir.glob("*.json")):
-            if path.name.count(".") != 1:  # sidecars: <event>.extraction.json, <event>.superseded-*.json
+            if path.name.count(".") != 1:
                 continue
             event_id = path.stem
             try:
@@ -514,7 +480,7 @@ def _confirmed_overlay(
     if not candidates:
         evidence.record("event_overlay_confirmed", "unknown", "no two-reviewer confirmed event overlay")
         return None
-    chosen = sorted(candidates, key=lambda o: o.event_id)[-1]
+    chosen = max(candidates, key=lambda o: o.event_id)
     evidence.record(
         "event_overlay_confirmed",
         "pass",
@@ -558,11 +524,6 @@ def _check_corridor(package: TrackPackage, widths_finite: bool, evidence: _Evide
         )
     else:
         evidence.record("corridor", "pass", f"{quality.value} corridor with finite half-widths")
-
-
-# --------------------------------------------------------------------------- #
-# status derivation
-# --------------------------------------------------------------------------- #
 
 
 def _derive_status(

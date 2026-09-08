@@ -8,11 +8,14 @@ applied in the same order on every run and on every machine.
 from __future__ import annotations
 
 from bisect import insort
-from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from enum import IntEnum
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import Quality
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
 
 
 class EventPriority(IntEnum):

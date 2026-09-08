@@ -21,10 +21,9 @@ Each stage is a function or small class that can be tested on its own; the
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -34,11 +33,9 @@ from afterlap_contracts import (
     RawSourcePacket,
     SourceCapability,
     TelemetryEvent,
+    channel as channel_spec,
 )
-from afterlap_contracts import channel as channel_spec
-from afterlap_core.timebase import ClockMapping
 
-from .adapters import ObservationRecord
 from .mapping import MappingError, MappingTable
 from .quality import (
     ChannelExpectation,
@@ -48,7 +45,13 @@ from .quality import (
     expectations_from_capability,
 )
 
-# -- labels ------------------------------------------------------------------
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator, Mapping, Sequence
+
+    from afterlap_core.timebase import ClockMapping
+
+    from .adapters import ObservationRecord
+
 
 LABEL_OUT_OF_ORDER = "out_of_order"
 LABEL_EXCLUDED_FROM_FINALISED = "excluded_from_finalised_state"
@@ -66,9 +69,6 @@ class RejectionReason(StrEnum):
     DUPLICATE = "duplicate"
     RESTART_REPLAY = "restart_replay"
     STRUCTURAL = "structural"
-
-
-# -- stage 1/2: parse and structural validation -------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,9 +166,6 @@ def validate_structure(record: ObservationRecord) -> tuple[StructuralIssue, ...]
     return tuple(issues)
 
 
-# -- stage 3: source timestamp conversion -------------------------------------
-
-
 @dataclass(frozen=True, slots=True)
 class TimeConversion:
     session_time_s: float
@@ -213,9 +210,6 @@ class SourceClockConverter:
             previous_source_time_s=previous,
             uncertainty_s=self._mapping.uncertainty_s,
         )
-
-
-# -- stage 4: SI conversion ---------------------------------------------------
 
 
 def convert_to_si(parsed: ParsedRecord, mapping: MappingTable) -> tuple[MappedField, ...]:
@@ -283,9 +277,6 @@ def convert_to_si(parsed: ParsedRecord, mapping: MappingTable) -> tuple[MappedFi
             )
         )
     return tuple(fields)
-
-
-# -- stage 5: deduplication ---------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -373,9 +364,6 @@ class DeduplicationIndex:
         return DedupDecision(accepted=True, reason=None, epoch=epoch)
 
 
-# -- stage 6: bounded reorder -------------------------------------------------
-
-
 @dataclass(frozen=True, slots=True)
 class BufferedRecord:
     parsed: ParsedRecord
@@ -459,14 +447,10 @@ class ReorderBuffer:
         if self._max_session_time_s is not None:
             cut = self._max_session_time_s - self.window_s
 
-        # Liveness: any record that has been held for a full window is released
-        # even if nothing newer arrived. Releasing it also releases everything
-        # at or before its session time, because a release must never be able to
-        # emit records out of session order.
         deadline = now_s - self.window_s
         timed_out = [entry.session_time_s for entry in self._pending if entry.arrival_s <= deadline]
         if timed_out:
-            cut = max(timed_out) if cut is None else max(cut, max(timed_out))
+            cut = max(timed_out) if cut is None else max(cut, *timed_out)
 
         if cut is None:
             return ()
@@ -512,9 +496,6 @@ class ReorderBuffer:
         )
 
 
-# -- stage 7: session sequence assignment -------------------------------------
-
-
 class SequenceAllocator:
     """Stage 7: strictly monotonic session sequence numbers, never reused."""
 
@@ -537,9 +518,6 @@ class SequenceAllocator:
     @property
     def issued(self) -> int:
         return self._issued
-
-
-# -- stage 8/9: normalised records and sinks ----------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -608,9 +586,6 @@ class MemorySink:
 
     def append_normalised(self, record: NormalisedRecord) -> None:
         self.normalised.append(record)
-
-
-# -- stage 10: publish --------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -720,8 +695,6 @@ class IngestionPipeline:
         self._excluded = 0
         self._horizon_s = 0.0
 
-    # -- controls -------------------------------------------------------
-
     @property
     def tracker(self) -> QualityTracker:
         return self._tracker
@@ -747,8 +720,6 @@ class IngestionPipeline:
     def heartbeat(self, at_s: float) -> None:
         """Transport liveness only; see :mod:`afterlap_core.data.quality`."""
         self._tracker.heartbeat(at_s)
-
-    # -- main entry points ----------------------------------------------
 
     def ingest(self, record: ObservationRecord, *, now_s: float | None = None) -> PipelineOutput:
         """Run one record through stages 1-6 and release whatever is ready."""
@@ -823,8 +794,6 @@ class IngestionPipeline:
             output = output + self.ingest(record, now_s=now_s)
         return output + self.close()
 
-    # -- internals ------------------------------------------------------
-
     def _buffer_horizon(self) -> float:
         return self._buffer.latest_pending_arrival_s + self._buffer.window_s
 
@@ -886,7 +855,7 @@ class IngestionPipeline:
                     self._sink.append_normalised(record)
         self._events_published += len(normalised)
         if entries:
-            self._horizon_s = max(self._horizon_s, max(entry.session_time_s for entry in entries))
+            self._horizon_s = max(self._horizon_s, *(entry.session_time_s for entry in entries))
         quality = self._tracker.assess(self._horizon_s).channels if entries else ()
         return PipelineOutput(
             normalised=tuple(normalised),
@@ -951,8 +920,6 @@ class IngestionPipeline:
             reason=reason,
             finalised_before_s=cutoff,
         )
-
-    # -- reporting ------------------------------------------------------
 
     def stats(self) -> PipelineStats:
         return PipelineStats(

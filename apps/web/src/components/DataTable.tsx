@@ -6,10 +6,10 @@ import styles from './primitives.module.css';
 export interface Column<Row> {
   readonly id: string;
   readonly header: string;
-  /** Rendered per row. Return null to render the unavailable marker. */
+  
   readonly cell: (row: Row) => ReactNode;
   readonly numeric?: boolean;
-  /** Unit shown in the header, e.g. "kW". */
+  
   readonly unit?: string;
   readonly width?: string;
 }
@@ -24,7 +24,7 @@ export interface DataTableProps<Row> {
   readonly rowKey: (row: Row) => string;
   readonly state?: DataTableState;
   readonly errorMessage?: string;
-  /** Named missing artefact and the action that would create it. */
+  
   readonly emptyArtefact?: string;
   readonly emptyAction?: ReactNode;
   readonly selectedRowKey?: string | null;
@@ -33,13 +33,7 @@ export interface DataTableProps<Row> {
   readonly actions?: ReactNode;
 }
 
-/**
- * Tabular data with real headers.
- *
- * The scroll container is a labelled region with a tab stop, so a wide table
- * scrolls inside its panel and never widens the document. Column headers carry
- * `scope="col"` and their units.
- */
+
 export function DataTable<Row>({
   caption,
   description,
@@ -98,6 +92,7 @@ export function DataTable<Row>({
           className={styles.tableScroll}
           role="region"
           aria-labelledby={headingId}
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
         >
           <table className={styles.table}>

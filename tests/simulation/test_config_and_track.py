@@ -130,13 +130,11 @@ class TestTrackInterpolation:
 
     def test_a_constant_stretch_stays_constant(self) -> None:
         track = load_track("test-oval")
-        # The corner's flat section runs from 1544.4691 m to 1940 m.
         for position in (1600.0, 1700.0, 1800.0, 1900.0):
             assert track.curvature_at(position) == pytest.approx(0.0068966, abs=1e-12)
 
     def test_the_smoothstep_midpoint_is_the_arithmetic_mean(self) -> None:
         track = load_track("test-loop")
-        # Between s=1500 (k=0) and s=1600 (k=0.005): smoothstep(0.5) = 0.5.
         assert track.curvature_at(1550.0) == pytest.approx(0.0025, abs=1e-12)
 
     def test_interpolation_wraps_around_the_lap(self) -> None:
@@ -220,7 +218,6 @@ class TestFootprintGeometry:
         assert overlap(a, CarFootprint(1.0, 0.0, 0.0, 4.0, 2.0))
         assert not overlap(a, CarFootprint(4.1, 0.0, 0.0, 4.0, 2.0))
         assert not overlap(a, CarFootprint(0.0, 2.1, 0.0, 4.0, 2.0))
-        # A rotated rectangle reaches further along its diagonal.
         assert overlap(a, CarFootprint(0.0, 2.0, math.pi / 2.0, 4.0, 2.0))
 
     def test_overlap_is_symmetric(self) -> None:

@@ -241,7 +241,6 @@ class TestEqualObservationAccess:
         ]
         decisions = [controller.decide(request) for controller in controllers]
         assert all(isinstance(decision, ControlDecision) for decision in decisions)
-        # The request is frozen, so no controller could have mutated it for the next.
         assert isinstance(request, ControlRequest)
         with pytest.raises((AttributeError, TypeError)):
             request.compute_budget_ms = 1.0  # type: ignore[misc]

@@ -145,11 +145,6 @@ class _Queue(Protocol):
     def get(self, block: bool = ..., timeout: float | None = ...) -> Any: ...
 
 
-# ---------------------------------------------------------------------------
-# the loop
-# ---------------------------------------------------------------------------
-
-
 def run_command_loop(commands: _Queue, results: _Queue, config: WorkerConfig) -> None:
     """Serve commands until ``stop``. One owner, one session, no concurrency."""
     runtime: Any = None
@@ -158,7 +153,7 @@ def run_command_loop(commands: _Queue, results: _Queue, config: WorkerConfig) ->
             command = commands.get(True, 1.0)
         except queue_module.Empty:
             continue
-        if command is None:  # sentinel
+        if command is None:
             return
         result, runtime, finished = _execute(command, runtime, config)
         results.put(result)
@@ -176,8 +171,6 @@ def _execute(command: WorkerCommand, runtime: Any, config: WorkerConfig) -> tupl
             False,
         )
     if command.expired:
-        # Refused before it starts: a result that misses its deadline is not
-        # useful, and starting it would block the single owner.
         return (
             _fail(command, revision, "absolute monotonic deadline expired before execution"),
             runtime,
@@ -333,11 +326,6 @@ def _fail(command: WorkerCommand, revision: int, detail: str) -> WorkerResult:
     )
 
 
-# ---------------------------------------------------------------------------
-# process entry point and parent-side handle
-# ---------------------------------------------------------------------------
-
-
 def worker_main(commands: Any, results: Any, config: WorkerConfig) -> None:  # pragma: no cover
     """Child entry point. Importable at module level so ``spawn`` can find it."""
     logging.basicConfig(level=logging.WARNING)
@@ -402,7 +390,6 @@ class SessionWorkerHandle:
             return
         if self._process.is_alive():
             with contextlib.suppress(queue_module.Full):
-                # Best-effort shutdown sentinel; a full queue falls through to join.
                 self._commands.put(None, False)
             self._process.join(timeout_s)
         if self._process.is_alive():  # pragma: no cover - the child ignored the sentinel

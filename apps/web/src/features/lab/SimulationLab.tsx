@@ -15,18 +15,12 @@ import { labClient, type LabClient } from './controlPlane';
 
 export interface SimulationLabProps {
   readonly runtimeOptions?: SessionRuntimeOptions;
-  /** Control-plane client for session commands. Injected by tests. */
+  
   readonly client?: ApiClient;
   readonly labClientOverride?: LabClient;
 }
 
-/**
- * `/sessions/:sessionId/lab`.
- *
- * Configuration, run control, snapshot, paired comparison and the job queue.
- * The synthetic label is persistent: it is on the page, on the scenario panel
- * and on every session this view can create.
- */
+
 export function SimulationLab({
   runtimeOptions,
   client = apiClient,

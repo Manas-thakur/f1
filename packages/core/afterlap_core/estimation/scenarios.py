@@ -215,8 +215,6 @@ def sample_scenarios(
     weights = belief.particles.weights()
     indices = rng.choice(belief.particles.size, size=count, replace=True, p=weights)
 
-    # Dropout and model mismatch both widen the rollout: a belief that has not
-    # been observed recently must fan out faster than one that has.
     widening = model_mismatch * (1.0 + dropout_s * _dropout_widening(belief))
     dynamics = belief.config.dynamics
     transition = belief.config.step_transition(step_s)

@@ -22,7 +22,7 @@ def test_display_buffer_coalesces_by_key_and_reports_that_it_did():
     assert buffer.coalesced_to_sequence == 9
 
     drained = buffer.drain()
-    assert drained[0]["value"] == pytest.approx(79.0)  # newest frame wins
+    assert drained[0]["value"] == pytest.approx(79.0)
     assert buffer.stats().coalesced == 9
     assert buffer.coalesced_from_sequence is None
 
@@ -51,7 +51,6 @@ def test_lossless_buffer_never_drops_and_raises_a_visible_recording_fault():
     assert fault.capacity == 3
     assert fault.as_dict()["buffer"] == "raw_observations"
 
-    # Nothing that was accepted was lost.
     assert buffer.accepted == 3
     assert [item["packet"] for item in buffer.drain()] == [0, 1, 2]
 

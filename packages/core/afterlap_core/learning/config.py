@@ -17,13 +17,15 @@ that a coefficient can never be changed by editing code.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import SupportThresholds
 
 from ..config import load_config
 from ..paths import Paths, sha256_json
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 __all__ = [
     "ENV_REVISION_PREFIX",

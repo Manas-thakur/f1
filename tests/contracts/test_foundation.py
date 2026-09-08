@@ -21,12 +21,9 @@ from afterlap_core.timebase import (
     wrap_s,
 )
 
-# --- Event ordering -----------------------------------------------------------------
-
 
 def test_events_at_equal_time_follow_the_contract_priority():
     queue: EventQueue[str] = EventQueue()
-    # Push in deliberately reversed priority order.
     queue.push(1.0, EventPriority.UI_SNAPSHOT, "snapshot")
     queue.push(1.0, EventPriority.OPERATOR_COMMAND, "operator")
     queue.push(1.0, EventPriority.PLAN_VALIDATION, "plan")
@@ -63,9 +60,6 @@ def test_queue_snapshot_and_restore_reproduces_order():
     assert [e.payload for e in restored.pop_until(2.0)] == ["b", "a"]
 
 
-# --- Session clock -------------------------------------------------------------------
-
-
 def test_wall_time_does_not_advance_a_paused_simulation():
     clock = SessionClock()
     clock.advance(1.0)
@@ -92,11 +86,7 @@ def test_replay_speed_changes_pacing_not_simulated_time():
         clock.set_speed(0.0)
 
 
-# --- Line crossings ------------------------------------------------------------------
-
-
 def test_crossing_time_is_interpolated_inside_the_step():
-    # Progress goes 90 m -> 110 m over 0.2 s; the 100 m line is crossed halfway.
     assert crossing_time(1.0, 1.2, 90.0, 110.0, 100.0) == pytest.approx(1.1)
 
 
@@ -116,9 +106,6 @@ def test_a_stationary_quantity_never_reports_a_crossing():
     assert crossing_time(0.0, 1.0, 50.0, 50.0, 50.0) is None
 
 
-# --- Track coordinates ---------------------------------------------------------------
-
-
 def test_progress_wraps_and_unwraps_consistently():
     length = 5_200.0
     assert wrap_s(5_400.0, length) == pytest.approx(200.0)
@@ -132,14 +119,9 @@ def test_zero_length_track_is_rejected():
         wrap_s(1.0, 0.0)
 
 
-# --- Freshness ------------------------------------------------------------------------
-
-
 def test_freshness_uses_the_sources_own_cadence():
-    # A 20 Hz source at 0.02 s age is valid; a 3.7 Hz source at the same age is too.
     assert classify_freshness(0.02, 0.05) is Quality.VALID
     assert classify_freshness(0.02, 0.27) is Quality.VALID
-    # Four periods of a fast source is stale; the same wall-clock age is fine for a slow one.
     assert classify_freshness(0.25, 0.05) is Quality.STALE
     assert classify_freshness(0.25, 0.27) is Quality.VALID
 
@@ -156,9 +138,6 @@ def test_unknown_cadence_cannot_be_called_valid():
     assert classify_freshness(0.01, None) is Quality.DEGRADED
 
 
-# --- Keyed randomness -----------------------------------------------------------------
-
-
 def test_derived_seeds_are_stable_across_calls():
     assert derive_seed("scenario", 42, "wind", 3) == derive_seed("scenario", 42, "wind", 3)
     assert derive_seed("scenario", 42, "wind", 3) != derive_seed("scenario", 42, "wind", 4)
@@ -168,7 +147,6 @@ def test_branches_share_exogenous_disturbances_at_the_same_physical_time():
     reference = KeyedRandom("two-straight-counterattack", 42)
     candidate = KeyedRandom("two-straight-counterattack", 42)
 
-    # The two branches reach t = 4.3 s after a different number of internal calls.
     for _ in range(17):
         reference.normal("sensor_noise", 1.0)
     reference_draw = reference.normal("wind", 4.3)
@@ -189,7 +167,6 @@ def test_named_streams_advance_independently():
     registry = StreamRegistry(root_seed=7, names=("sensor_noise", "driver_response"))
     driver_first = registry.stream("driver_response").normal()
 
-    # Draw repeatedly from an unrelated stream.
     for _ in range(50):
         registry.stream("sensor_noise").normal()
 
@@ -222,9 +199,6 @@ def test_stream_registry_state_survives_json_serialisation():
     restored = StreamRegistry(root_seed=0)
     restored.restore(captured)
     assert np.array_equal(restored.stream("driver_response").normal(size=3), expected)
-
-
-# --- Artefact storage ------------------------------------------------------------------
 
 
 def test_artifact_store_is_content_addressed(tmp_path):

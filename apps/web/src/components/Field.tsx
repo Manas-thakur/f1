@@ -11,7 +11,7 @@ export interface FieldProps {
   readonly errorMessage?: string;
   readonly successMessage?: string;
   readonly required?: boolean;
-  /** The control. It receives id, aria-describedby and aria-invalid. */
+  
   readonly children: ReactElement<{
     id?: string;
     'aria-describedby'?: string;
@@ -20,12 +20,7 @@ export interface FieldProps {
   }>;
 }
 
-/**
- * A labelled form control.
- *
- * The label is always a real `<label for>`; there are no placeholder-only
- * fields. Error text explains the failed action, not just that it failed.
- */
+
 export function Field({
   label,
   hint,

@@ -65,8 +65,6 @@ def overtake_plan():
 
 
 def overtake_state():
-    # 700000 J over the 4.0 s of the first segment is 175 kW; entering at that
-    # level makes the first transition zero so only the unknown matters.
     return checker_state(
         session_time_s=20.0,
         progress_m=1_850.0,
@@ -84,8 +82,6 @@ def test_unknown_pack_yields_no_admissible_profiles(pack_unknown):
     assert context.admissible_profiles == ()
     assert context.permits(DeploymentProfile.NEUTRAL) is False
 
-    # The advisory condition is still recorded on the manifest so that nobody
-    # can read this pack as complete coverage, even though it is not applicable.
     assert ADVISORY_CONDITION in pack_unknown.manifest.unknown_conditions
     assert CRITICAL_CONDITION in pack_unknown.manifest.unknown_conditions
     assert {spec.condition for spec in pack_unknown.critical_unknown_conditions} == {CRITICAL_CONDITION}
@@ -100,7 +96,6 @@ def test_unknown_pack_admits_no_overtake_plan(pack_unknown):
     assert check.status is CheckStatus.UNKNOWN
     assert check.margin is None
     assert CRITICAL_CONDITION in (check.detail or "")
-    # Not a failure that could be argued away, and certainly not a pass.
     assert check.status is not CheckStatus.PASS
 
 
@@ -113,7 +108,6 @@ def test_unknown_check_has_no_margin(pack_unknown):
     for check in unknown_checks:
         assert check.margin is None
 
-    # The contract itself forbids an unknown check from carrying a number.
     with pytest.raises(ValidationError):
         ConstraintCheck(check_id="overtake_eligibility", status=CheckStatus.UNKNOWN, margin=0.0)
 
@@ -125,10 +119,8 @@ def test_aggregate_is_unknown_when_any_check_is_unknown(pack_unknown):
     statuses = {check.check_id: check.status for check in result.checks}
     assert statuses["overtake_eligibility"] is CheckStatus.UNKNOWN
     assert CheckStatus.FAIL not in statuses.values()
-    # Every other check passed, and the verdict is still not a pass.
     assert result.status is CheckStatus.UNKNOWN
     assert result.status is not CheckStatus.PASS
-    # Both conditions are reported, applicable or not.
     assert set(result.unresolved_conditions) == {CRITICAL_CONDITION, ADVISORY_CONDITION}
 
 
@@ -147,7 +139,6 @@ def test_unknown_pack_still_reports_numeric_power_margins(pack_unknown):
     assert checks["power_ceiling"].status is CheckStatus.PASS
     assert checks["power_ceiling"].margin == pytest.approx(350_000.0 - expected_deploy_w, abs=1e-6)
 
-    # 1000000 J start, 700000 J out, then 700000 J in and 280000 J out.
     assert checks["battery_energy_window"].margin == pytest.approx(300_000.0, abs=1e-6)
     assert checks["recharge_allowance"].margin == pytest.approx(8_500_000.0 - 700_000.0, abs=1e-6)
     assert checks["power_ramp"].status is CheckStatus.PASS

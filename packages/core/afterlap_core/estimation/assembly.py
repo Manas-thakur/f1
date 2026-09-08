@@ -33,9 +33,8 @@ estimate is therefore reproducible from its own cutoff.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -69,9 +68,11 @@ from .own_car import (
 )
 from .rivals import OwnStateSummary, RivalContext, RivalObservation, RivalParticleFilter
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
 DEFAULT_SLOTS: tuple[str, ...] = ("ahead_1", "behind_1")
 
-#: Gap below which a following car counts as applying full pressure.
 FULL_PRESSURE_GAP_S = 1.0
 
 
@@ -347,9 +348,6 @@ def create_state(
     )
 
 
-# -- gap derivation -------------------------------------------------------
-
-
 def _own_progress_series(observations: Sequence[Observation], car_id: str) -> tuple[np.ndarray, np.ndarray]:
     times: list[float] = []
     values: list[float] = []
@@ -436,8 +434,6 @@ def _rival_observations(
             own_here = _own_progress_at(session_time_s, own_series, own_progress_m, own_speed_mps, cutoff_s)
             gap_m = float(entry["progress_m"]) - own_here
             if abs(gap_m) > 0.5 * track_length_m:
-                # A rival a lap away is not a gap; leave it unknown rather than
-                # reporting a nonsensical half-track "battle".
                 gap_m = None
         if gap_m is not None and gap_s is None and own_speed_mps > 1.0:
             gap_s = gap_m / own_speed_mps
@@ -464,9 +460,6 @@ def _pressure_from_gaps(gaps_s: dict[str, float]) -> float:
         return 0.0
     closest = min(behind)
     return float(max(0.0, min(1.0, 1.0 - closest / FULL_PRESSURE_GAP_S)))
-
-
-# -- public API -----------------------------------------------------------
 
 
 def update(
@@ -499,9 +492,6 @@ def update(
     )
     gaps_s: dict[str, float] = {}
     per_rival: dict[str, tuple[RivalObservation, ...]] = {}
-    # A derived gap carries our own progress uncertainty as well as the rival's
-    # position error. Handing the filter the combined figure is what lets it
-    # charge the true differencing noise instead of a nominal one.
     gap_sigma_m = math.sqrt(
         float(prior.own.state.covariance[STATE_PROGRESS, STATE_PROGRESS])
         + prior.own_config.measurement.progress_sigma_m.value**2
@@ -571,7 +561,7 @@ def update(
             pressure=pressure,
             dropout_s=context.observation_dropout_s,
         )
-        for observation in per_rival.get(rival_id, ()):  # already ordered and pre-cutoff
+        for observation in per_rival.get(rival_id, ()):
             if observation.session_time_s < filter_.time_s:
                 continue
             filter_.update(observation, own_summary, rival_context)
@@ -643,7 +633,7 @@ def _predict_with_state(
     state: EstimatorState,
 ) -> StateEstimate:
     context = state.last_context
-    assert context is not None  # guarded by the caller
+    assert context is not None
     working = state.copy()
     working.own.predict_to(
         target_time_s,
@@ -688,7 +678,7 @@ def _predict_with_state(
             )
         )
     working.revision = estimate.revision + 1
-    projected = _assemble(
+    return _assemble(
         working,
         context,
         tuple(beliefs),
@@ -696,7 +686,6 @@ def _predict_with_state(
         created_at_s=target_time_s,
         extra_notes=(f"projected {horizon:.3f} s beyond the cutoff using the live covariance and particles",),
     )
-    return projected
 
 
 def _predict_from_marginals(estimate: StateEstimate, target_time_s: float) -> StateEstimate:
@@ -755,8 +744,6 @@ def _predict_from_marginals(estimate: StateEstimate, target_time_s: float) -> St
     )
     own_estimate, capability = build_own_car_estimate(filter_, context, at_time_s=target_time_s)
     if energy is not None:
-        # A point value that came in on the wire stays a point value; the
-        # marginal path cannot re-derive the observability history that produced it.
         capability = estimate.quality.own_energy_capability
     notes = (
         *estimate.quality.notes,
@@ -821,12 +808,6 @@ def _assemble(
         notes.append("own_energy_capability is False: precise energy advice is unsupported for this session")
     if beliefs and not context.lateral_geometry_known:
         notes.append("lateral placement is not resolvable from this source; contact-risk claims are blocked")
-    # Rejected post-cutoff observations are deliberately NOT mentioned here. The
-    # published belief must be a pure function of the observations at or before
-    # the cutoff: mentioning the rejects would make an estimate computed with a
-    # late arrival differ from one computed without it, and that difference would
-    # leak future information into a decision record. The rejects stay auditable
-    # on ``EstimatorState.rejected`` for the quality stream to publish separately.
     for change in state.slots.changes:
         if change.at_s == context.cutoff_s:
             notes.append(

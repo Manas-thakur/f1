@@ -1,10 +1,4 @@
-/**
- * Snapshot of `afterlap_contracts.registry.CHANNELS`, generated from Python.
- *
- * The TypeScript registry in src/contracts/channels.ts must agree with this
- * exactly. A drift test compares them; if this file changes, the mirror is out
- * of date, not the test.
- */
+
 export interface PythonChannelRow {
   readonly name: string;
   readonly unit: string;

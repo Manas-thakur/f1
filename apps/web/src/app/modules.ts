@@ -1,13 +1,8 @@
-/**
- * The module rail.
- *
- * Plain named modules. There is deliberately no numbering: the operator's
- * workflow has no single ordering, and numbers would assert one.
- */
+
 export interface ModuleLink {
   readonly to: string;
   readonly label: string;
-  /** Route patterns that should also mark this module selected. */
+  
   readonly matches?: readonly string[];
   readonly needsSession?: boolean;
 }

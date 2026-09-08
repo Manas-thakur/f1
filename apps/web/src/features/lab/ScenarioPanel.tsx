@@ -22,16 +22,7 @@ export interface ScenarioPanelProps {
   readonly initialDraft?: ScenarioDraft;
 }
 
-/**
- * Scenario configuration.
- *
- * Everything offered here is a field `POST /sessions` actually accepts. The
- * initial-condition and observation-condition controls the specification asks
- * for are not offered as if they worked: `CreateSessionRequest` carries no
- * such fields, they belong to the scenario document the server resolves, and
- * the fieldset below says exactly that instead of collecting values that would
- * be silently discarded.
- */
+
 export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }: ScenarioPanelProps) {
   const [draft, setDraft] = useState<ScenarioDraft>(initialDraft);
   const [pending, setPending] = useState(false);

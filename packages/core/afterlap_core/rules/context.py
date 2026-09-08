@@ -23,8 +23,8 @@ non-empty ``unknown_conditions`` and an **empty** ``admissible_profiles``.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -37,8 +37,12 @@ from afterlap_contracts import (
     RuleManifest,
 )
 
-from .packs import RulePack, ThermalDerateSpec, UnknownConditionSpec
 from .state import CarState, RaceEvent, RaceEventKind, sorted_race_events
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from .packs import RulePack, ThermalDerateSpec, UnknownConditionSpec
 
 __all__ = [
     "RESTRICTIVE_FLAGS",
@@ -167,8 +171,6 @@ def _profiles_for(
     has_energy = battery_energy_j > floor
     if not restricted and limits.deployment_ceiling_w > 0.0 and has_energy:
         allowed.append(DeploymentProfile.PUSH)
-        # Permission gate. Energy has already been checked separately above:
-        # eligibility never supplies joules.
         if eligibility in (EligibilityState.ELIGIBLE_DETECTED, EligibilityState.ACTIVE):
             allowed.append(DeploymentProfile.OVERTAKE)
     return tuple(profile for profile in _PROFILE_ORDER if profile in allowed)
@@ -303,7 +305,6 @@ def admissible_profiles(context: RuleContext, state: CarState) -> tuple[Deployme
         state.eligibility if state.eligibility is not EligibilityState.UNKNOWN else (context.eligibility)
     )
     if context.eligibility is EligibilityState.INELIGIBLE:
-        # The context already applied a race-control downgrade; never undo it.
         eligibility = EligibilityState.INELIGIBLE
     return _profiles_for(
         limits=context.applicable_limits,

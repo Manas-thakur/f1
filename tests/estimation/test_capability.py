@@ -116,8 +116,6 @@ def test_partial_energy_information_yields_an_interval_and_never_a_point_value(
     point value.
     """
     run = make_run(own_config, rival_config, scenario_id="partial-energy", seed=37, duration_s=8.0)
-    # The battery-state samples exist in the feed but the source does not declare
-    # the channel measured, so they must not open capability.
     state = create_state(
         session_id=SESSION_ID, car_id=OWN_CAR_ID, seed=3, own_config=own_config, rival_config=rival_config
     )

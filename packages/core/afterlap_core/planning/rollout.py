@@ -36,7 +36,7 @@ frequency must never be published as a calibrated probability.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import (
     CalibrationStatus,
@@ -58,10 +58,12 @@ from ..simulation import (
     load_bundle,
     run_branch,
 )
-from .config import PlannerConfig
-from .scenarios import PlanScenario
-from .segments import PlanFrame
-from .surrogate import SurrogateWeights
+
+if TYPE_CHECKING:
+    from .config import PlannerConfig
+    from .scenarios import PlanScenario
+    from .segments import PlanFrame
+    from .surrogate import SurrogateWeights
 
 __all__ = ["PlanningWorld", "RolloutEvidence", "SegmentController", "rollout_candidate"]
 
@@ -83,7 +85,9 @@ class PlanningWorld:
     seed: int
 
     @classmethod
-    def from_scenario(cls, scenario_id: str = "two-straight-counterattack", *, seed: int = 20260908):
+    def from_scenario(
+        cls, scenario_id: str = "two-straight-counterattack", *, seed: int = 20260908
+    ) -> PlanningWorld:
         bundle = load_bundle(scenario_id)
         rivals = bundle.scenario.rival_ids
         return cls(

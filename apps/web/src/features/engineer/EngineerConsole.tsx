@@ -37,7 +37,7 @@ import styles from './workspace.module.css';
 const EVIDENCE_BUTTON_ID = 'engineer-open-evidence';
 
 export interface EngineerConsoleProps {
-  /** Test seam: injects the API client and socket factory. */
+  
   readonly runtimeOptions?: SessionRuntimeOptions;
   readonly client?: ApiClient;
 }
@@ -131,14 +131,7 @@ function SourcePanel() {
   );
 }
 
-/**
- * `/sessions/:sessionId/engineer`.
- *
- * Information order, from the specification: persistent session status (in the
- * shell strip), the decision, the battle it sits in, the energy consequence,
- * the immutable timeline, then the evidence. One cursor drives every trace
- * panel.
- */
+
 export function EngineerConsole({ runtimeOptions, client = apiClient }: EngineerConsoleProps) {
   const { sessionId } = useParams();
   const runtime = useSessionRuntime(sessionId, runtimeOptions ?? {});
@@ -154,7 +147,7 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
   const sessionTimeS = useSessionStore((s) => s.server.sessionTimeS);
   const connection = useSessionStore((s) => s.stream.connection);
   const resyncRequired = useSessionStore((s) => s.stream.resyncRequired);
-  const hasSnapshot = useSessionStore((s) => s.server.manifest != null);
+  const hasSnapshot = useSessionStore((s) => s.server.manifest !== null && s.server.manifest !== undefined);
   const quality = useSessionStore(selectQualitySummary);
   const timeSensitiveDisabledReason = useSessionStore(selectTimeSensitiveDisabledReason);
   const cursor = useSessionStore(selectCursor);
@@ -216,10 +209,8 @@ export function EngineerConsole({ runtimeOptions, client = apiClient }: Engineer
   const actions = useRecommendationActions({
     sessionId: sessionId ?? '',
     recommendation,
-    // The recommendation routes do optimistic concurrency on the RECOMMENDATION,
-    // not the session: `apply_operator_action` compares this against
-    // `recommendation.revision`. Sending the session revision made every select
-    // fail with "expected revision 27, current is 0".
+
+
     expectedRevision: recommendation?.revision ?? 0,
     client,
     refresh,

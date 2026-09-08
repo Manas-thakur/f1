@@ -29,18 +29,21 @@ declared channel that is never published would be a false capability claim.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import Quality, SessionMode, SourceCapability
 from afterlap_contracts.fixtures import SYNTHETIC_NOTICE
 from afterlap_core.data import ObservationRecord
-from afterlap_core.simulation.observation import Observation
+from afterlap_core.simulation.config import ScenarioBundle
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
+    from afterlap_core.simulation.observation import Observation
 
 SIMULATOR_SOURCE_ID = "simulator"
 
 OWN_CHANNEL_FIELDS: Mapping[str, str] = {
-    # observation channel -> vendor field name in simulator_mapping()
     "speed_mps": "speed_mps",
     "progress_m": "progress_m",
     "s_m": "lap_distance_m",
@@ -132,7 +135,7 @@ def simulator_session_capability(
     )
 
 
-def relational_channels_for(bundle) -> tuple[str, ...]:
+def relational_channels_for(bundle: ScenarioBundle) -> tuple[str, ...]:
     """Which gap channels this scenario can ever fill.
 
     Decided from the starting grid order: a car with nobody behind it never
@@ -187,8 +190,6 @@ class SimulatorObservationSource:
         self._offered = 0
         self._skipped_missing = 0
 
-    # -- ObservationSource protocol ------------------------------------------
-
     def observation_capability(self) -> SourceCapability:
         return self._capability
 
@@ -197,8 +198,6 @@ class SimulatorObservationSource:
         drained = tuple(self._pending)
         self._pending.clear()
         return drained
-
-    # -- runtime side ---------------------------------------------------------
 
     @property
     def source_id(self) -> str:
@@ -237,8 +236,6 @@ class SimulatorObservationSource:
 
         source_time_s = float(observation.observed_at_s)
         if self._highest_source_time_s is not None and source_time_s <= self._highest_source_time_s:
-            # Already emitted at or after this source time. Re-sending it would
-            # be a replay, which the ingestion pipeline refuses anyway.
             return ()
         self._highest_source_time_s = source_time_s
         received_time_s = float(observation.delivered_at_s)

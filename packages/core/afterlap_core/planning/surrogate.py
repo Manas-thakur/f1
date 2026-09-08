@@ -49,16 +49,18 @@ instead of being credited as permanent progress.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from afterlap_contracts import StateEstimate
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
-from .config import PlannerConfig
-from .objective import ObjectiveManifest
-from .scenarios import PlanScenario
-from .segments import PlanFrame
+    from afterlap_contracts import StateEstimate
+
+    from .config import PlannerConfig
+    from .objective import ObjectiveManifest
+    from .scenarios import PlanScenario
+    from .segments import PlanFrame
 
 __all__ = [
     "SurrogateWeights",
@@ -109,9 +111,6 @@ def build_weights(
     else:
         advantage_s = 0.0
 
-    # With nobody believed to be in contention there is no position to win or
-    # lose inside the horizon, so the position and counterattack terms are zero
-    # rather than a smooth guess about a rival that is not there.
     contested = ahead is not None or behind is not None
 
     return SurrogateWeights(

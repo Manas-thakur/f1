@@ -39,12 +39,10 @@ def test_a_late_event_is_archived_but_excluded_from_the_finalised_decision_state
     sink = MemorySink()
     pipeline = _pipeline_with_history(sink)
 
-    # A decision is published with observation_cutoff_s = 12.2.
     observed_at_publication = sort_normalised(sink.normalised)
     pipeline.finalise(CUTOFF_S)
     assert pipeline.finalised_before_s == CUTOFF_S
 
-    # A packet for source time 12.0 now arrives, long after the cutoff.
     late = pipeline.ingest(
         observation(9, 12.0, {"speed_mps": 70.5}, received_time_s=12.9),
         now_s=12.9,
@@ -54,7 +52,6 @@ def test_a_late_event_is_archived_but_excluded_from_the_finalised_decision_state
     assert len(late_records) == 1
     record = late_records[0]
 
-    # Archived, with its value intact and honest labels.
     assert record.event.source_time_s == pytest.approx(12.0)
     assert record.event.value == pytest.approx(70.5)
     assert LABEL_OUT_OF_ORDER in record.labels
@@ -62,8 +59,6 @@ def test_a_late_event_is_archived_but_excluded_from_the_finalised_decision_state
     assert record.finalised_before_s == CUTOFF_S
     assert "after the decision cutoff" in (record.reason or "")
 
-    # It is not usable for decisions, and the state that decision observed is
-    # byte-for-byte what it was at publication time.
     assert record.usable_for_decisions is False
     assert late.decision_visible() == ()
     still_visible = sort_normalised(r for r in sink.normalised if r.usable_for_decisions)

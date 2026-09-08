@@ -35,7 +35,7 @@ afterlap-api = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers"
+addopts = "-q --strict-markers --strict-config"
 markers = [
     "slow: long-running (training / large benchmark) test",
     "solver: requires an optimisation solver backend",
@@ -43,29 +43,186 @@ markers = [
     "db: requires a database engine",
 ]
 filterwarnings = ["error::DeprecationWarning:afterlap_.*"]
+xfail_strict = true
 
 [tool.ruff]
 line-length = 110
 target-version = "py312"
-extend-exclude = ["packages/contracts/generated", "apps/web"]
+src = ["packages", "apps/api", "scripts", "workers", "tests"]
+extend-exclude = [
+    "packages/contracts/generated",
+    "apps/web",
+    "docs/deck",
+    "docs/design/mockups",
+    "docs/tools/complete_package.py",
+    "docs/tools/revise_design.py",
+    "**/._*",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = true
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
-ignore = ["B008", "RUF012"]
+select = [
+    "F",
+    "E",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "ANN",
+    "ASYNC",
+    "S",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "DTZ",
+    "T10",
+    "EM",
+    "FA",
+    "ISC",
+    "ICN",
+    "LOG",
+    "G",
+    "PIE",
+    "PYI",
+    "PT",
+    "Q",
+    "RSE",
+    "RET",
+    "SLF",
+    "SIM",
+    "TID",
+    "TC",
+    "ARG",
+    "PTH",
+    "PL",
+    "TRY",
+    "FLY",
+    "PERF",
+    "FURB",
+    "RUF",
+    "ERA",
+    "C90",
+]
+ignore = [
+    "COM812",
+    "ISC001",
+    "B008",
+    "RUF012",
+    "ANN401",
+    "PLR0913",
+    "PLR2004",
+    "TRY003",
+    "EM101",
+    "EM102",
+    "TC001",
+    "TC002",
+    "TC003",
+    "TC006",
+    "TID252",
+    "PLC0415",
+    "S101",
+    "S105",
+    "S106",
+    "S110",
+    "S112",
+    "S310",
+    "S608",
+    "N818",
+    "ARG001",
+    "ARG002",
+    "ARG005",
+    "PERF401",
+    "PTH105",
+    "SLF001",
+    "PLW0603",
+    "PLR0124",
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "C901",
+    "TRY300",
+    "TRY004",
+    "PT012",
+    "PT019",
+]
+preview = false
 
 [tool.ruff.lint.isort]
-known-first-party = ["afterlap_contracts", "afterlap_core", "afterlap_api"]
+known-first-party = ["afterlap_contracts", "afterlap_core", "afterlap_api", "afterlap_ops"]
+force-single-line = false
+combine-as-imports = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 40
+
+[tool.ruff.lint.pylint]
+max-args = 12
+max-branches = 24
+max-returns = 12
+max-statements = 120
 
 [tool.ruff.lint.per-file-ignores]
-# The staging-then-rename write deliberately keeps the handle past the with-block.
 "packages/core/afterlap_core/paths.py" = ["SIM115"]
+"tests/**/*.py" = ["S101", "PLR2004", "ANN001", "ANN201", "ANN202", "ANN002", "ANN003", "ANN204", "PT018", "PT011", "E402"]
+"scripts/**/*.py" = ["T201"]
+"scripts/check_no_comments.py" = ["C901", "PLR0912", "T201"]
+"scripts/demo.py" = ["PLR0915", "T201"]
+"docs/tools/**/*.py" = ["T201", "S110"]
+"workers/**/*.py" = ["T201"]
 
 [tool.mypy]
 python_version = "3.12"
-warn_unused_configs = true
-disallow_untyped_defs = false
+files = ["packages", "apps/api", "scripts", "workers", "tests", "docs/tools/validate_package.py"]
+exclude = ["packages/contracts/generated", "apps/web", "docs/deck", "docs/tools/complete_package.py", "docs/tools/revise_design.py"]
+explicit_package_bases = true
+mypy_path = "packages/contracts:packages/core:apps/api:scripts:workers"
+namespace_packages = true
+pretty = true
+show_error_codes = true
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_reexport = true
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+check_untyped_defs = true
+strict_equality = true
+extra_checks = true
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "casadi.*",
+    "stable_baselines3.*",
+    "gymnasium.*",
+    "tensorboard.*",
+    "skl2onnx.*",
+    "pypdf.*",
+    "prometheus_client.*",
+]
 ignore_missing_imports = true
-exclude = ["packages/contracts/generated", "apps/web"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_decorators = false
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+warn_return_any = false
 
 [build-system]
 requires = ["hatchling"]

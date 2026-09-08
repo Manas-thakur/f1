@@ -14,19 +14,13 @@ import { UNAVAILABLE_TEXT } from '@/contracts/units';
 import styles from '../engineer/workspace.module.css';
 
 function approvalTone(status: ModelManifest['approval_status']) {
-  if (status === 'approved') return 'verified' as const;
-  if (status === 'rejected') return 'failure' as const;
-  if (status === 'candidate') return 'attention' as const;
+  if (status === 'approved') {return 'verified' as const;}
+  if (status === 'rejected') {return 'failure' as const;}
+  if (status === 'candidate') {return 'attention' as const;}
   return 'neutral' as const;
 }
 
-/**
- * A model is approved only if a benchmark report is referenced.
- *
- * An `approval_status` of `approved` with no `benchmark_report_hash` is a
- * defect in the record, not a promotion, and the table says so rather than
- * rendering a green badge.
- */
+
 export function approvalIsSupported(model: ModelManifest): boolean {
   if (model.approval_status !== 'approved') {
     return true;
@@ -135,14 +129,7 @@ const COLUMNS: readonly Column<ModelManifest>[] = [
   { id: 'created', header: 'Created', cell: (row) => row.created_at },
 ];
 
-/**
- * `/models`.
- *
- * Candidate and approved bundles, distinguished by measured benchmark
- * evidence. There is no promote control on this screen: no promotion route
- * exists, promotion is the coordinator's, and a button that did nothing would
- * be a false claim about the system.
- */
+
 export function ModelsView() {
   const query = useModels();
   const models = query.data?.models ?? [];

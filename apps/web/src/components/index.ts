@@ -1,9 +1,4 @@
-/**
- * The shared primitive surface consumed by A09, A10 and A11.
- *
- * Feature agents import from `@/components`; they do not reach into the
- * individual files, and they do not restyle these primitives locally.
- */
+
 export { Button, type ButtonProps, type ButtonState, type ButtonVariant } from './Button';
 export {
   StatusBadge,

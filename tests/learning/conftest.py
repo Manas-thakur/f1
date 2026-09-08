@@ -7,8 +7,7 @@ nothing produced by these fixtures may be presented as a trained model.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Iterator
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -35,6 +34,10 @@ from afterlap_core.learning.features import (
     LookaheadSample,
 )
 from afterlap_core.learning.reward import load_reward_manifest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
 
 TRACK_LENGTH_M = 5_200.0
 """``configs/tracks/test-loop.yaml``. A synthetic sketch, not a surveyed circuit."""
@@ -253,7 +256,7 @@ def estimate_with(
 def bundle_dir(tmp_path: Path) -> Iterator[Path]:
     directory = tmp_path / "bundle"
     directory.mkdir()
-    yield directory
+    return directory
 
 
 def constant_actor_state(size: int = 192) -> dict[str, object]:

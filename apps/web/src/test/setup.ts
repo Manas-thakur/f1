@@ -9,18 +9,16 @@ afterEach(() => {
   useSessionStore.getState().reset();
 });
 
-// jsdom has no ResizeObserver; Radix and the chart frame both probe for it.
+
 if (typeof globalThis.ResizeObserver === 'undefined') {
   globalThis.ResizeObserver = class {
     observe(): void {}
     unobserve(): void {}
     disconnect(): void {}
-  } as unknown as typeof ResizeObserver;
+  };
 }
 
-// jsdom has no 2D canvas. Returning null explicitly is what the real
-// unimplemented method does anyway, minus the console noise, and it is exactly
-// what ChartFrame probes for before it tries to instantiate uPlot.
+
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
   writable: true,
   configurable: true,

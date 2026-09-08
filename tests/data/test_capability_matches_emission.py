@@ -34,8 +34,6 @@ def emitted_channels() -> frozenset[str]:
     bundle = load_bundle(SCENARIO)
     simulator = Simulator()
     simulator.reset(bundle, seed=42)
-    # Run past the observation delay so a real sample exists rather than the
-    # explicit missing state the simulator reports before its buffer fills.
     for _ in range(100):
         simulator.step({"own": DriverAction(profile=DeploymentProfile.PUSH)}, 0.02)
     return frozenset(dict(simulator.observe(car_id="own")["own"].channels))
@@ -85,8 +83,6 @@ def test_electrical_power_is_emitted_and_signed_by_the_registry_convention():
 def test_declared_channels_are_all_in_the_canonical_registry():
     """A capability cannot advertise a name no consumer can interpret."""
     unregistered = [c for c in simulator_capability().supported_channels if not is_registered(c)]
-    # `s_m` and `lap` are simulator-frame quantities; everything a downstream
-    # consumer reads by name must resolve in the shared registry.
     assert unregistered == [] or set(unregistered) <= {"s_m", "lap"}, (
         f"unregistered channels declared: {unregistered}"
     )

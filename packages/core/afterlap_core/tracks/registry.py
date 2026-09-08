@@ -137,11 +137,6 @@ class Registry(_Frozen):
         return isinstance(track_id, str) and any(e.track_id == track_id for e in self.entries)
 
 
-# --------------------------------------------------------------------------- #
-# Source manifests
-# --------------------------------------------------------------------------- #
-
-
 class OpenF1Session(_Frozen):
     """An OpenF1 session the compiler may read ``/location`` telemetry from."""
 
@@ -211,11 +206,6 @@ class SourceManifest(_Frozen):
 
 class ManifestRegistryMismatch(ValueError):
     """A manifest names a track id or event id the registry does not know."""
-
-
-# --------------------------------------------------------------------------- #
-# Loading
-# --------------------------------------------------------------------------- #
 
 
 def registry_path(paths: Paths | None = None, season: int = DEFAULT_SEASON) -> Path:

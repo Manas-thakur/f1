@@ -21,9 +21,9 @@ with `harvest_target_j` being battery energy gain.
 in one place and a battery-side quantity in another:
 
 ```python
-deploy_scale = segment.requested_budget_j / ceiling_integral      # bus-side
+deploy_scale = segment.requested_budget_j / ceiling_integral  # bus-side
 ...
-energy_j += (mean_harvest - mean_deploy / state.discharge_efficiency) * dt   # /eta again
+energy_j += (mean_harvest - mean_deploy / state.discharge_efficiency) * dt  # /eta again
 ```
 
 `ceiling_integral` is the time integral of the ERS-K DC bus ceiling, so the first

@@ -1,21 +1,4 @@
-/**
- * Session attach / snapshot / stream lifecycle.
- *
- * Shared by the engineer console, the lab, replay and the driver display. It
- * lives under `features/engineer/` because that is the only directory this
- * agent was granted that all four routes can import from; nothing in here is
- * engineer-specific. See `handoffs/A09-A11.md`.
- *
- * Order of operations on mount, and it matters:
- *   1. bind the store to the session id, so any envelope for another session
- *      is rejected rather than blended in;
- *   2. read the REST snapshot, which carries the authoritative revision and
- *      `last_sequence`;
- *   3. open the WebSocket, which resumes from that sequence.
- *
- * Opening the socket first would leave the client applying deltas against a
- * revision it has never seen.
- */
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApiError } from '@contracts';
 
@@ -25,25 +8,22 @@ import { SessionStream, type StreamStoreBridge } from '@/api/stream';
 import { useSessionStore } from '@/state/sessionStore';
 
 export interface SessionRuntimeOptions {
-  /** Injectable for tests; defaults to the shared client. */
+  
   readonly client?: ApiClient;
-  /** Injectable for tests; defaults to the global WebSocket. */
+  
   readonly socketFactory?: (url: string) => WebSocket;
-  /**
-   * When false the snapshot is still read but no socket is opened. Used by
-   * views that only need a one-shot read, and by tests.
-   */
+  
   readonly connect?: boolean;
 }
 
 export interface SessionRuntime {
-  /** Re-read the REST snapshot and hand it to the store. */
+  
   readonly refresh: () => Promise<void>;
   readonly snapshotError: ApiError | null;
   readonly loading: boolean;
 }
 
-/** A bridge that always reads the live store, never a captured snapshot. */
+
 function storeBridge(): StreamStoreBridge {
   return {
     applyEnvelope: (envelope) => useSessionStore.getState().applyEnvelope(envelope),
@@ -63,8 +43,7 @@ export function useSessionRuntime(
   const [loading, setLoading] = useState(sessionId !== undefined);
   const [snapshotError, setSnapshotError] = useState<ApiError | null>(null);
 
-  // Options are read through refs so a caller re-rendering with an inline
-  // object does not tear the socket down and rebuild it every render.
+
   const clientRef = useRef<ApiClient>(options.client ?? apiClient);
   clientRef.current = options.client ?? apiClient;
   const socketFactoryRef = useRef<SessionRuntimeOptions['socketFactory']>(options.socketFactory);

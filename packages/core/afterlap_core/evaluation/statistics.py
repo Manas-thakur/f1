@@ -24,13 +24,15 @@ count, never scored.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from afterlap_contracts import BenchmarkComparison, CalibrationReport, CalibrationStatus
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping, Sequence
 
 __all__ = [
     "BootstrapResult",
@@ -250,7 +252,7 @@ def summarise(
         raise ValueError(f"no unit carries both {controller!r} and {reference!r}")
     values = np.asarray([item[2] for item in pairs], dtype=np.float64)
     sign = sample.metric.sign
-    oriented = sign * values  # larger is always better after this
+    oriented = sign * values
     tail_count = max(1, math.ceil((1.0 - alpha) * values.size))
     worst_indices = np.argsort(oriented)[:tail_count]
     ranking = sorted(pairs, key=lambda item: sign * item[2])
@@ -409,10 +411,6 @@ def hierarchical_paired_bootstrap(
         distribution=summarise(sample, controller, reference, alpha=alpha),
     )
 
-
-# --------------------------------------------------------------------------- #
-# Probability calibration
-# --------------------------------------------------------------------------- #
 
 _EPS = 1e-15
 

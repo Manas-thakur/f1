@@ -10,7 +10,7 @@ export interface PanelProps {
   readonly id?: string;
 }
 
-/** A ruled surface. Not a card grid: panels carry different structures. */
+
 export function Panel({ title, headingLevel = 2, actions, children, id }: PanelProps) {
   const Heading = headingLevel === 2 ? 'h2' : 'h3';
   return (
@@ -29,10 +29,7 @@ export function Panel({ title, headingLevel = 2, actions, children, id }: PanelP
 export interface NoticeProps {
   readonly tone?: 'info' | 'attention' | 'failure';
   readonly children: ReactNode;
-  /**
-   * Announce this notice. Use only for significant state changes; never for a
-   * telemetry tick.
-   */
+  
   readonly live?: boolean;
   readonly testId?: string;
 }

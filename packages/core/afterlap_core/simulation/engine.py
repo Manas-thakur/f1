@@ -170,13 +170,12 @@ class Simulator:
         self._geometry: TrackGeometry | None = None
         self._sensor_config: ObservationConfig | None = None
 
-    # ------------------------------------------------------------------ #
-    # lifecycle
-    # ------------------------------------------------------------------ #
-
-    def reset(self, manifest_or_scenario: str | ScenarioConfig | ScenarioBundle, seed: int | None = None,
+    def reset(
+        self,
+        manifest_or_scenario: str | ScenarioConfig | ScenarioBundle,
+        seed: int | None = None,
         environment: EnvironmentField | None = None,
-    ):
+    ) -> Simulator:
         """Load a scenario and build the initial world state.
 
         ``seed`` overrides the scenario's own seed; the override is recorded in
@@ -260,10 +259,6 @@ class Simulator:
         self._record_truth_sample()
         return self
 
-    # ------------------------------------------------------------------ #
-    # helpers used by reset
-    # ------------------------------------------------------------------ #
-
     @staticmethod
     def _clearance_m(bundle: ScenarioBundle, a: str, b: str) -> float:
         """Nose-to-tail longitudinal separation between two car centres.
@@ -291,10 +286,6 @@ class Simulator:
         del car_id
         return thresholds
 
-    # ------------------------------------------------------------------ #
-    # accessors
-    # ------------------------------------------------------------------ #
-
     @property
     def world(self) -> WorldState:
         """Private truth. Exposed for tests and for the branching helper only."""
@@ -318,29 +309,17 @@ class Simulator:
     def session_time_s(self) -> float:
         return self.world.race.session_time_s
 
-    # ------------------------------------------------------------------ #
-    # observation
-    # ------------------------------------------------------------------ #
-
     def observe(
         self, sensor_config: ObservationConfig | None = None, car_id: str | None = None
     ) -> dict[str, Observation]:
         """Build observations. The only path from truth to a controller."""
         return observe(self.world, sensor_config or self.sensor_config, car_id)
 
-    # ------------------------------------------------------------------ #
-    # snapshot / restore
-    # ------------------------------------------------------------------ #
-
     def snapshot(self) -> dict[str, Any]:
         return self.world.capture_complete_state()
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         self.world.restore(snapshot)
-
-    # ------------------------------------------------------------------ #
-    # stepping
-    # ------------------------------------------------------------------ #
 
     def step(self, driver_actions: dict[str, DriverAction] | None, dt_s: float) -> StepReport:
         """Advance the world by ``dt_s`` seconds."""
@@ -349,7 +328,6 @@ class Simulator:
         world = self.world
         report = StepReport(session_time_s=world.race.session_time_s, dt_s=dt_s, substeps=0)
 
-        # --- (3a) accept new driver inputs into the reaction-delay queues ---
         supplied = dict(driver_actions or {})
         for car_id in sorted(world.cars):
             if car_id in supplied:
@@ -366,13 +344,10 @@ class Simulator:
 
         while remaining > 1e-12:
             now = world.race.session_time_s
-            # --- (3b) apply delayed driver actions whose time has come ---
             self._activate_actions(now)
-            # --- (2) update legal profiles ---
             self._update_legal_profiles(report)
 
             h = min(remaining, self._next_boundary_gap(now, remaining))
-            # --- (4, 5) forces and integration ---
             trials = self._integrate_all(h)
             split = self._earliest_crossing(now, h, trials)
             if split is not None and _MIN_SUBSTEP_S < split - now < h - _MIN_SUBSTEP_S:
@@ -383,22 +358,15 @@ class Simulator:
             world.clock.advance(h)
             remaining -= h
             report.substeps += 1
-            # --- (1, 9) line events at their interpolated crossing time ---
             self._schedule_crossings(now, h, trials)
             self._process_events(world.race.session_time_s, report)
 
-        # --- (7) geometry and passes ---
         self._detect_passes(report)
-        # --- (8) buffer a truth sample for the delayed sensor path ---
         self._record_truth_sample()
         world.race.step_index += 1
         world.last_dt_s = dt_s
         world.race.leader_lap = max(state.lap for state in world.cars.values())
         return report
-
-    # ------------------------------------------------------------------ #
-    # driver action plumbing
-    # ------------------------------------------------------------------ #
 
     def _policy_action(self, car_id: str, policy: OpponentPolicy) -> DriverAction:
         """Opponents decide from their own observation, never from truth."""
@@ -410,15 +378,14 @@ class Simulator:
 
     def _enqueue_action(self, car_id: str, action: DriverAction, report: StepReport) -> None:
         world = self.world
-        assert world.streams is not None and world.keyed is not None
+        assert world.streams is not None
+        assert world.keyed is not None
         driver = world.driver_configs[car_id]
         mean = float(driver.reaction_delay_mean_s.value)
         std = float(driver.reaction_delay_std_s.value)
         jitter = float(driver.execution_jitter_s.value)
         delay = mean
         if std > 0.0 or jitter > 0.0:
-            # Keyed by physical time so a branch that reaches the same instant
-            # draws the same human variability.
             perturbation = world.keyed.normal(f"driver_delay:{car_id}", world.race.session_time_s, scale=1.0)
             delay = mean + perturbation * math.hypot(std, jitter)
         delay = max(0.0, delay)
@@ -485,10 +452,6 @@ class Simulator:
                 )
                 state.active_profile = DeploymentProfile.HARVEST
 
-    # ------------------------------------------------------------------ #
-    # forces and integration
-    # ------------------------------------------------------------------ #
-
     def _envelope_speed(self, car_id: str, s_m: float, braking_fraction: float) -> float:
         """Highest entry speed that still fits every corner in the preview.
 
@@ -504,10 +467,6 @@ class Simulator:
         car = world.car_configs[car_id]
         samples = s_m + _PREVIEW_OFFSETS
         curvature = np.abs(track.curvature_array(samples))
-        # The planned corner speed reserves a slice of the grip envelope for
-        # longitudinal use. Planning at 100% lateral utilisation leaves the car
-        # with no braking authority exactly where it needs it, and any small
-        # overshoot then cannot be recovered.
         mu = track.mu_array(samples) * _CORNER_GRIP_SHARE
         factor = car.downforce_factor_inv_m
         denominator = curvature - mu * factor
@@ -534,10 +493,6 @@ class Simulator:
         speed = limits[-1]
         for index in range(len(limits) - 2, -1, -1):
             distance = offsets[index + 1] - offsets[index]
-            # Predictor at the exit of the interval, corrector at its entry: over
-            # the interval the car is faster and the corner may be tighter than
-            # at the exit, so taking the smaller of the two decelerations keeps
-            # the planned braking point on the safe side.
             exit_decel = available_decel(grips[index + 1], curvatures[index + 1], speed)
             predicted = math.sqrt(speed * speed + 2.0 * exit_decel * distance)
             entry_decel = available_decel(grips[index], curvatures[index], predicted)
@@ -568,24 +523,16 @@ class Simulator:
         session_time_s = world.race.session_time_s
         environment = world.environment
 
-        # Atmosphere and surface come through the EnvironmentField seam. The
-        # default StaticEnvironment returns the car document's density, still
-        # air and a unit grip multiplier, so synthetic runs are bit-identical to
-        # the pre-A16 engine; a conditions tape changes these two lines only.
         rho = environment.air_density_kgpm3(s_m, session_time_s, float(car.air_density_kgpm3.value))
 
         curvature = track.curvature_at(s_m)
         grade = track.grade_at(s_m)
         mu = track.mu_at(s_m) * environment.grip_multiplier(s_m, session_time_s)
-        # Wind is projected onto the local heading; a headwind raises the air
-        # speed the drag term sees without changing ground speed.
         heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
         air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))
 
         down_n = physics.downforce(rho, float(car.cla_m2.value), air_speed)
         envelope_n = physics.traction_limit(mass, physics.GRAVITY_MPS2, mu, down_n)
-        # The raw demand is kept for diagnostics; only the envelope split uses
-        # the clamped value, so a validation test can still see a violation.
         lateral_demand_n = mass * speed * speed * abs(curvature)
         long_envelope_n = physics.longitudinal_envelope(envelope_n, min(lateral_demand_n, envelope_n))
 
@@ -614,16 +561,9 @@ class Simulator:
             throttle = 0.0 if action.throttle is None else action.throttle
             brake = 0.0 if action.brake is None else action.brake
         elif speed > target_speed + _BRAKE_DEADBAND_MPS:
-            # Behind the braking curve. ``target_speed`` already encodes the
-            # deceleration the tyres can actually deliver, so being above it
-            # means the braking point has passed: brake at the envelope rather
-            # than closing the error gently, which is what a driver does and
-            # what keeps the car inside the friction ellipse.
             throttle = 0.0
             brake = min(1.0, (speed - target_speed) / _BRAKE_BAND_MPS)
         else:
-            # First-order speed governor on the power side. ``tau`` is the time
-            # constant with which the driver closes the gap to the target.
             tau = 0.6
             desired_a = (target_speed - speed) / tau
             required_n = mass * desired_a + drag_n + roll_n + grade_n
@@ -708,18 +648,12 @@ class Simulator:
         for car_id in sorted(world.cars):
             state = world.cars[car_id]
             action = world.active_actions[car_id]
-            # Predictor at the start of the step, purely to locate the midpoint.
-            # Its electrical plan is provisional and is thrown away.
             first, _ = self._evaluate(
                 car_id, state.progress_m, state.speed_mps, state.lateral_d_m, action, h, None
             )
             mid_progress = state.progress_m + 0.5 * h * state.speed_mps
             mid_speed = max(0.0, state.speed_mps + 0.5 * h * first.acceleration_mps2)
             mid_lateral = state.lateral_d_m + 0.5 * h * first.lateral_rate_mps
-            # Corrector at the midpoint. Its plan is the one that gets committed,
-            # so the electrical demand is second-order accurate too, and it is
-            # still saturated once against the whole step from the start-of-step
-            # stored energy, which keeps the ledger closing exactly.
             second, plan = self._evaluate(car_id, mid_progress, mid_speed, mid_lateral, action, h, None)
 
             speed_next = max(0.0, state.speed_mps + h * second.acceleration_mps2)
@@ -760,7 +694,6 @@ class Simulator:
             state.heading_error_rad = trial.heading_error_rad
             state.elapsed_time_s += h
 
-            # --- (6) thermal state, analytic over the sub-step ---
             state.battery_temperature_k = physics.thermal_step(
                 state.battery_temperature_k,
                 float(car.c_th_j_per_k.value),
@@ -792,10 +725,6 @@ class Simulator:
                         "status": "unsupported_by_reduced_model",
                     }
                 )
-
-    # ------------------------------------------------------------------ #
-    # events, crossings and checkpoints
-    # ------------------------------------------------------------------ #
 
     def _next_boundary_gap(self, now: float, remaining: float) -> float:
         """Time to the next queued event or delayed action inside this step."""
@@ -859,8 +788,6 @@ class Simulator:
             state = world.cars[car_id]
             ledger = world.ledgers[car_id]
             if line_id == TIMING_LINE_ID:
-                # Only the per-lap counter resets. No battery refill, and the
-                # cumulative regulatory ledger is untouched.
                 ledger.reset_lap_counters()
                 state.recharge_ledger_this_lap_j = ledger.recharge_this_lap_j
             else:
@@ -877,10 +804,6 @@ class Simulator:
                 world.checkpoint_records.append(record)
                 report.checkpoints.append(record)
                 self._evaluate_retention(car_id, line_id, event.time_s, report)
-
-    # ------------------------------------------------------------------ #
-    # geometry and passes
-    # ------------------------------------------------------------------ #
 
     def _overlapping(self, a: str, b: str) -> bool:
         world = self.world
@@ -994,10 +917,6 @@ class Simulator:
             world.passes.append(record)
             report.passes.append(record)
 
-    # ------------------------------------------------------------------ #
-    # sensor buffer
-    # ------------------------------------------------------------------ #
-
     def _record_truth_sample(self) -> None:
         """Append the current truth to the delay buffer.
 
@@ -1020,11 +939,6 @@ class Simulator:
                     "battery_temperature_k": state.battery_temperature_k,
                     "recharge_this_lap_j": state.recharge_ledger_this_lap_j,
                     "recharge_cumulative_j": state.recharge_ledger_j,
-                    # Signed DC-bus power, using the channel registry's stated
-                    # convention: positive deploys to the wheels, negative
-                    # harvests. The estimator integrates this to propagate
-                    # energy; without it there is nothing to integrate and the
-                    # energy belief drifts on the correction term alone.
                     "electrical_power_w": state.deploy_power_dc_w - state.harvest_power_dc_w,
                     "active_profile_code": state.active_profile.value,
                 }
@@ -1036,10 +950,6 @@ class Simulator:
         cutoff = world.race.session_time_s - horizon
         while len(world.sensor_buffer) > 2 and world.sensor_buffer[1].session_time_s < cutoff:
             world.sensor_buffer.pop(0)
-
-    # ------------------------------------------------------------------ #
-    # diagnostics
-    # ------------------------------------------------------------------ #
 
     def detect_geometry_events(self) -> list[PassRecord]:
         """Re-run pass and contact detection against the current state.

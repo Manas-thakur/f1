@@ -46,9 +46,6 @@ def _event(sequence: int, channel: str, value: float, unit: str, source_time_s: 
     )
 
 
-# -- the linearisation ----------------------------------------------------
-
-
 @pytest.mark.parametrize(
     "state",
     [
@@ -78,8 +75,6 @@ def test_hand_written_jacobian_matches_central_difference(
 
     numeric = np.zeros_like(analytic)
     for column in range(x.size):
-        # Scaled step: a 1e-4 absolute step on a 12000 m progress value would be
-        # swallowed by float64 round-off, so the step follows the magnitude.
         step = 1e-5 * max(1.0, abs(float(x[column])))
         forward = x.copy()
         backward = x.copy()
@@ -102,13 +97,9 @@ def test_jacobian_captures_the_drag_nonlinearity(own_config: OwnCarConfig) -> No
     fast = model.jacobian(np.array([0.0, 90.0, 0.0, 0.0]), 0.05)
     assert slow[STATE_ACCELERATION, STATE_SPEED] < 0.0
     assert fast[STATE_ACCELERATION, STATE_SPEED] < slow[STATE_ACCELERATION, STATE_SPEED]
-    # d a'/d v is exactly -2 k v (1 - alpha); check the ratio, which removes alpha.
     assert fast[STATE_ACCELERATION, STATE_SPEED] / slow[STATE_ACCELERATION, STATE_SPEED] == pytest.approx(
         9.0, rel=1e-12
     )
-
-
-# -- covariance behaviour -------------------------------------------------
 
 
 def test_covariance_grows_monotonically_under_pure_prediction(own_config: OwnCarConfig) -> None:
@@ -175,7 +166,7 @@ def test_a_measurement_reduces_the_corresponding_variance(own_config: OwnCarConf
     ]
     for channel, value, unit, index in observations:
         variance_before = float(filter_.state.covariance[index, index])
-        filter_._apply(  # exercising one correction in isolation
+        filter_._apply(
             _observation(channel, value, unit, 1.0),
             context,
             0.0,
@@ -219,7 +210,6 @@ def test_clock_uncertainty_inflates_the_effective_measurement_noise(own_config: 
     inflated_speed = filter_.measurement_variance("speed_mps", clock_uncertainty_s=0.02)
     assert inflated_speed - base_speed == pytest.approx((3.0 * 0.02) ** 2, rel=1e-12)
 
-    # And the inflation is monotone in sigma_c, never a narrowing.
     previous = base_progress
     for sigma in (0.01, 0.05, 0.2):
         current = filter_.measurement_variance("progress_m", clock_uncertainty_s=sigma)
@@ -238,9 +228,6 @@ def test_clock_uncertainty_leaves_a_wider_posterior(own_config: OwnCarConfig) ->
         filter_._apply(_observation("progress_m", 100.5, "m", 1.0), make_context(1.0), sigma)
         posteriors.append(float(filter_.state.covariance[STATE_PROGRESS, STATE_PROGRESS]))
     assert posteriors[1] > posteriors[0]
-
-
-# -- causality ------------------------------------------------------------
 
 
 def test_an_observation_after_the_cutoff_is_rejected_and_changes_nothing(
@@ -289,9 +276,6 @@ def test_the_filter_never_predicts_backwards(own_config: OwnCarConfig) -> None:
     filter_.state.time_s = 5.0
     with pytest.raises(ValueError, match="predict backwards"):
         filter_.predict_to(4.0)
-
-
-# -- energy integration ---------------------------------------------------
 
 
 def test_energy_integrates_measured_power_over_a_hand_computed_interval(
@@ -353,8 +337,6 @@ def test_a_battery_measurement_corrects_the_integrated_energy(own_config: OwnCar
     estimate = update(events, state, make_context(2.0, rival_car_ids=()))
     value = estimate.own_car.battery_energy_j.value
     assert value is not None
-    # The integral said 2200000, the measurement says 2150000; the posterior sits
-    # strictly between the two and closer to whichever is more certain.
     assert 2_150_000.0 < value < 2_200_000.0
     assert state.own.state.energy.corrections == 1
     assert estimate.own_car.battery_energy_j.standard_deviation is not None

@@ -11,17 +11,12 @@ interface Overflow {
   readonly offenders: readonly { selector: string; right: number }[];
 }
 
-/**
- * Measures both the document width and every element that sticks out past the
- * viewport. Checking only `document.body.scrollWidth` misses a child inside an
- * `overflow: hidden` ancestor, which is exactly how a clipped-but-broken
- * layout hides a bug.
- */
+
 async function measureOverflow(page: Page): Promise<Overflow> {
   return page.evaluate(() => {
     const innerWidth = window.innerWidth;
     const offenders: { selector: string; right: number }[] = [];
-    const allowance = 1; // sub-pixel rounding
+    const allowance = 1; 
 
     const describe = (el: Element): string => {
       const id = el.id === '' ? '' : `#${el.id}`;
@@ -32,15 +27,10 @@ async function measureOverflow(page: Page): Promise<Overflow> {
       return `${el.tagName.toLowerCase()}${id}${cls}`;
     };
 
-    /**
-     * Content inside an explicit scroll container is meant to be wider than
-     * its box: that is the labelled, scrollable table the design calls for.
-     * Only flag an element when nothing between it and the viewport clips or
-     * scrolls it, i.e. when it really does widen the page.
-     */
+    
     const isContained = (el: Element): boolean => {
-      // `html` and `body` both carry `overflow-x: clip` as a last-resort guard.
-      // They must not count as containment, or the check passes vacuously.
+
+
       let parent = el.parentElement;
       while (parent !== null && parent !== document.body && parent !== document.documentElement) {
         const style = window.getComputedStyle(parent);
@@ -58,7 +48,7 @@ async function measureOverflow(page: Page): Promise<Overflow> {
       if (style.display === 'none' || style.visibility === 'hidden') {
         continue;
       }
-      // Content inside a closed <details> is laid out but not shown.
+
       if (el.closest('details:not([open])') !== null && el.tagName !== 'SUMMARY') {
         continue;
       }
@@ -128,8 +118,8 @@ test.describe('narrow layouts keep controls reachable', () => {
     const bodyOverflows = await page.evaluate(
       () => document.body.scrollWidth > window.innerWidth,
     );
-    // The container may or may not need to scroll at this width, but the page
-    // must never widen either way.
+
+
     expect(bodyOverflows).toBe(false);
     expect(typeof scrolls).toBe('boolean');
   });

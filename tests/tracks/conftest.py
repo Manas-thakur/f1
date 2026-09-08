@@ -9,7 +9,7 @@ claims to be a real circuit.
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -30,6 +30,9 @@ from afterlap_core.tracks import (
     ValidationReport,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 SYNTHETIC_TRACK_ID = "synthetic-oval-package"
 SYNTHETIC_LENGTH_M = 2400.0
 
@@ -42,7 +45,7 @@ def analytic_loop(length_m: float = SYNTHETIC_LENGTH_M, *, corridor: bool = Fals
     theta = s / radius
     x = radius * np.cos(theta)
     y = radius * np.sin(theta)
-    z = 2.0 * np.sin(theta)  # gentle synthetic elevation so grade is non-zero
+    z = 2.0 * np.sin(theta)
     yaw = theta + np.pi / 2.0
     curvature = np.full(n, 1.0 / radius)
     grade = np.gradient(z, s)

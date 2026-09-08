@@ -24,10 +24,9 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session as OrmSession
 
 from afterlap_contracts import (
     TERMINAL_RECOMMENDATION_STATUSES,
@@ -50,6 +49,9 @@ from .models import (
     Session,
     SessionEvent,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session as OrmSession
 
 
 class LifecycleError(Exception):
@@ -251,8 +253,6 @@ def store_decision(
         session_id=recommendation.session_id,
         event_type="recommendation_updated",
         session_time_s=recommendation.created_at_s,
-        # The payload carries its own discriminator so a stored row validates
-        # as a StreamEnvelope without the publisher having to repair it.
         payload={
             "event_type": "recommendation_updated",
             "recommendation": recommendation.model_dump(mode="json"),
@@ -341,8 +341,6 @@ def apply_operator_action(
             current_revision=recommendation.revision,
         )
 
-    # Rule invalidation is processed before selection: a plan checked against a
-    # superseded pack is invalid regardless of what the browser still shows.
     if recommendation.ruleset_hash != current_ruleset_hash:
         invalidated = _transition(
             db,
@@ -396,11 +394,6 @@ def apply_operator_action(
         db, decision, recommendation, _RESULTING_STATUS[action], session_time_s, reason=reason
     )
 
-    # An operator action is durable audit, not a stream message: there is no
-    # StreamEventType for it, and the lifecycle change it caused is already
-    # published by _transition as recommendation_updated. Writing an outbox row
-    # here would queue something no client can validate, so it is appended to
-    # the event log with publish=False.
     operator_event = append_event(
         db,
         session_id=session_id,
@@ -543,8 +536,6 @@ def record_execution(
 
     recommendation = Recommendation.model_validate(decision.payload)
     if recommendation.status is not RecommendationStatus.COMMUNICATED:
-        # Execution observed against advice that was never communicated is kept
-        # as evidence, but it does not fabricate a lifecycle step.
         return recommendation
 
     return _transition(

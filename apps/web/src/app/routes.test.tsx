@@ -9,6 +9,16 @@ import { AppRoutes } from './routes';
 import { SYNTHETIC_DATA_NOTICE } from '../fixtures/notices';
 import { SESSION_SNAPSHOT } from '../test/contractFixtures';
 
+function hrefOf(input: RequestInfo | URL): string {
+  if (typeof input === 'string') {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return input.url;
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -49,10 +59,9 @@ beforeEach(() => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string | URL | Request) => {
-      const url = String(input);
-      // The snapshot route must be matched before the collection route: the
-      // feature views read it, and answering with a session list would hand
-      // them a structurally wrong snapshot.
+      const url = hrefOf(input);
+
+
       if (url.includes('/snapshot')) {
         return jsonResponse(SESSION_SNAPSHOT);
       }

@@ -1,19 +1,11 @@
-/**
- * Scenario validation, before anything is started.
- *
- * The shipped rule packs all declare `reviewed: false`, and the shipped
- * scenarios are all `synthetic: true`. That is the honest state of this
- * project, so validation does not pretend otherwise: it refuses to start until
- * the operator has explicitly acknowledged that the inputs are synthetic and
- * unreviewed, and it never relabels them.
- */
+
 import type { ModelManifest, RuleManifest, SessionMode } from '@contracts';
 
 export interface ScenarioDraft {
   readonly mode: SessionMode;
   readonly scenarioId: string;
   readonly rulesetId: string;
-  /** Kept as text so an empty or non-numeric entry is a validation error. */
+  
   readonly seed: string;
   readonly modelBundleId: string;
   readonly label: string;
@@ -30,11 +22,7 @@ export const EMPTY_DRAFT: ScenarioDraft = {
   acknowledgedSynthetic: false,
 };
 
-/**
- * Scenario and rule-pack ids shipped in `configs/`. These are suggestions for
- * the operator, not an authority: the control plane resolves the documents and
- * is free to reject an id that is not present.
- */
+
 export const SHIPPED_SCENARIO_IDS: readonly string[] = [
   'two-straight-counterattack',
   'oval-defend-hold',
@@ -58,9 +46,9 @@ export interface ValidationIssue {
 }
 
 export interface ValidationContext {
-  /** Manifest read from `GET /rulesets/{id}`, or null when not loaded. */
+  
   readonly ruleManifest: RuleManifest | null;
-  /** Why the ruleset could not be read, when it could not. */
+  
   readonly rulesetError: string | null;
   readonly rulesetLoading: boolean;
   readonly models: readonly ModelManifest[];
@@ -69,7 +57,7 @@ export interface ValidationContext {
 export interface ValidationResult {
   readonly issues: readonly ValidationIssue[];
   readonly canStart: boolean;
-  /** True when the configuration will produce synthetic output. */
+  
   readonly synthetic: boolean;
 }
 
@@ -189,7 +177,7 @@ export function validateScenario(
   return {
     issues,
     canStart: issues.every((issue) => issue.severity !== 'error'),
-    synthetic: manifest === null ? true : manifest.synthetic !== false,
+    synthetic: manifest === null ? true : manifest.synthetic,
   };
 }
 

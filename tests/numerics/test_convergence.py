@@ -72,9 +72,6 @@ def _bundle():
 def _run_suite(dt_s: float) -> dict[str, dict[str, float]]:
     bundle = _bundle()
     simulator = Simulator().reset(bundle)
-    # Fill the sensor delay buffer so both branches start from a live state.
-    # The pre-roll is a fixed *duration*, not a fixed step count, otherwise the
-    # resolutions would be compared from three different initial conditions.
     elapsed = 0.0
     while elapsed < PRE_ROLL_S - 1e-12:
         simulator.step(None, min(dt_s, PRE_ROLL_S - elapsed))

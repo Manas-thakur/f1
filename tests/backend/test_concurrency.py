@@ -13,6 +13,14 @@ import threading
 from pathlib import Path
 
 import pytest
+from workers.session_worker import (
+    ANY_REVISION,
+    SessionWorkerHandle,
+    WorkerBusy,
+    WorkerCommand,
+    WorkerConfig,
+    run_command_loop,
+)
 
 from afterlap_api.db import LifecycleError
 from afterlap_api.db.engine import command_transaction
@@ -29,14 +37,6 @@ from afterlap_contracts import (
 )
 from afterlap_core.paths import Paths
 from afterlap_core.rules import load_rule_pack
-from workers.session_worker import (
-    ANY_REVISION,
-    SessionWorkerHandle,
-    WorkerBusy,
-    WorkerCommand,
-    WorkerConfig,
-    run_command_loop,
-)
 
 from .conftest import (
     OPERATOR,
@@ -55,9 +55,6 @@ def _published(session):  # type: ignore[no-untyped-def]
     return tick.recommendation
 
 
-# --- concurrent selection --------------------------------------------------------
-
-
 def test_a_second_operator_cannot_race_the_lease_holder(db_factory):
     session = start_session(db_factory)
     recommendation = _published(session)
@@ -71,7 +68,6 @@ def test_a_second_operator_cannot_race_the_lease_holder(db_factory):
             operator_id="engineer-two",
         )
     assert refused.value.code is ErrorCode.LEASE_NOT_HELD
-    # The refusal changed nothing: the recommendation is still selectable.
     assert session.status_of(recommendation.id) is RecommendationStatus.PROPOSED
 
     outcome = session.act(recommendation, OperatorAction.SELECT, idempotency_key="holder-select")
@@ -115,16 +111,12 @@ def test_concurrent_selections_of_one_recommendation_produce_exactly_one_transit
         assert len(transitions) == 1, "the race produced two selected transitions"
 
 
-# --- stale revision ---------------------------------------------------------------
-
-
 def test_a_stale_expected_revision_is_refused(db_factory):
     session = start_session(db_factory)
     recommendation = _published(session)
     session.take_lease()
     session.act(recommendation, OperatorAction.SELECT, idempotency_key="s1")
 
-    # The UI still holds revision 0; the server has moved to 1.
     with pytest.raises(LifecycleError) as refused:
         session.act(
             recommendation,
@@ -148,7 +140,6 @@ def test_a_planning_result_for_a_superseded_revision_is_discarded(db_factory):
     assert request is not None
     issued_revision = request.revision
 
-    # While the solver is busy, the session is invalidated.
     new_revision = runtime.invalidate("ruleset changed mid-solve")
     assert new_revision > issued_revision
 
@@ -160,13 +151,9 @@ def test_a_planning_result_for_a_superseded_revision_is_discarded(db_factory):
     assert application.current_revision == new_revision
     assert "discarded" in application.reason
 
-    # A result issued against the *current* revision is applied.
     fresh = runtime.open_plan_request(tick.estimate, tick.rule_context)
     assert fresh is not None
     assert runtime.accept_plan_result(fresh, runtime.planner.plan(fresh)).applied is True
-
-
-# --- duplicate command -------------------------------------------------------------
 
 
 def test_the_same_idempotency_key_and_body_returns_the_prior_result(db_factory):
@@ -205,9 +192,6 @@ def test_the_same_idempotency_key_with_a_different_body_is_a_conflict(db_factory
     assert conflict.value.code is ErrorCode.IDEMPOTENCY_CONFLICT
 
 
-# --- rule change racing a selection -------------------------------------------------
-
-
 def test_a_rule_change_arriving_with_a_selection_is_processed_first(db_factory):
     """API.md: if selection arrives with a rule invalidation, invalidate first."""
     session = start_session(db_factory)
@@ -226,8 +210,6 @@ def test_a_rule_change_arriving_with_a_selection_is_processed_first(db_factory):
     with pytest.raises(LifecycleError) as refused:
         session.act(recommendation, OperatorAction.SELECT, idempotency_key="race-rules")
     assert refused.value.code is ErrorCode.RECOMMENDATION_INVALIDATED
-    # The invalidation was persisted even though the command was refused: the
-    # recommendation genuinely is invalid now.
     assert session.status_of(recommendation.id) is RecommendationStatus.INVALIDATED
 
 
@@ -243,7 +225,6 @@ def test_swapping_the_rule_pack_invalidates_outstanding_advice_in_the_runtime(db
     assert session.status_of(recommendation.id) is RecommendationStatus.INVALIDATED
     assert runtime.rule_pack.ruleset_hash == load_rule_pack(STRICT_RULE_PACK_ID).ruleset_hash
 
-    # The next decision is made against the new pack, and it says so.
     tick = session.advance(1.0)
     assert tick.rule_context is not None
     assert tick.rule_context.ruleset_hash == runtime.rule_pack.ruleset_hash
@@ -265,9 +246,6 @@ def test_an_unresolved_gap_threshold_keeps_eligibility_unknown(db_factory):
     assert tick.recommendation.action_code.value == "withdraw_advice"
 
 
-# --- disconnect and resync -----------------------------------------------------------
-
-
 def test_a_client_that_disconnects_and_returns_receives_the_gap(db_factory):
     from afterlap_api.stream import StreamHub
 
@@ -284,7 +262,6 @@ def test_a_client_that_disconnects_and_returns_receives_the_gap(db_factory):
             seen.append(subscriber.queue.get_nowait().sequence)
         await hub.unsubscribe(subscriber)
 
-        # ... the client is away while more happens ...
         session.advance(1.0)
         await publisher.drain_once()
 
@@ -299,9 +276,6 @@ def test_a_client_that_disconnects_and_returns_receives_the_gap(db_factory):
     assert resync is False, "a cursor inside the buffer must not force a resync"
     assert min(gap) > max(seen), "the replay repeated envelopes the client already had"
     assert gap == sorted(gap)
-
-
-# --- interrupted export ---------------------------------------------------------------
 
 
 def test_an_interrupted_export_leaves_no_partial_file(db_factory, tmp_path, monkeypatch):
@@ -333,15 +307,11 @@ def test_an_interrupted_export_leaves_no_partial_file(db_factory, tmp_path, monk
     with command_transaction(db_factory) as db:
         assert db.query(ExportJob).count() == 0, "a failed export was recorded as a job"
 
-    # The same export succeeds once the volume is back, and it is complete.
     monkeypatch.undo()
     written = export_routes._write(target, body, "json")
     reloaded = json.loads(Path(written).read_text(encoding="utf-8"))
     assert reloaded["session"]["id"] == session.session_id
     assert reloaded["hashes"]["ruleset"] == session.manifest.ruleset_hash
-
-
-# --- worker restart ---------------------------------------------------------------------
 
 
 def _drive(config: WorkerConfig):  # type: ignore[no-untyped-def]
@@ -377,15 +347,12 @@ def test_the_worker_loop_refuses_stale_and_expired_commands(db_factory):
         moved = second.revision
         assert moved != revision
 
-        # A command issued against the old revision is refused as stale and is
-        # not executed at all.
         stale = WorkerCommand.now("observe", config.session_id, expected_revision=revision, duration_s=1.0)
         commands.put(stale)
         third = results.get(True, 60.0)
         assert third.stale is True and third.ok is False
         assert third.revision == moved, "a stale command was executed anyway"
 
-        # An already-expired absolute deadline is refused before any work starts.
         expired = WorkerCommand(
             kind="observe",
             session_id=config.session_id,
@@ -413,7 +380,6 @@ def test_the_worker_queue_is_bounded_and_refuses_rather_than_buffering(db_factor
         ),
         queue_size=1,
     )
-    # Never started, so nothing drains the queue.
     handle._process = _AlwaysAlive()  # type: ignore[assignment]
     handle.send(WorkerCommand.now("observe", session.session_id))
     with pytest.raises(WorkerBusy):
@@ -461,14 +427,9 @@ def test_a_spawned_worker_process_serves_and_restarts(db_factory):
         assert restarted.alive
         again = restarted.request(WorkerCommand.now("initialise", config.session_id), timeout_s=180.0)
         assert again.ok is True
-        # A restart starts from a clean session; it does not inherit the dead
-        # process's state, and its revision starts again from initialisation.
         assert again.revision == 1
     finally:
         restarted.stop()
-
-
-# --- stream dedup across a reconnect -----------------------------------------------------
 
 
 def test_a_reconnecting_client_deduplicates_repeated_deliveries(db_factory):
@@ -486,7 +447,6 @@ def test_a_reconnecting_client_deduplicates_repeated_deliveries(db_factory):
         while not first.queue.empty():
             consumer.offer(first.queue.get_nowait())
         await hub.unsubscribe(first)
-        # The client reconnects from an older cursor and receives the overlap.
         again, _ = await hub.subscribe(session.session_id, 0)
         while not again.queue.empty():
             consumer.offer(again.queue.get_nowait())

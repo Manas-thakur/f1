@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { useSessionStore } from '@/state/sessionStore';
 import { SESSION_SNAPSHOT } from '@/test/contractFixtures';
 import { telemetryEnvelope } from '@/test/envelopes';
+import type {
+  FakeSocket} from '../engineer/testUtils';
 import {
-  FakeSocket,
   apiClientFor,
   makeFetch,
   renderRoute,
@@ -76,8 +77,7 @@ describe('alignment is stated, never implied', () => {
 
     await user.click(screen.getByRole('radio', { name: /common elapsed time/ }));
 
-    // The fixture series is indexed by progress_m; re-indexing it would invent
-    // samples, so the view says so instead.
+
     expect(await screen.findByTestId('axis-mismatch')).toHaveTextContent(
       'are not re-indexed, because re-indexing without a mapping would invent samples',
     );
@@ -92,9 +92,8 @@ describe('the shared cursor', () => {
     const sliders = await screen.findAllByRole('slider');
     expect(sliders.length).toBeGreaterThan(0);
     const slider = sliders[0] as HTMLInputElement;
-    // jsdom does not implement keyboard interaction for a range input, so the
-    // change event is dispatched directly. What is under test is that the
-    // panel writes the workspace cursor rather than keeping a private one.
+
+
     fireEvent.change(slider, { target: { value: '15' } });
 
     await waitFor(() => expect(useSessionStore.getState().view.cursorValue).not.toBeNull());

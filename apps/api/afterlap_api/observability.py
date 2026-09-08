@@ -13,12 +13,14 @@ import sys
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from afterlap_core.diagnostics import redact
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 _CONFIGURED = False
 

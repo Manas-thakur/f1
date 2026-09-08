@@ -34,7 +34,7 @@ const MOTION_OPTIONS: readonly { value: MotionPreference; label: string; descrip
   },
 ];
 
-/** `/settings` — density and reduced-motion preferences, with a live preview. */
+
 export function SettingsPage() {
   const density = useSessionStore((s) => s.view.density);
   const motion = useSessionStore((s) => s.view.motion);
@@ -61,8 +61,12 @@ export function SettingsPage() {
               <legend className="afterlap-visually-hidden">Display density</legend>
               {DENSITY_OPTIONS.map((option) => (
                 <div key={option.value} style={{ marginBottom: 'var(--s3)' }}>
-                  <label style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'baseline' }}>
+                  <label
+                    htmlFor={`density-${option.value}`}
+                    style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'baseline' }}
+                  >
                     <input
+                      id={`density-${option.value}`}
                       type="radio"
                       name="density"
                       value={option.value}
@@ -70,7 +74,7 @@ export function SettingsPage() {
                       onChange={() => setDensity(option.value)}
                     />
                     <span>
-                      <strong>{option.label}</strong>
+                      {option.label}
                       <br />
                       <span className="afterlap-muted afterlap-small">{option.description}</span>
                     </span>
@@ -85,8 +89,12 @@ export function SettingsPage() {
               <legend className="afterlap-visually-hidden">Motion preference</legend>
               {MOTION_OPTIONS.map((option) => (
                 <div key={option.value} style={{ marginBottom: 'var(--s3)' }}>
-                  <label style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'baseline' }}>
+                  <label
+                    htmlFor={`motion-${option.value}`}
+                    style={{ display: 'flex', gap: 'var(--s2)', alignItems: 'baseline' }}
+                  >
                     <input
+                      id={`motion-${option.value}`}
                       type="radio"
                       name="motion"
                       value={option.value}
@@ -94,7 +102,7 @@ export function SettingsPage() {
                       onChange={() => setMotion(option.value)}
                     />
                     <span>
-                      <strong>{option.label}</strong>
+                      {option.label}
                       <br />
                       <span className="afterlap-muted afterlap-small">{option.description}</span>
                     </span>

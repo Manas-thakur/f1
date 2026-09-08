@@ -18,6 +18,7 @@ changed nothing would be decoration.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from enum import StrEnum
 
@@ -94,7 +95,7 @@ class DegradationReport:
     def __bool__(self) -> bool:
         return bool(self.findings)
 
-    def __iter__(self):  # type: ignore[no-untyped-def]
+    def __iter__(self) -> Iterator[DegradationFinding]:
         return iter(self.findings)
 
     def has(self, row: DegradationRow) -> bool:
@@ -134,9 +135,6 @@ class DegradationReport:
 
     def as_list(self) -> list[dict[str, object]]:
         return [finding.as_dict() for finding in self.findings]
-
-
-# --- row 1: missing own-car energy -------------------------------------------------
 
 
 def own_energy_finding(estimate: StateEstimate) -> DegradationFinding | None:
@@ -180,9 +178,6 @@ def conservative_energy_floor_j(estimate: StateEstimate, *, manifest_floor_j: fl
     return manifest_floor_j
 
 
-# --- row 2: unknown opponent energy -----------------------------------------------
-
-
 def rival_energy_finding(estimate: StateEstimate) -> DegradationFinding | None:
     """Unknown opponent energy -> wider scenarios, never a made-up point value."""
     if not estimate.rival_beliefs:
@@ -216,9 +211,6 @@ def rival_energy_finding(estimate: StateEstimate) -> DegradationFinding | None:
     )
 
 
-# --- row 3: missing event rules ----------------------------------------------------
-
-
 def rules_finding(context: RuleContext) -> DegradationFinding | None:
     """Missing event rules -> unsupported eligibility/curve state."""
     if not context.unknown_conditions and context.admissible_profiles:
@@ -243,9 +235,6 @@ def rules_finding(context: RuleContext) -> DegradationFinding | None:
         withdraw_advice=True,
         reason_codes=(ReasonCode.ELIGIBILITY_UNKNOWN,),
     )
-
-
-# --- row 4: solver timeout ---------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,9 +297,6 @@ def solver_timeout_outcome(
     )
 
 
-# --- rows 5 and 6: persistence -----------------------------------------------------
-
-
 @dataclass(frozen=True, slots=True)
 class PersistenceStatus:
     """Measured health of the lifecycle store for one session."""
@@ -341,8 +327,10 @@ def persistence_findings(status: PersistenceStatus) -> tuple[DegradationFinding,
                     f"last error: {status.last_error or 'none recorded'}"
                 ),
                 notes=(
-                    "Persistence is degraded: decisions are held in a bounded local spool and are "
-                    "not yet durable in the session store.",
+                    (
+                        "Persistence is degraded: decisions are held in a bounded local spool and are "
+                        "not yet durable in the session store."
+                    ),
                 ),
             )
         )
@@ -359,15 +347,14 @@ def persistence_findings(status: PersistenceStatus) -> tuple[DegradationFinding,
                 halts_recommendations=True,
                 withdraw_advice=True,
                 notes=(
-                    "New recommendations are halted because the audit trail cannot be persisted. "
-                    "Existing advice is unchanged; recover the store, then drain the spool.",
+                    (
+                        "New recommendations are halted because the audit trail cannot be persisted. "
+                        "Existing advice is unchanged; recover the store, then drain the spool."
+                    ),
                 ),
             )
         )
     return tuple(findings)
-
-
-# --- row 7: training/model mismatch ------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -413,20 +400,12 @@ def check_model_compatibility(
 
     mismatches: list[str] = []
 
-    # A bundle contributes to live advice only when it has been approved
-    # through the promotion protocol. Manifest agreement is not approval:
-    # AGENTS.md forbids automatic promotion, and an `unevaluated` or `rejected`
-    # candidate reaching a published recommendation is exactly that.
     if bundle.approval_status is not ApprovalStatus.APPROVED:
         mismatches.append(
             f"bundle approval status is {bundle.approval_status.value!r}, not 'approved'; "
             "only a bundle promoted through the protocol may contribute"
         )
 
-    # An unknown expectation fails closed. Treating `None` as "skip this check"
-    # meant a caller that simply forgot to pass the session's feature hash got
-    # a bundle accepted against *any* observation encoding -- the check was
-    # present and never ran.
     if expected_feature_hash is None:
         mismatches.append(
             "the session did not declare a feature manifest hash, so the bundle's encoding cannot be verified"
@@ -481,9 +460,6 @@ def _model_mismatch(baseline_identity: str, mismatches: tuple[str, ...]) -> Mode
             notes=(f"Validated baseline in force: {baseline_identity}.",),
         ),
     )
-
-
-# --- assembly ----------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)

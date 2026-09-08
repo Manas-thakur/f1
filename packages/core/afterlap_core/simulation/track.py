@@ -17,11 +17,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from ..timebase import wrap_s
-from .track_source import TrackSource
+
+if TYPE_CHECKING:
+    from .track_source import TrackSource
 
 _INTEGRATION_STEP_M = 0.5
 
@@ -98,7 +101,6 @@ class TrackGeometry:
         count = max(2, round(self.length_m / _INTEGRATION_STEP_M) + 1)
         self._s_grid = np.linspace(0.0, self.length_m, count, dtype=np.float64)
         curvature = track.curvature_array(self._s_grid)
-        # Cumulative heading: theta(s) = integral of curvature, trapezoidal.
         step = np.diff(self._s_grid)
         increments = 0.5 * (curvature[:-1] + curvature[1:]) * step
         self._theta = np.concatenate(([0.0], np.cumsum(increments)))
@@ -106,8 +108,6 @@ class TrackGeometry:
         sin_t = np.sin(self._theta)
         self._x = np.concatenate(([0.0], np.cumsum(0.5 * (cos_t[:-1] + cos_t[1:]) * step)))
         self._y = np.concatenate(([0.0], np.cumsum(0.5 * (sin_t[:-1] + sin_t[1:]) * step)))
-
-    # -- arc length ---------------------------------------------------------- #
 
     def wrap(self, s_m: float) -> float:
         return wrap_s(s_m, self.length_m)
@@ -164,8 +164,6 @@ class TrackGeometry:
         total = float(self._theta[-1])
         return total - turn * round(total / turn)
 
-    # -- local frame --------------------------------------------------------- #
-
     def local_position(
         self, reference_s_m: float, s_m: float, lateral_d_m: float, heading_error_rad: float
     ) -> tuple[float, float, float]:
@@ -181,14 +179,11 @@ class TrackGeometry:
         theta_anchor = float(self._theta_unwrapped(anchor))
         heading = float(self._theta_unwrapped(anchor + along)) - theta_anchor + heading_error_rad
         if abs(along) < 1e-12:
-            # At the anchor the local tangent is the x axis, so the normal is +y.
             return 0.0, lateral_d_m, heading
-        # Unroll the arc: integrate the tangent over the separation.
         samples = np.linspace(0.0, along, 17)
         headings = self._theta_unwrapped(anchor + samples) - theta_anchor
         x = float(np.trapezoid(np.cos(headings), samples))
         y = float(np.trapezoid(np.sin(headings), samples))
-        # Offset laterally along the local normal at the far point.
         normal_heading = headings[-1] + 0.5 * math.pi
         x += lateral_d_m * math.cos(normal_heading)
         y += lateral_d_m * math.sin(normal_heading)

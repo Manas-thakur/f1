@@ -25,8 +25,6 @@ TEST_DIR = Path(__file__).resolve().parent
 TEST_ID_PATTERN = re.compile(r"^(?P<file>test_[a-z0-9_]+\.py)::(?P<name>test_[A-Za-z0-9_]+)$")
 DEF_PATTERN = re.compile(r"^def (test_[A-Za-z0-9_]+)\s*\(", re.MULTILINE)
 
-# The concerns listed in rules/RULE_MATRIX.md. Every pack must take a
-# position on each of them; silence is not a coverage status.
 RULE_MATRIX_CONCERNS = (
     "Electrical DC ceiling",
     "Speed/context curves",
@@ -89,7 +87,6 @@ def test_claimed_test_ids_exist():
 def test_implemented_and_tested_requires_test_ids():
     with pytest.raises(ValidationError):
         CoverageSpec(concern="Electrical DC ceiling", status=CoverageStatus.IMPLEMENTED_AND_TESTED)
-    # Every other status may legitimately have none.
     CoverageSpec(concern="Driver information path", status=CoverageStatus.NOT_APPLICABLE)
 
 
@@ -108,7 +105,6 @@ def test_every_synthetic_pack_is_marked_synthetic():
     for pack in packs:
         assert pack.manifest.synthetic is True
         assert pack.document.synthetic is True
-        # Nothing shipped here has been through regulatory review.
         assert pack.manifest.reviewed is False
         assert all(statement.reviewer is None for statement in pack.document.merged_statements().values())
 
@@ -123,7 +119,6 @@ def test_coverage_matrix_covers_every_rule_matrix_concern():
 def test_coverage_is_per_concern_and_not_a_blanket_badge():
     for pack in all_packs():
         statuses = {entry.status for entry in pack.manifest.coverage}
-        # If every row were implemented_and_tested the matrix would be a badge.
         assert statuses != {CoverageStatus.IMPLEMENTED_AND_TESTED}
         assert CoverageStatus.NOT_APPLICABLE in statuses or CoverageStatus.UNSUPPORTED in statuses
         assert any(
@@ -148,5 +143,4 @@ def test_every_coverage_reference_carries_provenance():
             for reference in entry.references:
                 assert reference.article
                 assert reference.source_id
-                # A reviewer field exists and is honestly empty.
                 assert reference.reviewer is None

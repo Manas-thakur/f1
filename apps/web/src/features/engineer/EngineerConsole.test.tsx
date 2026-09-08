@@ -6,10 +6,11 @@ import { useSessionStore } from '@/state/sessionStore';
 import { SESSION_SNAPSHOT } from '@/test/contractFixtures';
 import { foreignEnvelope, recommendationEnvelope, telemetryEnvelope } from '@/test/envelopes';
 import { EngineerConsole } from './EngineerConsole';
+import type { FakeSocket } from './testUtils';
 import {
-  FakeSocket,
   apiClientFor,
   apiError,
+  hrefOf,
   makeFetch,
   noSocket,
   renderRoute,
@@ -94,15 +95,13 @@ describe('selection', () => {
     expect(request?.headers['idempotency-key']).toBeTruthy();
     expect(request?.body).toMatchObject({
       action: 'select',
-      // The RECOMMENDATION's revision, not the session's. `apply_operator_action`
-      // does optimistic concurrency on the recommendation it is about to
-      // transition; sending the session revision made every select fail against
-      // a real server with "expected revision 27, current is 0".
+
+
       expected_revision: SESSION_SNAPSHOT.recommendation?.revision,
       operator_id: 'console-operator',
     });
 
-    // The whole point: selecting records a decision. It does not drive the car.
+
     expect(stub.matching('/simulator/driver-action')).toEqual([]);
   });
 
@@ -115,7 +114,7 @@ describe('selection', () => {
     const stub = makeFetch(baseHandlers());
     const original = stub.fetchImpl;
     const slowFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).includes('/actions')) {
+      if (hrefOf(input).includes('/actions')) {
         await gate;
       }
       return original(input, init);
@@ -131,7 +130,7 @@ describe('selection', () => {
     await waitFor(() => expect(select).toBeEnabled());
     await user.click(select);
 
-    // While the command is in flight the authoritative status is untouched.
+
     expect(await screen.findByText(/Select in flight — awaiting server/)).toBeInTheDocument();
     expect(useSessionStore.getState().server.recommendation?.status).toBe('proposed');
 
@@ -148,7 +147,7 @@ describe('selection', () => {
     const stub = makeFetch(baseHandlers());
     const original = stub.fetchImpl;
     const slowFetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input).includes('/actions')) {
+      if (hrefOf(input).includes('/actions')) {
         await gate;
       }
       return original(input, init);
@@ -187,7 +186,7 @@ describe('selection', () => {
     expect(outcome).toHaveTextContent('the session moved on');
     expect(outcome).toHaveTextContent('req-409');
 
-    // Exactly one attempt, and the evidence was re-read.
+
     expect(stub.matching('/actions').length).toBe(1);
     await waitFor(() =>
       expect(stub.matching('/snapshot').length).toBeGreaterThan(snapshotsBefore),
@@ -255,9 +254,7 @@ describe('evidence inspector', () => {
     const stub = makeFetch(baseHandlers());
     renderConsole(stub);
 
-    // Wait for the loaded panel: before the snapshot arrives the empty-state
-    // branch renders its own "Open evidence" control, and clicking that
-    // detached element would prove nothing.
+
     await waitFor(() => expect(screen.getByRole('button', { name: 'Select' })).toBeEnabled());
     const invoker = screen.getByRole('button', { name: 'Open evidence' });
     await user.click(invoker);

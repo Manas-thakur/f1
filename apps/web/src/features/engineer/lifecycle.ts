@@ -1,17 +1,4 @@
-/**
- * The engineer console's state machine, as a pure function.
- *
- * `engineer-console/TECHNICAL_SPEC.md` names fourteen states the console
- * must implement. They are not one axis: "the feed is stale" and "the planner
- * timed out" can be true at once, and a stale-source warning is explicitly
- * independent of the connection state. So the derivation produces two axes
- * plus the single headline the banner shows, and every one of the fourteen
- * names is reachable and asserted in `lifecycle.test.ts`.
- *
- * Nothing here writes to the store. Local expiry is a *display* judgement: it
- * removes the selectable action immediately, and says the server has not yet
- * moved the status. It never rewrites `recommendation.status`.
- */
+
 import type {
   Quality,
   Recommendation,
@@ -37,7 +24,7 @@ export type AdviceState =
   | 'expired'
   | 'active';
 
-/** The fourteen names the specification lists. */
+
 export type ConsoleState = FeedState | Exclude<AdviceState, 'active'>;
 
 export interface ConsoleStatusInput {
@@ -50,7 +37,7 @@ export interface ConsoleStatusInput {
   readonly ruleContext: RuleContext | null;
   readonly capabilities: RuntimeCapabilities | null;
   readonly sessionTimeS: number;
-  /** A select/communicate/reject command for this recommendation is in flight. */
+  
   readonly actionPending: boolean;
 }
 
@@ -58,15 +45,15 @@ export interface ConsoleStatus {
   readonly feed: FeedState;
   readonly advice: AdviceState;
   readonly headline: ConsoleState;
-  /** True when the recommendation may be selected right now. */
+  
   readonly selectable: boolean;
-  /** Why not, when `selectable` is false. Always set in that case. */
+  
   readonly blockedReason: string | null;
-  /** The artefact a useful empty state should name, when one is missing. */
+  
   readonly missingArtefact: string | null;
   readonly heading: string;
   readonly detail: string;
-  /** True once the recommendation's own expiry has passed in session time. */
+  
   readonly expiredLocally: boolean;
 }
 
@@ -88,11 +75,7 @@ function ownEnergyUnavailable(
   return estimate.own_car.battery_energy_j.value === null;
 }
 
-/**
- * A rule condition the pack could not resolve, an unknown eligibility, or an
- * empty admissible-profile set. Any of the three means the console cannot say
- * which actions are legal, which is not the same as saying none are.
- */
+
 export function ruleCoverageUnknown(ruleContext: RuleContext | null): boolean {
   if (ruleContext === null) {
     return false;
@@ -139,8 +122,8 @@ function feedStateOf(input: ConsoleStatusInput): FeedState {
   if (resyncRequired) {
     return 'connecting';
   }
-  // Independent of the connection: a healthy socket carrying stale samples is
-  // still a stale source.
+
+
   if (quality.blocking) {
     return 'stale';
   }
@@ -323,7 +306,7 @@ function unknownRuleDetail(ruleContext: RuleContext | null): string {
   return 'The resolved rule context admits no deployment profile, so no action can be proposed.';
 }
 
-/** Quality of the worst contributing channel, for a compact strip readout. */
+
 export function worstQualityText(quality: Quality | null): string {
   if (quality === null) {
     return 'unknown';

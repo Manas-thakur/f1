@@ -21,9 +21,7 @@ from afterlap_core.tracks.registry import (
     registry_path,
 )
 
-SPEC_REGISTRY = (
-    Path(__file__).resolve().parents[2] / "docs" / "tracks" / "season_2026_registry.json"
-)
+SPEC_REGISTRY = Path(__file__).resolve().parents[2] / "docs" / "tracks" / "season_2026_registry.json"
 QUALIFICATION_SET = ("monza", "monaco", "spa", "mexico-city", "suzuka", "singapore")
 
 
@@ -68,11 +66,6 @@ def _scratch_paths(root: Path) -> Paths:
         exports=artifacts / "exports",
         spool=artifacts / "spool",
     )
-
-
-# --------------------------------------------------------------------------- #
-# model rules
-# --------------------------------------------------------------------------- #
 
 
 def test_duplicate_track_ids_are_rejected():
@@ -126,11 +119,6 @@ def test_get_names_the_missing_id():
     assert "nowhere" not in registry
 
 
-# --------------------------------------------------------------------------- #
-# manifest binding
-# --------------------------------------------------------------------------- #
-
-
 def test_manifest_for_a_track_not_in_the_registry_is_refused():
     registry = Registry.model_validate(_registry(_entry()))
     with pytest.raises(ManifestRegistryMismatch, match="not in the 2026 registry"):
@@ -174,11 +162,6 @@ def test_load_source_manifest_uses_the_registry_under_the_same_paths(tmp_path):
         load_source_manifest(bad, paths)
 
 
-# --------------------------------------------------------------------------- #
-# the shipped 2026 registry and manifests
-# --------------------------------------------------------------------------- #
-
-
 def test_shipped_registry_matches_the_specification_snapshot():
     registry = load_registry()
     spec = json.loads(SPEC_REGISTRY.read_text(encoding="utf-8"))
@@ -192,7 +175,6 @@ def test_shipped_registry_matches_the_specification_snapshot():
         assert entry.event_ids == (event["event_id"],)
         assert entry.events[0].race_laps == event["race_laps"]
         assert entry.events[0].round == event["round"]
-        # Fields the snapshot did not carry stay null rather than invented.
         assert entry.country is None
         assert entry.direction is None
         assert entry.events[0].event_date is None

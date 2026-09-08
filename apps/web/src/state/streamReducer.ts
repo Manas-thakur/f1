@@ -1,24 +1,4 @@
-/**
- * The single stream reducer.
- *
- * It is a pure function of (slice, envelope) so that every rule below can be
- * tested without React, without a socket and without a store. The rules are
- * taken verbatim from engineer-console/COMPONENTS_AND_STATE.md and
- * contracts/API.md:
- *
- *   snapshot                atomically replace session state and last_sequence
- *   estimate_updated        accept only the next valid revision
- *   recommendation_updated  matching session id and strictly newer revision
- *   quality_changed         warn and disable time-sensitive actions immediately
- *   resync_required         pause delta application until a snapshot arrives
- *   sequence gap            trigger a resync rather than applying the delta
- *   wrong session id        ignore
- *   heartbeat               never implies fresh telemetry
- *
- * The reducer never sets a recommendation status from a local interaction.
- * Only the server's own `recommendation_updated`, `rule_context_changed` and
- * snapshots move that field.
- */
+
 import type {
   ChannelQuality,
   EstimateUpdatedPayload,
@@ -100,10 +80,7 @@ function accepted(slice: StreamSlice, server: ServerState, lastSequence: number)
   };
 }
 
-/**
- * Apply a validated snapshot. Exported separately because the REST resync path
- * calls it directly, without a stream envelope.
- */
+
 export function applySnapshot(slice: StreamSlice, snapshot: SessionSnapshot): StreamSlice {
   const server: ServerState = {
     ...INITIAL_SERVER_STATE,
@@ -122,8 +99,8 @@ export function applySnapshot(slice: StreamSlice, snapshot: SessionSnapshot): St
     serverTime: snapshot.server_time,
     sessionTimeS: snapshot.session_time_s,
     status: snapshot.status,
-    // Telemetry is a view of a bounded window, not part of the authoritative
-    // snapshot; it is deliberately cleared so no pre-resync sample survives.
+
+
     telemetry: {},
     telemetryFreshAtS: null,
     executions: [],
@@ -169,18 +146,11 @@ function nextSequenceFor(envelope: StreamEnvelope): { from: number; to: number }
   return { from: envelope.sequence, to: envelope.sequence };
 }
 
-/**
- * The reducer.
- *
- * @param slice   current server + stream state
- * @param envelope an envelope that has ALREADY passed Ajv validation
- */
+
 export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): StreamSlice {
   const { server, stream } = slice;
 
-  // ---- 1. session binding -------------------------------------------------
-  // An envelope addressed to another session is ignored outright. Before the
-  // store is bound to a session, only a snapshot may bind it.
+
   if (server.sessionId !== null && envelope.session_id !== server.sessionId) {
     return reject(
       slice,
@@ -198,15 +168,13 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
     );
   }
 
-  // ---- 2. snapshot: always authoritative, regardless of sequence ----------
+
   if (envelope.event_type === 'snapshot') {
     const payload = envelope.payload as SnapshotPayload;
     return applySnapshot(slice, payload.snapshot);
   }
 
-  // ---- 3. resync_required is honoured before any sequence check ----------
-  // The server is telling us our cursor is unusable; a gap in the message that
-  // says so must not stop us acting on it.
+
   if (envelope.event_type === 'resync_required') {
     const payload = envelope.payload as ResyncRequiredPayload;
     return {
@@ -224,9 +192,7 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
     };
   }
 
-  // ---- 4. heartbeat: connection liveness only ----------------------------
-  // It advances the cursor only when it is exactly the next sequence, it never
-  // triggers a resync, and it never marks telemetry fresh.
+
   if (envelope.event_type === 'heartbeat') {
     const payload = envelope.payload as HeartbeatPayload;
     void payload;
@@ -241,7 +207,7 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
     };
   }
 
-  // ---- 5. deltas are dropped while a resync is outstanding ---------------
+
   if (!stream.applyingDeltas) {
     return reject(
       slice,
@@ -251,7 +217,7 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
     );
   }
 
-  // ---- 6. sequence continuity -------------------------------------------
+
   const { from, to } = nextSequenceFor(envelope);
   const expected = server.lastSequence + 1;
   if (to <= server.lastSequence) {
@@ -288,8 +254,8 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
           );
         }
         if (incoming.revision !== currentRevision + 1) {
-          // A revision was skipped: we would be applying a delta to the wrong
-          // base state. Ask for a snapshot instead of guessing.
+
+
           return requestResync(
             slice,
             envelope,
@@ -360,8 +326,8 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
       const payload = envelope.payload as RuleContextChangedPayload;
       const invalidated = payload.invalidated_recommendation_ids ?? [];
       const current = server.recommendation;
-      // Invalidation is processed before anything else that depends on it,
-      // exactly as the control-plane contract requires.
+
+
       const recommendation =
         current !== null && invalidated.includes(current.id)
           ? { ...current, status: 'invalidated' as const }
@@ -425,15 +391,15 @@ export function reduceStream(slice: StreamSlice, envelope: StreamEnvelope): Stre
     }
 
     default: {
-      // Exhaustiveness: `snapshot`, `heartbeat` and `resync_required` returned
-      // above; every other member of StreamEventType is handled.
+
+
       const unreachable: never = envelope.event_type;
       return reject(slice, envelope, 'schema_invalid', `unhandled event type ${String(unreachable)}`);
     }
   }
 }
 
-/** Fold a sequence of envelopes. Convenience for tests and replay. */
+
 export function reduceAll(slice: StreamSlice, envelopes: readonly StreamEnvelope[]): StreamSlice {
   return envelopes.reduce(reduceStream, slice);
 }

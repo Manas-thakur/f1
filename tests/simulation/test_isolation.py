@@ -62,7 +62,6 @@ class TestTruthMutation:
 
         for index, field in enumerate(HIDDEN_RIVAL_TRUTH):
             poison = -987654.0 - index
-            # Live truth.
             attribute = {
                 "battery_energy_j": "battery_energy_j",
                 "battery_temperature_k": "battery_temperature_k",
@@ -71,7 +70,6 @@ class TestTruthMutation:
                 "acceleration_mps2": "acceleration_mps2",
             }[field]
             setattr(rival_state, attribute, poison)
-            # Buffered truth, which is what the delayed sensor path actually reads.
             for sample in simulator.world.sensor_buffer:
                 sample.cars["rival"][field] = poison
 
@@ -81,15 +79,12 @@ class TestTruthMutation:
             )
             assert _controller_output(mutated) == baseline_action
 
-        # The rival's private profile and ledger are hidden too.
         rival_state.active_profile = DeploymentProfile.OVERTAKE
         rival_ledger.recharge_cumulative_j = -1.0
         for sample in simulator.world.sensor_buffer:
             sample.cars["rival"]["active_profile_code"] = DeploymentProfile.OVERTAKE.value
         assert simulator.observe()["own"].canonical_bytes() == baseline_bytes
 
-        # The observable channels really were held fixed, so the test is not
-        # passing merely because nothing changed at all.
         for name, value in observable_before.items():
             assert getattr(rival_state, name) == value
 
@@ -181,7 +176,6 @@ class TestNoDebugLeak:
         assert truth["cars"]["rival"]["battery_energy_j"] == pytest.approx(
             simulator.world.cars["rival"].battery_energy_j, rel=1e-12
         )
-        # Nothing in an observation matches this structure.
         observation = simulator.observe()["own"]
         assert "cars" not in observation.as_plain()
 
@@ -196,7 +190,6 @@ class TestPolicyInputs:
         observation = simulator.observe(car_id="rival")["rival"]
         first = policy.react(observation, np.random.default_rng(0))
 
-        # Corrupt every piece of world truth the policy is not allowed to read.
         for state in simulator.world.cars.values():
             state.battery_temperature_k = 999.0
         again = build_policy(

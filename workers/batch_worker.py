@@ -29,20 +29,21 @@ import logging
 import os
 import shutil
 import uuid
-from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
-
-from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import sessionmaker
+from typing import TYPE_CHECKING, Any
 
 from afterlap_api.db.engine import transaction
 from afterlap_api.db.models import ExperimentJob
 from afterlap_api.db.repository import claim_experiment_job
 from afterlap_contracts import JobStatus
 from afterlap_core.paths import atomic_write_json, sha256_json
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 logger = logging.getLogger("afterlap.workers.batch")
 
@@ -131,8 +132,6 @@ class BatchWorker:
         self.staging_root.mkdir(parents=True, exist_ok=True)
         self.reports_root.mkdir(parents=True, exist_ok=True)
 
-    # -- lease -----------------------------------------------------------------
-
     def claim(self) -> tuple[str, str] | None:
         """Claim one queued job. Returns ``(job_id, manifest_hash)`` or ``None``."""
         with transaction(self._factory) as db:
@@ -160,8 +159,6 @@ class BatchWorker:
                 "second report for it"
             )
         return job
-
-    # -- execution -------------------------------------------------------------
 
     def staging_for(self, job_id: str) -> Path:
         path = self.staging_root / job_id
@@ -198,8 +195,6 @@ class BatchWorker:
             logger.exception("job %s failed", job_id)
             return self.finalise_failed(job_id, f"{type(exc).__name__}: {exc}", context)
         return self.finalise(context, report)
-
-    # -- finalisation ----------------------------------------------------------
 
     def finalise(self, context: JobContext, report: dict[str, Any]) -> JobOutcome:
         """Atomically publish the report and mark the job completed."""

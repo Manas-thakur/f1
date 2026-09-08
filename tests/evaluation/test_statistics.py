@@ -97,7 +97,6 @@ class TestPairedBootstrap:
         sample = _synthetic_sample(effect=1.0, scenarios=6, seeds=2)
         result = hierarchical_paired_bootstrap(sample, "candidate", "reference", iterations=500, seed=5)
         assert result.ci_low <= result.difference_mean <= result.ci_high
-        # The contract enforces the same thing, so this always constructs.
         contract = result.to_contract()
         assert contract.ci_low <= contract.difference_mean <= contract.ci_high
 
@@ -200,8 +199,6 @@ class TestDistributionsAndPoorTail:
         summary = summarise(PairedSample(metric=UTILITY, units=units), "candidate", "reference", alpha=0.9)
         assert summary.count == 20
         assert summary.mean == pytest.approx((19 * 1.0 - 20.0) / 20.0)
-        # CVaR at alpha = 0.9 over 20 units averages the worst ceil(0.1 * 20) = 2:
-        # (-20 + 1) / 2 = -9.5. The mean alone is -0.05, which hides the outlier.
         assert summary.poor_tail_mean == pytest.approx(-9.5)
         assert summary.worst_cases[0][2] == pytest.approx(-20.0)
 
@@ -210,8 +207,6 @@ class TestDistributionsAndPoorTail:
             EvaluationUnit(f"s{index}", 1, "f", {"candidate": 1.0 if index else 40.0, "reference": 0.0})
             for index in range(20)
         )
-        # On elapsed time, +40 s is the *worst* case, not the best, so the two
-        # worst units are 40 and 1, averaging 20.5.
         summary = summarise(
             PairedSample(metric=ELAPSED_TIME, units=units), "candidate", "reference", alpha=0.9
         )
@@ -268,7 +263,6 @@ class TestCalibration:
         rng = np.random.default_rng(5)
         truth = rng.uniform(size=2000)
         labels = (rng.uniform(size=2000) < truth).astype(int)
-        # A forecaster that is systematically over-confident.
         predictions = np.clip(truth + 0.3, 0.0, 1.0)
         assessment = assess_calibration(predictions, labels, event_definition="pass_retained", bins=10)
         assert assessment.sufficient
@@ -277,9 +271,7 @@ class TestCalibration:
         assert "reliability gap" in (assessment.reason or "")
 
     def test_brier_and_log_loss_match_hand_computed_values(self) -> None:
-        # Brier: ((0.8-1)^2 + (0.3-0)^2) / 2 = (0.04 + 0.09) / 2 = 0.065
         assert brier_score([0.8, 0.3], [1, 0]) == pytest.approx(0.065, abs=1e-12)
-        # Log loss: -(ln 0.5 + ln 0.5) / 2 = ln 2 = 0.6931471805599453
         assert log_loss([0.5, 0.5], [1, 0]) == pytest.approx(0.6931471805599453, abs=1e-12)
 
     def test_empty_bins_are_omitted_rather_than_zero_filled(self) -> None:

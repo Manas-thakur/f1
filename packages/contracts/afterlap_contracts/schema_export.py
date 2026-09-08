@@ -6,11 +6,10 @@ hand-edited generated file is a build error rather than a silent divergence.
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
-from typing import Any
-
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Any
 
 from .base import SCHEMA_VERSION
 from .errors import ApiError, ApiErrorResponse
@@ -54,6 +53,9 @@ from .requests import (
 from .rules import ConstraintResult, RuleContext, RuleManifest
 from .session import SessionManifest, SessionSnapshot, SessionSummary, SnapshotReference
 from .telemetry import QualityEvent, SourceCapability, TelemetryChunkManifest, TelemetryEvent
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
 
 EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     SourceCapability,
@@ -268,7 +270,18 @@ def check_drift(output_dir: Path | None = None) -> list[str]:
     return problems
 
 
-def main() -> int:  # pragma: no cover - CLI entry point
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args(argv)
+    if args.check:
+        problems = check_drift()
+        if problems:
+            for problem in problems:
+                print(problem)
+            return 1
+        print("generated contracts match the models")
+        return 0
     written = write_generated(default_output_dir())
     for path in written:
         print(f"wrote {path}")

@@ -16,7 +16,7 @@ describe('ChartFrame', () => {
     const table = within(summary).getByRole('table');
     expect(within(table).getByRole('columnheader', { name: 'Minimum' })).toBeInTheDocument();
     expect(within(table).getByRole('columnheader', { name: 'Sampling' })).toBeInTheDocument();
-    // Values are rendered in display units, not SI.
+
     expect(within(table).getAllByText(/kW$/).length).toBeGreaterThan(0);
     expect(within(table).getAllByText('simulated').length).toBe(SERIES.length);
   });

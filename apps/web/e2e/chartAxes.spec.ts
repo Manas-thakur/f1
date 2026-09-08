@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from '@playwright/test';
 
 import {
@@ -10,26 +11,19 @@ import {
 } from './canvasPaint';
 import { mockApi } from './mockApi';
 
-/**
- * Regression coverage for what the chart paints.
- *
- * Every assertion here fails on the build that shipped before this file
- * existed: the x axis rendered wall-clock times on 1/1/70, the y axis was
- * clipped to ")00,000", and its raw-SI magnitudes contradicted a legend that
- * claimed kW and MJ.
- */
-async function loadSpecimen(page: import('@playwright/test').Page, width = 1500) {
+
+async function loadSpecimen(page: Page, width = 1500) {
   await recordCanvasText(page);
   await mockApi(page);
   await page.setViewportSize({ width, height: 1000 });
   await page.goto('/');
   await page.getByRole('heading', { level: 1 }).waitFor();
-  // Wait until the plot has actually painted something.
+
   await expect.poll(async () => (await paintedText(page)).length).toBeGreaterThan(4);
   return paintedText(page);
 }
 
-/** Horizontal tick labels sit on one row near the bottom of the canvas. */
+
 function bottomAxisTicks(records: readonly PaintedText[]): PaintedText[] {
   const horizontal = records.filter((r) => !r.rotated && r.align === 'center');
   return horizontal.filter((r) => isNumericLabel(r.text));
@@ -59,7 +53,7 @@ test.describe('the painted x axis is a physical coordinate', () => {
 
     const values = ticks.map((t) => numericValue(t.text));
     expect(values.every((v) => Number.isFinite(v))).toBe(true);
-    // The specimen lap is 5300 m; a timestamp axis would never produce these.
+
     expect(Math.max(...values)).toBeGreaterThan(1000);
     expect(Math.min(...values)).toBeGreaterThanOrEqual(0);
   });
@@ -76,7 +70,7 @@ test.describe('the painted y axes agree with the legend', () => {
     const records = await loadSpecimen(page);
     const labels = records.map((r) => r.text);
 
-    // The legend declares kW for deployment and MJ for stored energy.
+
     await expect(page.getByText(/Own car deployment \(kW/)).toBeVisible();
     await expect(page.getByText(/Own car stored energy \(MJ/)).toBeVisible();
 
@@ -92,8 +86,8 @@ test.describe('the painted y axes agree with the legend', () => {
 
     const magnitudes = ticks.map((t) => Math.abs(numericValue(t.text)));
     const worst = Math.max(...magnitudes);
-    // Raw watts would put 350000 on this axis; kW tops out near 350 and MJ
-    // near 4. Anything in the thousands means the conversion was skipped.
+
+
     expect(
       worst,
       `y tick magnitudes ${JSON.stringify(ticks.map((t) => t.text))} look like raw SI, not display units`,
@@ -112,8 +106,8 @@ test.describe('the painted y axes agree with the legend', () => {
 
     const leftMax = Math.max(...left.map((t) => Math.abs(numericValue(t.text))));
     const rightMax = Math.max(...right.map((t) => Math.abs(numericValue(t.text))));
-    // kW reaches the hundreds; MJ stays in single digits. Two ranges this far
-    // apart on one scale is exactly what made the power trace unreadable.
+
+
     expect(leftMax).toBeGreaterThan(50);
     expect(rightMax).toBeLessThan(50);
   });

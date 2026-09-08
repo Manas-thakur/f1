@@ -4,19 +4,13 @@ import { QUALITY_TEXT } from '../contracts/units';
 import styles from './primitives.module.css';
 
 export interface QualityIndicatorProps {
-  /** Null means the quality is genuinely unknown. It is shown as text. */
+  
   readonly quality: Quality | null | undefined;
   readonly label?: string;
   readonly detail?: string | null;
 }
 
-/**
- * Freshness/validity of a value.
- *
- * Unknown quality renders the word "unknown", never an empty green check: an
- * absent assessment is not a passing assessment. The mark is decorative; the
- * text carries the meaning, so the state survives without colour.
- */
+
 export function QualityIndicator({ quality, label, detail }: QualityIndicatorProps) {
   const key = quality ?? 'unknown';
   const text = quality === null || quality === undefined ? 'unknown' : QUALITY_TEXT[quality];

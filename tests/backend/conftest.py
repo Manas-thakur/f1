@@ -9,12 +9,9 @@ telemetry or a validated model.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
-from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import sessionmaker
 
 from afterlap_api.db import acquire_lease, apply_operator_action, body_hash_of, create_all
 from afterlap_api.db.engine import command_transaction, create_db_engine, create_session_factory
@@ -38,6 +35,11 @@ from afterlap_contracts import (
 )
 from afterlap_contracts.requests import CreateSessionRequest
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from sqlalchemy.orm import Session as OrmSession, sessionmaker
+
 SCENARIO_ID = "two-straight-counterattack"
 NO_ENERGY_SCENARIO_ID = "loop-no-energy-channel"
 RULE_PACK_ID = "synthetic-pack-v1"
@@ -46,10 +48,6 @@ UNKNOWN_RULE_PACK_ID = "synthetic-pack-unknown"
 OPERATOR = "engineer-test"
 SEED = 42
 
-#: Advice only becomes legal once the detection line at 1600 m has been crossed;
-#: from a standing start at 0 m and ~75 m/s that happens a little after 21 s.
-#: Before then the rules module reports UNKNOWN eligibility and advice is
-#: suppressed, which is correct behaviour and part of what the slice asserts.
 DECISION_HORIZON_S = 40.0
 
 

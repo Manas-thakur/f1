@@ -270,9 +270,6 @@ def test_a_metric_with_no_samples_is_none_not_zero() -> None:
     assert report.speed_interval_coverage.total == 0
 
 
-# -- splitting ------------------------------------------------------------
-
-
 def test_splitting_by_row_is_refused() -> None:
     """The adjacent-row split must not exist as a usable option."""
     with pytest.raises(AdjacentRowSplitError, match="split by scenario, not by row"):

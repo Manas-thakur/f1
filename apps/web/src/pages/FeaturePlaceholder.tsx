@@ -6,24 +6,17 @@ import styles from '../app/shell.module.css';
 
 export interface FeaturePlaceholderProps {
   readonly title: string;
-  /** The agent that owns this route's feature directory. */
+  
   readonly owner: string;
   readonly ownerScope: string;
-  /** The artefact the route will render once the owner lands it. */
+  
   readonly artefact: string;
   readonly description: string;
-  /** Where the feature code will live, so the owner has an exact target. */
+  
   readonly featurePath: string;
 }
 
-/**
- * A route slot owned by another agent.
- *
- * This exists so the router is complete and A09/A10/A11 only have to add their
- * feature directory and swap one element. It renders a real empty state that
- * names the missing artefact — never a fake chart, a skeleton pretending to
- * load, or a placeholder metric.
- */
+
 export function FeaturePlaceholder({
   title,
   owner,

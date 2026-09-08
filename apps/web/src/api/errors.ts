@@ -1,10 +1,4 @@
-/**
- * Typed error handling for the generated `ErrorCode` union.
- *
- * The control-plane contract says the UI never sees an exception trace. Every
- * failure that reaches a component is one of these, with a code the UI can
- * branch on and a message it may show.
- */
+
 import type { ApiError, ApiErrorResponse, ErrorCode } from '@contracts';
 
 export class ApiRequestError extends Error {
@@ -30,10 +24,7 @@ export class ApiRequestError extends Error {
     return this.apiError.request_id;
   }
 
-  /**
-   * A conflict means the decision the operator saw is no longer the current
-   * one. The correct response is to refresh the evidence, never to resubmit.
-   */
+  
   get isConflict(): boolean {
     return (
       this.status === 409 ||
@@ -42,13 +33,13 @@ export class ApiRequestError extends Error {
     );
   }
 
-  /** The recommendation itself is gone; a new snapshot is required. */
+  
   get isRecommendationGone(): boolean {
     return this.code === 'recommendation_expired' || this.code === 'recommendation_invalidated';
   }
 }
 
-/** What the operator should be told, per error code. Never a stack trace. */
+
 export const ERROR_GUIDANCE: Record<ErrorCode, string> = {
   stale_revision:
     'The session moved on while this was open. The evidence has been refreshed; review it before deciding again.',
@@ -85,7 +76,7 @@ export function isApiErrorResponse(value: unknown): value is ApiErrorResponse {
   );
 }
 
-/** Turn any failure — typed, untyped or thrown — into an `ApiError`. */
+
 export function toApiError(value: unknown, fallbackMessage: string): ApiError {
   if (value instanceof ApiRequestError) {
     return value.apiError;

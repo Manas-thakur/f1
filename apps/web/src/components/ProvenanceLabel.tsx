@@ -10,13 +10,7 @@ export interface ProvenanceLabelProps {
   readonly showAge?: boolean;
 }
 
-/**
- * Where a number came from.
- *
- * The point of this label is that a simulated value must never be readable as
- * a measured one. It is deliberately plain text rather than a colour, and it
- * says "provenance unknown" instead of guessing.
- */
+
 export function ProvenanceLabel({
   provenance,
   sourceId,

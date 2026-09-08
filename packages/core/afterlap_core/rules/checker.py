@@ -40,6 +40,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from itertools import pairwise
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -53,10 +54,13 @@ from afterlap_contracts import (
     ProfileSegment,
     RuleContext,
     RuleManifest,
+    RuleReference,
 )
 
 from .packs import references_for_article
-from .state import CheckerState
+
+if TYPE_CHECKING:
+    from .state import CheckerState
 
 __all__ = [
     "CHECKER_VERSION",
@@ -167,11 +171,6 @@ class PlanTrace:
         return tuple(p for p in self.points if p.segment_index == index)
 
 
-# ---------------------------------------------------------------------------
-# grid construction
-# ---------------------------------------------------------------------------
-
-
 def _segment_edges(
     segment: ProfileSegment,
     state: CheckerState,
@@ -191,8 +190,6 @@ def _segment_edges(
                 progress = lap * state.track_length_m + line.s_m
                 if start < progress < end:
                     edges.add(progress)
-    # Power-curve breakpoint crossings: the ceiling changes slope there, so the
-    # deployment power does too and an extremum can sit exactly on one.
     for a, b, va, vb in state.speed_profile.sub_intervals(start, end):
         if va == vb:
             continue
@@ -249,8 +246,6 @@ def _ceiling_model(context: RuleContext, manifest: RuleManifest | None) -> _Ceil
             derate_factor=derate,
             measurement_bus=curve.measurement_bus if curve else "ers_k_dc",
         )
-    # Degraded mode: without the pack the checker can only use the single
-    # resolved scalar the context carries, and it says so in the check detail.
     derated = context.applicable_limits.deployment_ceiling_w
     if derated is None:
         return _CeilingModel(absolute_w=0.0, curve=None, derate_factor=None, measurement_bus="unknown")
@@ -297,23 +292,14 @@ def _segment_model(
     if segment.requested_budget_j == 0.0:
         deploy_scale = 0.0
     elif ceiling_integral > 0.0:
-        # ``requested_budget_j`` is energy leaving the BATTERY (decisions.md D-01),
-        # while ``ceiling_integral`` is bus headroom. Scale by the discharge
-        # efficiency here so the resulting bus power is a genuine bus figure; the
-        # later ledger step divides that bus power back by the same efficiency to
-        # recover battery drain. Converting in only one of the two places drains
-        # the modelled battery by 1/eta too much -- 5.3% at eta=0.95.
         deploy_scale = segment.requested_budget_j * state.discharge_efficiency / ceiling_integral
     else:
-        # The ceiling is zero across the whole segment. Spread the request
-        # uniformly in time so the ceiling check still fails on real numbers.
         deploy_scale = float("inf")
     harvest_scale = (
         0.0
         if segment.harvest_target_j == 0.0 or speed_integral <= 0.0
         else segment.harvest_target_j / speed_integral
     )
-    # Uniform fallback is a bus figure too, for the same reason as deploy_scale.
     uniform = segment.requested_budget_j * state.discharge_efficiency / duration if duration > 0.0 else 0.0
     return _SegmentModel(
         index=index,
@@ -400,9 +386,6 @@ def build_trace(
                 abs(previous.progress_m - piece.start_m) <= config.distance_tolerance_m
                 and previous.speed_mps != piece.speed_start_mps
             ):
-                # A step speed profile changes speed instantaneously here: no
-                # time elapses, so the trapezoid must restart rather than
-                # average across the discontinuity.
                 previous = _trace_point(
                     model, ceiling, state, piece.start_m, piece.speed_start_mps, time_s, energy_j, ledger_j
                 )
@@ -432,12 +415,7 @@ def build_trace(
     )
 
 
-# ---------------------------------------------------------------------------
-# individual checks
-# ---------------------------------------------------------------------------
-
-
-def _reference(check_id: str, manifest: RuleManifest | None):
+def _reference(check_id: str, manifest: RuleManifest | None) -> tuple[RuleReference, ...]:
     return references_for_article(manifest, CHECK_ARTICLES.get(check_id, ()))
 
 
@@ -586,8 +564,10 @@ def _check_power_ramp(
                 abs(after[0].deploy_power_w - before[-1].deploy_power_w),
                 plan.profile_segments[index + 1].execution_window_s,
                 after[0],
-                f"transition {plan.profile_segments[index].profile_id.value}"
-                f" -> {plan.profile_segments[index + 1].profile_id.value}",
+                (
+                    f"transition {plan.profile_segments[index].profile_id.value}"
+                    f" -> {plan.profile_segments[index + 1].profile_id.value}"
+                ),
             )
         )
 
@@ -795,11 +775,6 @@ def _check_execution_lead_time(
     )
 
 
-# ---------------------------------------------------------------------------
-# public entry point
-# ---------------------------------------------------------------------------
-
-
 def check_plan(
     plan: CandidatePlan,
     state: CheckerState,
@@ -840,9 +815,6 @@ def check_plan(
         ruleset_hash=context.ruleset_hash,
         checked_at_s=max(context.resolved_at_s, 0.0),
         checker_version=CHECKER_VERSION,
-        # Report every condition the pack could not resolve, applicable or not.
-        # Only the applicable ones drive the status; hiding the rest would let a
-        # consumer read a PASS as complete coverage.
         unresolved_conditions=tuple(
             sorted(
                 set(context.unknown_conditions)

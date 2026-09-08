@@ -37,8 +37,8 @@ from afterlap_contracts import (
     RawSourcePacket,
     TelemetryChunkManifest,
     TelemetryEvent,
+    channel as channel_spec,
 )
-from afterlap_contracts import channel as channel_spec
 from afterlap_core.paths import atomic_write_bytes, sha256_bytes
 
 from .mapping import SECRET_NAME_PATTERN
@@ -56,11 +56,6 @@ _SECRET_ASSIGNMENT = re.compile(
     r"\s*[=:]\s*[\"']?[^\s\"',;&]+"
 )
 _URL = re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s\"'<>]+")
-
-
-# ---------------------------------------------------------------------------
-# Redaction
-# ---------------------------------------------------------------------------
 
 
 def redact_text(text: str) -> str:
@@ -116,11 +111,6 @@ def redact_mapping(payload: Mapping[str, Any]) -> dict[str, Any]:
     return result
 
 
-# ---------------------------------------------------------------------------
-# Acquisition provenance
-# ---------------------------------------------------------------------------
-
-
 @dataclass(frozen=True, slots=True)
 class AcquisitionRecord:
     """Where a recorded session came from and under what terms."""
@@ -152,10 +142,6 @@ class AcquisitionRecord:
 def utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
-
-# ---------------------------------------------------------------------------
-# Arrow schemas
-# ---------------------------------------------------------------------------
 
 CANONICAL_SCHEMA = pa.schema(
     [
@@ -193,11 +179,6 @@ RAW_SCHEMA = pa.schema(
         pa.field("fields_json", pa.string()),
     ]
 )
-
-
-# ---------------------------------------------------------------------------
-# Recorder
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,8 +221,6 @@ class TelemetryRecorder:
         self._raw: dict[tuple[str, str, int], _Bucket] = {}
         self._published: list[TelemetryChunkManifest] = []
         self._chunk_serial = 0
-
-    # -- sink interface -------------------------------------------------
 
     def append_normalised(self, record: NormalisedRecord) -> None:
         event = record.event
@@ -299,8 +278,6 @@ class TelemetryRecorder:
             store[key] = _Bucket(car_id=car_id, family=family, chunk_index=index)
         return store[key]
 
-    # -- staging and publication ----------------------------------------
-
     def stage(self) -> tuple[PendingChunk, ...]:
         """Write buffered rows to staging files. Nothing becomes visible yet."""
         pending: list[PendingChunk] = []
@@ -345,7 +322,7 @@ class TelemetryRecorder:
                 car_id=bucket.car_id,
                 channel_family=bucket.family,
                 start_session_time_s=max(0.0, min(times)),
-                end_session_time_s=max(0.0, max(times)),
+                end_session_time_s=max(0.0, *times),
                 row_count=len(bucket.rows),
                 path=relative.as_posix(),
                 mapping_revision=self.mapping_revision,
@@ -407,11 +384,6 @@ class TelemetryRecorder:
     @property
     def published_chunks(self) -> tuple[TelemetryChunkManifest, ...]:
         return tuple(self._published)
-
-
-# ---------------------------------------------------------------------------
-# Reader
-# ---------------------------------------------------------------------------
 
 
 class ChunkReader:

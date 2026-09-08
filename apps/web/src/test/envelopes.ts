@@ -1,10 +1,4 @@
-/**
- * Envelope builders for reducer and stream tests.
- *
- * Every builder produces an envelope that passes Ajv validation against the
- * generated bundle, so a test that asserts a reducer rule is not accidentally
- * asserting a schema failure.
- */
+
 import type {
   Recommendation,
   RuleContext,
@@ -151,7 +145,7 @@ export function ruleContextEnvelope(
   });
 }
 
-/** An envelope for a different session. Structurally valid, must be ignored. */
+
 export function foreignEnvelope(sequence: number): StreamEnvelope {
   return envelope(
     sequence,

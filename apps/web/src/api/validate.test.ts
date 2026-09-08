@@ -84,7 +84,7 @@ describe('an invalid envelope never reaches the reducer', () => {
     };
     const stream = new SessionStream({ sessionId: SESSION_SNAPSHOT.session_id, store: bridge });
 
-    // A frame that is valid JSON but violates the schema.
+
     stream.handleFrame(
       JSON.stringify({ ...snapshotEnvelope(), session_time_s: 'twelve o clock' }),
     );
@@ -95,7 +95,7 @@ describe('an invalid envelope never reaches the reducer', () => {
     expect(after.stream.rejectedEnvelopes).toBe(1);
     expect(after.stream.rejections.at(-1)?.reason).toBe('schema_invalid');
 
-    // …and a valid frame still gets through afterwards.
+
     stream.handleFrame(JSON.stringify(snapshotEnvelope()));
     expect(useSessionStore.getState().server.sessionId).toBe(SESSION_SNAPSHOT.session_id);
   });

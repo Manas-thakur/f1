@@ -1,10 +1,4 @@
-/**
- * Typed REST client for the control plane.
- *
- * All paths are same-origin and relative. In development Vite proxies `/api`
- * to the Python process; in production nginx serves the built assets and
- * proxies the same prefix. No API host is ever compiled into the bundle.
- */
+
 import type {
   AcquireLeaseRequest,
   AcquireLeaseResponse,
@@ -38,7 +32,7 @@ export interface ApiClientOptions {
   readonly fetchImpl?: FetchLike;
 }
 
-/** Crypto-backed where available; the fallback is still unique per call. */
+
 export function newIdempotencyKey(): string {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === 'function') {
@@ -96,12 +90,11 @@ export class ApiClient {
     return (await response.json()) as T;
   }
 
-  // ---- reads --------------------------------------------------------------
 
   listSessions(params: { cursor?: string; mode?: string } = {}, options?: RequestOptions) {
     const search = new URLSearchParams();
-    if (params.cursor !== undefined) search.set('cursor', params.cursor);
-    if (params.mode !== undefined) search.set('mode', params.mode);
+    if (params.cursor !== undefined) {search.set('cursor', params.cursor);}
+    if (params.mode !== undefined) {search.set('mode', params.mode);}
     const qs = search.toString();
     return this.request<SessionListResponse>(
       `/sessions${qs === '' ? '' : `?${qs}`}`,
@@ -146,7 +139,6 @@ export class ApiClient {
     );
   }
 
-  // ---- writes: every one carries Idempotency-Key and expected_revision -----
 
   acquireLease(sessionId: string, body: AcquireLeaseRequest, options: RequestOptions) {
     return this.request<AcquireLeaseResponse>(

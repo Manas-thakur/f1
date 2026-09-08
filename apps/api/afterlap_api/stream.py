@@ -141,12 +141,9 @@ class StreamHub:
             pass
 
         if envelope.event_type not in LOSSLESS_EVENTS:
-            # A slow client may miss a telemetry view or a heartbeat.
             subscriber.dropped_telemetry += 1
             return
 
-        # A lossless event could not be delivered, so the client's view is now
-        # incomplete. Tell it to resynchronise instead of leaving a silent gap.
         subscriber.needs_resync = True
         with contextlib.suppress(asyncio.QueueFull):
             _drain_one(subscriber.queue)

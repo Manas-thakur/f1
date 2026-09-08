@@ -25,8 +25,8 @@ the truth-mutation check read it, and neither hands it to the filter.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -48,8 +48,12 @@ from afterlap_core.estimation import (
     load_own_car_config,
     load_rival_config,
 )
-from afterlap_core.estimation.assembly import EstimatorState
 from afterlap_core.estimation.config import MODE_ORDER
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from afterlap_core.estimation.assembly import EstimatorState
 
 TRACK_LENGTH_M = 5200.0
 SESSION_ID = "estimation-synthetic-001"
@@ -232,7 +236,6 @@ def generate_rival_truth(
             progress += speed * dt
             energy = min(max(energy - deploy * base_power[mode_index] * dt, minimum), maximum)
         rows.append(RivalTruth(own.time_s, progress, speed, energy, mode))
-    # A tiny unmodelled wobble so the rival is never exactly the filter's model.
     wobble = rng.normal(0.0, 0.05, size=len(rows))
     return tuple(
         replace(row, speed_mps=row.speed_mps + float(wobble[index])) for index, row in enumerate(rows)
@@ -391,7 +394,7 @@ def capability(*, with_energy: bool = True, source_id: str = "synthetic-source")
         mode=SessionMode.SIMULATION,
         supported_channels=tuple(channels),
         measured_channels=tuple(channels),
-        update_rates_hz={c: 20.0 for c in channels},
+        update_rates_hz=dict.fromkeys(channels, 20.0),
         clock_error_s=0.0,
         limitations=tuple(limitations),
     )
@@ -419,7 +422,7 @@ def make_context(
         rival_car_ids=rival_car_ids,
         capability=declared,
         integration_gap_s=({"electrical_power_w": integration_gap_s} if integration_gap_s else {}),
-        expected_periods_s={channel: 0.05 for channel in declared.supported_channels},
+        expected_periods_s=dict.fromkeys(declared.supported_channels, 0.05),
         lateral_geometry_known=False,
         observation_dropout_s=observation_dropout_s,
     )

@@ -18,10 +18,13 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ..paths import Paths
 from .package import SourceRecord
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 USER_AGENT = "afterlap-track-pipeline/1.0 (research simulator; contact via repository)"
 
@@ -50,8 +53,6 @@ class RawSourceCache:
 
     def __init__(self, root: Path | None = None, *, paths: Paths | None = None) -> None:
         self.root = root or (paths or Paths.default()).artifacts / "tracks" / "raw"
-
-    # -- storage ------------------------------------------------------------- #
 
     def _dir(self, source: str, sha256: str) -> Path:
         return self.root / source / sha256
@@ -140,8 +141,6 @@ class RawSourceCache:
             SourceRecord.model_validate(json.loads(p.read_text(encoding="utf-8"))["record"])
             for p in sorted(self.root.glob(pattern))
         )
-
-    # -- network ------------------------------------------------------------- #
 
     def fetch(
         self,

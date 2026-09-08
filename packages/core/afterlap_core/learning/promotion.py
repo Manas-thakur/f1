@@ -25,14 +25,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import ApprovalStatus, BenchmarkReport, ModelManifest, PromotionPolicy
 
 from ..config import load_config
 from ..paths import Paths, sha256_json
 from .serving import DEFAULT_BASELINE_IDENTITY
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 __all__ = [
     "FrozenPromotionPolicy",
@@ -132,7 +134,7 @@ def load_promotion_policy(policy_id: str = "promotion", paths: Paths | None = No
         frozen_at = (
             frozen_at_raw
             if isinstance(frozen_at_raw, datetime)
-            else datetime.fromisoformat(str(frozen_at_raw).replace("Z", "+00:00"))
+            else datetime.fromisoformat(str(frozen_at_raw))
         )
     evidence = tuple(str(e) for e in (document.get("evidence_required") or ()))
     return FrozenPromotionPolicy(

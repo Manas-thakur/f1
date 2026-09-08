@@ -26,11 +26,9 @@ from __future__ import annotations
 import platform
 import sys
 import time
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -46,14 +44,18 @@ from afterlap_contracts import (
 )
 from afterlap_core.config import load_yaml
 from afterlap_core.paths import Paths, sha256_json
-from afterlap_core.rules import CarState as RuleCarState
-from afterlap_core.rules import RulePack, load_rule_pack, resolve_pack_context
+from afterlap_core.rules import CarState as RuleCarState, RulePack, load_rule_pack, resolve_pack_context
 from afterlap_core.simulation import Simulator, load_bundle
 from afterlap_core.simulation.branching import snapshot_hash
-from afterlap_core.simulation.config import ScenarioBundle
-from afterlap_core.simulation.observation import Observation
 
 from .controllers import ControlDecision, Controller, ControlRequest, build_request
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
+
+    from afterlap_core.simulation.config import ScenarioBundle
+    from afterlap_core.simulation.observation import Observation
 
 __all__ = [
     "BenchmarkManifest",
@@ -72,11 +74,6 @@ __all__ = [
 MANIFEST_KIND = "benchmarks/manifests"
 EVALUATOR_VERSION = "afterlap-evaluator-1"
 METRICS_VERSION = "afterlap-metrics-1"
-
-
-# --------------------------------------------------------------------------- #
-# Manifest
-# --------------------------------------------------------------------------- #
 
 
 class BenchmarkManifest(BaseModel):
@@ -166,11 +163,6 @@ def load_benchmark_manifest(manifest_id: str, paths: Paths | None = None) -> Ben
     return BenchmarkManifest.model_validate(load_yaml(_manifest_dir(paths) / f"{manifest_id}.yaml"))
 
 
-# --------------------------------------------------------------------------- #
-# Objective
-# --------------------------------------------------------------------------- #
-
-
 @dataclass(frozen=True, slots=True)
 class Objective:
     """The frozen ranking trade-off. Dimensionless, never seconds."""
@@ -210,11 +202,6 @@ def objective_utility(outcome: RunOutcome, objective: Objective) -> float:
     if outcome.terminal_failure:
         penalty += objective.terminal_failure_penalty
     return -penalty
-
-
-# --------------------------------------------------------------------------- #
-# Results
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)
@@ -430,10 +417,6 @@ class BenchmarkRun:
         }
 
 
-# --------------------------------------------------------------------------- #
-# Rule context for a controller tick
-# --------------------------------------------------------------------------- #
-
 OWN_ENERGY_UNAVAILABLE = "own_energy_unavailable"
 
 
@@ -475,20 +458,12 @@ def controller_rule_context(
     )
     context = resolve_pack_context(
         pack,
-        # Progress carries measurement noise, so a sample taken just after the
-        # timing line can read slightly negative. The rule context is resolved at
-        # a non-negative progress; the raw observation is not modified.
         max(0.0, observation.get("progress_m")),
         observation.delivered_at_s,
         car_state,
         session_id=session_id,
     )
     return context, tuple(gaps)
-
-
-# --------------------------------------------------------------------------- #
-# Running
-# --------------------------------------------------------------------------- #
 
 
 def _position_of(simulator: Simulator, ego: str) -> int:
@@ -570,10 +545,6 @@ def _run_one(
                 unavailable_ticks += 1
                 detail = decision.detail
                 if decisions == 1:
-                    # A controller that is unavailable at its first tick has no
-                    # implementation to evaluate. Simulating the rest of the
-                    # horizon would manufacture a trajectory for a controller
-                    # that never acted, so the run stops and is labelled.
                     return RunOutcome(
                         scenario_id=scenario.id,
                         seed=seed,
@@ -591,7 +562,6 @@ def _run_one(
             if decision.latency_ms > manifest.compute_budget_ms or (
                 decision.status is PlanningStatus.DEADLINE_EXCEEDED
             ):
-                # A late result is ignored, exactly as the serving spec requires.
                 timeouts += 1
                 withdrawn += 1
             elif decision.withdrawn:

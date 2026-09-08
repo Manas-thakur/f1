@@ -1,17 +1,4 @@
-/**
- * Chart series construction for the operational panels.
- *
- * Everything here comes from a contract object. Nothing is interpolated into
- * existence, nothing is smoothed, and no series is produced when its source is
- * absent — an absent series makes `ChartFrame` render its named empty state,
- * which is the correct outcome.
- *
- * Two derived series are produced, and both are labelled for what they are:
- *   - the projected energy at the recommendation's named checkpoints, which is
- *     `CheckpointOutcome.own_energy_j`, plotted as a dashed reference;
- *   - the rule pack's energy floor, which is a configured constant, plotted as
- *     a two-point context line so the target is readable against the trace.
- */
+
 import type {
   Recommendation,
   RuleContext,
@@ -50,17 +37,14 @@ export function domainOf(series: readonly ChartSeries[]): Domain | null {
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
   for (const s of series) {
-    if (s.x.length === 0) continue;
+    if (s.x.length === 0) {continue;}
     min = Math.min(min, s.x[0] as number);
     max = Math.max(max, s.x[s.x.length - 1] as number);
   }
   return Number.isFinite(min) && Number.isFinite(max) && max > min ? { min, max } : null;
 }
 
-/**
- * The trigger and every named checkpoint outcome, as markers that decimation
- * must preserve exactly.
- */
+
 export function decisionMarkers(recommendation: Recommendation | null): readonly EventMarker[] {
   if (recommendation === null) {
     return [];
@@ -88,13 +72,7 @@ export function decisionMarkers(recommendation: Recommendation | null): readonly
   return markers;
 }
 
-/**
- * Projected stored energy at each named checkpoint.
- *
- * These are the planner's own predicted outcomes, so the series is `estimated`
- * and drawn as a dashed reference. A checkpoint with no predicted energy is a
- * null sample, not a zero and not a bridged gap.
- */
+
 export function projectedEnergySeries(recommendation: Recommendation | null): ChartSeries | null {
   const outcomes = recommendation?.outcomes ?? [];
   if (recommendation === null || outcomes.length === 0) {
@@ -126,12 +104,7 @@ export function projectedEnergySeries(recommendation: Recommendation | null): Ch
   };
 }
 
-/**
- * The configured energy floor as a flat two-point line across the panel.
- *
- * A configured limit is not a measurement; the provenance says so and the
- * label names the rule pack it came from.
- */
+
 export function energyFloorSeries(
   ruleContext: RuleContext | null,
   domain: Domain | null,
@@ -158,7 +131,7 @@ export function energyFloorSeries(
   };
 }
 
-/** Non-null entries only, in the order given. */
+
 export function compact<T>(items: readonly (T | null)[]): readonly T[] {
   return items.filter((item): item is T => item !== null);
 }

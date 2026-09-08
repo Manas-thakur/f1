@@ -66,13 +66,7 @@ const COLUMNS: readonly Column<SessionSummary>[] = [
   },
 ];
 
-/**
- * `/sessions` — session and source selection.
- *
- * Every row states its mode and whether its data is synthetic, because the
- * mode label is the only thing that separates a simulated value from a
- * recorded one.
- */
+
 export function SessionsPage() {
   const query = useSessions();
   const sessions = query.data?.sessions ?? [];

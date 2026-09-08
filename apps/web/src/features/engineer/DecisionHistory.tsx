@@ -57,8 +57,8 @@ export function toTimeline(
       }`,
     });
   }
-  // Sequence is the server's own total order; session time only breaks ties
-  // for records that share one.
+
+
   return entries.sort((a, b) => a.sequence - b.sequence || a.sessionTimeS - b.sessionTimeS);
 }
 
@@ -94,14 +94,7 @@ const COLUMNS: readonly Column<TimelineEntry>[] = [
   },
 ];
 
-/**
- * The immutable decision timeline.
- *
- * Read from `GET /decisions/{id}`, which is the server's own record. The
- * console does not build a timeline from what it happened to observe on the
- * socket, because a client that reconnected would then show a different
- * history than one that did not.
- */
+
 export function DecisionHistory({
   operatorEvents,
   executionEvents,

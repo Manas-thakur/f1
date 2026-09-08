@@ -1,28 +1,10 @@
-/**
- * Selectors are the public read surface of the session store.
- *
- * Feature agents import from here rather than reading raw slice shapes, so the
- * store's internals can change without breaking four feature trees.
- *
- * Every selector here returns a stable reference for a given store state, so
- * any of them may be passed straight to `useSessionStore(...)`. Zustand
- * compares snapshots by reference: a selector that built a fresh object on
- * each call would re-render without end. The three that derive an object
- * (`selectQualitySummary`, `selectCursor`, `selectTelemetrySeries`) are
- * memoised on the slice they read, so they only produce a new reference when
- * that slice actually changes.
- */
+
 import type { ChannelQuality, Quality, Recommendation, TelemetrySeries } from '@contracts';
 
 import { isBlockingQuality } from '../contracts/units';
 import type { QualitySummary, SessionStoreState, StreamSlice } from './types';
 
-/**
- * Memoise a derived value against the slice it is derived from.
- *
- * The slice object identity is the cache key, so the result is stable for as
- * long as the input is, and entries fall away with the state they belong to.
- */
+
 function weakMemo<Input extends object, Result>(
   compute: (input: Input) => Result,
 ): (input: Input) => Result {
@@ -99,10 +81,7 @@ export function selectSeriesByKey(s: SessionStoreState, key: string): TelemetryS
   return s.server.telemetry[key] ?? null;
 }
 
-/**
- * Session time at which telemetry actually last arrived, or null.
- * A heartbeat never updates this.
- */
+
 export function selectTelemetryFreshAtS(s: SessionStoreState): number | null {
   return s.server.telemetryFreshAtS;
 }
@@ -142,15 +121,12 @@ const qualitySummaryOf = weakMemo((server: SessionStoreState['server']): Quality
   return { overall, worstChannel: worst, blocking, reason };
 });
 
-/** Stable for a given server slice; safe to pass straight to the hook. */
+
 export function selectQualitySummary(s: SessionStoreState): QualitySummary {
   return qualitySummaryOf(s.server);
 }
 
-/**
- * Whether a time-sensitive action (select, communicate, driver action) may be
- * offered at all. A quality change disables these immediately.
- */
+
 export function selectTimeSensitiveActionsEnabled(s: SessionStoreState): boolean {
   if (s.stream.resyncRequired || !s.stream.applyingDeltas) {
     return false;
@@ -182,7 +158,7 @@ export function selectHasConflict(s: SessionStoreState, key: string): boolean {
   return s.request.conflictedKeys.includes(key);
 }
 
-/** Already a stable reference: the store replaces `view` only when it changes. */
+
 export function selectView(s: SessionStoreState) {
   return s.view;
 }
@@ -192,12 +168,12 @@ const cursorOf = weakMemo((view: SessionStoreState['view']) => ({
   value: view.cursorValue,
 }));
 
-/** Stable for a given view slice; safe to pass straight to the hook. */
+
 export function selectCursor(s: SessionStoreState): { axis: string; value: number | null } {
   return cursorOf(s.view);
 }
 
-/** Already a stable reference; the store replaces the object on open/close. */
+
 export function selectInspector(s: SessionStoreState) {
   return s.view.inspector;
 }
@@ -210,7 +186,7 @@ export function selectMotion(s: SessionStoreState) {
   return s.view.motion;
 }
 
-/** Convenience for reducer tests: extract the reducer's slice from the store. */
+
 export function toStreamSlice(s: SessionStoreState): StreamSlice {
   return { server: s.server, stream: s.stream };
 }

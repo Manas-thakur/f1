@@ -15,12 +15,6 @@ from afterlap_api.db.models import Base
 
 config = context.config
 
-# Only fall back to the environment's default when the caller has not already
-# named a database. Overriding unconditionally made `ensure_schema` migrate the
-# default store while reporting success for whichever engine it was handed --
-# it created zero tables in a test database and said "schema at migration
-# head". The server appeared to work only because its URL happened to be the
-# default one.
 if not config.get_main_option("sqlalchemy.url", ""):
     config.set_main_option("sqlalchemy.url", default_database_url())
 
@@ -49,8 +43,6 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            # SQLite cannot ALTER most things in place; batch mode makes the
-            # same migration script work on both engines.
             render_as_batch=True,
             compare_type=True,
         )

@@ -12,8 +12,7 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from itertools import pairwise
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -23,16 +22,14 @@ from afterlap_contracts import DeploymentProfile, Provenance
 from ..config import ConfigDocument, Parameter, load_config
 from ..paths import Paths
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 class _Frozen(BaseModel):
     """Immutable, strict base for nested configuration records."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-# --------------------------------------------------------------------------- #
-# Track
-# --------------------------------------------------------------------------- #
 
 
 class TrackCheckpoint(_Frozen):
@@ -83,7 +80,6 @@ class _TrackTables:
         length = float(track.length_m.value)
         nodes = sorted(track.segments, key=lambda seg: seg.s_m.value)
         self.length_m = length
-        # Periodic closure: append the first node shifted by one lap.
         self.s_list = [float(seg.s_m.value) for seg in nodes] + [length]
         self.curvature_list = self._closed([float(seg.curvature_inv_m.value) for seg in nodes])
         self.grade_list = self._closed([float(seg.grade_rad.value) for seg in nodes])
@@ -177,8 +173,6 @@ class TrackConfig(ConfigDocument):
             raise ValueError("a synthetic track cannot claim surveyed lateral geometry")
         return self
 
-    # -- interpolated queries ------------------------------------------------ #
-
     def curvature_at(self, s_m: float) -> float:
         """Signed centreline curvature (1/m); positive turns left."""
         tables = _tables_for(self)
@@ -224,11 +218,6 @@ class TrackConfig(ConfigDocument):
     @property
     def length(self) -> float:
         return float(self.length_m.value)
-
-
-# --------------------------------------------------------------------------- #
-# Car
-# --------------------------------------------------------------------------- #
 
 
 class PowerMapPoint(_Frozen):
@@ -309,11 +298,6 @@ class CarConfig(ConfigDocument):
         return 0.5 * self.air_density_kgpm3.value * self.cla_m2.value / self.mass_kg.value
 
 
-# --------------------------------------------------------------------------- #
-# Driver
-# --------------------------------------------------------------------------- #
-
-
 class DriverConfig(_Frozen):
     """Human execution model: how late and how imprecisely an action lands."""
 
@@ -332,11 +316,6 @@ class DriverConfig(_Frozen):
         if self.line_tracking_gain.value <= 0.0:
             raise ValueError("line tracking gain must be positive")
         return self
-
-
-# --------------------------------------------------------------------------- #
-# Scenario
-# --------------------------------------------------------------------------- #
 
 
 class InitialCarState(_Frozen):
@@ -474,10 +453,10 @@ class ScenarioBundle(_Frozen):
     """A scenario resolved together with the documents it references."""
 
     scenario: ScenarioConfig
-    track: Any  # TrackSource: TrackConfig or a compiled real-circuit package
+    track: Any
     car_configs: dict[str, CarConfig]
-    environment: Any = None  # EnvironmentField resolved from scenario.conditions_id; None = static reference
-    environment_hash: str | None = None  # content hash of the conditions tape, recorded on the manifest
+    environment: Any = None
+    environment_hash: str | None = None
 
     @property
     def bundle_hash(self) -> str:
@@ -493,12 +472,7 @@ class ScenarioBundle(_Frozen):
         )
 
 
-# --------------------------------------------------------------------------- #
-# Loading
-# --------------------------------------------------------------------------- #
-
-
-def load_track(track_id: str, paths: Paths | None = None):
+def load_track(track_id: str, paths: Paths | None = None) -> TrackConfig | Any:
     """Resolve a track by id.
 
     A synthetic sketch lives at ``configs/tracks/<id>.yaml``. A compiled real

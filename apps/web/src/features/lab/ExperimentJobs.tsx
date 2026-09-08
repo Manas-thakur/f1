@@ -18,7 +18,7 @@ import { UNAVAILABLE_TEXT } from '@/contracts/units';
 import { labClient, type LabClient } from './controlPlane';
 import styles from '../engineer/workspace.module.css';
 
-/** What this browser submitted, so those fields can be shown for real. */
+
 export interface SubmittedExperiment {
   readonly seeds: readonly number[];
   readonly evaluatorVersion: string;
@@ -34,23 +34,14 @@ export interface ExperimentJobsProps {
 const TERMINAL = new Set(['completed', 'failed', 'cancelled']);
 
 function statusTone(status: string) {
-  if (status === 'completed') return 'verified' as const;
-  if (status === 'failed') return 'failure' as const;
-  if (status === 'cancelled') return 'attention' as const;
-  if (status === 'running') return 'selection' as const;
+  if (status === 'completed') {return 'verified' as const;}
+  if (status === 'failed') {return 'failure' as const;}
+  if (status === 'cancelled') {return 'attention' as const;}
+  if (status === 'running') {return 'selection' as const;}
   return 'neutral' as const;
 }
 
-/**
- * The experiment job queue.
- *
- * Three rules the table obeys:
- *   - a cancelled job keeps whatever it finished, labelled incomplete, and
- *     says so in its own row;
- *   - a field the control plane does not return reads "not available" with the
- *     reason, never 0 and never an empty cell;
- *   - "queued" is never rendered as a result.
- */
+
 export function ExperimentJobs({ client = labClient, submitted }: ExperimentJobsProps) {
   const queryClient = useQueryClient();
   const [cancelling, setCancelling] = useState<string | null>(null);

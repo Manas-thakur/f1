@@ -13,14 +13,17 @@ A missing value is ``None`` with a reason, never zero.
 from __future__ import annotations
 
 from bisect import bisect_right
-from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
 from itertools import pairwise
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import DeploymentProfile, EligibilityState, FlagState
 
 from ..timebase import EventPriority
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 __all__ = [
     "CarState",
@@ -50,8 +53,6 @@ class RaceEventKind(StrEnum):
 
 
 _EVENT_PRIORITY: dict[RaceEventKind, EventPriority] = {
-    # UNITS_TIME.md, "Events crossing a step": safety/rule invalidations first,
-    # physical line events second.
     RaceEventKind.INVALIDATION: EventPriority.SAFETY_OR_RULE_INVALIDATION,
     RaceEventKind.UNKNOWN_CONDITION: EventPriority.SAFETY_OR_RULE_INVALIDATION,
     RaceEventKind.FLAG: EventPriority.SAFETY_OR_RULE_INVALIDATION,
@@ -173,7 +174,6 @@ class SpeedProfile:
             if b <= a:
                 continue
             if self.step:
-                # Held value: evaluate strictly inside so the interval is constant.
                 held = self.speed_at(0.5 * (a + b))
                 yield a, b, held, held
             else:
@@ -189,8 +189,6 @@ class SpeedProfile:
             for index in range(substeps):
                 sa = a + index * width
                 sb = sa + width
-                # Linear speed over the piece; midpoint speed integrates ds/v exactly
-                # for the constant case and to second order otherwise.
                 fa = (sa - a) / (b - a)
                 fb = (sb - a) / (b - a)
                 speed_a = va + fa * (vb - va)

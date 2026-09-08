@@ -1,12 +1,4 @@
-/**
- * Contract fixtures for the web tests.
- *
- * Generated from `afterlap_contracts.fixtures` so the shapes are the frozen
- * contract's own, not a hand-written approximation that can drift. Regenerate
- * with the snippet recorded in handoffs/A12.md if the contract revision moves.
- *
- * Every value here is synthetic. None of it is measured telemetry.
- */
+
 import type {
   ExecutionEvent,
   Recommendation,

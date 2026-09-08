@@ -21,15 +21,7 @@ export interface EnergyTimelineProps {
   readonly onCursorChange: (value: number | null) => void;
 }
 
-/**
- * Projected energy over distance, with the rule floor and the named
- * checkpoints.
- *
- * Not a battery gauge: the question an engineer asks here is whether the plan
- * still lands above the floor at the checkpoint, which needs the trajectory
- * and the target on the same axis. The panel shares the console's one cursor,
- * so moving it here moves the speed and gap panels too.
- */
+
 export function EnergyTimeline({
   telemetry,
   estimate,
@@ -109,7 +101,9 @@ export function EnergyTimeline({
         />
       </div>
 
-      {floorValue === null || terminalCheckpoint?.own_energy_j == null ? (
+      {floorValue === null ||
+      terminalCheckpoint?.own_energy_j === null ||
+      terminalCheckpoint?.own_energy_j === undefined ? (
         <Notice tone="attention">
           Margin to the energy floor is {UNAVAILABLE_TEXT}: it needs both a configured floor and a
           projected checkpoint value, and at least one is missing.
@@ -118,7 +112,7 @@ export function EnergyTimeline({
         <Notice>
           Projected margin above the floor at {terminalCheckpoint.checkpoint_id}:{' '}
           {formatChannelValue('battery_energy_j', terminalCheckpoint.own_energy_j - floorValue).text}
-          . Projection provenance is estimated, from the planner's own scenario outcomes.
+          . Projection provenance is estimated, from the planner scenario outcomes.
         </Notice>
       )}
     </div>

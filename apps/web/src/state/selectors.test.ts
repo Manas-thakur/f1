@@ -15,12 +15,7 @@ function state() {
   return useSessionStore.getState();
 }
 
-/**
- * Zustand compares snapshots by reference. A selector that builds a fresh
- * object on every call re-renders without end — it did, in the session strip,
- * before these selectors were memoised. These assertions are the guard rail:
- * a future contributor who drops the memo breaks a test rather than a screen.
- */
+
 describe('derived selectors return a stable reference', () => {
   it('selectQualitySummary is identical across calls on unchanged state', () => {
     useSessionStore.getState().applyRestSnapshot(SESSION_SNAPSHOT);

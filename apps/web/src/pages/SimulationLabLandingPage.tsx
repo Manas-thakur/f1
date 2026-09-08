@@ -68,13 +68,7 @@ const COLUMNS: readonly Column<CapabilityRow>[] = [
   },
 ];
 
-/**
- * `/simulation-lab` — the lab product page.
- *
- * Explains the snapshot / branch / inspect workflow, shows the specimen it
- * produces, states the validation capabilities and their boundary, and links
- * into the workspace. No forms, no submissions.
- */
+
 export function SimulationLabLandingPage() {
   const [cursor, setCursor] = useState<number | null>(2600);
 

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import dataclasses
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from afterlap_core.paths import Paths
 from afterlap_core.tracks import (
     CompiledCentreline,
     CorridorQuality,
@@ -29,6 +28,11 @@ from afterlap_core.tracks.validate import (
 )
 
 from .conftest import SYNTHETIC_TRACK_ID, analytic_loop, build_package, write_package
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from afterlap_core.paths import Paths
 
 HASHED_SOURCE = SourceRecord(
     source_id="synthetic-hashed",
@@ -96,11 +100,6 @@ def _validate_with_arrays(tmp_path: Path, arrays: dict[str, np.ndarray], **overr
     return validate_track(SYNTHETIC_TRACK_ID, paths)
 
 
-# --------------------------------------------------------------------------- #
-# passing geometry
-# --------------------------------------------------------------------------- #
-
-
 def test_a_clean_loop_reaches_geometry_validated_with_all_checks_passing(tmp_path):
     centreline = analytic_loop()
     _, paths = write_package(tmp_path, _discovered(centreline), centreline)
@@ -118,7 +117,6 @@ def test_a_clean_loop_reaches_geometry_validated_with_all_checks_passing(tmp_pat
     report = json.loads((paths.artifacts / "tracks" / SYNTHETIC_TRACK_ID / REPORT_FILENAME).read_text())
     assert report["status"] == "geometry_validated"
     assert abs(report["numbers"]["recomputed_length_m"] - 2400.0) < 0.5
-    # The frozen file on disk is the returned object and loads through the verifying loader.
     assert load_track_package(SYNTHETIC_TRACK_ID, paths) == validated
     load_centreline(SYNTHETIC_TRACK_ID, validated, paths)
 
@@ -161,15 +159,8 @@ def test_missing_package_is_a_named_error(tmp_path):
         validate_track("nowhere", scratch_paths(tmp_path))
 
 
-# --------------------------------------------------------------------------- #
-# each check fails on a centreline built to fail it
-# --------------------------------------------------------------------------- #
-
-
 def test_open_loop_fails_closure_and_stays_discovered(tmp_path):
     arrays = _arrays_of(analytic_loop())
-    # Shear the second half sideways so the ends no longer meet; the geometry
-    # stays smooth so no integrity check fires.
     n = len(arrays["s_m"])
     ramp = np.linspace(0.0, 3.0, n)
     arrays["x_m"] = arrays["x_m"] + ramp
@@ -216,7 +207,7 @@ def test_manifest_official_length_and_tolerance_are_honoured(tmp_path):
     paths = dataclasses.replace(paths, configs=configs)
     result = validate_track(SYNTHETIC_TRACK_ID, paths)
     assert result.validation.official_length_m == 2410.0
-    assert result.validation.checks["length_official"] == "fail"  # 0.4 % > 0.1 % manifest tolerance
+    assert result.validation.checks["length_official"] == "fail"
     assert any("taken from source manifest" in n for n in result.validation.notes)
 
 
@@ -255,7 +246,7 @@ def test_yaw_inconsistent_with_tangent_is_rejected(tmp_path):
 
 def test_curvature_inconsistent_with_yaw_derivative_is_rejected(tmp_path):
     arrays = _arrays_of(analytic_loop())
-    arrays["curvature_1pm"] = arrays["curvature_1pm"] + 0.01  # still bounded, no longer d(yaw)/ds
+    arrays["curvature_1pm"] = arrays["curvature_1pm"] + 0.01
     result = _validate_with_arrays(tmp_path, arrays)
     assert result.validation.checks["curvature_yaw"] == "fail"
     assert result.validation.status is ReadinessStatus.REJECTED
@@ -278,7 +269,7 @@ def test_grade_out_of_bounds_is_rejected(tmp_path):
 
 
 def test_direction_contradicting_signed_area_is_rejected(tmp_path):
-    centreline = analytic_loop()  # counterclockwise by construction
+    centreline = analytic_loop()
     _, paths = write_package(tmp_path, _discovered(centreline, direction=Direction.CLOCKWISE), centreline)
     result = validate_track(SYNTHETIC_TRACK_ID, paths)
     assert result.validation.checks["direction"] == "fail"
@@ -304,7 +295,7 @@ def test_tampered_arrays_fail_the_hash_check_and_are_rejected(tmp_path):
 
 def test_unpinned_sources_block_publication(tmp_path):
     centreline = analytic_loop()
-    package = build_package(centreline=centreline)  # conftest source has no sha256
+    package = build_package(centreline=centreline)
     package = package.model_copy(
         update={
             "validation": package.validation.model_copy(
@@ -330,11 +321,6 @@ def test_missing_centreline_file_leaves_geometry_unknown(tmp_path):
     result = validate_track(SYNTHETIC_TRACK_ID, paths)
     assert result.validation.status is ReadinessStatus.DISCOVERED
     assert result.validation.checks["closure"] == "unknown"
-
-
-# --------------------------------------------------------------------------- #
-# the upper rungs need their own evidence
-# --------------------------------------------------------------------------- #
 
 
 def _confirmed_overlay(event_id: str = "2026-synthetic") -> EventOverlay:
@@ -372,7 +358,6 @@ def test_a_confirmed_overlay_lifts_to_event_rules_validated_only(tmp_path):
     _, paths = write_package(tmp_path, _discovered(centreline, corridor=True), centreline)
     _queue_overlay(paths, _confirmed_overlay())
     result = validate_track(SYNTHETIC_TRACK_ID, paths)
-    # Corridor is known and the overlay confirmed, but no condition calibration exists.
     assert result.validation.status is ReadinessStatus.EVENT_RULES_VALIDATED
     assert result.event_overlay is not None and result.event_overlay.event_id == "2026-synthetic"
     assert result.validation.checks["corridor"] == "pass"
@@ -398,7 +383,7 @@ def test_full_evidence_reaches_simulation_eligible_and_unknown_corridor_stops_sh
 
 
 def test_a_corridor_claim_without_finite_widths_is_rejected(tmp_path):
-    centreline = analytic_loop()  # widths are nan
+    centreline = analytic_loop()
     package = _discovered(centreline)
     package = package.model_copy(
         update={

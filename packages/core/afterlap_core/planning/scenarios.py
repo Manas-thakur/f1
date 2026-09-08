@@ -21,13 +21,15 @@ robustness, and the scenario count is published with every decision.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from afterlap_contracts import ReasonCode, RivalIntention, StateEstimate
 
-from .config import PlannerConfig
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from .config import PlannerConfig
 
 __all__ = [
     "PlanScenario",
@@ -37,11 +39,6 @@ __all__ = [
     "scenarios_from_estimate",
     "scenarios_from_views",
 ]
-
-
-# --------------------------------------------------------------------------- #
-# the protocol A05's sampler must satisfy
-# --------------------------------------------------------------------------- #
 
 
 @runtime_checkable
@@ -91,11 +88,6 @@ class ScenarioEnsembleView(Protocol):
 
     @property
     def step_s(self) -> float: ...
-
-
-# --------------------------------------------------------------------------- #
-# the planner's normalised scenario
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,7 +203,6 @@ def _energy_nodes(
     if mean is not None and mean.value is not None and mean.standard_deviation:
         centre = float(mean.value)
         sigma = float(mean.standard_deviation)
-        # Symmetric quantile offsets in sigma units; 0.15/0.5/0.85 -> ~1.036 sigma.
         offsets = [_normal_quantile(q) for q in quantiles]
         return (
             [max(0.0, centre + o * sigma) for o in offsets],
@@ -225,9 +216,6 @@ def _energy_nodes(
         low, high = float(interval.lower), float(interval.upper)
         statistical = interval.kind in ("quantile", "confidence_interval")
         if not statistical:
-            # A physical-bounds range says only "somewhere inside the battery".
-            # It is a support, not a belief, so the reserve is not identified and
-            # the decision must say so.
             return (
                 [low + q * (high - low) for q in quantiles],
                 False,
@@ -380,7 +368,6 @@ def scenarios_from_estimate(
                     source="planner-baseline-quadrature",
                 )
             )
-    # Bounded ensemble: keep the heaviest hypotheses, deterministically ordered.
     built.sort(key=lambda s: (-s.weight, s.scenario_id))
     kept = _normalise(built[:limit])
     return ScenarioSample(

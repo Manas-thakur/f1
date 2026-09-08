@@ -22,17 +22,7 @@ const PANELS: readonly { title: string; channels: readonly string[] }[] = [
   { title: 'Gap', channels: ['gap_ahead_s', 'gap_behind_s'] },
 ];
 
-/**
- * `/sessions/:sessionId/replay`.
- *
- * Aligned traces on the workspace's one cursor. There is no second
- * chart-event protocol here: the cursor is the shared store value, so moving
- * it in any panel moves every other panel, including the engineer console's.
- *
- * Alignment is stated, never implied. "Ahead at a common distance" and "ahead
- * at a common elapsed time" are different claims, and the label says which one
- * is on screen.
- */
+
 export function ReplayView({ runtimeOptions }: ReplayViewProps) {
   const { sessionId } = useParams();
   const runtime = useSessionRuntime(sessionId, runtimeOptions ?? {});

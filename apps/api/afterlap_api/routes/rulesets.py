@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from fastapi import APIRouter
 from sqlalchemy import select
 
@@ -10,7 +12,9 @@ from afterlap_contracts.requests import RulesetResponse
 
 from ..db import LifecycleError
 from ..db.models import RuleManifestRow
-from ..deps import DbSession
+
+if TYPE_CHECKING:
+    from ..deps import DbSession
 
 router = APIRouter()
 

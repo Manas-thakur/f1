@@ -26,7 +26,7 @@ export interface EvidenceInspectorProps {
   readonly evidence: DecisionEvidenceResponse | null;
   readonly loading: boolean;
   readonly errorMessage: string | null;
-  /** DOM id of the control that opened the dialog; focus returns there. */
+  
   readonly returnFocusTo: string;
 }
 
@@ -140,15 +140,7 @@ function ProbabilityRows({ items }: { readonly items: readonly ProbabilityStatem
   );
 }
 
-/**
- * The evidence behind one decision.
- *
- * Contains what the specification's inspector pattern requires: the observed
- * state revision, the predicted checkpoint outcomes, the independent rule
- * checks with their sources, the unresolved conditions, and the expiry. It is
- * a real dialog: Escape closes it and focus returns to the control that opened
- * it.
- */
+
 export function EvidenceInspector({
   open,
   onOpenChange,

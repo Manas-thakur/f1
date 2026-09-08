@@ -1,38 +1,23 @@
-/**
- * Min/max envelope decimation.
- *
- * The only reason to decimate is that a browser cannot usefully paint 200 000
- * points. It is never allowed to change what the operator can see:
- *
- *   - the minimum and the maximum of every bucket are kept, so a one-sample
- *     power spike survives at its exact x and y;
- *   - the first and last samples are kept, so the span does not shrink;
- *   - any index named in `preserveIndices`, and any sample at an x named in
- *     `preserveX` (checkpoints, rule transitions, flag changes), is kept
- *     exactly;
- *   - nulls are preserved as gaps rather than being interpolated away.
- *
- * A power-limit violation cannot be smoothed out of view by this function.
- */
+
 
 export interface DecimateInput {
   readonly x: readonly number[];
   readonly y: readonly (number | null)[];
-  /** Upper bound on the number of output points. Minimum honoured value is 4. */
+  
   readonly maxPoints: number;
-  /** X positions that must appear in the output exactly. */
+  
   readonly preserveX?: readonly number[];
-  /** Sample indices that must appear in the output exactly. */
+  
   readonly preserveIndices?: readonly number[];
 }
 
 export interface DecimateResult {
   readonly x: number[];
   readonly y: (number | null)[];
-  /** Indices into the source arrays, ascending. */
+  
   readonly indices: number[];
   readonly decimated: boolean;
-  /** Original spacing in x units, or null when it cannot be determined. */
+  
   readonly nativeResolution: number | null;
   readonly sourceSampleCount: number;
 }
@@ -47,7 +32,7 @@ function nativeResolution(x: readonly number[]): number | null {
   return Number.isFinite(spacing) ? spacing : null;
 }
 
-/** Nearest sample index to an x value, using a binary search on sorted x. */
+
 export function nearestIndex(x: readonly number[], target: number): number {
   if (x.length === 0) {
     return -1;
@@ -103,7 +88,7 @@ export function decimateMinMax(input: DecimateInput): DecimateResult {
     };
   }
 
-  // Two points per bucket (the min and the max), plus the forced points.
+
   const budget = Math.max(2, maxPoints - forced.size);
   const buckets = Math.max(1, Math.floor(budget / 2));
   const bucketSize = n / buckets;
@@ -136,10 +121,10 @@ export function decimateMinMax(input: DecimateInput): DecimateResult {
         maxIndex = i;
       }
     }
-    if (minIndex >= 0) keep.add(minIndex);
-    if (maxIndex >= 0) keep.add(maxIndex);
+    if (minIndex >= 0) {keep.add(minIndex);}
+    if (maxIndex >= 0) {keep.add(maxIndex);}
     if (sawNull) {
-      // Keep one representative gap so a data outage stays visible.
+
       for (let i = start; i < end; i += 1) {
         const value = y[i];
         if (value === null || value === undefined || !Number.isFinite(value)) {
@@ -161,7 +146,7 @@ export function decimateMinMax(input: DecimateInput): DecimateResult {
   };
 }
 
-/** Linear interpolation for cursor readout only. Never used for storage. */
+
 export function interpolateAt(
   x: readonly number[],
   y: readonly (number | null)[],
@@ -187,7 +172,7 @@ export function interpolateAt(
   const y0 = y[lowIdx];
   const y1 = y[highIdx];
   if (y0 === null || y0 === undefined || y1 === null || y1 === undefined) {
-    // A gap is a gap. Do not bridge it with a straight line.
+
     return { value: null, exact: false, nearestX };
   }
   if (x1 === x0) {

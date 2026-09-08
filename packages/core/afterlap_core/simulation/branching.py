@@ -17,16 +17,18 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import SCHEMA_VERSION, CheckpointDefinition, OutcomeRecord, Provenance
 
 from ..paths import sha256_json
-from .config import ScenarioBundle
 from .engine import Simulator
 from .observation import Observation
 from .policies import DriverAction
-from .state import CheckpointRecord
+
+if TYPE_CHECKING:
+    from .config import ScenarioBundle
+    from .state import CheckpointRecord
 
 Controller = Callable[[Observation], DriverAction]
 
@@ -95,7 +97,7 @@ def branch(bundle: ScenarioBundle, snapshot: dict[str, Any], treatment: Treatmen
     controller supplies the ego action, which is exactly the scope the plan
     requires for outcome identity.
     """
-    del treatment  # the treatment only supplies the controller, not world state
+    del treatment
     simulator = Simulator()
     simulator.reset(bundle, seed=snapshot["seed"])
     simulator.restore(snapshot)

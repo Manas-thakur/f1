@@ -195,10 +195,6 @@ def benchmark_throughput(
     env = AfterlapEnv(config=settings, scenario_id=scenario_id)
     rng = np.random.default_rng(seed)
 
-    # Reset cost is reported separately from step cost. The declared warm-up
-    # integrates tens of seconds of physics before the first scored tick, so an
-    # end-to-end rate on short episodes is dominated by resets and would badly
-    # misrepresent the steady-state cost of one policy transition.
     totals: dict[str, float] = {}
 
     def accumulate() -> None:
@@ -242,7 +238,7 @@ def benchmark_throughput(
         "planner_mode": settings.planner_mode,
         "scenario_id": scenario_id or "mixed",
         "hardware": _hardware(),
-        "diagnostics": {name: value for name, value in sorted(totals.items())},
+        "diagnostics": dict(sorted(totals.items())),
         "note": (
             "Environment throughput only, with a uniform random policy and no gradient work. "
             "It is not a trained-model figure and it is not a latency claim for the planner. "

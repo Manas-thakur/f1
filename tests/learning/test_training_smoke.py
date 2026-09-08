@@ -15,7 +15,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import math
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -37,6 +37,9 @@ from afterlap_core.learning.train_sac import (
 
 from .conftest import SMOKE_SCENARIO
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 pytestmark = pytest.mark.slow
 
 
@@ -45,8 +48,6 @@ def smoke_config(request: pytest.FixtureRequest) -> EnvConfig:
     from afterlap_core.learning.config import load_env_config
 
     del request
-    # A short episode cap so a few thousand transitions cover many complete
-    # episodes rather than one long one.
     return dataclasses.replace(load_env_config(), max_episode_steps=20)
 
 
@@ -78,9 +79,6 @@ class TestThroughputBenchmark:
         assert measured["transitions"] == 40
         assert measured["wall_clock_s"] > 0.0
         assert measured["transitions_per_second"] > 0.0
-        # Reset cost is reported separately: the declared warm-up is scenario
-        # setup, not a scored transition, and folding it into one rate would
-        # misrepresent the steady-state cost of a policy step.
         assert measured["step_transitions_per_second"] >= measured["transitions_per_second"]
         assert measured["resets"] >= 1
         assert measured["reset_wall_clock_s"] > 0.0
@@ -101,16 +99,12 @@ class TestSmokeRun:
 
     def test_losses_stayed_finite(self, smoke_result) -> None:
         result, _ = smoke_result
-        # The guard stops the run the moment a tracked statistic goes non-finite.
         assert result.status is not TrainingStatus.NON_FINITE_LOSS
         terms = result.metrics["reward_terms"]
         for name, stats in terms.items():
             if stats is None:
                 continue
             assert math.isfinite(stats["mean"]), name
-        # Critic loss, actor loss and the entropy coefficient are read back from
-        # SB3's own logger, so a finite-loss claim rests on the library's numbers
-        # rather than on a re-derivation here.
         optimiser = result.metrics["optimiser"]
         assert "critic_loss" in optimiser and optimiser["critic_loss"] is not None
         assert "ent_coef" in optimiser and optimiser["ent_coef"] is not None
@@ -127,12 +121,9 @@ class TestSmokeRun:
     def test_physical_outcomes_are_reported_beside_the_utility(self, smoke_result) -> None:
         result, _ = smoke_result
         metrics = result.metrics
-        # Position, elapsed time and energy are separate fields; the
-        # dimensionless return never stands in for them.
         assert "finish_position" in metrics
         assert "elapsed_time_s" in metrics
         assert "final_energy_j" in metrics
-        # The withdrawal rate sits beside the reward on purpose.
         assert 0.0 <= metrics["withdrawal_rate"] <= 1.0
 
     def test_the_run_manifest_records_what_produced_it(self, smoke_result) -> None:
@@ -290,6 +281,5 @@ class TestThisIsNotATrainedProduct:
 
     def test_no_benchmark_report_is_produced_by_a_smoke_run(self, smoke_result) -> None:
         result, _ = smoke_result
-        # A smoke run creates no evidence, so promotion has nothing to read.
         assert not list((result.run_directory).glob("**/benchmark*.json"))
         assert np.isfinite(result.transitions_per_second)

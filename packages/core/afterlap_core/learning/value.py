@@ -3,7 +3,7 @@
 Five independent ``192 -> 256 -> 256 -> 1`` MLPs fit the **ordinary discounted
 continuation return** under a *named* frozen controller::
 
-    G[t] = r[t] + gamma * r[t+1] + ... + gamma^(T-t-1) * r[T-1]
+    G[t] = r[t] + gamma * r[t + 1] + ... + gamma ^ (T - t - 1) * r[T - 1]
 
 with exactly the environment revision's reward, discount, potential shaping and
 terminal treatment. There is **no SAC entropy term** in the labels: this number
@@ -30,10 +30,9 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -43,8 +42,13 @@ from afterlap_contracts import NormalizerManifest, SupportThresholds
 
 from ..feature_manifest import ENERGY_V1, OBSERVATION_SIZE, feature_index
 from ..paths import atomic_write_bytes, atomic_write_json
-from .config import ValueConfig
 from .features import EncodedObservation
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
+
+    from .config import ValueConfig
 
 __all__ = [
     "ContinuationEnsemble",
@@ -271,8 +275,6 @@ class ContinuationEnsemble:
         self._support = support
         self._hidden = tuple(hidden)
 
-    # -- identity ----------------------------------------------------------- #
-
     @property
     def bundle_id(self) -> str:
         return f"continuation/{self._controller}/{self._feature_hash[:16]}"
@@ -300,8 +302,6 @@ class ContinuationEnsemble:
     @property
     def target_scaler(self) -> TargetScaler:
         return self._scaler
-
-    # -- inference ---------------------------------------------------------- #
 
     def predict(self, observations: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Batch inference. Returns ``(mean, disagreement)`` in target units.
@@ -344,8 +344,6 @@ class ContinuationEnsemble:
                 for member in self._members
             )
         return ContinuationScore(value, disagreement, True, SupportReason.IN_SUPPORT, members)
-
-    # -- persistence -------------------------------------------------------- #
 
     def state_dicts(self) -> list[dict[str, torch.Tensor]]:
         return [member.state_dict() for member in self._members]
@@ -411,11 +409,6 @@ def _serialise_state_dict(state: Mapping[str, torch.Tensor]) -> bytes:
     buffer = io.BytesIO()
     torch.save({key: value.cpu() for key, value in state.items()}, buffer)
     return buffer.getvalue()
-
-
-# --------------------------------------------------------------------------- #
-# Fitting
-# --------------------------------------------------------------------------- #
 
 
 def _energy_regime(sample: ContinuationSample) -> str:
@@ -515,8 +508,6 @@ def fit_ensemble(
         member_seed = seed * 1000 + member_index
         torch.manual_seed(member_seed)
         member_rng = np.random.default_rng(member_seed)
-        # Bootstrap complete EPISODES, not rows. Rows inside one episode have
-        # correlated targets and resampling them would understate disagreement.
         drawn = member_rng.choice(len(train_episode_list), size=len(train_episode_list), replace=True)
         drawn_ids = tuple(train_episode_list[int(i)] for i in drawn)
         bootstrap_ids.append(drawn_ids)
@@ -604,11 +595,6 @@ def fit_ensemble(
         feature_hash=ensemble.feature_hash,
     )
     return ensemble, report
-
-
-# --------------------------------------------------------------------------- #
-# Planner integration
-# --------------------------------------------------------------------------- #
 
 
 @dataclass
@@ -773,7 +759,7 @@ def collect_episodes(
     identity belongs in the bundle: an ensemble fitted under one controller is
     not a universal value function and must not be reused under another.
     """
-    from .env import AfterlapEnv  # local import keeps the fitting path importable alone
+    from .env import AfterlapEnv
 
     if not isinstance(env, AfterlapEnv):  # pragma: no cover - defensive
         raise TypeError("collect_episodes needs an AfterlapEnv")
@@ -784,10 +770,6 @@ def collect_episodes(
     records: list[dict[str, object]] = []
     for episode in range(episodes):
         observation, reset_info = env.reset(seed=seed + episode)
-        # The grouping keys come from the RESET info, not the step info: only
-        # reset publishes the scenario identity, and the step info deliberately
-        # carries no scenario truth. Reading them from the step info silently
-        # collapses every reporting group to "unknown".
         scenario_id = str(reset_info.get("scenario_id", "unknown"))
         family = str(reset_info.get("scenario_family", "unknown"))
         opponent_family = env.opponent_family

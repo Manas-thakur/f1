@@ -244,8 +244,8 @@ describe('heartbeat', () => {
     });
     expect(beat.server.telemetryFreshAtS).toBe(freshAt);
     expect(beat.stream.lastHeartbeatAtS).toBe(999);
-    // A heartbeat also does not move the session clock, so data age keeps
-    // growing rather than appearing to reset.
+
+
     expect(beat.server.sessionTimeS).toBe(withTelemetry.server.sessionTimeS);
   });
 

@@ -19,10 +19,10 @@ from afterlap_contracts import DeploymentProfile, FlagState
 from ..rng import KeyedRandom, StreamRegistry
 from ..timebase import EventPriority, EventQueue, ScheduledEvent, SessionClock
 from .battery import EnergyLedger
-from .config import CarConfig, DriverConfig, ScenarioBundle
 from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField, TrackSource
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle only matters for typing
+    from .config import CarConfig, DriverConfig, ScenarioBundle
     from .policies import DriverAction, OpponentPolicy
 
 
@@ -52,7 +52,6 @@ class CarState:
     elapsed_time_s: float = 0.0
     distance_travelled_m: float = 0.0
 
-    # Per-step diagnostics. Written every step; never an input to the dynamics.
     drive_force_n: float = 0.0
     drag_force_n: float = 0.0
     rolling_force_n: float = 0.0
@@ -127,7 +126,7 @@ class PassRecord:
     session_time_s: float
     overtaking_car_id: str
     overtaken_car_id: str
-    kind: str  # attempted_pass | completed_pass | retained_pass | blocked_by_contact
+    kind: str
     checkpoint_id: str | None = None
     detail: str | None = None
 
@@ -139,7 +138,7 @@ class PassRecord:
 class PairState:
     """Hysteresis state machine for one ordered pair of cars."""
 
-    label: str = "behind"  # behind | contesting | ahead
+    label: str = "behind"
     armed: bool = False
     """True once the follower has been outside the attempt band.
 
@@ -213,8 +212,6 @@ class WorldState:
     car_configs: dict[str, CarConfig]
     driver_configs: dict[str, DriverConfig]
     seed: int
-    # Atmosphere and surface state. StaticEnvironment reproduces pre-A16
-    # behaviour exactly; a conditions tape replaces it for real circuits.
     environment: EnvironmentField = field(default_factory=lambda: DEFAULT_ENVIRONMENT)
 
     cars: dict[str, CarState] = field(default_factory=dict)
@@ -235,8 +232,6 @@ class WorldState:
     action_sequence: int = 0
     integrator: str = "explicit_midpoint"
     last_dt_s: float = 0.0
-
-    # -- snapshot ------------------------------------------------------------ #
 
     def capture_complete_state(self) -> dict[str, Any]:
         """Deep-copied plain-data snapshot of every piece of mutable truth."""

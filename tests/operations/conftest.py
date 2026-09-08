@@ -16,29 +16,23 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
-from sqlalchemy import Engine
-from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import sessionmaker
 
-# `scripts/` is not a workspace member and is not installed, so the operations
-# support package is imported by putting that directory on the path. Done once,
-# here, rather than in every test module.
 IMPLEMENTATION_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = IMPLEMENTATION_ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from afterlap_api.db import acquire_lease, apply_operator_action, body_hash_of, create_all  # noqa: E402
-from afterlap_api.db.engine import (  # noqa: E402
+from afterlap_api.db import acquire_lease, apply_operator_action, body_hash_of, create_all
+from afterlap_api.db.engine import (
     command_transaction,
     create_db_engine,
     create_session_factory,
 )
-from afterlap_api.db.models import Manifest, Session  # noqa: E402
-from afterlap_api.session import (  # noqa: E402
+from afterlap_api.db.models import Manifest, Session
+from afterlap_api.session import (
     BaselinePlanner,
     BoundedSpool,
     InProcessSessionRuntime,
@@ -46,29 +40,25 @@ from afterlap_api.session import (  # noqa: E402
     SessionFactory,
     SessionRecorder,
 )
-from afterlap_contracts import (  # noqa: E402
+from afterlap_contracts import (
     OperatorAction,
     Recommendation,
     RecommendationStatus,
     SessionManifest,
     SessionMode,
 )
-from afterlap_contracts.requests import CreateSessionRequest  # noqa: E402
+from afterlap_contracts.requests import CreateSessionRequest
+
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
+    from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 SCENARIO_ID = "two-straight-counterattack"
 RULE_PACK_ID = "synthetic-pack-v1"
 OPERATOR = "console-operator"
 SEED = 42
 
-#: Advice only becomes legal once the detection line at 1600 m is crossed, a
-#: little after t = 21 s from a standing start. The demo runbook observes the
-#: first actionable instruction at t = 26 s.
 DECISION_HORIZON_S = 45.0
-
-
-# --------------------------------------------------------------------------- #
-# database
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(slots=True)
@@ -142,11 +132,6 @@ def store(tmp_path: Path) -> LocalStore:
 @pytest.fixture
 def db_factory(store: LocalStore) -> sessionmaker[OrmSession]:
     return store.factory
-
-
-# --------------------------------------------------------------------------- #
-# a driveable session
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(slots=True)
@@ -343,11 +328,6 @@ def actionable(tick) -> bool:  # type: ignore[no-untyped-def]
         and recommendation.action_code is not ActionCode.WITHDRAW_ADVICE
         and recommendation.constraint_result.status is CheckStatus.PASS
     )
-
-
-# --------------------------------------------------------------------------- #
-# filesystem
-# --------------------------------------------------------------------------- #
 
 
 def write_filler(path: Path, total_bytes: int, *, chunk: int = 256 * 1024) -> int:

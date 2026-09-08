@@ -9,11 +9,11 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, Response
 
 from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION, CapabilityState
 from afterlap_core.diagnostics import run_doctor
@@ -29,6 +29,11 @@ from .session import OutboxPublisher, SessionFactory, SessionRecorder
 from .session.spool import BoundedSpool
 from .stream import StreamHub
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
+    from fastapi.responses import JSONResponse
+
 logger = logging.getLogger("afterlap.api")
 
 API_PREFIX = "/api/v1"
@@ -40,9 +45,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     paths = Paths.default(settings.artifact_root).ensure()
     app.state.database = Database(settings.database_url)
 
-    # A clean install must be able to run. Without this the first session
-    # creation fails deep inside the ORM with "no such table", which surfaces
-    # as an opaque 500 rather than anything an operator can act on.
     logger.info("database schema: %s", ensure_schema(app.state.database.engine))
 
     app.state.hub = StreamHub(buffer_size=settings.stream_buffer)
@@ -65,18 +67,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             spool=BoundedSpool(paths.spool, session_id),
         )
 
-    # Scenario, car, track, rule-pack and objective documents resolve from the
-    # workspace configs tree, not the artifact root, so relocating artifacts
-    # does not hide the configurations.
     app.state.session_factory = SessionFactory(recorder_factory=_recorder)
 
-    # Drains the transactional outbox onto the stream hub. Delivery is at least
-    # once; clients deduplicate on (session_id, sequence).
     app.state.publisher = OutboxPublisher(app.state.database.factory, app.state.hub)
     app.state.publisher.start()
 
-    # Readiness is decided from measured capabilities, not from the fact that
-    # the process started.
     report = run_doctor(paths)
     app.state.capabilities = report.capability_map()
     unavailable = [c.name for c in report.unavailable]
@@ -111,7 +106,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
 
     @app.middleware("http")
-    async def _request_context(request: Request, call_next):  # type: ignore[no-untyped-def]
+    async def _request_context(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         request.state.request_id = request.headers.get("X-Request-Id") or f"req-{uuid.uuid4().hex[:12]}"
         started = time.perf_counter()
         response = await call_next(request)

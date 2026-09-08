@@ -32,16 +32,16 @@ import asyncio
 import contextlib
 import logging
 from dataclasses import dataclass, field
-from typing import Any
-
-from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import sessionmaker
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import StreamEnvelope, StreamEventType
 
 from ..db.engine import transaction
 from ..db.repository import mark_published, unpublished_outbox
 from ..stream import StreamHub, envelope_from_outbox
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 logger = logging.getLogger("afterlap.session.publisher")
 
@@ -120,8 +120,6 @@ class OutboxPublisher:
                     )
                     report = report + PublishReport(undeliverable=(fault,))
                     continue
-                # Publish first, mark second: an at-least-once delivery is
-                # recoverable by the consumer, a lost lossless event is not.
                 await self._hub.publish(envelope)
                 mark_published(db, row)
                 report = report + PublishReport(published=1, repaired=1 if repaired else 0)
@@ -160,8 +158,6 @@ class OutboxPublisher:
         self._task = None
 
         with contextlib.suppress(Exception):
-            # A store that has already gone away cannot be drained; the rows
-            # stay unpublished and are picked up by the next process.
             await self.drain_once()
 
 

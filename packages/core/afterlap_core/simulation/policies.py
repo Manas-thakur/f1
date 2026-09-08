@@ -16,13 +16,14 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import asdict, dataclass, field
-from typing import Any, Protocol, runtime_checkable
-
-import numpy as np
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from afterlap_contracts import DeploymentProfile, Quality
 
-from .observation import Observation
+if TYPE_CHECKING:
+    import numpy as np
+
+    from .observation import Observation
 
 MIN_PACE_SCALE: float = 0.70
 MAX_PACE_SCALE: float = 1.00
@@ -127,8 +128,6 @@ class _BasePolicy:
     def restore(self, memory: dict[str, Any]) -> None:
         self.memory = json.loads(json.dumps(memory, sort_keys=True))
 
-    # -- helpers ------------------------------------------------------------- #
-
     def _own_energy(self, observation: Observation) -> float | None:
         """Own stored energy, or ``None`` when the channel is unavailable.
 
@@ -180,7 +179,7 @@ class NormalPolicy(_BasePolicy):
     kind: str = "normal"
 
     def _decide(self, observation: Observation, rng: np.random.Generator) -> DriverAction:
-        del rng  # deterministic policy
+        del rng
         curvature = abs(float(observation.context["curvature_inv_m"]))
         energy = self._own_energy(observation)
         straight = curvature < 2.0e-3

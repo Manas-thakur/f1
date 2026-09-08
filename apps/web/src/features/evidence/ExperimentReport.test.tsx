@@ -16,11 +16,7 @@ import { parseReportBundle, unmeasuredRows } from './reportTypes';
 const PATH = '/experiments/exp-0001/report';
 const ROUTE = '/experiments/:experimentId/report';
 
-/**
- * The job status is read through the shared query client, which uses the
- * global fetch, so the stub is installed there as well as handed to the
- * report client.
- */
+
 function renderReport(stub: FetchStub) {
   const original = globalThis.fetch;
   globalThis.fetch = stub.fetchImpl;
@@ -55,7 +51,7 @@ describe('absent evidence reads as absent', () => {
 
     expect(await screen.findByText(/missing artefact: benchmark report body/)).toBeInTheDocument();
     expect(await screen.findByText(/no route serves the report JSON/)).toBeInTheDocument();
-    // Nothing is invented in its place.
+
     expect(screen.queryByRole('region', { name: 'Comparison matrix rows' })).toBeNull();
   });
 

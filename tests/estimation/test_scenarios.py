@@ -67,9 +67,6 @@ def test_sampled_energy_is_temporally_correlated(rival_config: RivalConfig) -> N
     ]
     assert len(live) > 32, "most trajectories must have a varying energy trace"
     autocorrelations = [t.energy_lag1_autocorrelation() for t in live]
-    # Measured over four preparation seeds: mean 0.84, median 0.88, 10th
-    # percentile 0.69. The low tail is entirely trajectories pinned against the
-    # empty-battery clip, whose absolute movement is bounded below.
     assert float(np.median(autocorrelations)) > 0.8, (
         f"median lag-1 autocorrelation was only {float(np.median(autocorrelations)):.4f}"
     )
@@ -77,10 +74,6 @@ def test_sampled_energy_is_temporally_correlated(rival_config: RivalConfig) -> N
         f"mean lag-1 autocorrelation was only {float(np.mean(autocorrelations)):.4f}"
     )
 
-    # The statement that actually matters -- "one sampled opponent cannot jump
-    # from empty to full between ticks" -- is a *cross-sectional* one: which
-    # scenario is which must persist from step to step. That is immune to the
-    # clipped noise a trajectory sitting on the empty-battery floor shows.
     for step in range(ensemble.trajectories[0].energy_j.size - 1):
         now = ensemble.energy_at(step)
         later = ensemble.energy_at(step + 1)
@@ -89,9 +82,6 @@ def test_sampled_energy_is_temporally_correlated(rival_config: RivalConfig) -> N
         assert float(np.corrcoef(now, later)[0, 1]) > 0.97, f"scenario identity broke at step {step}"
 
     worst_step = max(t.max_absolute_energy_step_j() for t in ensemble.trajectories)
-    # 8 % of the window per half-second step. The reachable bound checked in the
-    # next test is the physical statement; this one is the coarser "an opponent
-    # cannot go from empty to full between two ticks" claim.
     assert worst_step < 0.08 * window, (
         f"a single step moved {worst_step:.0f} J, {worst_step / window:.1%} of the battery window"
     )
@@ -123,7 +113,6 @@ def test_no_single_step_changes_energy_by_more_than_is_reachable(rival_config: R
 
     worst = max(t.max_absolute_energy_step_j() for t in ensemble.trajectories)
     assert worst <= bound, f"a step moved {worst:.0f} J against a reachable bound of {bound:.0f} J"
-    # And the bound is not vacuous: it is far below the whole window.
     window = rival_config.dynamics.energy_max_j.value - rival_config.dynamics.energy_min_j.value
     assert bound < 0.1 * window
 
@@ -144,7 +133,6 @@ def test_uncertainty_widens_under_a_dropout(rival_config: RivalConfig) -> None:
     assert stale.offset_spread_at(-1) > fresh.offset_spread_at(-1)
     assert stale.reachable_energy_step_j > fresh.reachable_energy_step_j
 
-    # And the widening is monotone in the dropout, not a one-off.
     spreads = [
         sample_scenarios(filter_, 96, seed=3, horizon_s=15.0, step_s=0.5, dropout_s=dropout).offset_spread_at(
             -1
@@ -221,8 +209,6 @@ def test_scenario_modes_persist_rather_than_flickering(rival_config: RivalConfig
         switches = sum(1 for a, b in pairwise(modes) if a != b)
         switch_rates.append(switches / (len(modes) - 1))
     mean_rate = float(np.mean(switch_rates))
-    # lam = 1 - exp(-0.5 / 6) is about 0.08, and the prior's off-diagonal mass is
-    # small, so a switch every other step would mean the mode memory did nothing.
     assert mean_rate < 0.15, f"modes flickered at {mean_rate:.3f} switches per step"
     assert all(mode in set(RivalIntention) for t in ensemble.trajectories for mode in t.modes)
 

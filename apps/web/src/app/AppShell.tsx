@@ -20,8 +20,8 @@ function SessionStrip() {
   const estimate = useSessionStore((s) => s.server.estimate);
   const status = useSessionStore((s) => s.server.status);
   const connection = useSessionStore(selectConnection);
-  // selectQualitySummary is memoised on the server slice, so it returns a
-  // stable reference and is safe to hand straight to the hook.
+
+
   const quality = useSessionStore(selectQualitySummary);
   const dataAge = useSessionStore(selectDataAgeS);
 
@@ -47,7 +47,7 @@ function SessionStrip() {
       </span>
       <span className={styles.stripItem}>
         <span className={styles.stripLabel}>Lap</span>
-        <span className={styles.stripValue}>{lap === null ? 'unknown' : lap}</span>
+        <span className={styles.stripValue}>{lap ?? 'unknown'}</span>
       </span>
       <span className={styles.stripItem}>
         <span className={styles.stripLabel}>Flag</span>
@@ -122,12 +122,7 @@ function FooterStatus() {
   );
 }
 
-/**
- * The application shell.
- *
- * Left module rail, top session strip, work area, quiet footer status. One
- * `<main>` per route; the route supplies the single `<h1>`.
- */
+
 export function AppShell() {
   return (
     <div className={styles.shell}>

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import torch
@@ -26,6 +26,9 @@ from afterlap_core.learning.value import (
 )
 
 from .conftest import constant_actor_state
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 RULE_FAMILY = "synthetic-pack-v1"
 REWARD_REVISION = "objective-v1"
@@ -137,7 +140,6 @@ class TestRefusals:
 
     def test_a_tampered_weights_file_fails_its_hash_check(self, bundle_dir: Path) -> None:
         make_bundle(bundle_dir)
-        # Load once to prove the bundle was valid before tampering.
         load_bundle(bundle_dir)
 
         tampered = constant_actor_state()
@@ -172,7 +174,6 @@ class TestRefusals:
         rejection = excinfo.value
         assert rejection.reason is RejectionReason.FEATURE_HASH_MISMATCH
         assert "disabled" in rejection.detail
-        # The fallback is named, not implied.
         assert rejection.baseline_identity == DEFAULT_BASELINE_IDENTITY
         assert DEFAULT_BASELINE_IDENTITY in str(rejection)
 
@@ -222,8 +223,6 @@ class TestRestrictedLoading:
                 return (print, ("this should never run",))
 
         torch.save({"evil": Payload()}, bundle_dir / "actor.pt")
-        # Re-declare the hash so the load reaches the deserialisation step
-        # rather than stopping at the hash check.
         from afterlap_core.paths import sha256_file
 
         path = bundle_dir / "bundle.json"

@@ -12,17 +12,18 @@ completed solve for a superseded state must not overwrite a newer invalidation.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from afterlap_contracts import (
-    DeploymentProfile,
-    ExecutionEvent,
-    PlanningResult,
-    Recommendation,
-    RuleContext,
-    SessionManifest,
-    StateEstimate,
-)
+if TYPE_CHECKING:
+    from afterlap_contracts import (
+        DeploymentProfile,
+        ExecutionEvent,
+        PlanningResult,
+        Recommendation,
+        RuleContext,
+        SessionManifest,
+        StateEstimate,
+    )
 
 
 @dataclass(frozen=True, slots=True)

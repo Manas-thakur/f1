@@ -37,7 +37,6 @@ class TestManifestIsFrozen:
         ) / (1.0 - reward.gamma)
         position = reward.finish_position_penalty * (reward.maximum_supported_field_size - 1)
         assert reward.terminal_failure_penalty > running + position
-        # The specification's own arithmetic: ~331 running, 570 position.
         assert running == pytest.approx(331.0, abs=1.0)
         assert position == pytest.approx(570.0)
 
@@ -72,7 +71,6 @@ class TestHandComputedReturns:
         )
         assert terms.elapsed_penalty == pytest.approx(-1.0)
         assert terms.instruction_penalty == 0.0
-        # Phi is -1.0 at both ends, so shaping is gamma * -1 - (-1) = 1 - gamma.
         assert terms.shaping == pytest.approx(1.0 - reward.gamma)
         assert terms.total == pytest.approx(-1.0 + (1.0 - reward.gamma))
 
@@ -127,8 +125,6 @@ class TestHandComputedReturns:
             terminated=False,
             truncated=True,
         )
-        # The potential at the next state is NOT zeroed: a time limit is not a
-        # terminal state and continuation value there is real.
         assert truncated.potential_next == pytest.approx(-1.99)
         assert truncated.terminal_finish == 0.0
         assert truncated.terminal_failure == 0.0
@@ -217,9 +213,6 @@ class TestTelescoping:
         unshaped = sum(gamma**k * (t.base_reward + t.terminal_term) for k, t in enumerate(terms))
         phi_0 = potential(remaining[0], reward, terminal=False)
 
-        # The defining identity of potential-based shaping:
-        #   sum gamma^k * (gamma*Phi(s_{k+1}) - Phi(s_k)) == -Phi(s_0)
-        # because the final potential is zero at a true terminal state.
         assert shaped - unshaped == pytest.approx(-phi_0, abs=1e-12)
 
     def test_the_shaping_sum_alone_equals_minus_phi_zero(self, reward: RewardManifest) -> None:
@@ -267,9 +260,6 @@ class TestNoRewardHacks:
             next_remaining_reference_time_s=99.0,
             terminated=False,
         )
-        # `step_reward` has no pass argument at all: there is nowhere for a pass
-        # bonus to enter. The same inputs give the same reward however many
-        # times positions were swapped in between.
         again = step_reward(
             reward,
             elapsed_s=1.0,
@@ -294,9 +284,6 @@ class TestNoRewardHacks:
                 terminated=False,
             ).total
         assert total < 0.0
-        # Hand arithmetic: ten seconds of elapsed cost, plus the shaping sum
-        #   sum_i [ (100 - i)/100 - gamma * (99 - i)/100 ]  for i = 0..9
-        # = [ (100 + ... + 91) - gamma * (99 + ... + 90) ] / 100.
         shaping = (sum(100 - i for i in range(10)) - reward.gamma * sum(99 - i for i in range(10))) / 100.0
         assert total == pytest.approx(-10.0 + shaping, abs=1e-12)
 
@@ -329,9 +316,6 @@ class TestNoRewardHacks:
             failed=True,
         )
 
-        # The worst safe continuation the bound assumes: one charged instruction
-        # change every second, for an unbounded number of seconds, and then a
-        # last place in a full 20-car field.
         worst_running = -(
             reward.elapsed_second_penalty
             + reward.instruction_change_penalty * reward.maximum_charged_instruction_changes_per_s

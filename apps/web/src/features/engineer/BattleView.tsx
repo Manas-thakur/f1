@@ -24,7 +24,7 @@ export interface BattleViewProps {
   readonly estimate: StateEstimate | null;
 }
 
-/** "0.65 s ± 0.08 (1σ)", or the unavailable text. Never a bare zero. */
+
 function scalarWithSigma(channel: string, scalar: ScalarValue | null | undefined): string {
   const formatted = formatScalar(channel, scalar ?? null);
   if (!formatted.available) {
@@ -139,15 +139,7 @@ const COLUMNS: readonly Column<RivalBelief>[] = [
   },
 ];
 
-/**
- * Own car against the rivals the estimator has a belief about.
- *
- * Three things this panel refuses to do:
- *   - describe a `kind="quantile"` interval as a confidence bound;
- *   - show any rival quantity the estimate did not publish;
- *   - draw a collision or side-by-side likelihood, which needs lateral
- *     geometry that this source does not provide.
- */
+
 export function BattleView({ estimate }: BattleViewProps) {
   const rivals = estimate?.rival_beliefs ?? [];
   const own = estimate?.own_car ?? null;

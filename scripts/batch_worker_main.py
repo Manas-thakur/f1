@@ -78,11 +78,6 @@ CONTROLLER_REGISTRY: dict[str, str] = {
 """Treatment ids this worker can resolve to a merged controller."""
 
 
-# --------------------------------------------------------------------------- #
-# resolving what a job asked for
-# --------------------------------------------------------------------------- #
-
-
 def _rule_pack_id_for(db: Any, ruleset_hash: str) -> str:
     """Resolve a rule-pack id from its content hash.
 
@@ -182,8 +177,6 @@ def build_runner(factory: Any) -> Any:
             evaluator_version=manifest.evaluator_version,
         )
 
-        # Cancellation is cooperative and is checked between units, never
-        # mid-rollout: a half-integrated trajectory is not evidence.
         context.token.raise_if_cancelled()
         context.heartbeat()
 
@@ -225,11 +218,6 @@ def build_runner(factory: Any) -> Any:
     return runner
 
 
-# --------------------------------------------------------------------------- #
-# the process
-# --------------------------------------------------------------------------- #
-
-
 class _Stop:
     """SIGTERM/SIGINT flag, so `docker compose down` is a clean exit."""
 
@@ -257,13 +245,14 @@ def main(argv: list[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
+    from workers.batch_worker import BatchWorker
+
     from afterlap_api.db.engine import create_db_engine, create_session_factory, default_database_url
     from afterlap_core.paths import Paths
-    from workers.batch_worker import BatchWorker
 
     url = default_database_url()
     if args.wait_for_database > 0.0:
-        import migrate  # the sibling script; reuses one polling implementation
+        import migrate
 
         migrate._wait_for_database(url, args.wait_for_database)
 
@@ -294,8 +283,6 @@ def main(argv: list[str] | None = None) -> int:
         while not stop.requested and (args.max_jobs is None or completed < args.max_jobs):
             reading = quota.read()
             if reading.verdict is not last_verdict:
-                # Log the transition, not every poll: a full disk should be one
-                # loud line, not a thousand identical ones.
                 logger.warning("artefact quota %s: %s", reading.verdict.value, reading.detail)
                 last_verdict = reading.verdict
             if not reading.accepts_experiment_jobs:

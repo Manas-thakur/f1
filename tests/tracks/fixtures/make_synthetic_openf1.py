@@ -36,7 +36,7 @@ SPEED_MPS = 55.0
 CADENCE_HZ = 3.7
 NOISE_M = 0.25
 Z_AMPLITUDE_M = 3.0
-SCALE_M_PER_UNIT = 0.1  # the fixture is written in decimetres; the compiler must infer this
+SCALE_M_PER_UNIT = 0.1
 
 
 def curve(theta: np.ndarray) -> np.ndarray:
@@ -65,14 +65,20 @@ def main() -> None:
     laps_payload: list[dict] = []
     location_payloads: dict[str, dict] = {}
 
-    # Lap plan per driver: (lap_number, kind). kind: clean | first | pit_out | no_duration | slow
     plan = {
-        1: [(1, "first"), (2, "pit_out"), (3, "no_duration"), (4, "slow"), (5, "clean"), (6, "clean"), (7, "clean")],
+        1: [
+            (1, "first"),
+            (2, "pit_out"),
+            (3, "no_duration"),
+            (4, "slow"),
+            (5, "clean"),
+            (6, "clean"),
+            (7, "clean"),
+        ],
         2: [(1, "first"), (2, "clean"), (3, "slow"), (4, "clean"), (5, "pit_out")],
     }
     for driver, laps in plan.items():
         t_cursor = BASE_TIME + timedelta(seconds=30.0 * driver)
-        # Continuous trajectory: each lap is one traversal at constant speed; slow laps at 0.7x speed.
         times: list[float] = []
         s_along: list[float] = []
         lap_meta: list[tuple[int, str, datetime, float]] = []
@@ -134,7 +140,6 @@ def main() -> None:
                 for tk, p in zip(times_arr[mask], raw[mask], strict=True)
             ]
             if driver == 1 and lap_number == 6:
-                # Exact duplicate, time duplicate and an isolated jump for the cleaner.
                 dup = dict(samples[40])
                 samples.insert(41, dup)
                 near = dict(samples[80])

@@ -6,12 +6,15 @@ sufficient evidence of what a set of weights contains.
 
 from __future__ import annotations
 
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from pydantic import Field, model_validator
 
 from .base import Contract, VersionedContract
 from .enums import ApprovalStatus, CalibrationStatus, FailureCategory, JobStatus
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class FeatureField(Contract):

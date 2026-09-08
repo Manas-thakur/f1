@@ -51,7 +51,6 @@ def test_a_heartbeat_cannot_make_a_stale_channel_fresh():
     for tracker in (with_heartbeat, without_heartbeat):
         tracker.observe("speed_mps", session_time_s=10.0, car_id=CAR_ID, value=70.0, quality=Quality.VALID)
 
-    # A busy, perfectly healthy socket. It proves nothing about telemetry.
     for tick in range(1, 11):
         with_heartbeat.heartbeat(10.0 + tick * 0.03)
 
@@ -62,7 +61,6 @@ def test_a_heartbeat_cannot_make_a_stale_channel_fresh():
     assert stale.by_channel("speed_mps", CAR_ID).quality is Quality.STALE
     assert stale.by_channel("speed_mps", CAR_ID).quality is control.by_channel("speed_mps", CAR_ID).quality
     assert stale.by_channel("speed_mps", CAR_ID).age_s == control.by_channel("speed_mps", CAR_ID).age_s
-    # The heartbeat is still reported, but only as transport information.
     assert stale.heartbeat_age_s is not None
     assert "never contribute" in stale.heartbeat_note
 
@@ -83,7 +81,7 @@ def test_a_3_7_hz_source_is_not_judged_stale_by_20_hz_expectations():
     for tracker in (slow, fast):
         tracker.observe("speed_mps", session_time_s=10.0, car_id=CAR_ID, value=70.0, quality=Quality.VALID)
 
-    at = 10.5  # half a second later
+    at = 10.5
     slow_entry = slow.assess(at).by_channel("speed_mps", CAR_ID)
     fast_entry = fast.assess(at).by_channel("speed_mps", CAR_ID)
 
@@ -124,8 +122,6 @@ def test_battery_power_integration_gap_is_reported_so_estimation_can_widen_uncer
     tracker.observe(
         "electrical_power_w", session_time_s=10.0, car_id=CAR_ID, value=120_000.0, quality=Quality.VALID
     )
-    # The power channel drops out for 2 seconds; the integral over that window
-    # is unobserved and must not be assumed to be zero.
     gap = tracker.observe(
         "electrical_power_w", session_time_s=12.0, car_id=CAR_ID, value=130_000.0, quality=Quality.VALID
     )
@@ -175,7 +171,6 @@ def test_a_late_arrival_does_not_make_a_channel_look_fresher():
     tracker = _tracker(20.0)
     tracker.observe("speed_mps", session_time_s=10.0, car_id=CAR_ID, value=70.0, quality=Quality.VALID)
     tracker.observe("speed_mps", session_time_s=12.0, car_id=CAR_ID, value=71.0, quality=Quality.VALID)
-    # An out-of-order sample for session time 10.5 arrives now.
     tracker.observe("speed_mps", session_time_s=10.5, car_id=CAR_ID, value=70.5, quality=Quality.VALID)
     entry = tracker.assess(12.02).by_channel("speed_mps", CAR_ID)
     assert entry.last_source_time_s == pytest.approx(12.0)
@@ -202,9 +197,6 @@ def test_public_pipeline_is_not_judged_stale_by_simulator_expectations():
     public_entry = public.assess_quality(at).by_channel("speed_mps", CAR_ID)
     sim_entry = simulator.assess_quality(at).by_channel("speed_mps", CAR_ID)
 
-    # Same age, different sources. The 20 Hz simulator channel is stale; the
-    # 3.7 Hz public channel is only degraded, and only because that source
-    # declares a 0.5 s clock error of its own.
     assert sim_entry.quality is Quality.STALE
     assert public_entry.quality is Quality.DEGRADED
     assert public_entry.expected_period_s == pytest.approx(1.0 / 3.7)

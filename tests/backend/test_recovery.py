@@ -54,9 +54,6 @@ def _fresh_runtime(session, bundle=None, pack=None) -> InProcessSessionRuntime: 
     return runtime
 
 
-# --- worker crash mid-session -------------------------------------------------------
-
-
 def test_a_worker_crash_invalidates_expiring_advice_and_resumes_only_when_ready(db_factory):
     session = start_session(db_factory)
     session.advance(1.0)
@@ -70,26 +67,20 @@ def test_a_worker_crash_invalidates_expiring_advice_and_resumes_only_when_ready(
     assert snapshot["event_offset"]["newest_event_time_s"] is not None
     assert snapshot["event_offset"]["sequence"] >= 0
 
-    # --- the worker dies. The registry reports the session unavailable rather
-    # --- than serving the state nobody is computing any more.
     registry = RuntimeRegistry()
     registry.attach(session.session_id, session.runtime)
     registry.detach(session.session_id)
     with pytest.raises(RuntimeUnavailable):
         registry.get(session.session_id)
 
-    # Outstanding advice that could expire is invalidated before anything resumes.
     assert session.recorder is not None
     session.recorder.invalidate_all(reason="session worker crashed", session_time_s=tick.session_time_s)
     assert session.status_of(live.id) is RecommendationStatus.INVALIDATED
 
-    # --- restart: restore from the snapshot and the event offset --------------
     restored = _fresh_runtime(session)
     restored.restore(snapshot)
     assert restored.session_time_s == pytest.approx(tick.session_time_s, abs=1e-9)
     assert restored.revision > snapshot["revision"], "the restored session reuses a stale revision"
-    # Not ready: nothing has been re-estimated or revalidated yet, so nothing is
-    # published and the session must not be operated.
     assert restored.ready is False
     assert restored.last_estimate is None
     assert restored.last_recommendation is None
@@ -99,7 +90,6 @@ def test_a_worker_crash_invalidates_expiring_advice_and_resumes_only_when_ready(
     assert resumed.estimate is not None, "the session resumed without re-estimating"
     assert resumed.rule_context is not None, "the session resumed without re-resolving the rules"
     assert resumed.recommendation is not None
-    # Whatever is published after the restart carries a fresh independent check.
     assert resumed.recommendation.constraint_result.checked_at_s >= tick.session_time_s
     assert resumed.recommendation.id != live.id, "the invalidated advice was re-published"
     registry.attach(session.session_id, restored)
@@ -116,7 +106,6 @@ def test_a_previously_acknowledged_driver_command_is_never_replayed_on_reconnect
     assert [e.id for e in tick.executions] == [f"exe-{queued.id}"]
     acknowledged = runtime.executions[0]
 
-    # The snapshot records which deliberate commands have already been applied.
     _, snapshot = runtime.snapshot("after the driver acted")
     assert queued.id in snapshot["acknowledged_driver_inputs"]
     assert snapshot["queued_driver_inputs"] == []
@@ -127,12 +116,9 @@ def test_a_previously_acknowledged_driver_command_is_never_replayed_on_reconnect
     for _ in range(3):
         restored.advance(1.0)
 
-    # The restart must not re-actuate a command the driver already carried out.
     assert acknowledged.id not in {e.id for e in restored.executions}
     assert restored.executions == (), "a previously acknowledged driver command was replayed"
 
-    # A command that had *not* yet landed is still pending after a restart, and
-    # is applied exactly once.
     pending = runtime.queue_driver_input(DeploymentProfile.CONSERVE)
     _, mid_flight = runtime.snapshot("with a command in flight")
     assert pending.id in {q["id"] for q in mid_flight["queued_driver_inputs"]}
@@ -146,9 +132,6 @@ def test_a_previously_acknowledged_driver_command_is_never_replayed_on_reconnect
     for _ in range(2):
         second.advance(1.0)
     assert len([e for e in second.executions if e.id == f"exe-{pending.id}"]) == 1
-
-
-# --- database outage ----------------------------------------------------------------
 
 
 class _OutageFactory:
@@ -185,13 +168,11 @@ def test_a_database_outage_spools_with_sequence_continuity_and_warns(db_factory,
 
     status = recorder.status()
     assert status.degraded and status.warnings and not status.exhausted
-    # Sequence continuity: entries keep the order they were spooled in.
     positions = [entry.position for entry in spool.entries]
     assert positions == sorted(positions) == list(range(1, len(positions) + 1))
     spooled_ids = [entry.payload["recommendation"]["id"] for entry in spool.entries]
     assert spooled_ids == [r.id for r in published[:3]]
 
-    # Recovery drains in the same order and nothing is lost.
     outage.down = False
     replayed, remaining = recorder.drain_spool()
     assert (replayed, remaining) == (3, 0)
@@ -222,22 +203,17 @@ def test_an_exhausted_spool_stops_new_advice_reaching_the_store(db_factory, tmp_
             )
         )
     assert results[0].spooled is True and results[0].halted is False
-    assert results[1].spooled is True and results[1].halted is True  # the spool is now full
+    assert results[1].spooled is True and results[1].halted is True
     assert results[2].committed is False and results[2].spooled is False and results[2].halted is True
     assert recorder.accepts_new_recommendations() is False
     assert len(spool) == 2, "a write was accepted past the spool's capacity"
     assert recorder.status().exhausted is True
 
 
-# --- crash between commit and delivery ------------------------------------------------
-
-
 def test_a_crash_after_commit_before_delivery_still_delivers_exactly_once_after_dedup(db_factory):
     """The transactional outbox closes the commit/publish gap."""
     from afterlap_api.stream import StreamHub
 
-    # A wide client queue: this test is about the outbox, not about slow-client
-    # backpressure, which test_stream.py covers separately.
     hub = StreamHub(buffer_size=1024, client_queue=512)
     session = start_session(db_factory)
     session.advance(1.0)
@@ -254,8 +230,6 @@ def test_a_crash_after_commit_before_delivery_still_delivers_exactly_once_after_
     )
     assert outcome.recommendation.status is RecommendationStatus.SELECTED
 
-    # --- the process dies here: the lifecycle change is committed, nothing was
-    # --- published, and the outbox still holds the notification.
     with command_transaction(db_factory) as db:
         unpublished = db.query(OutboxRecord).filter(OutboxRecord.published_at.is_(None)).all()
         assert unpublished, "the committed lifecycle change left no outbox row"
@@ -267,16 +241,12 @@ def test_a_crash_after_commit_before_delivery_still_delivers_exactly_once_after_
         assert resync is False
         publisher = OutboxPublisher(db_factory, hub)
         first = await publisher.drain_once()
-        # A second drain is what a restart mid-publish looks like. Delivery is
-        # at least once; the consumer deduplicates.
         for record in list(publisher.undeliverable):
             assert record.event_type not in {e.value for e in StreamEventType}
         second_hub_deliveries = 0
         consumer = DeduplicatingConsumer()
         while not subscriber.queue.empty():
             consumer.offer(subscriber.queue.get_nowait())
-        # Replay the same envelopes a second time, as an at-least-once
-        # transport would after a crash between publish and mark-published.
         replayed = list(consumer.accepted)
         for envelope in replayed:
             second_hub_deliveries += 0 if consumer.offer(envelope) else 1
@@ -289,17 +259,14 @@ def test_a_crash_after_commit_before_delivery_still_delivers_exactly_once_after_
     assert pending_sequences & delivered, "the committed change was never delivered"
     assert duplicates_rejected == len(consumer.accepted)
     assert consumer.duplicates == len(consumer.accepted)
-    # Exactly once after dedup: no sequence appears twice in the accepted set.
     sequences = [e.sequence for e in consumer.accepted]
     assert len(sequences) == len(set(sequences))
-    # The lifecycle change itself is among the delivered lossless events.
     updates = consumer.of_type(StreamEventType.RECOMMENDATION_UPDATED)
     assert updates, "no recommendation_updated envelope reached the client"
     assert any(e.payload.recommendation.status is RecommendationStatus.SELECTED for e in updates)
 
     with command_transaction(db_factory) as db:
         still_pending = db.query(OutboxRecord).filter(OutboxRecord.published_at.is_(None)).all()
-    # Only rows that cannot be represented on the stream contract remain.
     assert all(r.event_type not in {e.value for e in StreamEventType} for r in still_pending)
 
 
@@ -334,7 +301,6 @@ def test_an_execution_survives_a_restart_and_the_lifecycle_is_intact(db_factory)
     restored = _fresh_runtime(session)
     restored.restore(snapshot)
     restored.resume_after_restore()
-    # The durable record is untouched by the restart, and nothing re-executes.
     assert session.status_of(recommendation.id) is RecommendationStatus.EXECUTING
     assert restored.executions == ()
     assert restored.last_recommendation is not None

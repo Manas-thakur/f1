@@ -53,13 +53,11 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     bundle = load_bundle(SCENARIO_ID)
     pack = load_rule_pack(RULE_PACK_ID)
 
-    # --- 1. the session starts from an immutable manifest with real hashes ---
     manifest = session.manifest
     assert manifest.mode.value == "simulation"
     assert manifest.scenario_id == SCENARIO_ID
     assert manifest.seed == SEED
     assert manifest.synthetic is True
-    # Real content hashes, recomputable from the artefacts on disk.
     assert manifest.track_hash == bundle.track.config_hash
     assert manifest.car_hashes == {
         car_id: cfg.config_hash for car_id, cfg in sorted(bundle.car_configs.items())
@@ -67,14 +65,11 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     assert manifest.ruleset_hash == pack.ruleset_hash
     for digest in (manifest.track_hash, manifest.ruleset_hash, manifest.objective_hash):
         assert digest.startswith("sha256:") and len(digest) == 71
-    # Immutable: the frozen contract refuses mutation, and its identity is stable.
     assert manifest.content_hash() == manifest.content_hash()
     with pytest.raises(ValidationError):
         manifest.seed = 7  # type: ignore[misc]
-    # Two cars, as the acceptance case requires.
     assert len(bundle.scenario.car_ids) == 2
 
-    # --- 2. simulation steps and emits delayed own-car observations ---
     first = session.advance(1.0)
     assert first.session_time_s == pytest.approx(1.0)
     ingestion = runtime.last_ingestion
@@ -83,11 +78,8 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     assert delay_s > 0.0
     newest = ingestion.newest_event_time_s
     assert newest is not None
-    # The newest observation is genuinely older than the simulator clock, by at
-    # least the configured source delay.
     assert first.session_time_s - newest >= delay_s - 1e-6
 
-    # --- 3. observations contain no rival truth (asserted on the payload) ---
     records = runtime.normalised_records
     assert records, "the ingestion pipeline published nothing"
     ego = bundle.scenario.ego_car_id
@@ -106,11 +98,9 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
         "opponent_policy",
     ):
         assert forbidden not in serialised
-    # The own car's energy is observed; the rival's never is.
     assert any(r.event.channel == "battery_energy_j" and r.event.car_id == ego for r in records)
     assert not any(r.event.channel == "battery_energy_j" and r.event.car_id in rival_ids for r in records)
 
-    # --- 4. an estimate exists with a cutoff, and nothing later contributed ---
     estimate = first.estimate
     assert estimate is not None
     assert estimate.cutoff_s <= estimate.created_at_s
@@ -123,23 +113,16 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
             f"decision cutoff {estimate.cutoff_s} s"
         )
 
-    # --- 5a. while eligibility is unresolved, the illegal profile is excluded ---
     context = first.rule_context
     assert context is not None
     assert context.eligibility is EligibilityState.UNKNOWN
     assert DeploymentProfile.OVERTAKE not in context.admissible_profiles
-    # ... and advice is suppressed rather than issued against an unknown rule.
     assert first.recommendation is not None
     assert first.recommendation.action_code is ActionCode.WITHDRAW_ADVICE
 
-    # The driver is not frozen while the tool has no advice. A deliberate
-    # conserving input during the run-up keeps the battery off its floor, and it
-    # is recorded as UNSOLICITED: an unmatched driver action is evidence, and it
-    # is never forced onto a recommendation.
     unsolicited = runtime.queue_driver_input(DeploymentProfile.HARVEST)
     assert unsolicited.recommendation_id is None
 
-    # Run on until eligibility resolves and a checked plan is publishable.
     tick = session.advance_until(actionable)
     assert [e.match_status for e in runtime.executions] == [ExecutionMatch.UNSOLICITED]
     assert runtime.executions[0].recommendation_id is None
@@ -154,7 +137,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     assert not context.unknown_conditions
     assert context.admissible_profiles
 
-    # --- 5b. an illegal profile is still excluded once permission exists ---
     checker_state = _checker_state(runtime, estimate, tick.session_time_s, bundle)
     illegal = _overtake_plan_outside_the_zone(runtime, checker_state, context)
     illegal_result = check_plan(illegal, checker_state, context, manifest=pack.manifest)
@@ -163,7 +145,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
         c.check_id == "overtake_eligibility" and c.status is CheckStatus.FAIL for c in illegal_result.checks
     )
 
-    # --- 6. a legal plan was produced and independently checked ---
     planning = tick.planning
     assert planning is not None and planning.accepted
     plan = planning.accepted[0]
@@ -171,7 +152,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     for segment in plan.profile_segments:
         assert segment.profile_id in context.admissible_profiles
     checked = recommendation.constraint_result
-    # The verdict came from A04's independent checker, not from the planner.
     assert checked.checker_version == CHECKER_VERSION
     assert checked.checker_version != UNCHECKED_CHECKER_VERSION
     assert plan.solver_status != checked.checker_version
@@ -186,17 +166,14 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     }
     assert checked.ruleset_hash == pack.ruleset_hash
 
-    # --- 7. the recommendation is published with its constraint result ---
     with command_transaction(session.factory) as db:
         stored = db.get(Decision, recommendation.id)
         assert stored is not None, "the published recommendation was not persisted"
         assert stored.payload["constraint_result"]["status"] == "pass"
         assert stored.payload["constraint_result"]["checker_version"] == CHECKER_VERSION
-        # The decision keeps the estimate it was actually made from.
         assert stored.estimate_payload["revision"] == estimate.revision
         assert stored.estimate_payload["cutoff_s"] == estimate.cutoff_s
 
-    # --- 8. the engineer selects it, and no execution event exists yet ---
     session.take_lease()
     outcome = session.act(recommendation, OperatorAction.SELECT, idempotency_key="select-1")
     assert outcome.recommendation.status is RecommendationStatus.SELECTED
@@ -211,9 +188,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
         assert matched == [], "selection produced an execution event; selection is not execution"
     assert len(runtime.executions) == before_selection
 
-    # --- 9. mark communicated, then the driver executes deliberately, later ---
-    # Selection bumped the recommendation's revision; the next action must be
-    # issued against the revision the server now holds, not the one the UI saw.
     communicated = session.act(
         outcome.recommendation, OperatorAction.MARK_COMMUNICATED, idempotency_key="comm-1"
     )
@@ -228,8 +202,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     )
     assert queued.apply_at_s > runtime.session_time_s, "the input landed with no reaction delay"
     assert queued.delay_s == pytest.approx(runtime.config.driver_reaction_delay_s)
-    # Still nothing has been executed against this recommendation: the queued
-    # input is pending its reaction delay.
     assert not any(e.recommendation_id == recommendation.id for e in runtime.executions)
     assert runtime.pending_driver_inputs == (queued,)
 
@@ -240,7 +212,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     assert execution.source is Provenance.SIMULATED
     assert execution.match_status is ExecutionMatch.MATCHED
     assert execution.recommendation_id == recommendation.id
-    # A separate, later event: after the communication and after the reaction delay.
     assert execution.start_time_s > communicated_at_s
     assert execution.delay_from_communication_s is not None
     assert execution.delay_from_communication_s >= runtime.config.driver_reaction_delay_s - 1e-9
@@ -253,7 +224,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
         assert len(rows) == 1 and rows[0].id == execution.id
     assert session.status_of(recommendation.id) is RecommendationStatus.EXECUTING
 
-    # --- 10. the resulting telemetry changes the next estimate and decision ---
     after = session.advance_until(actionable, limit_s=6.0)
     executed_estimate = after.estimate
     executed_recommendation = after.recommendation
@@ -292,7 +262,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     ), "the changed telemetry produced an identical next decision"
     assert branch_hash != runtime.snapshot()[0], "the snapshot hash did not move with the physics"
 
-    # --- 11. a named checkpoint outcome is recorded and the record exports ---
     session.advance_until(lambda _t: bool(runtime.outcomes), limit_s=CHECKPOINT_HORIZON_S, step_s=1.0)
     outcomes = runtime.outcomes
     assert outcomes, "no named checkpoint outcome was recorded"
@@ -329,7 +298,6 @@ def test_the_vertical_slice_closes_end_to_end(db_factory, tmp_path):
     for forbidden in ("worldstate", "world_state", "rng_state", "sensor_buffer", "ledgers"):
         assert forbidden not in text
 
-    # The runtime's own record is exportable too, and equally free of truth.
     runtime_record = runtime.export_record()
     assert runtime_record["ruleset_hash"] == pack.ruleset_hash
     assert runtime_record["outcomes"]

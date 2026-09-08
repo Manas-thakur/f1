@@ -1,27 +1,17 @@
-/**
- * Display formatting for physical quantities.
- *
- * Rules this module enforces, because they are correctness properties and not
- * styling preferences:
- *   - A null value is never rendered as `0`. It renders as text saying it is
- *     not available.
- *   - Conversion always goes through the channel registry, never through an
- *     ad-hoc factor written at a call site.
- *   - `-0` formats as `0`.
- */
+
 import type { IntervalValue, Provenance, Quality, ScalarValue } from '@contracts';
 
 import { toDisplay, tryChannel, type ChannelSpec } from './channels';
 
-/** The single string used everywhere a value is genuinely not available. */
+
 export const UNAVAILABLE_TEXT = 'not available';
 
 export interface FormattedValue {
-  /** Formatted number, or null when there is no value to show. */
+  
   readonly value: string | null;
-  /** Display unit, or null when unknown. */
+  
   readonly unit: string | null;
-  /** `"350 kW"`, or the unavailable text. Always safe to render directly. */
+  
   readonly text: string;
   readonly available: boolean;
 }
@@ -31,26 +21,21 @@ function formatNumber(n: number, decimals: number): string {
     return UNAVAILABLE_TEXT;
   }
   const text = n.toFixed(decimals);
-  // A tiny negative value rounds to "-0" / "-0.00". A signed zero reads as a
-  // direction of flow that the measurement does not support, so strip it.
+
+
   return Number(text) === 0 ? text.replace(/^-/, '') : text;
 }
 
 export interface FormatOptions {
-  /** Override the registry's decimal count. */
+  
   readonly decimals?: number;
-  /** Unit to show when the channel is not registered. */
+  
   readonly fallbackUnit?: string | null;
-  /** Text to show when the value is null. */
+  
   readonly unavailableText?: string;
 }
 
-/**
- * Format an SI value for a registered channel.
- *
- * 350000 W -> "350 kW"; 1500000 J -> "1.50 MJ"; 90 m/s -> "324 km/h";
- * 273.15 K -> "0 °C".
- */
+
 export function formatChannelValue(
   channelName: string,
   siValue: number | null | undefined,
@@ -69,8 +54,8 @@ export function formatChannelValue(
   }
 
   if (spec === undefined) {
-    // Unregistered channel: show the raw value and say so, rather than
-    // inventing a conversion factor.
+
+
     const decimals = options.decimals ?? 3;
     const unit = options.fallbackUnit ?? null;
     const value = formatNumber(siValue, decimals);
@@ -92,7 +77,7 @@ export function formatChannelValue(
   };
 }
 
-/** Format a contract `ScalarValue`, using its `unit` to find the channel. */
+
 export function formatScalar(
   channelName: string,
   scalar: ScalarValue | null | undefined,
@@ -106,14 +91,19 @@ export function formatScalar(
   return formatChannelValue(channelName, scalar.value, merged);
 }
 
-/** Format an interval as `"lo – hi unit"`, or the unavailable text. */
+
 export function formatInterval(
   channelName: string,
   interval: IntervalValue | null | undefined,
   options: FormatOptions = {},
 ): FormattedValue {
   const unavailable = options.unavailableText ?? UNAVAILABLE_TEXT;
-  if (!interval || interval.lower === null || interval.upper === null) {
+  if (
+    interval?.lower === null ||
+    interval?.lower === undefined ||
+    interval?.upper === null ||
+    interval?.upper === undefined
+  ) {
     const spec = tryChannel(channelName);
     return {
       value: null,
@@ -136,7 +126,7 @@ export function formatInterval(
   };
 }
 
-/** Human wording for an age in seconds. Null age is unknown, not "0 s ago". */
+
 export function formatAge(ageS: number | null | undefined): string {
   if (ageS === null || ageS === undefined || !Number.isFinite(ageS) || ageS < 0) {
     return 'age unknown';
@@ -167,17 +157,14 @@ export const QUALITY_TEXT: Record<Quality, string> = {
   invalid: 'invalid',
 };
 
-/**
- * Quality values that make a time-sensitive action unsafe. A recommendation
- * cannot be acted on when the evidence behind it is stale, missing or invalid.
- */
+
 export const BLOCKING_QUALITIES: readonly Quality[] = ['stale', 'missing', 'invalid'];
 
 export function isBlockingQuality(quality: Quality | null | undefined): boolean {
   return quality !== null && quality !== undefined && BLOCKING_QUALITIES.includes(quality);
 }
 
-/** Unit shown for a channel without formatting a value. */
+
 export function channelUnit(channelName: string): string | null {
   return tryChannel(channelName)?.displayUnit ?? null;
 }

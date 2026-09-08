@@ -22,10 +22,9 @@ from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import Provenance, Quality
 
-from .config import ObservationConfig
-
 if TYPE_CHECKING:  # pragma: no cover
-    from .state import WorldState
+    from .config import ObservationConfig
+    from .state import TruthSample, WorldState
 
 OWN_CHANNELS: tuple[str, ...] = (
     "speed_mps",
@@ -138,7 +137,7 @@ def _noise(world: WorldState, car_id: str, channel: str, cutoff_s: float, sigma:
     return world.keyed.normal(f"sensor:{channel}:{car_id}", cutoff_s, scale=sigma)
 
 
-def _sample_at(world: WorldState, cutoff_s: float):
+def _sample_at(world: WorldState, cutoff_s: float) -> TruthSample | None:
     """Newest buffered truth sample at or before ``cutoff_s``.
 
     Zero-order hold rather than interpolation: a real delayed feed delivers the
@@ -165,8 +164,6 @@ def observe(
     targets = [car_id] if car_id is not None else sorted(world.cars)
 
     if sample is None:
-        # Nothing old enough has been recorded yet. That is a real operational
-        # state and it is reported as missing, not filled in with the present.
         return {
             target: Observation(
                 car_id=target,
@@ -252,8 +249,6 @@ def observe(
                 if name in quanta:
                     rival[name] = _quantise(rival[name], quanta[name])
             if sensor_config.expose_rival_energy:
-                # Only ever populated when a configuration explicitly authorises
-                # it; there is no real-world measurement behind this channel.
                 rival["battery_energy_j"] = other_truth["battery_energy_j"]
             rivals.append(MappingProxyType(rival))
 

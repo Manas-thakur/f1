@@ -122,8 +122,6 @@ class EligibilityMachine:
             activation_line_id=activation.line_id,
         )
 
-    # -- crossing resolution -------------------------------------------------
-
     def _crossings_in(
         self, t0: float, t1: float, progress0: float, progress1: float
     ) -> tuple[LineCrossing, ...]:
@@ -158,8 +156,6 @@ class EligibilityMachine:
                 )
         found.sort(key=lambda c: (c.at_session_time_s, _KIND_ORDER[c.kind], c.at_progress_m))
         return tuple(found)
-
-    # -- transitions ---------------------------------------------------------
 
     def advance(
         self,

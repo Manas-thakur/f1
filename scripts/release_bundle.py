@@ -47,11 +47,13 @@ import json
 import platform
 import shutil
 import sys
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 _HERE = Path(__file__).resolve().parent
 WORKSPACE = _HERE.parent
@@ -62,8 +64,6 @@ MANIFEST_NAME = "manifest.json"
 CHECKSUMS_NAME = "MANIFEST.sha256"
 BUNDLE_SCHEMA = "afterlap.release.bundle/1"
 
-#: Source trees the bundle ships and hashes. `.venv`, `node_modules`,
-#: `artifacts` and caches are excluded: they are host state, not source.
 SOURCE_TREES: tuple[str, ...] = (
     "packages/contracts/afterlap_contracts",
     "packages/contracts/generated",
@@ -107,7 +107,6 @@ EXCLUDED_DIR_NAMES = {
     "test-results",
 }
 
-#: The scenario the demonstration runbook uses, with everything it needs.
 SEED_SCENARIO_ID = "two-straight-counterattack"
 SEED_RULESET_ID = "synthetic-pack-v1"
 
@@ -137,11 +136,6 @@ def iter_source_files(root: Path) -> Iterable[Path]:
             if candidate.suffix in {".pyc", ".pyo"}:
                 continue
             yield candidate
-
-
-# --------------------------------------------------------------------------- #
-# sections
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(slots=True)
@@ -360,7 +354,6 @@ def rules_and_models(root: Path, staging: Path) -> tuple[Section, Section]:
         data={"packs": packs},
     )
 
-    # Model manifests: only bundles that are actually present and approved.
     models_out = staging / "models"
     models_out.mkdir(parents=True, exist_ok=True)
     approved: list[dict[str, Any]] = []
@@ -432,15 +425,11 @@ def seed_scenario(root: Path, staging: Path) -> Section:
         ("tracks", bundle.track.id),
         ("objectives", "objective-v1"),
     ]
-    # `scenario.cars` maps slot -> car-model id; the *model* documents are what
-    # configs/cars holds, so deduplicate on the values.
     wanted.extend(("cars", model_id) for model_id in sorted(set(bundle.scenario.cars.values())))
 
     for kind, config_id in wanted:
         source = root / "configs" / kind / f"{config_id}.yaml"
         if not source.is_file():
-            # A car id in the scenario is a *car model* id in configs/cars; try
-            # to resolve it through the loader rather than guessing a filename.
             try:
                 load_config(kind, config_id)
             except Exception:
@@ -573,7 +562,6 @@ def third_party_licenses(staging: Path) -> Section:
         name = meta.get("Name") or getattr(dist, "name", "") or "unknown"
         classifiers = meta.get_all("Classifier") or []
         license_classifiers = [c for c in classifiers if c.startswith("License ::")]
-        # A package whose metadata declares nothing is recorded as
         # `unspecified`, never assumed permissive. `License` can be a whole
         # licence text, so only its first line is kept.
         declared = meta.get("License-Expression") or meta.get("License") or ""
@@ -591,10 +579,12 @@ def third_party_licenses(staging: Path) -> Section:
     lines = [
         "# Third-party licenses",
         "",
-        "Declared license metadata for every distribution installed in the environment that "
-        "assembled this bundle. Read from package metadata, not asserted by hand; a package "
-        "whose metadata declares nothing is listed as `unspecified` rather than assumed "
-        "permissive.",
+        (
+            "Declared license metadata for every distribution installed in the environment that "
+            "assembled this bundle. Read from package metadata, not asserted by hand; a package "
+            "whose metadata declares nothing is listed as `unspecified` rather than assumed "
+            "permissive."
+        ),
         "",
         "| Package | Version | License | Classifiers |",
         "|---|---|---|---|",
@@ -608,9 +598,11 @@ def third_party_licenses(staging: Path) -> Section:
             "",
             "## Data",
             "",
-            "No third-party dataset is bundled. Every scenario, track, car, rule pack and "
-            "objective is a synthetic fixture authored inside this project (see "
-            "`fixtures/README.md`). No measured telemetry and no licensed feed is included.",
+            (
+                "No third-party dataset is bundled. Every scenario, track, car, rule pack and "
+                "objective is a synthetic fixture authored inside this project (see "
+                "`fixtures/README.md`). No measured telemetry and no licensed feed is included."
+            ),
             "",
         ]
     )
@@ -764,11 +756,6 @@ mutates the archived original.
 """
     (staging / "ROLLBACK.md").write_text(text, encoding="utf-8")
     return Section("rollback_instructions", "available", "ROLLBACK.md", {"file": "ROLLBACK.md"})
-
-
-# --------------------------------------------------------------------------- #
-# assembly
-# --------------------------------------------------------------------------- #
 
 
 def checksum_everything(staging: Path) -> tuple[Path, str, int]:

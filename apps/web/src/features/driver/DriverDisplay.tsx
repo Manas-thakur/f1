@@ -14,13 +14,13 @@ import { useSessionRuntime, type SessionRuntimeOptions } from '../engineer/sessi
 import { deriveDriverView, energyTarget } from './precedence';
 import styles from './driver.module.css';
 
-/** How long the display may go without a stream update before it clears. */
+
 export const DEFAULT_WATCHDOG_MS = 5_000;
 
 export interface DriverDisplayProps {
   readonly runtimeOptions?: SessionRuntimeOptions;
   readonly client?: ApiClient;
-  /** Test seam. Production uses `DEFAULT_WATCHDOG_MS`. */
+  
   readonly watchdogMs?: number;
 }
 
@@ -52,15 +52,7 @@ function BigNumber({ label, channel, value, unavailableText }: BigNumberProps) {
   );
 }
 
-/**
- * `/sessions/:sessionId/driver` — the simulator driver's screen.
- *
- * Simulation sessions only. The server refuses a driver action for any other
- * mode regardless of what this page renders, and this page refuses to offer
- * one. There is no probability here, no chat, no scrolling telemetry and no
- * paragraph of prose: one instruction, its trigger, its end checkpoint, the
- * energy target, and the small number of states that override them.
- */
+
 export function DriverDisplay({
   runtimeOptions,
   client = apiClient,
@@ -83,10 +75,7 @@ export function DriverDisplay({
   const [lastExecution, setLastExecution] = useState<string | null>(null);
   const [pendingProfile, setPendingProfile] = useState<DeploymentProfile | null>(null);
 
-  // --- local watchdog ------------------------------------------------------
-  // Independent of the server: an open socket and a heartbeat both prove a
-  // connection exists, not that data is arriving. If nothing lands inside the
-  // window the instruction is cleared here, without waiting to be told.
+
   const lastUpdateRef = useRef<number>(Date.now());
   const [watchdogExpired, setWatchdogExpired] = useState(false);
 

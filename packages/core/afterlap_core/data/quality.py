@@ -14,14 +14,21 @@ amount rather than pretending the gap integrated to zero.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from afterlap_contracts import ChannelQuality, Quality, SourceCapability, is_registered
-from afterlap_contracts import channel as channel_spec
+from afterlap_contracts import (
+    ChannelQuality,
+    Quality,
+    SourceCapability,
+    channel as channel_spec,
+    is_registered,
+)
 from afterlap_core.timebase import classify_freshness
 
-#: Channels whose absence leaves a hole in an energy integral.
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
 INTEGRATING_CHANNELS: frozenset[str] = frozenset({"electrical_power_w", "deploy_power_w", "harvest_power_w"})
 
 
@@ -143,8 +150,6 @@ class QualityTracker:
         self._last_heartbeat_s: float | None = None
         self._heartbeat_count = 0
 
-    # -- inputs ---------------------------------------------------------
-
     @property
     def expectations(self) -> Mapping[tuple[str, str | None], ChannelExpectation]:
         return dict(self._expectations)
@@ -198,8 +203,6 @@ class QualityTracker:
 
         state.observation_count += 1
         if previous is not None and session_time_s < previous:
-            # A late arrival is archived, but it does not make the channel look
-            # fresher and it does not replace a newer sample's value.
             return gap_record
         state.last_session_time_s = session_time_s
         state.last_source_time_s = source_time_s if source_time_s is not None else session_time_s
@@ -221,14 +224,10 @@ class QualityTracker:
     def heartbeat_count(self) -> int:
         return self._heartbeat_count
 
-    # -- assessment -----------------------------------------------------
-
     def assess(self, now_s: float) -> QualityAssessment:
         entries: list[ChannelQuality] = []
         gaps: list[IntegrationGapRecord] = []
         all_keys = set(self._expectations) | set(self._states)
-        # A channel-level expectation is a template: once per-car observations
-        # exist for that channel, report the cars rather than the template.
         specialised = {channel for channel, car in all_keys if car is not None}
         keys = sorted(
             (key for key in all_keys if not (key[1] is None and key[0] in specialised)),
@@ -307,7 +306,6 @@ class QualityTracker:
                 reason=bounds_reason,
             )
 
-        # Clock uncertainty can only make an observation look older, never fresher.
         effective_age = raw_age + self.clock_uncertainty_s
         quality = classify_freshness(effective_age, period, **self._thresholds)
         reason: str | None = None

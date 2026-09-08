@@ -24,11 +24,13 @@ import hashlib
 import json
 import math
 from enum import StrEnum
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 SCHEMA_VERSION = "1"
 """Matches ``track-package.schema.json`` ``schema_version`` const."""
@@ -343,8 +345,6 @@ class CompiledCentreline:
         self.width_right_m = nan if width_right_m is None else np.asarray(width_right_m, dtype=np.float64)
         self.mu = np.full(n, np.nan) if mu is None else np.asarray(mu, dtype=np.float64)
 
-    # -- periodic interpolation ------------------------------------------- #
-
     def _wrap(self, s_m: np.ndarray | float) -> np.ndarray:
         return np.asarray(s_m, dtype=np.float64) % self.length_m
 
@@ -399,13 +399,10 @@ class CompiledCentreline:
     @property
     def closure_error_m(self) -> float:
         """Straight-line distance between the last sample advanced to ``length_m`` and the first."""
-        # Advance the last sample by the remaining arc along its yaw.
         remaining = self.length_m - float(self.s_m[-1])
         x_end = float(self.x_m[-1]) + remaining * math.cos(float(self.yaw_rad[-1]))
         y_end = float(self.y_m[-1]) + remaining * math.sin(float(self.yaw_rad[-1]))
         return math.hypot(x_end - float(self.x_m[0]), y_end - float(self.y_m[0]))
-
-    # -- persistence ------------------------------------------------------- #
 
     def to_npz(self, path: Path) -> str:
         """Write arrays atomically; return the SHA-256 of the file."""

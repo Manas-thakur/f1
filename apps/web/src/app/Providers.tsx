@@ -5,11 +5,7 @@ import { BrowserRouter } from 'react-router';
 import { createQueryClient } from '../api/queries';
 import { useSessionStore } from '../state/sessionStore';
 
-/**
- * Applies the view-state preferences that have to live on the document root
- * (density and motion), so CSS custom properties can respond to them without
- * every component re-reading the store.
- */
+
 function PreferenceEffects() {
   const density = useSessionStore((s) => s.view.density);
   const motion = useSessionStore((s) => s.view.motion);
@@ -32,7 +28,7 @@ function PreferenceEffects() {
 export interface ProvidersProps {
   readonly children: ReactNode;
   readonly queryClient?: QueryClient;
-  /** Set false when a test supplies its own router. */
+  
   readonly withRouter?: boolean;
 }
 

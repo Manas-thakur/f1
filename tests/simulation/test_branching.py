@@ -208,7 +208,6 @@ class TestOutcomeRecords:
         payload = result.outcomes[0].model_dump(mode="json")
         assert payload["schema_version"] == "1.0"
         assert payload["provenance"] == "simulated"
-        # No simulator truth leaks into a wire record.
         assert "cars" not in payload
         assert "world" not in payload
 

@@ -16,10 +16,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from ..paths import Paths
 from .package import CompiledCentreline, EventOverlay, ReadinessStatus, TrackPackage, readiness_rank
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class TrackPackageError(FileNotFoundError):
@@ -105,7 +108,7 @@ def require_readiness(package: TrackPackage, minimum: ReadinessStatus) -> None:
         )
 
 
-def load_track_package_source(track_id: str, paths: Paths | None = None):
+def load_track_package_source(track_id: str, paths: Paths | None = None) -> Any:
     """The ``load_track`` fallback: a verified package as a ``TrackSource``.
 
     Any readiness rung loads here, because the simulator may legitimately run

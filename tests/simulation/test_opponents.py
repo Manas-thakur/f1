@@ -95,14 +95,8 @@ def _observation_for(_kind: str):
 class TestContactGeometry:
     def test_footprints_overlap_only_when_they_really_do(self) -> None:
         geometry = geometry_for(build_bundle().track)
-        # Two yawed cars 5.65 m apart along the track, 0.6 m apart laterally:
-        # a yawed 5.6 x 2.0 m rectangle spans 5.6*cos(0.3) + 2.0*sin(0.3) = 5.94 m
-        # along the track axis, so they intersect even though the centres are
-        # further apart than one car length.
         assert footprints_overlap(geometry, 100.0, 0.0, 0.30, 5.6, 2.0, 94.35, 0.6, -0.30, 5.6, 2.0)
-        # The same separation without yaw does not intersect.
         assert not footprints_overlap(geometry, 100.0, 0.0, 0.0, 5.6, 2.0, 94.35, 0.6, 0.0, 5.6, 2.0)
-        # Far apart, whatever the yaw.
         assert not footprints_overlap(geometry, 100.0, 0.0, 0.30, 5.6, 2.0, 80.0, 0.6, -0.30, 5.6, 2.0)
 
     def test_no_pass_is_recorded_while_the_footprints_overlap(self) -> None:
@@ -117,7 +111,6 @@ class TestContactGeometry:
         pair.armed = True
         pair.attempted = True
 
-        # Nose ahead on the longitudinal scalar, but physically interlocked.
         rival.progress_m = 500.0
         rival.s_m = 500.0
         rival.lateral_d_m = 0.6
@@ -134,7 +127,6 @@ class TestContactGeometry:
         assert "blocked_by_contact" in kinds
         assert simulator.world.pairs[("own", "rival")].label != "ahead"
 
-        # Move the same longitudinal margin apart laterally: now it is a pass.
         own.lateral_d_m = 3.0
         own.heading_error_rad = 0.0
         rival.heading_error_rad = 0.0
@@ -165,15 +157,12 @@ class TestPassHysteresis:
             + float(simulator.world.car_configs["rival"].length_m.value)
         )
 
-        # Complete the pass once.
         own.progress_m = own.s_m = rival.progress_m + clearance + 0.4
         opening = [record.kind for record in simulator.detect_geometry_events()]
         assert opening.count("attempted_pass") == 1
         assert opening.count("completed_pass") == 1
         assert simulator.world.pairs[("own", "rival")].label == "ahead"
 
-        # Now jitter hard across the boundary in both directions. The clearance
-        # band is the hysteresis: nothing may be relabelled inside it.
         extra = []
         for index in range(60):
             own.progress_m = own.s_m = rival.progress_m + clearance + 0.4 + 0.9 * (-1) ** index

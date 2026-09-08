@@ -61,9 +61,8 @@ def test_chart_layout_fixture_reports_curves_unknown_and_flags_tbc():
     assert "standard_curve" in parsed.unknown and "overtake_curve" in parsed.unknown
     assert parsed.detection_line_m == 2805.0 and parsed.detection_line_tbc is True
     assert parsed.activation_line_m == 2950.0 and parsed.activation_line_tbc is False
-    assert parsed.main_overtaking_zones == []  # the '- - -' row
+    assert parsed.main_overtaking_zones == []
     assert parsed.race_laps is None and "race_laps" in parsed.unknown
-    # Axis ticks must never be mistaken for curve rows or lap-distance lines.
     assert parsed.lap_distance_windows == [
         {"start_m": 2980.0, "end_m": 3200.0, "qualifying_only": True},
         {"start_m": 3070.0, "end_m": 3400.0, "qualifying_only": True},
@@ -92,8 +91,7 @@ def test_ingest_from_path_writes_an_unreviewed_draft_and_sidecar(tmp_path):
     sidecar = json.loads((events / f"{EVENT}.extraction.json").read_text(encoding="utf-8"))
     assert sidecar["review_status"] == "unreviewed"
     assert sidecar["parsed"]["recharge_by_column_mj"]["qualifying"] == 6.0
-    assert sidecar["parsed"]["assumptions"]  # every text-order heuristic is written down for reviewers
-    # The raw bytes are in the immutable cache under the document hash.
+    assert sidecar["parsed"]["assumptions"]
     cached = RawSourceCache(paths=paths).get("fia", doc.sha256)
     assert cached.read_bytes() == TABULAR.read_bytes()
 
@@ -141,7 +139,6 @@ def test_effective_values_are_none_until_two_distinct_reviewers_confirm(tmp_path
     assert values["recharge_allowance_mj"] == 8.0
     assert values["race_laps"] == 57
     assert values["standard_curve"][0] == (220.0, 350.0)
-    # A field the reviewers listed as unknown stays unknown even when confirmed.
     assert values["straight_mode_ranges"] is None
 
     stored = load_event_overlay(TRACK, EVENT, paths)

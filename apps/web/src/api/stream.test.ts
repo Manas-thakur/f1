@@ -61,7 +61,7 @@ function snapshotClient(getSnapshot = vi.fn(async () => SESSION_SNAPSHOT)): {
   getSnapshot: typeof getSnapshot;
 } {
   const client = new ApiClient();
-  // Replace only the one method the stream uses.
+
   (client as unknown as { getSnapshot: unknown }).getSnapshot = getSnapshot;
   return { client, getSnapshot };
 }
@@ -105,7 +105,7 @@ describe('SessionStream', () => {
 
     const socket = FakeSocket.instances[0] as FakeSocket;
     socket.deliver(snapshotEnvelope());
-    // Snapshot ended at 100; the next delta claims 102.
+
     socket.deliver(estimateEnvelope(102, 5));
 
     expect(useSessionStore.getState().stream.resyncRequired).toBe(true);

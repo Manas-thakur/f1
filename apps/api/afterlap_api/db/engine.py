@@ -8,17 +8,19 @@ in the application changes.
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Engine, create_engine, event
-from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 from afterlap_core.paths import Paths
 
 from .models import Base
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 DEFAULT_SQLITE_NAME = "afterlap.sqlite3"
 
@@ -42,11 +44,9 @@ def create_db_engine(url: str | None = None, *, echo: bool = False) -> Engine:
     if resolved.startswith("sqlite"):
 
         @event.listens_for(engine, "connect")
-        def _sqlite_pragmas(dbapi_connection, _record):  # type: ignore[no-untyped-def]
+        def _sqlite_pragmas(dbapi_connection: Any, _record: Any) -> None:
             cursor = dbapi_connection.cursor()
-            # Foreign keys are off by default on SQLite; the schema relies on them.
             cursor.execute("PRAGMA foreign_keys=ON")
-            # WAL keeps a reader from blocking the session writer.
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=FULL")
             cursor.close()

@@ -107,7 +107,6 @@ class TestTheFrozenPolicyIsReadOnly:
         assert policy.latency_limit_ms == pytest.approx(200.0)
         assert policy.frozen_at is not None
         assert policy.benefit_metric == "utility_difference_vs_mpc_only"
-        # `enabled` stays false until a candidate has actually been evaluated.
         assert policy.enabled is False
         assert policy.minimum_scenarios == 100
         assert policy.minimum_seeds == 5

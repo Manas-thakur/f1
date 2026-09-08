@@ -16,9 +16,9 @@ import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
 import styles from '../engineer/workspace.module.css';
 
 function coverageTone(status: CoverageEntry['status']) {
-  if (status === 'implemented_and_tested') return 'verified' as const;
-  if (status === 'unsupported') return 'failure' as const;
-  if (status === 'review_required') return 'attention' as const;
+  if (status === 'implemented_and_tested') {return 'verified' as const;}
+  if (status === 'unsupported') {return 'failure' as const;}
+  if (status === 'review_required') {return 'attention' as const;}
   return 'neutral' as const;
 }
 
@@ -81,14 +81,7 @@ const COVERAGE_COLUMNS: readonly Column<CoverageEntry>[] = [
   { id: 'note', header: 'Note', cell: (row) => row.note ?? 'none' },
 ];
 
-/**
- * `/rulesets/:rulesetId`.
- *
- * What the loaded pack covers, with its sources, and what it does not. An
- * article number records where a value would come from; it is not a claim that
- * the value was transcribed from there, and a pack with no reviewer says so on
- * every row.
- */
+
 export function RulesetView() {
   const { rulesetId } = useParams();
   const query = useRuleset(rulesetId);

@@ -40,9 +40,6 @@ def _archive(tmp_path, rows=None):
     return write_public_archive(tmp_path / "public" / "session.json", rows)
 
 
-# -- public replay ----------------------------------------------------------
-
-
 def test_public_replay_declares_no_battery_energy_and_unreliable_lateral_placement(tmp_path):
     adapter = PublicReplayAdapter(_archive(tmp_path))
     capability = adapter.capabilities()
@@ -91,7 +88,6 @@ def test_public_replay_open_is_unavailable_when_the_local_archive_is_missing(tmp
     assert result.state is CapabilityState.UNAVAILABLE
     assert result.available is False
     assert "does not exist" in result.detail
-    # No network fallback exists, so no events can be produced either.
     with pytest.raises(AdapterError):
         list(adapter.events())
 
@@ -122,28 +118,20 @@ def test_public_replay_reads_local_parquet(tmp_path):
     assert records[2].fields["speed"] == 252.0
 
 
-# -- DRS must not become 2026 Overtake eligibility --------------------------
-
-
 def test_a_drs_style_historical_field_is_not_mapped_to_overtake_eligibility(tmp_path):
     mapping = public_replay_mapping(PUBLIC_SOURCE)
 
-    # It is not mapped to any canonical channel.
     assert not mapping.is_mapped("drs")
     assert mapping.is_forbidden("drs")
 
-    # Asking for its mapping fails loudly rather than returning something plausible.
     with pytest.raises(MappingError) as excinfo:
         mapping.get("drs")
     assert "2026 Overtake eligibility" in str(excinfo.value)
 
-    # There is no eligibility channel in the registry at all: eligibility is a
-    # rules-engine state machine, not a telemetry channel.
     for name in ("overtake_eligible", "overtake_eligibility", "drs", "drs_active"):
         assert not is_registered(name)
     assert set(EligibilityState) >= {EligibilityState.UNKNOWN, EligibilityState.ELIGIBLE_DETECTED}
 
-    # A table that tried to map it would not even construct.
     with pytest.raises(MappingError):
         MappingTable(
             mapping_revision="bad-1",
@@ -174,9 +162,6 @@ def test_ingesting_a_drs_field_archives_it_without_producing_a_channel(tmp_path)
     )
     assert {r.event.channel for r in output.normalised} == {"speed_mps"}
     assert output.raw[0].fields["drs"] == 12
-
-
-# -- team feed --------------------------------------------------------------
 
 
 def test_team_feed_without_authorisation_reports_unavailable_and_yields_nothing():
@@ -242,15 +227,12 @@ def test_the_synthetic_team_feed_must_be_acknowledged_and_is_labelled_synthetic(
     assert adapter.provenance is Provenance.SIMULATED
     assert capability.mode is SessionMode.SIMULATION
     assert capability.measured_channels == ()
-    assert SYNTHETIC_FIXTURE_NOTICE not in capability.limitations  # it carries the contract's notice
+    assert SYNTHETIC_FIXTURE_NOTICE not in capability.limitations
     assert any("synthetic" in note.lower() for note in capability.limitations)
 
     adapter.open(MANIFEST)
     records = list(adapter.events())
     assert len(records) == 1
-
-
-# -- simulator --------------------------------------------------------------
 
 
 def test_simulator_adapter_only_accepts_an_observation_source():

@@ -11,8 +11,7 @@ from afterlap_api.db import create_all
 from afterlap_api.db.models import Manifest, ModelBundle, RuleManifestRow, Session
 from afterlap_api.deps import Settings
 from afterlap_api.main import create_app
-from afterlap_contracts import SessionMode
-from afterlap_contracts import fixtures as fx
+from afterlap_contracts import SessionMode, fixtures as fx
 
 
 @pytest.fixture
@@ -58,9 +57,6 @@ def _seed_session(client, mode: SessionMode = SessionMode.SIMULATION) -> None:
         )
 
 
-# --- Health ---------------------------------------------------------------------------
-
-
 def test_liveness_is_about_the_process_not_the_data(client):
     body = client.get("/api/v1/health/live").json()
     assert body["status"] == "live"
@@ -70,12 +66,8 @@ def test_readiness_reports_measured_capabilities(client):
     response = client.get("/api/v1/health/ready")
     body = response.json()
     assert body["status"] in ("ready", "not_ready")
-    # Readiness is derived from probes, so it names what it actually found.
     assert "numerics" in body["detail"]
     assert "solver" in body["detail"]
-
-
-# --- Typed errors ----------------------------------------------------------------------
 
 
 def test_errors_are_typed_and_never_leak_a_traceback(client):
@@ -128,9 +120,6 @@ def test_unknown_fields_fail_closed(client):
         headers={"Idempotency-Key": "k"},
     )
     assert response.status_code == 422
-
-
-# --- Honest unavailability ----------------------------------------------------------------
 
 
 def test_a_missing_capability_is_503_not_a_fabricated_success(client):
@@ -186,9 +175,6 @@ def test_a_session_without_a_runtime_reports_unavailable(client):
     assert response.json()["error"]["code"] == "capability_unavailable"
 
 
-# --- Mode enforcement ----------------------------------------------------------------------
-
-
 @pytest.mark.parametrize("mode", [SessionMode.REPLAY, SessionMode.LIVE_TEAM])
 def test_driver_action_is_refused_outside_simulation(client, mode):
     _seed_session(client, mode=mode)
@@ -218,9 +204,6 @@ def test_snapshot_declares_its_capabilities_and_synthetic_notice(client):
     assert capabilities["rival_energy"] == "unavailable", "rival energy is never claimed available"
     assert any("synthetic" in note.lower() for note in capabilities["notes"])
     assert body["manifest"]["synthetic"] is True
-
-
-# --- Read models -----------------------------------------------------------------------------
 
 
 def test_session_listing_is_paginated_and_typed(client):
@@ -284,9 +267,6 @@ def test_an_unapproved_bundle_is_never_listed_as_approved(client):
     assert len(models) == 1
     assert models[0]["approval_status"] == "unevaluated"
     assert client.get("/api/v1/models", params={"approval_status": "approved"}).json()["models"] == []
-
-
-# --- Metrics ------------------------------------------------------------------------------------
 
 
 def test_metrics_separate_planner_time_from_observation_age(client):

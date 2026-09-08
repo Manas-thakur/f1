@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
@@ -33,8 +33,9 @@ from afterlap_core.paths import atomic_write_json, atomic_write_text
 
 from .conftest import RULE_PACK_ID, SCENARIO_ID, SEED, LocalStore, actionable, start_session
 
-#: Long enough that the background loop cannot have drained on its own, so
-#: whatever is delivered was delivered by shutdown and nothing else.
+if TYPE_CHECKING:
+    from pathlib import Path
+
 NEVER_POLLS_S = 600.0
 
 
@@ -43,9 +44,6 @@ def _pending(store: LocalStore) -> list[tuple[str, int, str]]:
         return [
             (row.session_id, row.sequence, row.event_type)
             for row in unpublished_outbox(db, limit=500)
-            # Rows whose event_type has no StreamEventType can never be
-            # published (A08 §9.7 — `operator_action`); they are quarantined by
-            # design and are not what this drill is about.
             if row.event_type in {e.value for e in StreamEventType}
         ]
 
@@ -57,11 +55,6 @@ def _running_session(store: LocalStore, tmp_path: Path):  # type: ignore[no-unty
     return session
 
 
-# --------------------------------------------------------------------------- #
-# the outbox at shutdown
-# --------------------------------------------------------------------------- #
-
-
 def test_graceful_shutdown_flushes_the_outbox(store: LocalStore, tmp_path: Path):
     session = _running_session(store, tmp_path)
 
@@ -69,14 +62,10 @@ def test_graceful_shutdown_flushes_the_outbox(store: LocalStore, tmp_path: Path)
         hub = StreamHub(buffer_size=1024, client_queue=512)
         await hub.subscribe(session.session_id, 0)
         publisher = OutboxPublisher(store.factory, hub)
-        # The loop drains *before* it sleeps, so this first pass clears the
-        # backlog. With a long interval it cannot run a second time.
         publisher.start(interval_s=NEVER_POLLS_S)
         await asyncio.sleep(0)
         assert _pending(store) == [], "the publisher's first pass did not clear the backlog"
 
-        # A lifecycle change lands after that pass — an operator command, or
-        # one more decision — and then the process is asked to stop.
         session.advance(1.0)
         committed = _pending(store)
         assert committed, "advancing the session committed no new outbox rows"
@@ -144,16 +133,9 @@ def test_the_application_lifespan_stops_its_background_task_and_disposes_the_eng
         publisher = app.state.publisher
         assert publisher._task is not None, "the outbox publisher never started"
 
-    # Shutdown ran to completion without raising, the background task is gone,
-    # and the engine's pool is closed.
     assert app.state.publisher._task is None, "the publisher task survived shutdown"
     assert app.state.database.engine.pool.checkedout() == 0, "a connection was still checked out"
     print("\nlifespan shutdown: publisher task stopped, no connection checked out")
-
-
-# --------------------------------------------------------------------------- #
-# no partially written artefact
-# --------------------------------------------------------------------------- #
 
 
 def test_a_failed_write_leaves_no_staging_file_behind(tmp_path: Path):
@@ -174,8 +156,6 @@ def test_a_failed_write_leaves_no_staging_file_behind(tmp_path: Path):
     assert leftovers == [], f"a staging file survived a failed write: {leftovers}"
     assert target.is_dir(), "the failed write replaced the existing entry"
 
-    # And a successful write is atomic: the target either does not exist or is
-    # complete, never a prefix of the payload.
     good = tmp_path / "record.json"
     atomic_write_text(good, json.dumps({"complete": True}))
     assert json.loads(good.read_text(encoding="utf-8")) == {"complete": True}
@@ -237,15 +217,12 @@ def test_a_full_run_and_shutdown_leaves_only_complete_artefacts(tmp_path: Path):
         )
         assert export.status_code == 201, export.text
 
-    # --- the process has shut down. Audit what it left on disk. ------------- #
     artifacts = tmp_path / "artifacts"
     staging = [
         p for p in artifacts.rglob("*") if p.is_file() and (".staging" in p.name or p.suffix == ".tmp")
     ]
     assert staging == [], f"shutdown left partially written artefacts: {staging}"
 
-    # Every JSON artefact parses. A truncated content-addressed object or
-    # spool entry would fail here.
     checked = 0
     for candidate in artifacts.rglob("*"):
         if not candidate.is_file():
@@ -257,13 +234,11 @@ def test_a_full_run_and_shutdown_leaves_only_complete_artefacts(tmp_path: Path):
     print(f"\naudited {checked} JSON artefact(s) after shutdown; all parse")
     assert checked > 0, "the run produced no JSON artefact to audit"
 
-    # And the content-addressed store verifies: every object still hashes to
-    # the name it is stored under.
     from afterlap_core.paths import ArtifactStore
 
     store = ArtifactStore(artifacts / "objects")
     digests = list(store.iter_digests())
     for digest in digests:
-        store.get_bytes(digest)  # raises if the bytes do not match the name
+        store.get_bytes(digest)
     print(f"verified {len(digests)} content-addressed object(s)")
     assert digests, "the snapshot wrote no content-addressed object"

@@ -25,11 +25,11 @@ from afterlap_core.planning import (
     ScenarioEnsembleView,
     build_recommendation,
     load_planner_config,
+    optimiser as optimiser_module,
     plan,
     scenarios_from_estimate,
     scenarios_from_views,
 )
-from afterlap_core.planning import optimiser as optimiser_module
 from afterlap_core.planning.optimiser import SolverUnavailable
 
 from .conftest import (
@@ -141,13 +141,11 @@ def test_deadline_expiry_keeps_a_still_valid_current_plan(estimate, context, man
     assert result.status is PlanningStatus.DEADLINE_EXCEEDED
     assert build_recommendation(result, estimate, context, config=config, current_plan=current) is None
 
-    # A plan under a different rule pack does not revalidate, so advice is withdrawn.
     stale = replace(current, ruleset_hash="sha256:some-other-pack")
     withdrawn = build_recommendation(result, estimate, context, config=config, current_plan=stale)
     assert withdrawn is not None
     assert withdrawn.action_code is ActionCode.WITHDRAW_ADVICE
 
-    # So does one that has already expired.
     expired = replace(current, expires_at_s=estimate.created_at_s - 0.1)
     lapsed = build_recommendation(result, estimate, context, config=config, current_plan=expired)
     assert lapsed is not None
@@ -187,7 +185,6 @@ def test_unobserved_rival_reserve_widens_the_scenarios(config, manifest):
     assert all(s.energy_known for s in known.scenarios)
     assert not any(s.energy_known for s in unknown.scenarios)
 
-    # The coverage caveat is carried with the ensemble, not left implicit.
     assert "widened" in interval.energy_support
     assert "not identified" in unknown.energy_support
 
@@ -207,9 +204,6 @@ def test_the_widened_interval_is_not_presented_as_a_calibrated_bound(config, man
         interval_only_estimate(), config, battery_max_j=manifest.battery_energy_max_j
     )
     reserves = sorted({s.rival_reserve_j for s in sample.scenarios})
-    # Fixture interval is 1.8-3.4 MJ, centre 2.6 MJ, half-width 800 kJ. Widened
-    # to 800 000 * 1.32 = 1 056 000 J, the support is 1.544-3.656 MJ and the
-    # 0.15/0.85 quantile nodes of that support are 1.8608 and 3.3392 MJ.
     assert reserves[0] == pytest.approx(1_860_800.0, rel=1e-9)
     assert reserves[-1] == pytest.approx(3_339_200.0, rel=1e-9)
     assert "quantile" in sample.energy_support

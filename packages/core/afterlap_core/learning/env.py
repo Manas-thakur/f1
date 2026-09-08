@@ -36,9 +36,8 @@ asserts the non-terminal invariant by truth mutation.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import gymnasium as gym
 import numpy as np
@@ -60,8 +59,6 @@ from ..planning import (
     ContinuationModel,
     PlanningWorld,
     active_plan_from,
-)
-from ..planning import (
     plan as run_planner,
 )
 from ..rules import RulePack, load_rule_pack
@@ -71,6 +68,9 @@ from .bridge import BridgeTick, ObservationBridge
 from .config import EnvConfig, ScenarioSpec, load_env_config
 from .features import EncodedObservation, FeatureEncoder
 from .reward import RewardTerms, assert_field_size_supported, load_reward_manifest, step_reward
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 __all__ = [
     "AfterlapEnv",
@@ -179,9 +179,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._continuation = continuation_model
         self._session_id = session_id
 
-        # The encoder clips every normalised value into the manifest's own
-        # [-5, 5] range and the mask block is Boolean, so the space states the
-        # real bounds rather than an unbounded box.
         self.observation_space = spaces.Box(
             low=np.concatenate([np.full(VALUE_COUNT, -5.0), np.zeros(VALUE_COUNT)]).astype(np.float32),
             high=np.concatenate([np.full(VALUE_COUNT, 5.0), np.ones(VALUE_COUNT)]).astype(np.float32),
@@ -212,8 +209,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._diagnostics = EnvDiagnostics()
         self._closed = False
 
-    # -- identity ------------------------------------------------------------ #
-
     @property
     def environment_version(self) -> str:
         return self._config.environment_version
@@ -233,8 +228,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
     @property
     def encoder(self) -> FeatureEncoder:
         return self._encoder
-
-    # -- Gymnasium API ------------------------------------------------------- #
 
     def reset(
         self, *, seed: int | None = None, options: Mapping[str, Any] | None = None
@@ -298,17 +291,9 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._withdrawn_total = 0
         self._diagnostics = EnvDiagnostics()
 
-        # Advance far enough that a delayed sensor path has something older than
-        # its own delay to deliver. Without it the first observation is
-        # legitimately missing, which is a real operational state but a poor
-        # place to start an episode.
         settle_s = max(self._config.physics_step_s, float(bundle.scenario.observation.delay_s.value))
         warmup_s = self._warm_up(settle_s)
 
-        # The episode is measured from wherever the warm-up left the car. The
-        # bridge keeps the belief, the permission state and the short-horizon
-        # history it accumulated during the warm-up: a controller that has been
-        # watching the car does not forget it at the segment boundary.
         self._start_progress_m = float(simulator.world.cars[ego].progress_m)
         self._start_time_s = simulator.session_time_s
         self._bridge.start_progress_m = self._start_progress_m
@@ -335,12 +320,13 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self._simulator is None or self._tick is None or self._encoded is None:
             raise RuntimeError("step() called before reset()")
-        assert self._bridge is not None and self._spec is not None and self._bundle is not None
+        assert self._bridge is not None
+        assert self._spec is not None
+        assert self._bundle is not None
 
         tick = self._tick
         raw_action = np.asarray(action, dtype=np.float32).reshape(-1)
 
-        # -- 1. decode the preferences -------------------------------------- #
         bounds = compute_bounds(
             tick.estimate,
             tick.rule_context.applicable_limits if tick.rule_context is not None else None,
@@ -352,17 +338,14 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             self._diagnostics.learned_disabled_ticks += 1
         self._bridge.record_decoded_preferences(decoded.budget_j, decoded.reserve_target_j)
 
-        # -- 2. solve or reuse ---------------------------------------------- #
         planning = self._plan_or_reuse(tick, decoded)
 
-        # -- 3. publish the instruction ------------------------------------- #
         driver_action, instruction_changed = self._driver_action(planning, decoded, tick)
         if instruction_changed:
             self._instruction_changes_total += 1
             self._diagnostics.instruction_changes += 1
             self._bridge.record_instruction_change(self._simulator.session_time_s)
 
-        # -- 4. integrate to the next tick ---------------------------------- #
         previous_remaining = self._remaining_reference_time_s(tick.estimate)
         elapsed_s, report = self._integrate(
             self._config.policy_interval_s,
@@ -370,23 +353,15 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         )
         if driver_action is not None:
             self._diagnostics.instructions_issued += 1
-            # An execution is *observed* only when the profile actually in force
-            # at the end of the tick is the one that was called. A driver still
-            # inside the reaction delay, or a profile the simulator downgraded,
-            # has not executed the instruction.
             if (
                 self._simulator.world.cars[self._bundle.scenario.ego_car_id].active_profile
                 is driver_action.profile
             ):
                 self._diagnostics.observed_executions += 1
         if report is not None and report.profile_downgrades:
-            # The simulator's own admissibility check overrode the instruction
-            # between ticks. That is baseline safety reacting immediately; it
-            # does not trigger an off-cadence policy call.
             self._diagnostics.missed_executions += 1
             self._bridge.record_missed_execution(self._simulator.session_time_s)
 
-        # -- 5. re-observe and score ---------------------------------------- #
         next_tick = self._observe()
         next_encoded = self._encoder.encode(next_tick.estimate, next_tick.feature_context)
         self._diagnostics.clip_events += next_encoded.clip_count
@@ -421,8 +396,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._simulator = None
         self._planning_world = None
 
-    # -- internals ----------------------------------------------------------- #
-
     def _warm_up(self, settle_s: float) -> float:
         """Integrate to the declared episode starting state.
 
@@ -437,7 +410,9 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         controller, it is reported in the reset info, and it is not a learned
         decision. Nothing is scored during it.
         """
-        assert self._simulator is not None and self._spec is not None and self._bundle is not None
+        assert self._simulator is not None
+        assert self._spec is not None
+        assert self._bundle is not None
         ego = self._bundle.scenario.ego_car_id
         target = self._spec.warmup_to_progress_m
         action = DriverAction(
@@ -468,17 +443,14 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             since_observation += step_s
             if since_observation + 1e-12 >= self._config.policy_interval_s:
                 since_observation = 0.0
-                # Observe at the policy cadence through the warm-up as well.
-                # The overtake-permission machine resolves at a line crossing
-                # and it can only see a crossing it was shown; a machine that
-                # skipped the warm-up would report UNKNOWN for the whole
-                # episode and no candidate would ever be accepted.
                 self._observe()
         self._observe()
         return elapsed
 
     def _observe(self) -> BridgeTick:
-        assert self._simulator is not None and self._bridge is not None and self._bundle is not None
+        assert self._simulator is not None
+        assert self._bridge is not None
+        assert self._bundle is not None
         ego = self._bundle.scenario.ego_car_id
         observation = self._simulator.observe(car_id=ego)[ego]
         return self._bridge.observe(observation)
@@ -503,8 +475,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             elapsed += step_s
             remaining -= step_s
             if self._finished_now():
-                # A partial last physics interval at the finish is charged its
-                # actual elapsed time; nothing rounds it up to a whole tick.
                 break
         return elapsed, report
 
@@ -532,7 +502,8 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         return finished, failed
 
     def _position(self) -> int:
-        assert self._simulator is not None and self._bundle is not None
+        assert self._simulator is not None
+        assert self._bundle is not None
         ego = self._bundle.scenario.ego_car_id
         ego_progress = self._simulator.world.cars[ego].progress_m
         return 1 + sum(
@@ -556,7 +527,8 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
 
     def _plan_or_reuse(self, tick: BridgeTick, decoded: DecodedPreferences) -> dict[str, Any]:
         """Solve a new plan, or keep the eligible one already in force."""
-        assert self._simulator is not None and self._spec is not None
+        assert self._simulator is not None
+        assert self._spec is not None
         now_s = self._simulator.session_time_s
 
         if self._config.planner_mode == "disabled" or tick.rule_context is None:
@@ -682,9 +654,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         assert self._simulator is not None
         head = planning.get("head_profile")
         if head is None:
-            # No accepted plan. Advice is withdrawn: the driver keeps whatever
-            # the simulator's own admissibility left in force, and no new
-            # instruction is issued. This is a published state, not silence.
             return None, False
         profile = DeploymentProfile(str(head))
         admissible = tick.rule_context.admissible_profiles if tick.rule_context is not None else ()
@@ -723,7 +692,8 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         return info
 
     def _episode_outcome(self, terms: RewardTerms, truncated: bool) -> EpisodeOutcome:
-        assert self._simulator is not None and self._bundle is not None
+        assert self._simulator is not None
+        assert self._bundle is not None
         ego = self._bundle.scenario.ego_car_id
         state = self._simulator.world.cars[ego]
         return EpisodeOutcome(
@@ -738,8 +708,6 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             withdrawn_decisions=self._withdrawn_total,
             steps=self._steps,
         )
-
-    # -- diagnostics for tests ----------------------------------------------- #
 
     @property
     def action_bounds(self) -> ActionBounds | None:

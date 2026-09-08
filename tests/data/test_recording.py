@@ -122,7 +122,6 @@ def test_raw_and_canonical_records_are_kept_separately_with_their_mapping_revisi
     assert {row["mapping_revision"] for row in canonical_rows} == {MAPPING_REVISION}
     assert {row["mapping_revision"] for row in raw_rows} == {MAPPING_REVISION}
 
-    # Raw rows keep every vendor field, including any that were never mapped.
     fields = json.loads(raw_rows[0]["fields_json"])
     assert "speed_mps" in fields and "battery_energy_j" in fields
 
@@ -137,7 +136,7 @@ def test_chunks_are_partitioned_by_car_family_and_time(tmp_path):
     assert any("family=electrical" in p for p in paths)
     assert any("family=raw" in p for p in paths)
     chunk_indices = {p.split("chunk=")[1].split("/")[0] for p in paths}
-    assert len(chunk_indices) > 1  # session was split into bounded time chunks
+    assert len(chunk_indices) > 1
 
 
 def test_a_missing_value_survives_recording_as_null_not_zero(tmp_path):
@@ -205,7 +204,6 @@ def test_credentials_in_a_source_config_never_appear_in_a_manifest(tmp_path):
     for secret in SECRET_VALUES:
         assert secret not in written
     assert REDACTED in written
-    # The non-secret parts survive so provenance is still auditable.
     assert "feed.example.invalid" in written
     assert "review_required" in written
 
@@ -246,7 +244,6 @@ def test_manifest_is_replaced_atomically_and_never_left_partial(tmp_path):
     reader = ChunkReader(tmp_path, SESSION_ID)
     first = len(reader.manifest())
 
-    # A second import appends chunks; the manifest is rewritten in one step.
     sink = MemorySink()
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=0.0), sink=sink)
     pipeline.ingest_all([observation(50, 5.0, {"speed_mps": 80.0}, received_time_s=5.0)])

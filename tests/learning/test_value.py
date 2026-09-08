@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import dataclasses
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
 from afterlap_contracts import ReasonCode, RewardManifest, ScenarioOutcome, SupportThresholds
 from afterlap_core.feature_manifest import ENERGY_V1, OBSERVATION_SIZE, feature_index
-from afterlap_core.learning.config import EnvConfig, ValueConfig
-from afterlap_core.learning.features import FeatureEncoder
 from afterlap_core.learning.reward import step_reward
 from afterlap_core.learning.value import (
     ContinuationEnsemble,
@@ -27,6 +25,12 @@ from afterlap_core.learning.value import (
 )
 
 from .conftest import SMOKE_SCENARIO, context, estimate_with, zero_policy
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from afterlap_core.learning.config import EnvConfig, ValueConfig
+    from afterlap_core.learning.features import FeatureEncoder
 
 
 def synthetic_samples(episodes: int = 8, steps: int = 6, seed: int = 0) -> list[ContinuationSample]:
@@ -100,15 +104,12 @@ class TestOrdinaryReturns:
         for value in reversed(rewards):
             expected = value + reward.gamma * expected
         assert returns[0] == pytest.approx(expected)
-        # No entropy, no alpha, no log-pi anywhere in the construction.
         assert returns[-1] == pytest.approx(rewards[-1])
 
     def test_terminal_value_is_zero_at_a_true_finish(self, reward: RewardManifest) -> None:
         """After the last transition of a complete episode there is nothing left."""
         rewards = [-1.0, -1.0, -1.0]
         returns = discounted_returns(rewards, reward.gamma)
-        # G[T] does not exist; the continuation *after* the final reward is zero
-        # by construction, which is exactly what G[T-1] == r[T-1] states.
         assert returns[-1] == pytest.approx(rewards[-1])
 
     def test_explicit_plus_terminal_reward_does_not_double_count(self, reward: RewardManifest) -> None:
@@ -125,7 +126,6 @@ class TestOrdinaryReturns:
         )
         rewards = [-1.0, -1.0, finish.total]
         returns = discounted_returns(rewards, reward.gamma)
-        # The -60 finish cost is present exactly once in the return.
         without_terminal = discounted_returns(
             [-1.0, -1.0, finish.total - finish.terminal_finish], reward.gamma
         )
@@ -187,7 +187,6 @@ class TestFitting:
         train_targets = [s.target for s in samples if s.episode_id in report.train_episodes]
         assert report.target_scaler.mean == pytest.approx(float(np.mean(train_targets)))
 
-        # Predictions come back in the target's own units, not standardised ones.
         predicted, _ = ensemble.predict(np.stack([s.observation for s in samples[:4]]))
         assert np.all(predicted < 0.0), "returns here are negative; an uninverted scale would not be"
 
@@ -383,7 +382,7 @@ class TestPlannerIntegration:
             continuation_controller="test-controller",
             return_definition_hash="sha256:test",
             support=SupportThresholds(
-                max_ensemble_disagreement=1e-9,  # always out of support
+                max_ensemble_disagreement=1e-9,
                 max_clip_fraction=1.0,
                 min_known_mask_fraction=0.0,
             ),
@@ -395,7 +394,6 @@ class TestPlannerIntegration:
             terms, outcomes, frame, weights, objective, adapter, disagreement_weight=0.5
         )
 
-        # The same float, not an approximation.
         assert disabled_terms.final_score == baseline_terms.final_score
         assert disabled_terms == baseline_terms == terms
         assert disabled_outcomes == baseline_outcomes == tuple(outcomes)
@@ -431,8 +429,6 @@ class TestPlannerIntegration:
         assert learned.enabled is True
         assert learned.bundle_id == ensemble.bundle_id
         assert updated.final_score != terms.final_score
-        # The analytic terminal term was removed before the learned one entered,
-        # so nothing is counted twice.
         for original, new in zip(outcomes, rewritten, strict=True):
             assert new.terminal_value != original.terminal_value
             assert new.terminal_value_source == ensemble.bundle_id
@@ -470,9 +466,6 @@ class TestCollectedGroupingKeys:
         from afterlap_core.learning.env import AfterlapEnv
         from afterlap_core.learning.value import collect_episodes
 
-        # The shipped step cap, not a shortened one: a truncated episode yields
-        # no complete-return samples, and the sample assertions below would then
-        # never run.
         env = AfterlapEnv(config=env_config, scenario_id=SMOKE_SCENARIO)
         samples, records = collect_episodes(
             env, policy=zero_policy, episodes=1, gamma=0.9966722160545233, seed=4242

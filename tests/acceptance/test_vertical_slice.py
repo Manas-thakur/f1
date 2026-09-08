@@ -151,10 +151,6 @@ class TestTheLoopCloses:
         segment = template.profile_segments[0].model_copy(
             update={
                 "profile_id": issued.action.profile,
-                # The segment starts 200 m ahead of the car so the driver has
-                # more than the checker's 0.6 s reaction time to begin it. A
-                # segment starting under the car's nose is correctly rejected
-                # for want of execution lead time, which is A04 doing its job.
                 "start_progress_m": 200.0,
                 "end_progress_m": 1_500.0,
                 "requested_budget_j": 0.0,
@@ -225,13 +221,11 @@ class TestObservationIsolation:
         after = observe(mutated.world, config, ego)[ego].canonical_bytes()
         assert before == after
 
-        # A control: the comparison is not blind to a change the car may see.
         mutated.world.cars[ego].speed_mps += 5.0
         for sample in mutated.world.sensor_buffer:
             sample.cars[ego]["speed_mps"] += 5.0
         assert observe(mutated.world, config, ego)[ego].canonical_bytes() != before
 
-        # And the hidden truth really was different all along.
         assert debug_truth(mutated.world)["cars"][rival]["battery_energy_j"] == 3.99e6
         assert debug_truth(baseline.world)["cars"][rival]["battery_energy_j"] != 3.99e6
 
@@ -590,7 +584,7 @@ class TestWhatThisSliceDoesNotCover:
         ``MPC + value`` and ``full system`` remain unmeasured everywhere they
         appear.
         """
-        import afterlap_core.learning as learning
+        from afterlap_core import learning
 
         assert not hasattr(learning, "load_bundle"), (
             "A07's serving path appears to be merged; extend this slice with the "

@@ -14,20 +14,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from afterlap_api.db import create_all
-from afterlap_api.db.engine import command_transaction
-from afterlap_api.db.models import ExperimentJob, SnapshotRow
-from afterlap_api.deps import Settings
-from afterlap_api.main import API_PREFIX, create_app
-from afterlap_api.routes import experiments as experiments_routes
-from afterlap_api.routes import exports as exports_routes
-from afterlap_api.session import SessionFactory
-from afterlap_contracts import JobStatus
 from workers.batch_worker import (
     INCOMPLETE_LABEL,
     BatchWorker,
@@ -37,9 +27,19 @@ from workers.batch_worker import (
     read_report,
 )
 
+from afterlap_api.db import create_all
+from afterlap_api.db.engine import command_transaction
+from afterlap_api.db.models import ExperimentJob, SnapshotRow
+from afterlap_api.deps import Settings
+from afterlap_api.main import API_PREFIX, create_app
+from afterlap_api.routes import experiments as experiments_routes, exports as exports_routes
+from afterlap_api.session import SessionFactory
+from afterlap_contracts import JobStatus
+
 from .conftest import SCENARIO_ID, actionable, start_session
 
-# --- batch worker -------------------------------------------------------------------
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 
 def _queue_job(factory, job_id: str = "job-1") -> str:
@@ -64,10 +64,8 @@ def test_two_workers_never_publish_two_successful_reports_for_one_job(db_factory
 
     claimed = first.claim()
     assert claimed == (job_id, "sha256:" + "e" * 64)
-    # The job is no longer queued, so the second worker finds nothing.
     assert second.claim() is None
 
-    # The first worker loses its lease to a takeover, then tries to publish.
     with command_transaction(db_factory) as db:
         db.get(ExperimentJob, job_id).worker_lease = "worker-b"  # type: ignore[union-attr]
     assert first.heartbeat(job_id) is False
@@ -89,7 +87,6 @@ def test_two_workers_never_publish_two_successful_reports_for_one_job(db_factory
     with command_transaction(db_factory) as db:
         assert db.get(ExperimentJob, job_id).status == "running"  # type: ignore[union-attr]
 
-    # The lease holder publishes exactly one report.
     outcome = second.run(job_id, "sha256:" + "e" * 64, lambda c: {"result": "ok"})
     assert outcome.status is JobStatus.COMPLETED
     report = read_report(tmp_path / "reports", job_id)
@@ -105,7 +102,7 @@ def test_a_cancelled_job_keeps_its_partial_results_labelled_incomplete(db_factor
 
     def runner(ctx):  # type: ignore[no-untyped-def]
         for index in range(5):
-            ctx.token.raise_if_cancelled()  # cooperative, between rollouts only
+            ctx.token.raise_if_cancelled()
             ctx.checkpoint(f"rollout-{index}", {"index": index, "utility": 0.1 * index})
             if index == 1:
                 token.cancel("operator asked to stop")
@@ -144,7 +141,6 @@ def test_a_failed_lease_leaves_restartable_checkpoints(db_factory, tmp_path):
     assert outcome.status is JobStatus.FAILED
     assert outcome.completed_units == ("rollout-0", "rollout-1")
 
-    # The staging directory still holds the finished units, so a restart resumes.
     staging = worker.staging_for(job_id)
     assert sorted(p.name for p in staging.glob("checkpoint-*.json")) == [
         "checkpoint-rollout-0.json",
@@ -191,9 +187,6 @@ def test_a_cancellation_is_only_observed_between_rollouts(db_factory, tmp_path):
         token.raise_if_cancelled()
 
 
-# --- routes -----------------------------------------------------------------------
-
-
 @pytest.fixture
 def client(tmp_path):
     settings = Settings(
@@ -201,8 +194,6 @@ def client(tmp_path):
         artifact_root=tmp_path,
     )
     app: FastAPI = create_app(settings)
-    # The two routers this module owns. main.py is coordinator-owned; the same
-    # two lines are proposed in handoffs/A08-integration-patch.md.
     app.include_router(experiments_routes.router, prefix=API_PREFIX, tags=["experiments"])
     app.include_router(exports_routes.router, prefix=API_PREFIX, tags=["exports"])
     with TestClient(app) as test_client:
@@ -292,7 +283,6 @@ def test_cancelling_a_running_job_labels_its_partial_results(client):
     assert job["progress"] == pytest.approx(0.4), "the scope of the partial output was erased"
     assert "superseded" in job["failure"]
 
-    # Cancelling twice is idempotent, and a completed job cannot be cancelled.
     again = client.post(
         f"{API_PREFIX}/experiments/job-partial/cancel",
         json={"reason": "again"},

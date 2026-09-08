@@ -21,10 +21,8 @@ Where a referenced document could not be resolved the pack records an entry in
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -42,8 +40,13 @@ from afterlap_contracts import (
 )
 
 from ..config import config_dir, load_yaml
-from ..paths import Paths
 from .state import RaceEvent, RaceEventKind
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+    from pathlib import Path
+
+    from ..paths import Paths
 
 __all__ = [
     "CoverageSpec",
@@ -397,8 +400,6 @@ def compose_manifest(document: RulePackDocument) -> RuleManifest:
     bus_statement = statements.get("recharge_measurement_bus")
     recharge_bus = (bus_statement.text_value if bus_statement else None) or "cu_k_dc"
 
-    # Every unresolved condition reaches the manifest, critical or not: the pack
-    # must not be able to hide one by declaring it advisory.
     unknown_conditions = {spec.condition for spec in document.merged_unknown_conditions()}
 
     references = _dedupe_references(statement.reference() for statement in statements.values())
@@ -426,7 +427,9 @@ def compose_manifest(document: RulePackDocument) -> RuleManifest:
     absolute_ceiling = scalar("absolute_power_ceiling_w")
     battery_min = scalar("battery_energy_min_j")
     battery_max = scalar("battery_energy_max_j")
-    assert absolute_ceiling is not None and battery_min is not None and battery_max is not None
+    assert absolute_ceiling is not None
+    assert battery_min is not None
+    assert battery_max is not None
 
     return RuleManifest(
         schema_version=SCHEMA_VERSION,

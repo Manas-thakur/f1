@@ -94,7 +94,6 @@ class TrainingMetrics:
             "transitions_per_second": self.transitions_per_second,
             "episode_return": stat(self.episode_returns),
             "episode_length": stat(self.episode_lengths),
-            # Physical outcomes, reported separately from the dimensionless utility.
             "finish_position": stat(self.finish_positions),
             "elapsed_time_s": stat(self.elapsed_times_s),
             "final_energy_j": stat(self.final_energy_j),
@@ -102,8 +101,6 @@ class TrainingMetrics:
             "reward_terms": {name: stat(values) for name, values in sorted(self.reward_terms.items())},
             "decisions": self.decisions,
             "withdrawals": self.withdrawals,
-            # Kept beside the reward on purpose: a high reward with frequent
-            # withdrawals is a failure mode, not a result.
             "withdrawal_rate": self.withdrawal_rate,
             "solver_timeouts": self.solver_timeouts,
             "instruction_changes": self.instruction_changes,
@@ -115,8 +112,6 @@ class TrainingMetrics:
             "finished_episodes": self.finished_episodes,
             "failed_episodes": self.failed_episodes,
             "truncated_episodes": self.truncated_episodes,
-            # Read back from SB3's own logger rather than recomputed here: the
-            # library owns the entropy and target-critic arithmetic.
             "optimiser": {name: stat(values) for name, values in sorted(self.optimiser_stats.items())},
         }
 

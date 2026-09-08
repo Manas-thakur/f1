@@ -135,7 +135,6 @@ def test_interior_energy_minimum_is_rejected_though_endpoints_are_legal(pack_v1)
     assert trace.points[-1].battery_energy_j == pytest.approx(energy_at_end_j, abs=1e-6)
 
     floor_j = pack_v1.manifest.battery_energy_min_j
-    # An endpoint-only check would have accepted this plan.
     endpoint_only_margin = min(trace.points[0].battery_energy_j, trace.points[-1].battery_energy_j) - floor_j
     assert endpoint_only_margin == pytest.approx(180_000.0, abs=1e-6)
     assert endpoint_only_margin > 0.0
@@ -147,7 +146,6 @@ def test_interior_energy_minimum_is_rejected_though_endpoints_are_legal(pack_v1)
     assert energy_check.margin == pytest.approx(-20_000.0, abs=1e-6)
     assert energy_check.at_progress_m == pytest.approx(2_000.0, abs=1e-9)
     assert result.status is CheckStatus.FAIL
-    # The plan declared itself feasible; the checker did not take its word.
     assert plan.constraint_result.status is CheckStatus.PASS
 
 
@@ -252,23 +250,17 @@ def test_legal_plan_passes_every_check(pack_v1):
     assert expected_energy_margin == 300_000.0
     assert checks["battery_energy_window"].margin == pytest.approx(300_000.0, abs=1e-6)
 
-    # Charge-bus efficiency is 1.0 here, so the ledger equals the battery gain.
     assert checks["recharge_allowance"].margin == pytest.approx(8_500_000.0 - 700_000.0, abs=1e-6)
 
-    # Entry transition is zero; the profile change is 175 kW -> 10 kW over 4.0 s.
     expected_rate = (seg0_deploy_w - seg1_deploy_w) / 4.0
     assert expected_rate == pytest.approx(41_250.0, abs=1e-9)
     assert checks["power_ramp"].margin == pytest.approx(700_000.0 - expected_rate, abs=1e-6)
 
-    # Derate factor 1.0 at 300 K, so the derated ceiling equals the regulatory one.
     assert checks["thermal_derate"].margin == pytest.approx(175_000.0, abs=1e-6)
 
-    # The overtake segment ends exactly on the attack-exit checkpoint that closes
-    # the activation zone [1900, 2100]: zero metres of headroom, still legal.
     assert checks["overtake_eligibility"].margin == pytest.approx(0.0, abs=1e-9)
     assert checks["overtake_eligibility"].status is CheckStatus.PASS
 
-    # Lead time: 50 m at 50 m/s = 1.0 s, minus the 0.6 s reaction time.
     assert checks["execution_lead_time"].margin == pytest.approx(0.4, abs=1e-9)
 
 
@@ -316,7 +308,6 @@ def test_power_above_speed_curve_fails_with_negative_margin(pack_v1):
     assert checks["power_ceiling"].margin == pytest.approx(expected_margin_w, abs=1e-6)
     assert checks["power_ceiling"].limit == pytest.approx(CEILING_AT_100_W, abs=1e-6)
     assert checks["power_ceiling"].observed == pytest.approx(deploy_w, abs=1e-6)
-    # 2 MJ - 1.3 MJ = 0.7 MJ, still inside the window, so energy is not the cause.
     assert checks["battery_energy_window"].status is CheckStatus.PASS
     assert result.status is CheckStatus.FAIL
 
@@ -383,8 +374,6 @@ def test_impossible_ramp_is_rejected(pack_v1):
     assert checks["power_ramp"].status is CheckStatus.FAIL
     assert checks["power_ramp"].margin == pytest.approx(expected_margin, abs=1e-6)
     assert checks["power_ramp"].observed == pytest.approx(demanded_rate, abs=1e-6)
-    # The second segment sits exactly on the 350 kW ceiling, so the ramp is the
-    # only violation.
     assert checks["power_ceiling"].status is CheckStatus.PASS
     assert checks["power_ceiling"].margin == pytest.approx(0.0, abs=1e-6)
     assert checks["battery_energy_window"].status is CheckStatus.PASS
@@ -506,7 +495,6 @@ def test_recharge_ledger_resets_at_a_lap_rollover(pack_v1):
     assert max(p.recharge_ledger_j for p in trace.points) == pytest.approx(peak_this_lap_j, abs=1e-6)
     assert trace.points[-1].recharge_ledger_j == pytest.approx(half_j, abs=1e-6)
     assert trace.points[-1].lap_index == 1
-    # Energy is not created by the reset: the battery still gained exactly once.
     assert trace.points[-1].battery_energy_j == pytest.approx(1_800_000.0, abs=1e-6)
 
     check = checks_by_id(check_plan(plan, state, context, manifest=pack_v1.manifest))["recharge_allowance"]
@@ -643,7 +631,6 @@ def test_overtake_outside_the_activation_zone_is_rejected(pack_v1):
     result = check_plan(plan, state, context, manifest=pack_v1.manifest)
     check = checks_by_id(result)["overtake_eligibility"]
     assert check.status is CheckStatus.FAIL
-    # 2100 (zone end) - 2300 (segment end) = -200 m.
     assert check.margin == pytest.approx(-200.0, abs=1e-9)
 
 
@@ -677,5 +664,4 @@ def test_ineligible_car_may_not_use_the_overtake_profile(pack_v1):
     assert DeploymentProfile.OVERTAKE not in context.admissible_profiles
     check = checks_by_id(check_plan(plan, state, context, manifest=pack_v1.manifest))["overtake_eligibility"]
     assert check.status is CheckStatus.FAIL
-    # The whole 150 m request lies outside any permitted zone.
     assert check.margin == pytest.approx(-150.0, abs=1e-9)

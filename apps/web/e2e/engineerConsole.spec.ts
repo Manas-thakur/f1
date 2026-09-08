@@ -26,7 +26,7 @@ test.describe('selecting a recommendation records a decision and actuates nothin
       .poll(() => log.urls.filter((url) => url.includes('/recommendations/')).length)
       .toBe(1);
 
-    // The claim this test exists for.
+
     expect(log.urls.filter((url) => url.includes('/simulator/driver-action'))).toEqual([]);
     expect(log.urls.filter((url) => url.includes('/commands'))).toEqual([]);
   });
@@ -58,8 +58,8 @@ test.describe('selecting a recommendation records a decision and actuates nothin
     page,
   }) => {
     await mockFeatureApi(page, {
-      // No stream frames: a later envelope would carry its own session time and
-      // move the clock back before the assertion.
+
+
       frames: [],
       snapshotOverrides: { session_time_s: 25.0, recommendation: recommendation() },
     });
@@ -80,8 +80,7 @@ test.describe('the stream', () => {
     });
     await page.goto(ROUTE);
 
-    // One snapshot on attach, then a second because the server asked for a
-    // resync. The reducer pauses deltas until it arrives.
+
     await expect
       .poll(() => log.urls.filter((url) => url.includes('/snapshot')).length, { timeout: 10_000 })
       .toBeGreaterThan(1);
@@ -95,10 +94,10 @@ test.describe('the stream', () => {
     await expect(sources).toContainText('Data age');
     await expect(sources).toContainText('session time');
     await expect(sources).toContainText('synthetic');
-    // Provenance is on the readouts themselves, in words rather than colour.
+
     await expect(page.getByText('simulated').first()).toBeVisible();
     await expect(page.getByText('estimated').first()).toBeVisible();
-    // The shell strip carries the same age, so it is visible without scrolling.
+
     await expect(page.getByLabel('Session context')).toContainText('Data age');
   });
 });
@@ -120,7 +119,7 @@ test.describe('the shared chart cursor', () => {
     const values = await sliders.evaluateAll((nodes) =>
       nodes.map((node) => (node as HTMLInputElement).value),
     );
-    // One cursor: every panel reads the same position.
+
     expect(new Set(values).size).toBe(1);
     await expect(first).toHaveAttribute('aria-valuetext', /metres|seconds/);
   });
@@ -142,7 +141,7 @@ test.describe('keyboard navigation and focus order', () => {
       await page.keyboard.press('Tab');
       const focused = await page.evaluate(() => {
         const element = document.activeElement as HTMLElement | null;
-        if (element === null) return null;
+        if (element === null) {return null;}
         const style = window.getComputedStyle(element);
         return {
           tag: element.tagName.toLowerCase(),
@@ -150,7 +149,7 @@ test.describe('keyboard navigation and focus order', () => {
           outlineWidth: style.outlineWidth,
         };
       });
-      if (focused === null) break;
+      if (focused === null) {break;}
       seen.push(`${focused.tag}:${focused.text}`);
       if (focused.text === 'Select') {
         reachedSelect = true;
@@ -174,7 +173,7 @@ test.describe('keyboard navigation and focus order', () => {
       await page.keyboard.press('Tab');
       const inside = await page.evaluate(() => {
         const dialogNode = document.querySelector('[role="dialog"]');
-        return dialogNode !== null && dialogNode.contains(document.activeElement);
+        return dialogNode?.contains(document.activeElement) === true;
       });
       expect(inside, 'focus escaped the modal').toBe(true);
     }
@@ -199,10 +198,10 @@ test.describe('layout', () => {
     expect(box?.y ?? 0).toBeGreaterThanOrEqual(0);
     expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(900);
 
-    // And the page has not been scrolled to achieve that.
+
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
-    // The select control is in the first viewport too.
+
     const selectBox = await page.getByRole('button', { name: 'Select', exact: true }).boundingBox();
     expect((selectBox?.y ?? 0) + (selectBox?.height ?? 0)).toBeLessThanOrEqual(900);
   });
@@ -220,8 +219,7 @@ test.describe('layout', () => {
     await expect(page.getByRole('button', { name: 'Select', exact: true })).toBeDisabled();
     await expect(page.getByRole('button', { name: 'Mark communicated' })).toBeDisabled();
 
-    // No run control, snapshot or experiment control leaks into the
-    // operational view at any width.
+
     await expect(page.getByRole('button', { name: 'Create snapshot' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Queue paired experiment' })).toHaveCount(0);
 

@@ -80,7 +80,7 @@ test.describe('keyboard-only navigation', () => {
     expect(interactive.length).toBeGreaterThan(5);
 
     const reached = new Set<string>();
-    // One tab per control plus a margin for the browser's own chrome stops.
+
     for (let i = 0; i < interactive.length + 6; i += 1) {
       await page.keyboard.press('Tab');
       const marker = await page.evaluate(() =>
@@ -153,7 +153,7 @@ test.describe('the inspector dialog', () => {
       await page.keyboard.press('Tab');
       const inside = await page.evaluate(() => {
         const dialogEl = document.querySelector('[role="dialog"]');
-        return dialogEl !== null && dialogEl.contains(document.activeElement);
+        return dialogEl?.contains(document.activeElement) === true;
       });
       expect(inside).toBe(true);
     }

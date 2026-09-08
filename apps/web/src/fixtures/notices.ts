@@ -1,8 +1,4 @@
-/**
- * Standing notices. These are product statements, not decoration, and they are
- * shown wherever the values on screen could otherwise be mistaken for measured
- * race data.
- */
+
 export const SYNTHETIC_DATA_NOTICE =
   'Synthetic data: every scenario, trace and result shown in this product is simulated. Nothing here is measured race telemetry.';
 

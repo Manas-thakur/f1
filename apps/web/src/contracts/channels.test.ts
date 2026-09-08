@@ -30,7 +30,7 @@ describe('the TypeScript channel registry mirrors the Python one', () => {
       expect(spec.lowerBound, row.name).toBe(row.lower_bound);
       expect(spec.upperBound, row.name).toBe(row.upper_bound);
 
-      // The conversion itself, on a value the Python side would produce.
+
       const si = 123.456;
       expect(toDisplay(spec, si)).toBeCloseTo(si * row.display_scale + row.display_offset, 9);
     }
@@ -62,8 +62,8 @@ describe('series identity', () => {
   });
 
   it('gives the two energy-flow channels distinct tokens', () => {
-    // Deploy and harvest are separately named nonnegative flows; they must not
-    // share a colour, or a netted reading becomes indistinguishable.
+
+
     expect(channel('deploy_power_w').plotColourToken).not.toBe(
       channel('harvest_power_w').plotColourToken,
     );

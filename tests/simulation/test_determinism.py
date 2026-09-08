@@ -100,7 +100,6 @@ class TestRestore:
         for _ in range(15):
             simulator.step(None, 0.02)
 
-        # Issue an action whose reaction delay has not elapsed, then snapshot.
         pending = DriverAction(profile=DeploymentProfile.OVERTAKE, label="queued")
         simulator.step({"own": pending}, 0.02)
         snapshot = simulator.snapshot()

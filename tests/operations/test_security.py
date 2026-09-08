@@ -31,8 +31,7 @@ from afterlap_api.deps import Settings
 from afterlap_api.errors import CapabilityUnavailable
 from afterlap_api.main import create_app
 from afterlap_api.observability import JsonFormatter
-from afterlap_contracts import SessionMode
-from afterlap_contracts import fixtures as fx
+from afterlap_contracts import SessionMode, fixtures as fx
 from afterlap_core.diagnostics import check_database, redact
 from afterlap_core.paths import Paths
 
@@ -40,11 +39,6 @@ from .conftest import IMPLEMENTATION_ROOT, RULE_PACK_ID, SCENARIO_ID, SEED
 
 SECRET = "n0t-a-real-password-Ku3Rr7x"
 SECRET_URL = f"postgresql+psycopg://afterlap:{SECRET}@afterlap-db.invalid:5432/afterlap"
-
-
-# --------------------------------------------------------------------------- #
-# 1. loopback by default, and no default production secret
-# --------------------------------------------------------------------------- #
 
 
 def test_the_server_binds_loopback_by_default(monkeypatch: pytest.MonkeyPatch):
@@ -80,12 +74,9 @@ def test_every_compose_host_publish_binds_loopback_and_no_secret_is_defaulted():
         assert entry.startswith("127.0.0.1:"), f"host publish {entry!r} is not bound to loopback"
     print(f"\ncompose publishes: {published}")
 
-    # The database password is required, not defaulted: `${VAR:?message}` makes
-    # compose refuse to start when it is unset.
     assert "AFTERLAP_DB_PASSWORD:?" in text, (
         "the compose file does not force the database password to be supplied"
     )
-    # And nothing that looks like a literal password is present.
     for suspicious in ("POSTGRES_PASSWORD: afterlap", "password=", "PASSWORD: changeme"):
         assert suspicious not in text, f"the compose file contains a literal secret: {suspicious!r}"
 
@@ -98,16 +89,9 @@ def test_every_compose_host_publish_binds_loopback_and_no_secret_is_defaulted():
     )
 
 
-# --------------------------------------------------------------------------- #
-# 2. an export path outside the storage root
-# --------------------------------------------------------------------------- #
-
-
 def test_an_export_path_outside_the_storage_root_is_rejected(tmp_path: Path):
     paths = Paths.default(tmp_path / "install").ensure()
 
-    # A real file, really outside the root. If validation leaked, this is what
-    # would be overwritten.
     outside = tmp_path / "outside" / "already-here.json"
     outside.parent.mkdir(parents=True)
     outside.write_text('{"do not touch": true}', encoding="utf-8")
@@ -123,10 +107,8 @@ def test_an_export_path_outside_the_storage_root_is_rejected(tmp_path: Path):
         with pytest.raises(ValueError, match="escapes the configured storage root"):
             paths.resolve_within(candidate, root=paths.exports)
 
-    # Nothing outside was created, truncated or touched.
     assert outside.read_bytes() == original
 
-    # A path *inside* the root resolves, and resolves to somewhere inside it.
     target = paths.resolve_within("exp-0001.json", root=paths.exports)
     assert target.is_relative_to(paths.exports.resolve())
 
@@ -162,14 +144,8 @@ def test_a_real_export_writes_only_inside_the_storage_root(tmp_path: Path):
         assert written.is_file()
         assert written.is_relative_to((tmp_path / "artifacts" / "exports").resolve()), written
 
-    # No stray file appeared beside the artefact root.
     strays = [p for p in tmp_path.iterdir() if p.is_file() and p.suffix in {".json", ".csv"}]
     assert strays == [], f"the export wrote outside the artefact tree: {strays}"
-
-
-# --------------------------------------------------------------------------- #
-# 3. mode enforcement: a live_team session refuses a simulator driver action
-# --------------------------------------------------------------------------- #
 
 
 @pytest.mark.parametrize("mode", [SessionMode.LIVE_TEAM, SessionMode.REPLAY])
@@ -226,25 +202,14 @@ def test_a_non_simulation_session_refuses_a_simulator_driver_action(tmp_path: Pa
         assert mode.value in error["message"]
         assert "driver action" in error["message"]
 
-        # The refusal is about the mode, not about a missing lease: the check
-        # runs before any authority or runtime lookup, so a live_team session
-        # cannot be actuated even by the lease holder.
         assert "lease" not in error["message"].lower()
-
-
-# --------------------------------------------------------------------------- #
-# 4. no credential in a manifest, a log line or an export
-# --------------------------------------------------------------------------- #
 
 
 def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    # A real credential, in the variable the application really reads.
     monkeypatch.setenv("AFTERLAP_DATABASE_URL", SECRET_URL)
 
-    # 1. The capability probe connects to a host that does not resolve, and
-    #    reports the failure without printing what it tried to authenticate as.
     probe = check_database(SECRET_URL)
     print(f"\ndatabase probe: {probe.state.value} — {probe.detail}")
     assert SECRET not in probe.detail
@@ -254,7 +219,6 @@ def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
     assert redact(SECRET_URL) == "postgresql+psycopg://afterlap-db.invalid:5432/afterlap"
     assert SECRET not in redact(SECRET_URL)
 
-    # 2. The structured formatter strips it from a real log record carrying it.
     stream = io.StringIO()
     handler = logging.StreamHandler(stream)
     handler.setFormatter(JsonFormatter())
@@ -281,10 +245,6 @@ def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
     assert "db_password" not in payload, "a password-shaped key survived the formatter"
     assert "authorization" not in payload
 
-    # 3. A real run: the export, the manifest, /metrics and /version.
-    #    The app is given an explicit SQLite URL so it starts, while the
-    #    credential-bearing URL stays in the environment where the doctor
-    #    probe and any accidental logging would pick it up.
     app = create_app(
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
@@ -338,8 +298,6 @@ def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
             text = client.get(path).text
             assert SECRET not in text, f"{path} leaked the credential"
 
-    # 4. Nothing under the artefact root contains it either — spool entries,
-    #    snapshots, the content-addressed store, everything.
     leaked = []
     for candidate in (tmp_path / "artifacts").rglob("*"):
         if not candidate.is_file():

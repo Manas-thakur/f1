@@ -210,8 +210,6 @@ class BaselinePlanner:
             ),
         )
 
-    # -- candidate construction ------------------------------------------------
-
     def _candidate(
         self, request: PlanRequest, profile: DeploymentProfile, speed_mps: float
     ) -> CandidatePlan | None:
@@ -233,15 +231,6 @@ class BaselinePlanner:
         ceiling_j = limits.battery_energy_max_j
         energy_j = state.battery_energy_j
 
-        # Deployment: a fraction of the *regulatory* ceiling shape, capped by the
-        # derate factor so the derated check cannot fail.
-        #
-        # Coordinator decision D-05: ``requested_budget_j`` is battery joules and
-        # the checker converts once — it scales by the discharge efficiency when
-        # deriving bus power and divides by it again on the ledger, so the two
-        # cancel and the battery drains exactly the requested amount. This
-        # planner therefore compares the budget against the battery headroom
-        # directly and does *not* apply an efficiency factor of its own.
         fraction = min(BASELINE_DEPLOY_FRACTION[profile], SAFETY_MARGIN * derate)
         budget_j = fraction * ceiling_w * duration_s
         headroom_down_j = max(0.0, energy_j - floor_j) * SAFETY_MARGIN
@@ -249,9 +238,6 @@ class BaselinePlanner:
         if budget_j < 0.0:
             return None
 
-        # Harvest is battery energy gain (D-01). It is bounded by the room left
-        # in the battery and by what the per-lap allowance permits *at the charge
-        # bus*, which is a different quantity and is converted explicitly.
         harvest_j = BASELINE_HARVEST_FRACTION[profile] * ceiling_w * duration_s / 4.0
         if ceiling_j is not None:
             harvest_j = min(harvest_j, max(0.0, ceiling_j - energy_j) * SAFETY_MARGIN)
@@ -290,7 +276,6 @@ class BaselinePlanner:
             intention=_INTENTION_FOR_PROFILE[profile],
             profile_segments=segments,
             scenario_outcomes=(),
-            # D-05 again: the budget is the battery drain, so no conversion here.
             terminal_target_energy_j=max(0.0, energy_j - budget_j + harvest_j),
             objective=objective,
             constraint_result=_unchecked_result(request),

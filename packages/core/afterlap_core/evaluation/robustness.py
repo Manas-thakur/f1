@@ -17,10 +17,9 @@ swept here; they are reported as unmeasured by this module's coverage table.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import (
     DeploymentProfile,
@@ -29,7 +28,6 @@ from afterlap_contracts import (
     ReasonCode,
 )
 from afterlap_core.config import Parameter, VerificationStatus
-from afterlap_core.paths import Paths
 from afterlap_core.rules import load_rule_pack
 from afterlap_core.simulation import Simulator, load_bundle
 from afterlap_core.simulation.config import (
@@ -42,6 +40,7 @@ from afterlap_core.simulation.config import (
 from .controllers import (
     ControlDecision,
     Controller,
+    ControlRequest,
     HashCheckedController,
     LegalFixedSchedule,
     LegalGreedyAttacker,
@@ -50,6 +49,11 @@ from .controllers import (
 )
 from .harness import controller_rule_context
 from .independent_ledger import ProgressSample, find_crossings
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from afterlap_core.paths import Paths
 
 __all__ = [
     "OPERATIONS_OWNED_DIMENSIONS",
@@ -135,11 +139,6 @@ def assert_no_confident_directive_under_unknown(outcomes: Sequence[RobustnessOut
         )
 
 
-# --------------------------------------------------------------------------- #
-# Scenario perturbations
-# --------------------------------------------------------------------------- #
-
-
 def _param(value: float, unit: str, note: str) -> Parameter:
     return Parameter(
         value=value,
@@ -193,11 +192,6 @@ def _with_initial_temperature(bundle: ScenarioBundle, car_id: str, temperature_k
         }
     )
     return _rebundle(bundle.scenario.model_copy(update={"initial_states": states}), bundle)
-
-
-# --------------------------------------------------------------------------- #
-# One sweep run
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,7 +257,7 @@ def _collect_decisions(
                 last_action = decision.action
                 actions = {ego: decision.action}
         if actions is None and last_action is not None:
-            actions = None  # withdrawal: the driver holds the last instruction
+            actions = None
         simulator.step(actions, step_s)
     return decisions, gaps, simulator
 
@@ -315,7 +309,7 @@ class _SlowController:
     def name(self) -> str:
         return f"{self.inner.name}+deadline_exceeded"
 
-    def decide(self, request):  # type: ignore[no-untyped-def]
+    def decide(self, request: ControlRequest) -> ControlDecision:
         decision = self.inner.decide(request)
         return ControlDecision(
             controller=self.name,
@@ -353,7 +347,6 @@ def run_robustness_sweep(
     )
     outcomes: list[RobustnessOutcome] = []
 
-    # 1. data age -------------------------------------------------------------
     stale = _with_observation_delay(base, 5.0)
     decisions, _gaps, _sim = _collect_decisions(
         stale, greedy, rule_pack_id=rule_pack_id, settings=config, paths=paths
@@ -372,7 +365,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 2. dropped energy channel ----------------------------------------------
     no_energy = load_bundle(no_energy_scenario_id, paths)
     decisions, gaps, _sim = _collect_decisions(
         no_energy, greedy, rule_pack_id=rule_pack_id, settings=config, paths=paths
@@ -391,7 +383,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 3. missing rules --------------------------------------------------------
     decisions, _gaps, _sim = _collect_decisions(
         base, greedy, rule_pack_id=unknown_rule_pack_id, settings=config, paths=paths
     )
@@ -406,7 +397,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 4. changed rival response ----------------------------------------------
     results: dict[str, float] = {}
     for kind in ("defend", "attack", "conserve"):
         variant = _with_rival_policy(base, kind)
@@ -434,7 +424,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 5. low initial energy ---------------------------------------------------
     low = load_bundle(low_energy_scenario_id, paths)
     decisions, _gaps, simulator = _collect_decisions(
         low, greedy, rule_pack_id=rule_pack_id, settings=config, paths=paths
@@ -458,7 +447,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 6. thermal derating -----------------------------------------------------
     hot = _with_initial_temperature(base, base.scenario.ego_car_id, 383.15)
     decisions, _gaps, _sim = _collect_decisions(
         hot, greedy, rule_pack_id=rule_pack_id, settings=config, paths=paths
@@ -510,12 +498,8 @@ def run_robustness_sweep(
         )
     )
 
-    # 7. line-boundary timing -------------------------------------------------
-    # This case needs a horizon long enough to reach a checkpoint, which the
-    # short sweep horizon is not; it uses its own, stated, longer horizon.
     outcomes.append(_line_boundary_case(base, _SweepSettings(horizon_s=26.0, dt_s=config.dt_s), paths))
 
-    # 8. delayed driver action ------------------------------------------------
     delayed = _with_reaction_delay(base, 1.5)
     decisions, _gaps, delayed_sim = _collect_decisions(
         delayed, schedule, rule_pack_id=rule_pack_id, settings=config, paths=paths
@@ -545,7 +529,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 9. solver timeout -------------------------------------------------------
     slow = _SlowController(greedy, declared_latency_ms=config.compute_budget_ms * 5.0)
     decisions, _gaps, _sim = _collect_decisions(
         base, slow, rule_pack_id=rule_pack_id, settings=config, paths=paths
@@ -562,7 +545,6 @@ def run_robustness_sweep(
         )
     )
 
-    # 10. model hash mismatch --------------------------------------------------
     checked = HashCheckedController(primary=greedy, fallback=schedule)
     decisions, _gaps, _sim = _collect_decisions(
         base,

@@ -151,7 +151,6 @@ def _instructed_profile(display_text: str, admissible: list[str]) -> str:
 def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     book = Runbook(client=client, verbose=verbose)
 
-    # -- 1: liveness and readiness are different questions ------------------- #
     book.step(1, "liveness and readiness")
     waited = client.wait_for_live(timeout_s=90.0)
     book.observe("waited for live (s)", round(waited, 3))
@@ -164,7 +163,7 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     except ApiError as error:
         ready, ready_status, ready_code = error.body, error.body.get("status"), error.status
     book.observe("/health/ready", f"HTTP {ready_code} status={ready_status}")
-    book.observe("measured capabilities", {k: v for k, v in (ready.get("detail") or {}).items()})
+    book.observe("measured capabilities", dict((ready.get("detail") or {}).items()))
     book.require(
         ready_status == "ready",
         f"the server is live but not ready ({ready}); a healthy HTTP server is not a decision system",
@@ -176,7 +175,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     )
     book.done()
 
-    # -- 2: create the session ---------------------------------------------- #
     book.step(2, "create a session from immutable manifests")
     created = client.post(
         "/sessions",
@@ -212,7 +210,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     book.observe("revision after create", revision)
     book.done()
 
-    # -- 3: the control lease ------------------------------------------------ #
     book.step(3, "one operator holds the control lease")
     lease = client.post(
         f"/sessions/{session_id}/control-lease",
@@ -223,7 +220,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     book.observe("lease revision / expiry (session s)", f"{lease['revision']} / {lease['expires_at_s']}")
     book.require(lease["operator_id"] == CONSOLE_OPERATOR, "the console did not obtain the lease")
 
-    # A second operator may observe but must not race the holder.
     try:
         client.post(
             f"/sessions/{session_id}/commands",
@@ -241,7 +237,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
         book.require(refusal.status in (403, 409), f"unexpected refusal status {refusal.status}")
     book.done()
 
-    # -- 4: start ------------------------------------------------------------ #
     book.step(4, "start the session")
     started = client.post(
         f"/sessions/{session_id}/commands",
@@ -257,7 +252,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     revision = started["revision"]
     book.done()
 
-    # -- 5: step to an actionable instruction -------------------------------- #
     book.step(5, "step until the planner publishes an actionable, checked instruction")
     recommendation: dict[str, Any] | None = None
     rule_context: dict[str, Any] | None = None
@@ -297,7 +291,7 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
         recommendation is not None,
         f"no actionable instruction within {MAX_STEPS} steps; last withdrawals: {withdrawals}",
     )
-    assert recommendation is not None  # for type checkers; `require` already raised
+    assert recommendation is not None
 
     book.observe("recommendation id", recommendation["id"])
     book.observe("instruction", recommendation["display_text"])
@@ -329,14 +323,11 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     )
     book.done()
 
-    # -- 6: select (not execution) ------------------------------------------- #
     book.step(6, "select — a human decision record, which is not execution")
     selected = client.post(
         f"/sessions/{session_id}/recommendations/{recommendation['id']}/actions",
         {
             "action": "select",
-            # Optimistic concurrency is on the RECOMMENDATION, not the session
-            # (coordinator decision D-07 defect 5).
             "expected_revision": recommendation["revision"],
             "operator_id": CONSOLE_OPERATOR,
             "reason": "runbook: attack now and still defend at the next opportunity",
@@ -356,7 +347,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     )
     book.done()
 
-    # -- 7: mark communicated ------------------------------------------------ #
     book.step(7, "mark communicated — a separate action")
     communicated = client.post(
         f"/sessions/{session_id}/recommendations/{recommendation['id']}/actions",
@@ -375,7 +365,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     )
     book.done()
 
-    # -- 8 and 9: the driver acts, and the execution event arrives ----------- #
     book.step(8, "the driver executes deliberately in the simulator")
     profile = _instructed_profile(recommendation["display_text"], admissible)
     book.observe("instructed profile (read from display_text)", profile)
@@ -424,7 +413,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     )
     book.done()
 
-    # -- 10: snapshot -------------------------------------------------------- #
     book.step(10, "snapshot the complete state")
     snap = client.post(
         f"/sessions/{session_id}/snapshots",
@@ -437,7 +425,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     book.require(snap["snapshot_hash"].startswith("sha256:"), "the snapshot carries no content hash")
     book.done()
 
-    # -- 11: branch two treatments ------------------------------------------ #
     book.step(11, "branch two treatments from that snapshot, paired on seeds")
     experiment = client.post(
         "/experiments",
@@ -484,7 +471,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     )
     book.done()
 
-    # -- 12: export ---------------------------------------------------------- #
     book.step(12, "export the auditable record")
     export = client.post(
         "/exports",
@@ -500,7 +486,6 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
     book.require(bool(export["synthetic"]), "the export is not labelled synthetic")
     book.done()
 
-    # -- 13: metrics --------------------------------------------------------- #
     book.step(13, "metrics: planner duration is reported apart from observation age")
     metrics = client.get("/metrics")
     book.observe("uptime (s)", round(metrics["uptime_s"], 1))

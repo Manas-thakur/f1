@@ -7,8 +7,7 @@ approximation: a tolerance would let a real regression hide inside it.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -16,6 +15,9 @@ from afterlap_contracts import PlanningStatus, ReasonCode
 from afterlap_core.planning import plan
 
 from .conftest import estimate_with
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 _VOLATILE = {"duration_ms", "solve_duration_ms"}
 
@@ -152,7 +154,6 @@ def test_an_in_support_bundle_reranks_and_does_not_double_count(estimate, contex
     for outcome, base_outcome in zip(candidate.scenario_outcomes, reference.scenario_outcomes, strict=True):
         assert outcome.terminal_value == 25.0
         assert outcome.terminal_value_source == "stub-continuation-v0"
-        # The analytic term was removed before the learned one was added.
         assert outcome.utility == pytest.approx(
             base_outcome.utility + (base_outcome.terminal_value or 0.0) - 25.0
         )

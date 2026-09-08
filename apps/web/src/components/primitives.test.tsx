@@ -394,8 +394,8 @@ describe('Dialog', () => {
       await user.tab();
       expect(dialog.contains(document.activeElement)).toBe(true);
     }
-    // Radix marks everything outside the modal aria-hidden, so the control
-    // behind it is not even exposed to assistive technology while it is open.
+
+
     const outside = screen.getByRole('button', { name: 'Other control', hidden: true });
     expect(outside).not.toHaveFocus();
     expect(outside.closest('[aria-hidden="true"]')).not.toBeNull();

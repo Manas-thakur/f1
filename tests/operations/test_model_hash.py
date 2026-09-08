@@ -19,34 +19,37 @@ Two guarantees are separable and both are tested:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 torch = pytest.importorskip("torch", reason="the bundle format is torch state dicts")
 
-from afterlap_api.session.degradation import (  # noqa: E402
+from typing import TYPE_CHECKING
+
+from afterlap_api.session.degradation import (
     DegradationRow,
     check_model_compatibility,
 )
-from afterlap_contracts import (  # noqa: E402
+from afterlap_contracts import (
     SCHEMA_VERSION,
     ApprovalStatus,
     ModelManifest,
     PromotionPolicy,
     ReasonCode,
 )
-from afterlap_core.feature_manifest import ENERGY_V1  # noqa: E402
-from afterlap_core.learning.serving import (  # noqa: E402
+from afterlap_core.feature_manifest import ENERGY_V1
+from afterlap_core.learning.serving import (
     DEFAULT_BASELINE_IDENTITY,
     BundleRejection,
     RejectionReason,
     load_bundle,
     write_bundle,
 )
-from afterlap_core.paths import sha256_file  # noqa: E402
+from afterlap_core.paths import sha256_file
 
-from .conftest import RULE_PACK_ID, actionable  # noqa: E402
+from .conftest import RULE_PACK_ID, actionable
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 RULE_FAMILY = RULE_PACK_ID
 REWARD_REVISION = "objective-v1"
@@ -80,8 +83,6 @@ def bundle_dir(tmp_path: Path) -> Path:
             "not evaluated, not approved, and not a model of any real car.\n"
         ),
     )
-    # The fixture is a *valid* bundle before it is damaged: otherwise the drill
-    # would prove only that an invalid bundle stays invalid.
     loaded = load_bundle(
         directory,
         expected_rule_family=RULE_FAMILY,
@@ -98,7 +99,6 @@ def test_a_bundle_whose_weights_hash_does_not_match_is_rejected(bundle_dir: Path
     actor = bundle_dir / "actor.pt"
     declared = sha256_file(actor)
 
-    # Genuinely different weights, written in the same format.
     replacement = {key: value + 1.0 for key, value in _actor_state().items()}
     torch.save(replacement, actor)
     actual = sha256_file(actor)
@@ -115,8 +115,6 @@ def test_a_bundle_whose_weights_hash_does_not_match_is_rejected(bundle_dir: Path
         "the refusal does not show both the hash found and the hash declared"
     )
 
-    # The validated baseline that takes over is named, in the exception and in
-    # the machine-readable form an operator surface would render.
     assert error.baseline_identity == DEFAULT_BASELINE_IDENTITY
     assert DEFAULT_BASELINE_IDENTITY in str(error)
     assert error.as_dict() == {
@@ -151,11 +149,6 @@ def test_a_declared_artifact_that_is_simply_gone_is_also_refused(bundle_dir: Pat
     assert rejection.value.reason is RejectionReason.MISSING_ARTIFACT
     assert "calibrator.json" in rejection.value.detail
     assert rejection.value.baseline_identity == DEFAULT_BASELINE_IDENTITY
-
-
-# --------------------------------------------------------------------------- #
-# what a running session does about it
-# --------------------------------------------------------------------------- #
 
 
 def _manifest(**overrides: object) -> ModelManifest:
@@ -211,9 +204,6 @@ def test_a_rule_family_mismatch_disables_the_learned_contribution(db_factory):
     mismatched = _manifest(rule_family="some-other-rule-family")
     manifest, runtime = _live_session(mismatched)
 
-    # The session pins the bundle by the *manifest's* content hash, not by the
-    # weights hash: the manifest is what fixes the feature, rule and reward
-    # revisions the session was built against.
     assert manifest.model_hash == mismatched.content_hash()
 
     decision = runtime.model_decision

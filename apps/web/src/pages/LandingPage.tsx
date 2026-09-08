@@ -10,13 +10,7 @@ import styles from '../app/shell.module.css';
 
 const SERIES = specimenSeries();
 
-/**
- * `/` — product page.
- *
- * Structure fixed by SCREEN_INVENTORY: statement, product specimen, the
- * energy/retained-position explanation, three role links, the evidence
- * boundary, and a final open-workspace action.
- */
+
 export function LandingPage() {
   const [cursor, setCursor] = useState<number | null>(3100);
 

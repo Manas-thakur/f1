@@ -7,17 +7,21 @@ second human decision.
 
 from __future__ import annotations
 
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from .base import Contract
-from .enums import DeploymentProfile, JobStatus, OperatorAction, SessionCommandKind, SessionMode
-from .lifecycle import ControlLease, ExecutionEvent, OperatorEvent
-from .models import ExperimentJob, ModelManifest
-from .planning import Recommendation
-from .rules import RuleManifest
-from .session import SessionManifest, SessionSnapshot, SessionSummary, SnapshotReference
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from .enums import DeploymentProfile, JobStatus, OperatorAction, SessionCommandKind, SessionMode
+    from .lifecycle import ControlLease, ExecutionEvent, OperatorEvent
+    from .models import ExperimentJob, ModelManifest
+    from .planning import Recommendation
+    from .rules import RuleManifest
+    from .session import SessionManifest, SessionSnapshot, SessionSummary, SnapshotReference
 
 
 class CreateSessionRequest(Contract):
@@ -27,10 +31,6 @@ class CreateSessionRequest(Contract):
     seed: int = Field(ge=0)
     model_bundle_id: str | None = None
     label: str | None = None
-    # Real-circuit identity (A16). Calendar event and physical circuit are
-    # separate ids: the 2026 Bahrain GP runs at Sepang. Both optional so a
-    # synthetic scenario needs neither; when given they must resolve to a
-    # hash-pinned track package and event overlay or the request is refused.
     track_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
     event_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
     conditions_id: str | None = Field(

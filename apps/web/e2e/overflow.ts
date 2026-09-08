@@ -1,15 +1,6 @@
 import type { Page } from '@playwright/test';
 
-/**
- * Horizontal-overflow measurement.
- *
- * Same method as A12's `responsive.spec.ts`, extracted so the feature routes
- * can be checked the same way: the document must not widen, **and** no element
- * may extend past the viewport unless a real scroll container between it and
- * the viewport contains it. Checking only `document.body.scrollWidth` misses a
- * child inside an `overflow: hidden` ancestor, which is exactly how a broken
- * layout hides.
- */
+
 export interface Overflow {
   readonly bodyScrollWidth: number;
   readonly innerWidth: number;

@@ -1,14 +1,4 @@
-/**
- * The one shared session store.
- *
- * Three slices that never bleed into each other:
- *   server  — authoritative, written only by the reducer or a snapshot fetch
- *   view    — local presentation choices; changing them changes no truth
- *   request — commands in flight, their idempotency keys and expected revisions
- *
- * A09/A10/A11 build on the selectors exported from `selectors.ts`. They should
- * not reach into `useSessionStore.getState().server` and mutate it.
- */
+
 import { create } from 'zustand';
 import type { ApiError, SessionSnapshot, StreamEnvelope } from '@contracts';
 
@@ -29,15 +19,15 @@ import {
 } from './types';
 
 export interface SessionStoreActions {
-  /** Bind the store to a session id and clear everything else. */
+  
   attachSession: (sessionId: string) => void;
   detachSession: () => void;
 
-  /** Feed one already-validated envelope through the reducer. */
+  
   applyEnvelope: (envelope: StreamEnvelope) => void;
-  /** Apply a snapshot fetched over REST (the end of a resync). */
+  
   applyRestSnapshot: (snapshot: SessionSnapshot) => void;
-  /** Record an envelope that failed Ajv validation. It is never applied. */
+  
   recordInvalidEnvelope: (detail: string, eventType?: string | null) => void;
   setConnection: (connection: ConnectionStatus) => void;
 
@@ -51,11 +41,7 @@ export interface SessionStoreActions {
   setDensity: (density: Density) => void;
   setMotion: (motion: MotionPreference) => void;
 
-  /**
-   * Register a command as in flight.
-   * Returns false when a command with the same key is already pending, which
-   * is how duplicate submission is prevented.
-   */
+  
   beginRequest: (input: {
     key: string;
     kind: string;
@@ -205,5 +191,5 @@ export const createSessionStore = () =>
     reset: () => set(() => initialState()),
   }));
 
-/** The application-wide store instance. */
+
 export const useSessionStore = createSessionStore();

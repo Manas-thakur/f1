@@ -80,7 +80,7 @@ def test_the_engine_runs_on_a_compiled_package(frozen_package):
     rows = _run(bundle, None)
     assert rows[-1][0] > rows[0][0] > 100.0, "the ego car must move along the compiled centreline"
     assert all(s > 0.0 for _, s, _ in rows)
-    assert bundle.bundle_hash  # the package hash participates in the bundle identity
+    assert bundle.bundle_hash
 
 
 def test_replay_is_deterministic_on_a_compiled_package(frozen_package):

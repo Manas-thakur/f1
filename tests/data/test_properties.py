@@ -6,8 +6,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
-from hypothesis import strategies as st
+from hypothesis import HealthCheck, assume, given, settings, strategies as st
 
 from afterlap_core.data import (
     ChunkReader,
@@ -50,7 +49,7 @@ def event_streams(draw, min_size: int = 1, max_size: int = 24):
         if draw(st.booleans()):
             fields["battery_energy_j"] = draw(energies)
         if draw(st.integers(min_value=0, max_value=9)) == 0:
-            fields["speed_mps"] = None  # a declared missing sample
+            fields["speed_mps"] = None
         records.append(observation(index, time_s, fields, received_time_s=time_s))
     return records
 
@@ -60,11 +59,6 @@ def _normalise(records) -> list:
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=0.0), sink=sink)
     pipeline.ingest_all(records)
     return sink.normalised
-
-
-# ---------------------------------------------------------------------------
-# Round trip
-# ---------------------------------------------------------------------------
 
 
 @SETTINGS
@@ -111,11 +105,6 @@ def test_replay_delivers_every_record_exactly_once_in_session_order(records):
     assert times == sorted(times)
 
 
-# ---------------------------------------------------------------------------
-# Speed invariance
-# ---------------------------------------------------------------------------
-
-
 @SETTINGS
 @given(
     records=event_streams(),
@@ -131,13 +120,10 @@ def test_replay_speed_changes_pacing_only(records, speed):
     baseline_batches = [(t, batch) for t, batch in baseline.run(step_s=0.1)]
     fast_batches = [(t, batch) for t, batch in fast.run(step_s=0.1)]
 
-    # Simulated timestamps are bit-identical.
     assert [t for t, _ in baseline_batches] == [t for t, _ in fast_batches]
-    # The normalised sequence is bit-identical.
     flat_baseline = [r for _, batch in baseline_batches for r in batch]
     flat_fast = [r for _, batch in fast_batches for r in batch]
     assert normalised_signature(flat_baseline) == normalised_signature(flat_fast)
-    # Only wall-clock pacing changed, by exactly the speed factor.
     assert baseline.clock.session_time_s == fast.clock.session_time_s
     assert fast.clock.wall_clock_elapsed_s == pytest.approx(
         baseline.clock.wall_clock_elapsed_s / speed, rel=1e-9
@@ -179,11 +165,6 @@ def test_speed_change_mid_replay_does_not_alter_simulated_time_or_integration(re
     assert varying.clock.session_time_s == steady.clock.session_time_s
 
 
-# ---------------------------------------------------------------------------
-# Sequence assignment
-# ---------------------------------------------------------------------------
-
-
 @SETTINGS
 @given(
     interleaving=st.lists(st.sampled_from(["simulator", "public-replay"]), min_size=1, max_size=40),
@@ -220,11 +201,6 @@ def test_duplicating_an_arbitrary_stream_never_produces_extra_records(records):
     assert normalised_signature(sort_normalised(twice)) == normalised_signature(sort_normalised(once))
 
 
-# ---------------------------------------------------------------------------
-# Seek
-# ---------------------------------------------------------------------------
-
-
 @SETTINGS
 @given(records=event_streams(min_size=6), fraction=st.floats(min_value=0.0, max_value=1.0))
 def test_seek_never_evaluates_a_sample_after_the_cutoff(records, fraction):
@@ -237,7 +213,7 @@ def test_seek_never_evaluates_a_sample_after_the_cutoff(records, fraction):
         EstimatorSnapshot(session_time_s=horizon * step / 4.0, revision=step) for step in range(5)
     )
     session = ReplaySession(produced, snapshots=snapshots)
-    session.advance_to(horizon)  # play to the end first, then seek backwards
+    session.advance_to(horizon)
 
     result = session.seek(target)
     assert result.evaluated_future_samples == 0
@@ -247,7 +223,6 @@ def test_seek_never_evaluates_a_sample_after_the_cutoff(records, fraction):
         assert all(r.session_time_s > result.snapshot.session_time_s for r in result.replayed)
     assert session.clock.session_time_s == pytest.approx(max(target, result.resumed_from_s))
 
-    # The state visible at the cutoff is exactly the records at or before it.
     visible = session.records_at_cutoff(target)
     assert all(r.session_time_s <= target for r in visible)
     assert len(visible) == len([r for r in produced if r.session_time_s <= target])

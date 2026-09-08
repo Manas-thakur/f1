@@ -27,10 +27,11 @@ import platform
 import sys
 import uuid
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request
 from sqlalchemy import select
+from sqlalchemy.orm import Session as OrmSession
 
 from afterlap_contracts import (
     CONTRACT_REVISION,
@@ -56,7 +57,11 @@ from ..db.models import (
     SessionEvent,
     TelemetryChunk,
 )
-from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
 
 router = APIRouter()
 
@@ -86,14 +91,14 @@ def _paths(request: Request) -> Paths:
     return Paths.default(root).ensure()
 
 
-def _session_row(db, session_id: str) -> Session:  # type: ignore[no-untyped-def]
+def _session_row(db: OrmSession, session_id: str) -> Session:
     row = db.get(Session, session_id)
     if row is None:
         raise LifecycleError(ErrorCode.NOT_FOUND, f"session {session_id} does not exist")
     return row
 
 
-def build_export_body(db, row: Session, start_s: float | None, end_s: float | None) -> dict:  # type: ignore[no-untyped-def]
+def build_export_body(db: OrmSession, row: Session, start_s: float | None, end_s: float | None) -> dict:
     """Assemble the complete record. Nothing here reads simulator truth."""
     stored = db.get(Manifest, row.manifest_hash)
     if stored is None:
@@ -244,8 +249,6 @@ def build_export_body(db, row: Session, start_s: float | None, end_s: float | No
             ),
         },
     }
-    # Credentials never reach a manifest, but redaction is applied on the way out
-    # as well: a future source config carrying one must not leak through here.
     return redact_mapping(body)
 
 
@@ -306,7 +309,6 @@ async def create_export(
     digest = sha256_json(body)
     body["content_hash"] = digest
 
-    # Every write is validated against the configured storage root.
     target = paths.resolve_within(f"{export_id}.{payload.format}", root=paths.exports)
     written = _write(target, body, payload.format)
 

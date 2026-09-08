@@ -92,8 +92,6 @@ class BoundedSpool:
             try:
                 entries.append(SpoolEntry.from_dict(json.loads(path.read_text(encoding="utf-8"))))
             except (OSError, ValueError, KeyError):
-                # A truncated entry from an unclean shutdown is dropped rather
-                # than replayed as a partial lifecycle change.
                 continue
         entries.sort(key=lambda entry: entry.position)
         return entries

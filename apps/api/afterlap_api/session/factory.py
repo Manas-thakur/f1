@@ -14,9 +14,10 @@ manifest describes something the operator did not ask for.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -25,7 +26,6 @@ from afterlap_contracts import (
     SessionManifest,
     SessionMode,
 )
-from afterlap_contracts.requests import CreateSessionRequest
 from afterlap_core.config import load_config
 from afterlap_core.feature_manifest import ENERGY_V1
 from afterlap_core.paths import Paths, sha256_json
@@ -36,8 +36,12 @@ from afterlap_core.simulation.config import load_scenario
 from ..db import LifecycleError
 from .baseline_planner import BaselinePlanner
 from .observation_source import relational_channels_for, simulator_session_capability
-from .recorder import SessionRecorder
 from .runtime import InProcessSessionRuntime, Planner, RuntimeConfig, default_runtime_config
+
+if TYPE_CHECKING:
+    from afterlap_contracts.requests import CreateSessionRequest
+
+    from .recorder import SessionRecorder
 
 DEFAULT_OBJECTIVE_ID = "objective-v1"
 
@@ -226,7 +230,7 @@ class SessionFactory:
         *,
         paths: Paths | None = None,
         planner: Planner | None = None,
-        recorder_factory=None,  # type: ignore[no-untyped-def]
+        recorder_factory: Callable[..., SessionRecorder] | None = None,
         model_bundles: dict[str, ModelManifest] | None = None,
         objective_id: str = DEFAULT_OBJECTIVE_ID,
         config: RuntimeConfig | None = None,
@@ -269,14 +273,6 @@ class SessionFactory:
             recorder=recorder,
             model_bundle=artefacts.model,
             objective_version=artefacts.objective_id,
-            # Without these the model-compatibility check ran against None and
-            # accepted a bundle trained on any observation encoding or rule
-            # pack. The check now fails closed on an undeclared expectation, so
-            # omitting them would disable the learned contribution rather than
-            # wave it through -- but the session genuinely knows both, so it
-            # declares them.
-            # The runtime already derives the rule family from the loaded pack;
-            # the feature hash is the one expectation only the session knows.
             expected_feature_hash=ENERGY_V1.content_hash(),
         )
         runtime.initialise(manifest, artefacts.bundle.scenario.id, payload.seed)

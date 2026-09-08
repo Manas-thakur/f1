@@ -24,7 +24,7 @@ test.describe('every feature route fits every supported width', () => {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(route);
         await page.getByRole('heading', { level: 1 }).waitFor();
-        // Let the charts mount and size themselves before measuring.
+
         await page.waitForTimeout(250);
 
         const result = await measureOverflow(page);

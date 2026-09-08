@@ -34,8 +34,7 @@ from afterlap_api.db import (
     transaction,
 )
 from afterlap_api.db.models import OutboxRecord, Session, SessionEvent
-from afterlap_contracts import ExecutionMatch, OperatorAction, StreamEventType
-from afterlap_contracts import fixtures as fx
+from afterlap_contracts import ExecutionMatch, OperatorAction, StreamEventType, fixtures as fx
 from afterlap_contracts.events import StreamEnvelope
 
 SESSION_ID = fx.FIXTURE_SESSION_ID
@@ -97,7 +96,6 @@ def test_every_stored_outbox_row_validates_as_a_stream_envelope(factory):
     assert rows, "the fixture should have produced publishable rows"
 
     for row in rows:
-        # This is exactly what the publisher does. It must not raise.
         envelope = StreamEnvelope.model_validate(row.envelope)
         assert envelope.session_id == SESSION_ID
         assert envelope.sequence == row.sequence
@@ -158,7 +156,6 @@ def test_an_operator_action_is_still_recorded_in_the_durable_event_log(factory):
     assert actions[0].payload["action"] == "select"
     assert actions[0].payload["operator_id"] == OPERATOR
 
-    # And the lifecycle change that action caused *is* on the stream.
     published_types = {row.event_type for row in _all_outbox(factory)}
     assert StreamEventType.RECOMMENDATION_UPDATED.value in published_types
 

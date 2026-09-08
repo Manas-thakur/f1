@@ -42,11 +42,6 @@ def main(argv: list[str] | None = None) -> int:
         from afterlap_core.cli import app
 
     args = list(sys.argv[1:] if argv is None else argv)
-    # `standalone_mode=False` makes click *return* the code carried by a
-    # `typer.Exit` rather than calling `sys.exit`, so the CLI's own exit
-    # semantics (1 for an unavailable capability, 2 for a degraded one under
-    # --strict) have to be read off the return value. Reading it off an
-    # exception instead silently turns every non-zero code into 0.
     try:
         result = app(["doctor", *args], standalone_mode=False)
     except SystemExit as exit_code:  # pragma: no cover - argument errors only

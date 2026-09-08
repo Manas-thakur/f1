@@ -105,7 +105,7 @@ def source_capability(
         mode=mode,
         supported_channels=tuple(channels),
         measured_channels=tuple(channels),
-        update_rates_hz={c: 20.0 for c in channels},
+        update_rates_hz=dict.fromkeys(channels, 20.0),
         clock_error_s=0.02,
         limitations=tuple(limitations),
     )

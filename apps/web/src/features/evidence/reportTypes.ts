@@ -1,18 +1,4 @@
-/**
- * The benchmark report bundle.
- *
- * A13 writes `ReportBundle.as_dict()`: `{ report, report_hash, detail }`. The
- * `report` half is the frozen `BenchmarkReport` contract and is imported from
- * the generated bundle. The `detail` half is deliberately outside the contract
- * — it carries what the contract cannot, including the comparison matrix and
- * its coverage — so its shape is declared here and validated at runtime rather
- * than trusted.
- *
- * The single rule for reading it: a row whose `status` is `"unmeasured"` is
- * **unavailable**, with its reason. It is not a zero, not a loss and not a
- * pending result, and the frontend never computes a win rate from the rows —
- * the report deliberately does not contain one.
- */
+
 import type { BenchmarkComparison, BenchmarkReport } from '@contracts';
 
 export const UNMEASURED = 'unmeasured';
@@ -67,12 +53,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/**
- * Structural check before anything is rendered.
- *
- * Returns null rather than throwing, so a malformed body renders the same
- * named unavailable state as an absent one instead of a blank screen.
- */
+
 export function parseReportBundle(value: unknown): ReportBundleBody | null {
   if (!isRecord(value)) {
     return null;
@@ -93,7 +74,7 @@ export function isUnmeasured(status: string | null | undefined): boolean {
   return status === UNMEASURED || status === null || status === undefined;
 }
 
-/** Rows the report says carry no number, with the reason each gives. */
+
 export function unmeasuredRows(
   detail: ReportDetail,
 ): readonly { controller: string; reason: string }[] {

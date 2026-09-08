@@ -1,10 +1,4 @@
-/**
- * Authored specimen data for the two product pages.
- *
- * This is a fixture and is labelled as one everywhere it appears. It is
- * deterministic (no randomness, no animation, no clock) so the product pages
- * never look like a live feed. Nothing here reaches the operational routes.
- */
+
 import type { ChartSeries, EventMarker } from '../components/charts/types';
 
 const LAP_LENGTH_M = 5300;
@@ -14,7 +8,7 @@ function progressAxis(): number[] {
   return Array.from({ length: SAMPLES }, (_unused, i) => (i * LAP_LENGTH_M) / (SAMPLES - 1));
 }
 
-/** A deterministic, physically plausible shape. Not a simulator output. */
+
 function deployProfile(progress: number): number {
   const straights = [
     { at: 400, width: 320, peak: 340_000 },
@@ -32,7 +26,7 @@ function deployProfile(progress: number): number {
 }
 
 function energyProfile(progress: number): number {
-  // Monotone-ish discharge with two harvest recoveries, in joules.
+
   const base = 3_800_000 - (progress / LAP_LENGTH_M) * 1_500_000;
   const recovery = 260_000 * Math.exp(-(((progress - 2500) / 420) ** 2));
   return Math.round(base + recovery);
@@ -107,7 +101,7 @@ export function specimenSeries(): readonly ChartSeries[] {
   ];
 }
 
-/** The ruled telemetry row above the specimen chart. */
+
 export interface SpecimenReadout {
   readonly label: string;
   readonly channel: string;
@@ -144,8 +138,8 @@ export const SPECIMEN_READOUTS: readonly SpecimenReadout[] = [
     ageS: 1.4,
   },
   {
-    // The point of this readout: a quantity the product cannot observe is
-    // shown as unavailable, never as zero and never as a green check.
+
+
     label: 'Rival stored energy',
     channel: 'battery_energy_j',
     value: null,

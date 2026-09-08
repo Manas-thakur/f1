@@ -116,8 +116,6 @@ class EnergyLedger:
         if math.isnan(self.initial_energy_j):
             self.initial_energy_j = self.energy_j
 
-    # -- planning ------------------------------------------------------------ #
-
     def plan(
         self,
         dt_s: float,
@@ -144,13 +142,10 @@ class EnergyLedger:
 
         energy = self.energy_j
 
-        # 1. Auxiliary load is drawn at the battery terminal, explicitly.
         aux_capacity_w = max(0.0, (energy - self.energy_min_j) / dt_s)
         actual_aux_w = min(aux_w, aux_capacity_w)
         energy -= actual_aux_w * dt_s
 
-        # 2. Deployment. The battery may not be pushed below its lower bound, so
-        #    the achievable DC power follows from the achievable terminal power.
         requested_out_w = battery_out_power(requested_deploy_dc_w, self.eta_discharge)
         available_out_w = max(0.0, (energy - self.energy_min_j) / dt_s)
         actual_out_w = min(requested_out_w, available_out_w)
@@ -158,8 +153,6 @@ class EnergyLedger:
         deploy_saturated = requested_deploy_dc_w - actual_deploy_dc_w > 1e-9
         energy -= actual_out_w * dt_s
 
-        # 3. Harvest. Never more than the mechanical source physically offers,
-        #    and never more than the remaining headroom can absorb.
         source_limited_dc_w = min(requested_harvest_dc_w, mechanical_available_w)
         requested_in_w = battery_in_power(source_limited_dc_w, self.eta_charge)
         headroom_in_w = max(0.0, (self.energy_max_j - energy) / dt_s)
@@ -188,8 +181,6 @@ class EnergyLedger:
             energy_after_j=energy,
         )
 
-    # -- committing ---------------------------------------------------------- #
-
     def commit(self, plan: LedgerPlan, session_time_s: float) -> LedgerPlan:
         """Apply a plan and record every ledger it touches."""
         dt = plan.dt_s
@@ -201,7 +192,6 @@ class EnergyLedger:
         self.deployed_dc_j += plan.actual_deploy_dc_w * dt
         self.conversion_loss_j += plan.loss_w * dt
 
-        # The CU-K ledger integrates the DC-bus quantity, not the battery gain.
         harvested_dc_j = plan.actual_harvest_dc_w * dt
         self.harvested_dc_j += harvested_dc_j
         self.recharge_cumulative_j += harvested_dc_j
@@ -234,8 +224,6 @@ class EnergyLedger:
             )
         return plan
 
-    # -- lap boundary -------------------------------------------------------- #
-
     def reset_lap_counters(self) -> None:
         """Reset only the per-lap regulatory counter.
 
@@ -243,8 +231,6 @@ class EnergyLedger:
         refill the battery and it does not clear the cumulative ledger.
         """
         self.recharge_this_lap_j = 0.0
-
-    # -- audit --------------------------------------------------------------- #
 
     def close_error(self) -> float:
         """Residual of the battery energy balance, in joules.

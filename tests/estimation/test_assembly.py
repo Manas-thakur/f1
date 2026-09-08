@@ -55,15 +55,11 @@ def _event(
     )
 
 
-# -- slot hysteresis ------------------------------------------------------
-
-
 def test_a_slot_does_not_change_hands_on_noise() -> None:
     """A challenger inside the hysteresis margin never takes the slot."""
     tracker = SlotTracker(hysteresis_s=0.15, hold_s=1.0, slots=("ahead_1",))
     assert tracker.assign({"a": 0.60}, 0.0) == {"ahead_1": "a"}
     for step in range(1, 40):
-        # 'b' is closer, but only by 0.02 s -- inside the noise band.
         assignment = tracker.assign({"a": 0.60, "b": 0.58}, step * 0.1)
         assert assignment == {"ahead_1": "a"}
     assert len(tracker.changes) == 1, "only the initial assignment should be recorded"
@@ -72,11 +68,9 @@ def test_a_slot_does_not_change_hands_on_noise() -> None:
 def test_a_slot_changes_hands_once_a_challenger_is_clearly_and_persistently_closer() -> None:
     tracker = SlotTracker(hysteresis_s=0.15, hold_s=1.0, slots=("ahead_1",))
     tracker.assign({"a": 0.60}, 0.0)
-    # 'b' beats 'a' by 0.3 s, well past the hysteresis, but must hold it for 1 s.
     for step in range(1, 10):
         assignment = tracker.assign({"a": 0.60, "b": 0.30}, step * 0.1)
         assert assignment == {"ahead_1": "a"}, f"changed too early at t={step * 0.1}"
-    # The challenge was first registered at t=0.1, so the 1 s hold expires at 1.1.
     assert tracker.assign({"a": 0.60, "b": 0.30}, 1.0) == {"ahead_1": "a"}
     assert tracker.assign({"a": 0.60, "b": 0.30}, 1.1) == {"ahead_1": "b"}
     change = tracker.changes[-1]
@@ -91,7 +85,6 @@ def test_an_interrupted_challenge_restarts_the_hold_window() -> None:
     tracker.assign({"a": 0.60}, 0.0)
     for step in range(1, 9):
         tracker.assign({"a": 0.60, "b": 0.30}, step * 0.1)
-    # 'b' falls back inside the margin; the pending challenge is dropped.
     tracker.assign({"a": 0.60, "b": 0.55}, 0.9)
     assert tracker.assign({"a": 0.60, "b": 0.30}, 1.0) == {"ahead_1": "a"}
     assert tracker.assign({"a": 0.60, "b": 0.30}, 1.9) == {"ahead_1": "a"}
@@ -137,7 +130,6 @@ def test_a_slot_identity_change_resets_that_slots_history(
     context_ids = (RIVAL_CAR_ID, SECOND_RIVAL_ID)
     time_s = 0.0
     progress = 0.0
-    # Phase 1: rival-a is nearest ahead and closing on us steadily.
     for _ in range(12):
         time_s += 0.5
         progress += 37.5
@@ -149,7 +141,6 @@ def test_a_slot_identity_change_resets_that_slots_history(
     assert state.slots.occupants["ahead_1"] == RIVAL_CAR_ID
     assert state.tracks[RIVAL_CAR_ID].last_relative_speed_mps is not None
 
-    # Phase 2: rival-b arrives much closer and holds it past the hold window.
     published = []
     for _ in range(8):
         time_s += 0.5
@@ -167,8 +158,6 @@ def test_a_slot_identity_change_resets_that_slots_history(
     assert change.slot == "ahead_1"
     belief = published[-1].rival_in_slot("ahead_1")
     assert belief is not None and belief.car_id == SECOND_RIVAL_ID
-    # The change is announced on the estimate published at the moment it happened,
-    # and the new occupant starts with no inherited closing rate.
     announcing = next(e for e in published if e.cutoff_s == pytest.approx(change.at_s))
     assert any("history was reset" in note for note in announcing.quality.notes)
     fresh = announcing.rival_in_slot("ahead_1")
@@ -206,9 +195,6 @@ def test_slots_are_unique_and_survive_a_state_round_trip(
     assert [c.slot for c in restored.slot_changes] == [c.slot for c in state.slot_changes]
 
 
-# -- update_state ---------------------------------------------------------
-
-
 def test_update_state_leaves_the_prior_untouched(own_config: OwnCarConfig, rival_config: RivalConfig) -> None:
     """The pure form lets a replay branch without corrupting the trunk."""
     run = make_run(own_config, rival_config, scenario_id="branch", seed=91, duration_s=6.0)
@@ -229,9 +215,6 @@ def test_update_state_leaves_the_prior_untouched(own_config: OwnCarConfig, rival
     assert posterior.revision == prior.revision + 1
     assert estimate.revision == posterior.revision
     assert estimate.cutoff_s == pytest.approx(6.0)
-
-
-# -- prediction -----------------------------------------------------------
 
 
 def test_prediction_keeps_the_cutoff_and_only_advances_creation_time(
@@ -359,9 +342,6 @@ def test_prediction_without_energy_capability_keeps_it_closed(
         assert projected.own_car.battery_energy_j.value is None
 
 
-# -- provenance and quality ----------------------------------------------
-
-
 def test_contributing_event_ids_are_real_accepted_events(
     own_config: OwnCarConfig, rival_config: RivalConfig
 ) -> None:
@@ -394,8 +374,6 @@ def test_channel_quality_reports_a_channel_the_source_never_sent(
     )
     estimate = update(run.events, state, make_context(4.0))
     by_channel = {entry.channel: entry for entry in estimate.quality.channels}
-    # The synthetic capability declares battery_temperature_k but the generator
-    # never emits it; the estimate must say missing, not invent a temperature.
     assert by_channel["battery_temperature_k"].quality is Quality.MISSING
     assert by_channel["speed_mps"].quality is Quality.VALID
     assert estimate.own_car.battery_temperature_k.value is None

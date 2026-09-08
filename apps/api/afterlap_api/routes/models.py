@@ -6,7 +6,7 @@ promote a bundle; promotion is a coordinator command with frozen thresholds.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Query
 from sqlalchemy import select
@@ -15,7 +15,9 @@ from afterlap_contracts import ApprovalStatus, ModelManifest
 from afterlap_contracts.requests import ModelListResponse
 
 from ..db.models import ModelBundle
-from ..deps import DbSession
+
+if TYPE_CHECKING:
+    from ..deps import DbSession
 
 router = APIRouter()
 

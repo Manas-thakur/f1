@@ -17,11 +17,9 @@ runs were all unavailable.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -34,7 +32,12 @@ from afterlap_core.paths import Paths, atomic_write_json, sha256_json
 
 from .controllers import COMPARISON_MATRIX
 from .harness import BenchmarkRun, RunOutcome, percentile
-from .statistics import BootstrapResult, CalibrationAssessment
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
+
+    from .statistics import BootstrapResult, CalibrationAssessment
 
 __all__ = [
     "UNMEASURED",

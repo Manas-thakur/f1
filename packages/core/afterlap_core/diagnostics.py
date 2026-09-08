@@ -11,12 +11,15 @@ import importlib
 import os
 import platform
 import sys
-from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import CapabilityState
 
 from .paths import Paths
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,8 +162,6 @@ def check_solver() -> CheckResult:
         return CheckResult("solver", CapabilityState.UNAVAILABLE, f"casadi unavailable: {exc}")
 
     try:
-        # minimise (x-3)^2 + (y-2)^2 subject to x + y == 4, x >= 0, y >= 0.
-        # Known analytic solution: x = 2.5, y = 1.5.
         x = ca.SX.sym("x")
         y = ca.SX.sym("y")
         variables = ca.vertcat(x, y)

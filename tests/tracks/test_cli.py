@@ -8,7 +8,7 @@ import json
 import sys
 import urllib.request
 from datetime import UTC, datetime
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 import yaml
@@ -16,6 +16,9 @@ import yaml
 from afterlap_core.paths import Paths
 from afterlap_core.tracks import cli
 from afterlap_core.tracks.provenance import RawSourceCache
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 F1_PAGE = "https://fixture.test/racing/2026/test"
 FIA_PDF = "https://fixture.test/decision-document/2026_test_grand_prix_-_power_unit_information.pdf"
@@ -107,11 +110,6 @@ def _prime_cache(paths: Paths) -> RawSourceCache:
     return cache
 
 
-# --------------------------------------------------------------------------- #
-# registry
-# --------------------------------------------------------------------------- #
-
-
 def test_registry_list_and_show(tmp_path):
     paths = _fixture_tree(tmp_path)
     code, text = _run("--root", str(paths.root), "registry", "list")
@@ -137,11 +135,6 @@ def test_shipped_registry_lists_from_the_real_configs():
     assert code == cli.EXIT_OK
     ids = {row["track_id"] for row in json.loads(text)}
     assert {"monza", "monaco", "spa", "suzuka", "mexico-city", "singapore", "sepang"} <= ids
-
-
-# --------------------------------------------------------------------------- #
-# sources fetch
-# --------------------------------------------------------------------------- #
 
 
 def test_sources_fetch_returns_cached_records_without_network(tmp_path):
@@ -193,10 +186,6 @@ def test_sources_fetch_refuses_a_manifest_bound_to_a_foreign_track(tmp_path):
     assert "ghost-ring" in text
 
 
-# --------------------------------------------------------------------------- #
-# delegated stages: an absent module is an explicit unavailability, exit 2
-# --------------------------------------------------------------------------- #
-
 DELEGATED = [
     ("afterlap_core.tracks.ingest.openf1", ["ingest", "--session", "1", "--track", "test-ring"]),
     ("afterlap_core.tracks.compile", ["compile", "--manifest", "configs/tracks/test-ring/source.yaml"]),
@@ -225,7 +214,6 @@ DELEGATED = [
 @pytest.mark.parametrize(("module", "argv"), DELEGATED, ids=[a[0] for _, a in DELEGATED])
 def test_missing_stage_module_exits_2_and_names_the_capability(tmp_path, monkeypatch, module, argv):
     paths = _fixture_tree(tmp_path)
-    # ``None`` in sys.modules makes ``import`` raise ImportError regardless of what is on disk.
     monkeypatch.setitem(sys.modules, module, None)
     code, text = _run("--root", str(paths.root), *argv)
     assert code == cli.EXIT_UNAVAILABLE

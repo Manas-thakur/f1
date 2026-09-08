@@ -28,8 +28,8 @@ loop. That limitation is recorded in ``handoffs/A07.md``.
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -47,8 +47,12 @@ from ..estimation import EstimationContext, EstimatorState, create_state, update
 from ..feature_manifest import LOOKAHEAD_OFFSETS_M
 from ..rules import EligibilityMachine, RulePack, resolve_pack_context
 from ..rules.state import CarState as RuleCarState
-from ..simulation import Observation, ScenarioBundle
 from .features import FeatureContext, HistorySummary, LookaheadSample
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from ..simulation import Observation, ScenarioBundle
 
 __all__ = [
     "SIMULATOR_SOURCE_ID",
@@ -59,7 +63,6 @@ __all__ = [
 
 SIMULATOR_SOURCE_ID = "simulator"
 
-#: Own-car observation channel -> (canonical channel, SI unit).
 _OWN_CHANNEL_MAP: dict[str, tuple[str, str]] = {
     "speed_mps": ("speed_mps", "m/s"),
     "progress_m": ("progress_m", "m"),
@@ -73,8 +76,6 @@ _OWN_CHANNEL_MAP: dict[str, tuple[str, str]] = {
 
 _CANONICAL_CHANNELS: tuple[str, ...] = tuple(sorted({name for name, _ in _OWN_CHANNEL_MAP.values()}))
 
-#: Rival channels an external observer can genuinely derive. Rival stored energy
-#: is never among them.
 _RIVAL_CHANNELS: tuple[str, ...] = ("progress_m", "speed_mps")
 
 _FORBIDDEN_RIVAL_FIELDS = frozenset(
@@ -178,8 +179,6 @@ class ObservationBridge:
         )
         self.reset()
 
-    # -- lifecycle ----------------------------------------------------------- #
-
     def reset(self) -> None:
         """Clear every piece of per-episode memory."""
         scenario = self.bundle.scenario
@@ -188,8 +187,6 @@ class ObservationBridge:
         try:
             self._eligibility = EligibilityMachine.from_lines(lines, self.bundle.track.length)
         except ValueError:
-            # A pack without a detection/activation pair cannot resolve a
-            # permission. That is reported as unknown eligibility, not guessed.
             self._eligibility = None
         self._sequence = 0
         self._last_progress_m = None
@@ -204,8 +201,6 @@ class ObservationBridge:
         self._last_decoded_reserve_j = None
         self._instruction_hold_remaining_s = None
         self._last_estimate = None
-
-    # -- controller-side bookkeeping ----------------------------------------- #
 
     def record_instruction_change(self, at_s: float) -> None:
         self._instruction_changes.append(at_s)
@@ -225,8 +220,6 @@ class ObservationBridge:
     def eligibility_state(self) -> EligibilityState:
         return EligibilityState.UNKNOWN if self._eligibility is None else self._eligibility.state
 
-    # -- the tick ------------------------------------------------------------ #
-
     def observe(self, observation: Observation) -> BridgeTick:
         """Fuse one delivered observation and build every controller input."""
         for rival in observation.rivals:
@@ -243,9 +236,6 @@ class ObservationBridge:
         cutoff_s = max(0.0, observation.observed_at_s)
 
         if observation.quality is not Quality.VALID or not observation.channels:
-            # Nothing old enough has been delivered yet. The previous belief is
-            # still the newest thing that exists; it is republished unchanged
-            # rather than filled in with the present.
             estimate = self._republish(now_s, cutoff_s)
             context = self._feature_context(estimate, None, observation)
             return BridgeTick(
@@ -292,16 +282,12 @@ class ObservationBridge:
             observation_quality=observation.quality,
         )
 
-    # -- internals ----------------------------------------------------------- #
-
     def _republish(self, now_s: float, cutoff_s: float) -> StateEstimate:
         """Publish the newest belief the estimator holds, aged to ``now_s``."""
         from ..estimation import predict
 
         last = self._last_estimate
         if last is None:
-            # No belief exists yet at all. Build an explicitly empty one through
-            # the estimator so every field carries its own missing quality.
             context = EstimationContext(
                 session_id=self.session_id,
                 car_id=self.bundle.scenario.ego_car_id,
@@ -413,8 +399,6 @@ class ObservationBridge:
         if previous_progress is None or previous_time is None:
             return
         if progress_m < previous_progress or now_s < previous_time:
-            # Progress noise can read backwards across a tick. A crossing cannot
-            # be resolved from a non-monotonic interval, so none is claimed.
             return
         ahead = observation.rival_ahead()
         gap_condition = None if ahead is None else abs(float(ahead["gap_s"])) <= 1.0
@@ -512,9 +496,6 @@ class ObservationBridge:
                     distance_ahead_m=offset,
                     curvature_inv_m=track.curvature_at(s_m),
                     grade_rad=track.grade_at(s_m),
-                    # The applicable ceiling is only known where a rule context
-                    # resolved. Future unknown eligibility stays masked rather
-                    # than being predicted as a guaranteed permission.
                     deployment_ceiling_w=None if limits is None else limits.deployment_ceiling_w,
                     recovery_capacity_w=None if limits is None else limits.recovery_ceiling_w,
                 )

@@ -187,7 +187,7 @@ describe('snapshot and compare from here', () => {
 
     const table = await screen.findByRole('region', { name: 'Branch outcomes' });
     const rows = within(table).getAllByRole('row');
-    // header plus two treatments
+
     expect(rows).toHaveLength(3);
     expect(within(table).getAllByText('unmeasured')).toHaveLength(2);
     expect(table.textContent ?? '').not.toMatch(/\b0\.00\b/);

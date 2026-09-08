@@ -67,7 +67,6 @@ def test_typescript_declares_every_model():
 
 def test_typescript_has_no_unresolved_placeholder_types():
     text = build_typescript()
-    # `unknown` is acceptable only for genuinely open records.
     suspicious = [line for line in text.splitlines() if ": unknown;" in line]
     assert suspicious == [], f"unresolved TypeScript types: {suspicious[:5]}"
 

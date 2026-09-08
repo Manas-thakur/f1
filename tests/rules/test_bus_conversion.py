@@ -68,7 +68,6 @@ def test_the_battery_floor_binds_at_the_requested_budget_whatever_the_efficiency
         f"a request for exactly the available battery energy was rejected at eta={eta}; "
         "the ledger is not integrating battery joules"
     )
-    # The interior minimum is the floor itself: margin zero, to float tolerance.
     assert window.margin == pytest.approx(0.0, abs=1.0)
 
 

@@ -16,7 +16,6 @@ from afterlap_core.simulation import physics
 class TestResistanceForces:
     def test_drag_force_matches_hand_calculation(self) -> None:
         rho, cda, speed = 1.225, 1.20, 50.0
-        # 0.5 * 1.225 * 1.20 * 50^2 = 0.735 * 2500 = 1837.5 N
         expected = 0.5 * 1.225 * 1.20 * 2500.0
         assert expected == pytest.approx(1837.5, abs=1e-9)
         assert physics.drag_force(rho, cda, speed) == pytest.approx(expected, rel=1e-12)
@@ -28,7 +27,6 @@ class TestResistanceForces:
 
     def test_rolling_force_uses_the_slope_normal_load(self) -> None:
         mass, g, crr, grade = 800.0, 9.80665, 0.0120, 0.050
-        # crr * m * g * cos(grade)
         expected = 0.0120 * 800.0 * 9.80665 * math.cos(0.050)
         assert expected == pytest.approx(94.0264, abs=1e-3)
         assert physics.rolling_force(mass, g, crr, grade) == pytest.approx(expected, rel=1e-12)
@@ -94,7 +92,6 @@ class TestLowSpeedTorqueBranch:
 
     def test_the_branch_is_continuous_at_the_breakpoint(self) -> None:
         power, max_force = 400.0e3, 18000.0
-        # v_b = P / F_max = 400000 / 18000 = 22.2222... m/s
         breakpoint_speed = 400.0e3 / 18000.0
         assert physics.breakpoint_speed(power, max_force) == pytest.approx(breakpoint_speed, rel=1e-12)
         just_below = physics.tractive_force(power, breakpoint_speed - 1e-6, max_force)
@@ -109,7 +106,6 @@ class TestLowSpeedTorqueBranch:
 
 class TestElectricalConversion:
     def test_deployment_costs_more_at_the_battery_than_it_delivers(self) -> None:
-        # 200 kW on the DC bus at 95% discharge efficiency draws 210.526... kW.
         expected = 200.0e3 / 0.95
         assert expected == pytest.approx(210526.3157894737, rel=1e-12)
         assert physics.battery_out_power(200.0e3, 0.95) == pytest.approx(expected, rel=1e-12)

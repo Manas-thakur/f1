@@ -10,8 +10,7 @@ estimated one.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -19,10 +18,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from afterlap_contracts import RivalIntention
 from afterlap_core.config import ConfigDocument, Parameter, load_config, load_yaml
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 OWN_CAR_CONFIG_ID = "own-car-ekf-v1"
 RIVAL_CONFIG_ID = "rival-modes-v1"
 
-#: Canonical mode order. Every matrix and gain vector in this package uses it.
 MODE_ORDER: tuple[RivalIntention, ...] = (
     RivalIntention.CONSERVE,
     RivalIntention.NORMAL,

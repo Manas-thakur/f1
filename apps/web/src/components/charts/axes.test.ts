@@ -56,7 +56,7 @@ describe('unit groups become separate y scales', () => {
   it('gives the specimen a kW scale and an MJ scale', () => {
     const groups = unitGroupsFor(SERIES);
     expect(groups.map((g) => g.unit)).toEqual(['kW', 'MJ']);
-    // Two series share the power scale; energy gets its own.
+
     expect(groups[0]?.seriesIndices).toEqual([0, 1]);
     expect(groups[1]?.seriesIndices).toEqual([2]);
   });
@@ -131,7 +131,7 @@ describe('axis width', () => {
     const narrow = axisSizeFor(['0', '100', '200'], 'kW');
     const wide = axisSizeFor(['0', '600,000', '1,200,000'], 'W');
     expect(wide).toBeGreaterThan(narrow);
-    // uPlot's fixed 50px default is what clipped "600,000" to ")00,000".
+
     expect(wide).toBeGreaterThan(50);
   });
 

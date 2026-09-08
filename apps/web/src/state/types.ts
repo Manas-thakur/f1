@@ -15,7 +15,7 @@ import type {
   TelemetrySeries,
 } from '@contracts';
 
-/** Connection lifecycle of the session WebSocket. */
+
 export type ConnectionStatus =
   | 'idle'
   | 'connecting'
@@ -41,37 +41,29 @@ export interface EnvelopeRejection {
   readonly detail: string;
 }
 
-/**
- * Authoritative state received from the server. Nothing in here is ever
- * written optimistically by a UI interaction; only the reducer and an explicit
- * REST snapshot fetch may change it.
- */
+
 export interface ServerState {
-  /** Session this store is bound to. Envelopes for any other id are ignored. */
+  
   readonly sessionId: string | null;
   readonly manifest: SessionManifest | null;
   readonly estimate: StateEstimate | null;
   readonly recommendation: Recommendation | null;
   readonly ruleContext: RuleContext | null;
   readonly quality: EstimateQuality | null;
-  /** Latest per-channel quality, from snapshots and `quality_changed`. */
+  
   readonly channelQuality: readonly ChannelQuality[];
   readonly qualityMessage: string | null;
   readonly capabilities: RuntimeCapabilities | null;
   readonly lease: ControlLease | null;
-  /** Session revision, from the snapshot; deltas do not invent one. */
+  
   readonly revision: number;
   readonly lastSequence: number;
   readonly serverTime: string | null;
   readonly sessionTimeS: number;
   readonly status: string;
-  /** Keyed `channel` or `channel@car_id`. */
+  
   readonly telemetry: Readonly<Record<string, TelemetrySeries>>;
-  /**
-   * Session time at which telemetry last actually arrived. A heartbeat never
-   * touches this: a heartbeat proves a connection exists, not that data is
-   * fresh.
-   */
+  
   readonly telemetryFreshAtS: number | null;
   readonly executions: readonly ExecutionEvent[];
   readonly experimentProgress: Readonly<
@@ -80,13 +72,10 @@ export interface ServerState {
   readonly invalidatedRecommendationIds: readonly string[];
 }
 
-/** Stream health. Separate from server state so it can be shown honestly. */
+
 export interface StreamState {
   readonly connection: ConnectionStatus;
-  /**
-   * False while a resync is outstanding. Deltas are dropped, not queued: the
-   * snapshot that ends the resync is authoritative.
-   */
+  
   readonly applyingDeltas: boolean;
   readonly resyncRequired: boolean;
   readonly resyncReason: string | null;
@@ -106,15 +95,15 @@ export interface InspectorState {
   readonly open: boolean;
   readonly kind: 'decision' | 'evidence' | 'channel' | 'rule' | null;
   readonly subjectId: string | null;
-  /** DOM id of the control that opened it, so focus can be restored. */
+  
   readonly invokerId: string | null;
 }
 
-/** Purely local view state. Changing it never changes simulation truth. */
+
 export interface ViewState {
   readonly selectedChannels: readonly string[];
   readonly cursorAxis: CursorAxis;
-  /** Shared cursor position, broadcast to every chart panel. */
+  
   readonly cursorValue: number | null;
   readonly inspector: InspectorState;
   readonly density: Density;
@@ -133,7 +122,7 @@ export interface PendingCommand {
 export interface RequestState {
   readonly inFlight: Readonly<Record<string, PendingCommand>>;
   readonly lastError: (ApiError & { readonly key: string }) | null;
-  /** Keys whose last attempt returned 409. The UI must refresh, not retry. */
+  
   readonly conflictedKeys: readonly string[];
 }
 
@@ -144,7 +133,7 @@ export interface SessionStoreState {
   readonly request: RequestState;
 }
 
-/** The reducer's slice: server state plus stream health. */
+
 export interface StreamSlice {
   readonly server: ServerState;
   readonly stream: StreamState;
@@ -202,7 +191,7 @@ export const INITIAL_REQUEST_STATE: RequestState = {
   conflictedKeys: [],
 };
 
-/** Fields the reducer is allowed to derive but must not invent. */
+
 export interface QualitySummary {
   readonly overall: Quality | null;
   readonly worstChannel: ChannelQuality | null;

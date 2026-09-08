@@ -38,6 +38,7 @@ battery energy. See ``handoffs/A06-contract-proposal.md``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import (
     DeploymentProfile,
@@ -49,7 +50,9 @@ from afterlap_contracts import (
 
 from ..rules import CheckerState, SpeedProfile, SpeedSample
 from ..simulation import DEPLOY_FRACTION, HARVEST_FRACTION
-from .config import PlannerConfig
+
+if TYPE_CHECKING:
+    from .config import PlannerConfig
 
 __all__ = [
     "SOLVER_HEADROOM",
@@ -426,7 +429,5 @@ def checker_state_for(
         recharge_used_this_lap_j=0.0 if used_lap is None else float(used_lap),
         driver_reaction_time_s=float(config.execution.driver_reaction_time_s.value),
         charge_bus_efficiency=float(config.surrogate.charge_efficiency.value),
-        # D-01: requested_budget_j is already battery-side, so the checker's
-        # battery ledger must not divide it again.
         discharge_efficiency=1.0,
     )

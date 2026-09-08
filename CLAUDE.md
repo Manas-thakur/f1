@@ -1,4 +1,4 @@
-# AFTERLAP — project working agreement
+# AFTERLAP: project working agreement
 
 Working directory is this repository. Product code lives at the repository root.
 Specifications live under `docs/` and are read-only reference material.

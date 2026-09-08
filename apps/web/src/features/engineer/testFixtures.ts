@@ -1,13 +1,4 @@
-/**
- * Typed fixtures for the feature tests.
- *
- * Every value is derived from `src/test/contractFixtures.ts`, which is
- * generated from `afterlap_contracts.fixtures`, so these are the frozen
- * contract's own shapes rather than a hand-written approximation.
- *
- * **All of it is synthetic.** None of it is measured telemetry, and no number
- * here is evidence about a car, a model or a rule.
- */
+
 import type {
   ExperimentStatusResponse,
   ModelManifest,
@@ -45,7 +36,7 @@ export function estimate(overrides: Partial<StateEstimate> = {}): StateEstimate 
   return { ...STATE_ESTIMATE, ...overrides };
 }
 
-/** An estimate whose own stored-energy sample is genuinely absent. */
+
 export function estimateWithoutEnergy(): StateEstimate {
   const base = STATE_ESTIMATE;
   return {
@@ -68,7 +59,7 @@ export function qualitySummary(overrides: Partial<QualitySummary> = {}): Quality
   };
 }
 
-/** The first rival belief, which carries a `kind="quantile"` energy interval. */
+
 export function rivalWithQuantile(): RivalBelief {
   const rival = (STATE_ESTIMATE.rival_beliefs ?? [])[0];
   if (rival === undefined) {
@@ -176,7 +167,7 @@ export const CANDIDATE_MODEL: ModelManifest = {
   created_at: '2026-09-01T00:00:00Z',
 };
 
-/** Deliberately inconsistent: approved with no benchmark report referenced. */
+
 export const UNSUPPORTED_APPROVED_MODEL: ModelManifest = {
   ...CANDIDATE_MODEL,
   id: 'bundle-approved-without-evidence',
@@ -207,13 +198,7 @@ export function experimentJob(
   };
 }
 
-/**
- * A report bundle shaped like `ReportBundle.as_dict()`.
- *
- * The four learned rows carry `status: "unmeasured"` with the reasons A13
- * records, because no trained bundle exists in this build. Synthetic fixture,
- * transcribed from the structure in `afterlap_core.evaluation.report`.
- */
+
 export const REPORT_BUNDLE = {
   report: {
     schema_version: '1.0',

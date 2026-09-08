@@ -356,7 +356,6 @@ def load_bundle(
     if not hashes:
         raise reject(RejectionReason.MISSING_ARTIFACT, "the bundle declares no artifact hashes")
 
-    # --- validate every hash BEFORE any deserialisation --------------------- #
     for name, expected in sorted(hashes.items()):
         path = directory / name
         if not path.is_file():

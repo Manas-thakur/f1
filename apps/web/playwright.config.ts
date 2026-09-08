@@ -3,16 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
-/**
- * End-to-end configuration.
- *
- * The suite runs against the *built* application served by `vite preview`, not
- * the dev server, so what is tested is what would be shipped. Headless
- * Chromium only: this is a check on the product, not a browser matrix.
- *
- * The API is mocked with route interception inside the tests. There is no
- * backend dependency here yet; A08 lands it later.
- */
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,

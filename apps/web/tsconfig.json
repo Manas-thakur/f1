@@ -39,5 +39,6 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "../../packages/contracts/generated/contracts.ts"
-  ]
+  ],
+  "exclude": ["**/._*"]
 }

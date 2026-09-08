@@ -56,13 +56,15 @@ import importlib
 import time
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .config import PlannerConfig
-from .objective import ObjectiveManifest
-from .scenarios import PlanScenario
-from .segments import PlanFrame
 from .surrogate import SurrogateWeights, cvar, scenario_losses
+
+if TYPE_CHECKING:
+    from .config import PlannerConfig
+    from .objective import ObjectiveManifest
+    from .scenarios import PlanScenario
+    from .segments import PlanFrame
 
 __all__ = [
     "ENERGY_SCALE_J",
@@ -143,11 +145,6 @@ class AllocationSolution:
     deadline_exceeded: bool
 
 
-# --------------------------------------------------------------------------- #
-# symbolic problem
-# --------------------------------------------------------------------------- #
-
-
 def _build_problem(casadi: Any, n: int, w: int, config: PlannerConfig) -> Any:
     """Symbolic NLP for one ``(segments, scenarios)`` shape.
 
@@ -211,7 +208,6 @@ def _build_problem(casadi: Any, n: int, w: int, config: PlannerConfig) -> Any:
     advantage0 = weights_[6]
     alpha = weights_[7]
 
-    # --- surrogate dynamics (joules, so beta keeps its physical units) ------
     net_j = energy_scale * (drive_eff * deploy_hat - zeta * harvest_hat / charge_eff)
     cubes = seg_cube + seg_beta * net_j
     corridor_time = ca.sum1(seg_length * cubes ** (-1.0 / 3.0))

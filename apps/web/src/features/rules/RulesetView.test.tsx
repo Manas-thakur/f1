@@ -9,8 +9,8 @@ const PATH = '/rulesets/synthetic-pack-v1';
 const ROUTE = '/rulesets/:rulesetId';
 
 function renderRules(stub: FetchStub) {
-  // The view reads through the shared query client, which uses the global
-  // fetch, so the stub is installed there.
+
+
   const original = globalThis.fetch;
   globalThis.fetch = stub.fetchImpl;
   const result = renderRoute(<RulesetView />, { path: PATH, route: ROUTE });
@@ -61,7 +61,7 @@ describe('coverage is declared per concern and linked to a source', () => {
   it('converts the configured limits through the channel registry', async () => {
     const stub = makeFetch([['/rulesets/', () => ({ body: { manifest: RULE_MANIFEST } })]]);
     const { restore } = renderRules(stub);
-    // 350000 W -> 350 kW, 4000000 J -> 4.00 MJ
+
     expect(await screen.findByText('350 kW')).toBeInTheDocument();
     expect(screen.getByText(/0\.00 MJ to 4\.00 MJ/)).toBeInTheDocument();
     restore();

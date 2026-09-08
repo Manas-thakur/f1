@@ -241,15 +241,8 @@ class _BaseAdapter:
                 f"observation record from {record.source_id!r} carries hidden-truth fields {list(leaks)}; "
                 "the controller path may not observe simulator truth"
             )
-        # Forbidden vendor fields are not an error here: they stay in the record
-        # and are preserved as raw archive data. What is forbidden is *mapping*
-        # them onto a canonical channel, which MappingTable.get refuses.
         return record
 
-
-# ---------------------------------------------------------------------------
-# Simulator
-# ---------------------------------------------------------------------------
 
 SIMULATOR_MAPPING_REVISION = "sim-observation-map-1"
 
@@ -383,14 +376,8 @@ def simulator_capability(
     )
 
 
-# ---------------------------------------------------------------------------
-# Public archive replay
-# ---------------------------------------------------------------------------
-
 PUBLIC_MAPPING_REVISION = "public-openf1-shape-map-1"
 
-#: Approximate car/location sampling documented for public feeds (source
-#: register D01). Deliberately not 20 Hz.
 PUBLIC_SAMPLE_RATE_HZ = 3.7
 
 PUBLIC_LIMITATIONS: tuple[str, ...] = (
@@ -528,10 +515,6 @@ class PublicReplayAdapter(_BaseAdapter):
                 )
             )
 
-
-# ---------------------------------------------------------------------------
-# Team feed
-# ---------------------------------------------------------------------------
 
 TEAM_FEED_MAPPING_REVISION = "team-feed-map-0-unreviewed"
 
@@ -708,11 +691,6 @@ class SyntheticTeamFeedAdapter(_BaseAdapter):
         source = self._records() if callable(self._records) else self._records
         for record in source:
             yield self._validate_record(record)
-
-
-# ---------------------------------------------------------------------------
-# Test/fixture helper: a minimal in-memory observation source
-# ---------------------------------------------------------------------------
 
 
 @dataclass(slots=True)

@@ -68,7 +68,6 @@ def test_backwards_source_clock_is_detected_and_labelled_not_silently_accepted()
     assert len(flagged) == 1
     assert flagged[0].event.quality is Quality.INVALID
     assert "backwards" in (flagged[0].reason or "")
-    # The sample is archived, not discarded, and it keeps its value.
     assert flagged[0].event.value == pytest.approx(71.0)
 
 
@@ -78,7 +77,6 @@ def test_backwards_clock_does_not_move_the_converter_reference_backwards():
     pipeline.ingest(observation(2, 4.0, {"speed_mps": 71.0}, received_time_s=5.05))
     pipeline.ingest(observation(3, 4.5, {"speed_mps": 72.0}, received_time_s=5.10))
     pipeline.close(6.0)
-    # 4.5 is still behind 5.0, so it is a second backwards step, not a recovery.
     assert pipeline.stats().backwards_clock == 2
 
 
@@ -100,7 +98,6 @@ def test_vendor_kph_field_becomes_si_mps_and_displays_back_as_kph():
     event = speeds[0].event
     assert event.unit == "m/s"
     assert event.value == pytest.approx(90.0)
-    # Contract vector: 90 m/s displays as 324 km/h.
     spec = channel("speed_mps")
     assert spec.to_display(event.value) == pytest.approx(324.0)
     assert spec.display_unit == "km/h"
@@ -135,8 +132,6 @@ def test_source_restart_does_not_replay_old_packets():
     output = pipeline.ingest_all(original)
     assert len(_speed_records(output.normalised)) == 3
 
-    # The adapter restarts: sequence counter resets to zero and it re-sends the
-    # packets it already sent. None of them may be admitted as new.
     replay = [
         observation(0, 0.00, {"speed_mps": 70.0}, received_time_s=5.0, restart_marker=True),
         observation(1, 0.05, {"speed_mps": 70.0}, received_time_s=5.05),
@@ -147,7 +142,6 @@ def test_source_restart_does_not_replay_old_packets():
     assert all(r.reason is RejectionReason.RESTART_REPLAY for r in replay_output.rejected)
     assert pipeline.stats().replays == 3
 
-    # Genuinely new data after the restart is admitted again.
     fresh = pipeline.ingest_all([observation(3, 0.50, {"speed_mps": 72.0}, received_time_s=6.0)])
     assert len(_speed_records(fresh.normalised)) == 1
 
@@ -198,7 +192,6 @@ def test_channel_never_observed_is_reported_missing_with_a_reason():
 def test_delayed_burst_is_reordered_within_the_window_and_latency_is_reported():
     window = 0.5
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=window))
-    # Session times 1.0 .. 1.3; 1.1 and 1.2 are delayed behind 1.3.
     arrivals = [
         (observation(0, 1.0, {"speed_mps": 70.0}, received_time_s=1.00), 1.00),
         (observation(3, 1.3, {"speed_mps": 73.0}, received_time_s=1.30), 1.30),
@@ -208,8 +201,6 @@ def test_delayed_burst_is_reordered_within_the_window_and_latency_is_reported():
     delivered = []
     for record, now in arrivals:
         delivered.extend(pipeline.ingest(record, now_s=now).normalised)
-    # Drive the clock forward: the window closes on time even though nothing
-    # else arrives.
     now = 1.46
     while now <= 2.10:
         delivered.extend(pipeline.flush(now).normalised)
@@ -223,8 +214,6 @@ def test_delayed_burst_is_reordered_within_the_window_and_latency_is_reported():
     reorder = pipeline.stats().reorder
     assert reorder.window_s == window
     assert reorder.released == 4
-    # Induced latency is measured, not assumed: every record waited about one
-    # window before it was released.
     assert reorder.max_induced_latency_s == pytest.approx(window, abs=0.02)
     assert reorder.mean_induced_latency_s <= reorder.max_induced_latency_s
     assert reorder.max_reordering_depth >= 2
@@ -233,7 +222,6 @@ def test_delayed_burst_is_reordered_within_the_window_and_latency_is_reported():
 def test_the_window_closes_on_time_when_a_packet_never_arrives():
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=0.3))
     pipeline.ingest(observation(0, 1.0, {"speed_mps": 70.0}, received_time_s=1.0), now_s=1.0)
-    # Sequence 1 is lost forever. Nothing newer arrives either.
     released = pipeline.flush(1.29).normalised
     assert released == ()
     released = pipeline.flush(1.31).normalised
@@ -292,7 +280,6 @@ def test_structural_faults_are_rejected_with_a_reason_not_normalised():
     assert output.normalised == ()
     assert output.rejected[0].reason is RejectionReason.STRUCTURAL
     assert "fields" in output.rejected[0].detail
-    # The raw packet is still archived.
     assert output.raw[0].packet_id
 
 
@@ -325,17 +312,15 @@ def test_an_interrupted_import_leaves_no_partially_visible_chunk(tmp_path):
     for record in sink.normalised:
         recorder.append_normalised(record)
     pending = recorder.stage()
-    assert pending  # chunks exist on disk as staging files
+    assert pending
 
     reader = ChunkReader(tmp_path, SESSION_ID)
-    # The import is interrupted here: the manifest was never published.
     assert reader.manifest() == ()
     assert reader.read_canonical_rows() == []
 
     recorder.discard(pending)
     assert reader.read_normalised() == ()
 
-    # A later, complete import publishes and becomes visible atomically.
     for record in sink.normalised:
         recorder.append_normalised(record)
     recorder.flush()

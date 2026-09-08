@@ -1,36 +1,18 @@
-/**
- * How an interval is described in words.
- *
- * The rule that this module exists to enforce, from A05's handoff and from the
- * program invariants: a `kind="quantile"` interval is a **model quantile**. It
- * is a belief propagated through a simplified model from a broad prior, not a
- * measurement, and it is never described as a confidence bound.
- *
- * A05 measured the rival-energy interval's empirical coverage at **0.7885 on
- * 156 samples against a nominal 0.90 label**. The label is therefore optimistic
- * and the UI says so wherever the interval is shown. A phrase pairing that
- * nominal percentage with the word "confidence" must not appear anywhere in
- * this product; `intervals.test.ts` scans every source file under `src/` and
- * fails if one does.
- */
+
 import type { IntervalValue } from '@contracts';
 
 export interface IntervalDescription {
-  /** e.g. "model quantile". Never the word "confidence" for a quantile. */
+  
   readonly kindText: string;
-  /** e.g. "nominal 90% label". Null when the payload declares no coverage. */
+  
   readonly nominalText: string | null;
-  /** Whether the reader must be warned that the label is not delivered. */
+  
   readonly optimistic: boolean;
-  /** One sentence naming what the interval is and is not. */
+  
   readonly caveat: string;
 }
 
-/**
- * Measured empirical coverage of the rival stored-energy interval, from A05's
- * calibration run. Reported as a measurement with its sample count, not as a
- * property of the model.
- */
+
 export const RIVAL_ENERGY_COVERAGE = {
   nominal: 0.9,
   measured: 0.7885,
@@ -81,7 +63,7 @@ export function describeInterval(
   }
 }
 
-/** One line for a readout: "model quantile, nominal 90% label". */
+
 export function intervalKindLine(interval: IntervalValue | null | undefined): string {
   const described = describeInterval(interval);
   if (described === null) {

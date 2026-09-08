@@ -22,16 +22,9 @@ gap is a real defect and it is recorded in `handoffs/A14.md`, not hidden here.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
-
-from afterlap_api.session import InProcessSessionRuntime, SessionRecorder
-from afterlap_api.session.runtime import SNAPSHOT_SCHEMA
-from afterlap_contracts import Recommendation, RecommendationStatus
-from afterlap_core.rules import load_rule_pack
-from afterlap_core.simulation import load_bundle
 from workers.session_worker import (
     SessionWorkerHandle,
     WorkerCommand,
@@ -39,7 +32,16 @@ from workers.session_worker import (
     WorkerUnavailable,
 )
 
+from afterlap_api.session import InProcessSessionRuntime, SessionRecorder
+from afterlap_api.session.runtime import SNAPSHOT_SCHEMA
+from afterlap_contracts import Recommendation, RecommendationStatus
+from afterlap_core.rules import load_rule_pack
+from afterlap_core.simulation import load_bundle
+
 from .conftest import RULE_PACK_ID, SCENARIO_ID, SEED, open_store, start_session
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MAX_OBSERVES = 40
 COMMAND_TIMEOUT_S = 240.0
@@ -85,20 +87,16 @@ def killed_worker(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
             break
     assert actionable_at is not None, "the worker never reached an actionable instruction"
 
-    # A deliberate driver input that lands: it is acknowledged before the kill.
     landed = request("apply_simulator_input", profile_id="harvest").payload
     executed = request("observe", duration_s=1.0).payload
     assert executed["execution_ids"] == [f"exe-{landed['queued_input_id']}"], executed
 
-    # A second input that has NOT landed when the snapshot is taken: it is
-    # queued, behind the reaction delay, and must survive the restart.
     pending = request("apply_simulator_input", profile_id="conserve").payload
 
     snapshot = request("snapshot", label="before the kill", include_payload=True).payload
     payload = snapshot["payload"]
     assert payload is not None, "the worker returned no snapshot payload"
 
-    # --- the process dies. terminate(), no sentinel, no clean stop. --------- #
     handle.kill()
     process_after = handle._process
 
@@ -117,11 +115,6 @@ def killed_worker(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
     }
 
 
-# --------------------------------------------------------------------------- #
-# part 1: the process really died, and its snapshot really crossed the boundary
-# --------------------------------------------------------------------------- #
-
-
 def test_a_terminated_session_worker_is_visibly_unavailable(killed_worker: dict[str, Any]):
     handle: SessionWorkerHandle = killed_worker["handle"]
     config: WorkerConfig = killed_worker["config"]
@@ -130,20 +123,11 @@ def test_a_terminated_session_worker_is_visibly_unavailable(killed_worker: dict[
     assert handle.alive is False, "the worker is still running after terminate()"
     assert handle._process is None, "the handle still holds a process reference"
 
-    # Unavailable is *visible*: the handle refuses rather than buffering a
-    # command for a process that will never read it.
     with pytest.raises(WorkerUnavailable):
         handle.send(WorkerCommand.now("observe", config.session_id, timeout_s=5.0))
 
-    # The snapshot survived the process boundary: it was pickled through the
-    # results queue by a process that no longer exists.
     snapshot = killed_worker["snapshot"]
     assert snapshot["schema"] == SNAPSHOT_SCHEMA
-    # The snapshot carries the id of the manifest the worker's own
-    # `SessionFactory` minted, *not* `WorkerConfig.session_id`, which is only
-    # used to route commands. So a spawned worker's session identity does not
-    # match the id the control plane holds. Asserted as observed rather than
-    # as intended; it is a real defect and is recorded in handoffs/A14.md.
     assert snapshot["session_id"].startswith("ses-"), snapshot["session_id"]
     assert snapshot["session_id"] != config.session_id, (
         "the worker now propagates WorkerConfig.session_id into the runtime; if that was fixed "
@@ -161,8 +145,6 @@ def test_a_terminated_session_worker_is_visibly_unavailable(killed_worker: dict[
         f"{len(offset['delivered_event_ids'])} delivered observation ids"
     )
 
-    # The acknowledged command is recorded as acknowledged; the pending one is
-    # still queued. That distinction is what makes no-replay decidable.
     assert killed_worker["acknowledged_input_id"] in snapshot["acknowledged_driver_inputs"]
     queued_ids = {q["id"] for q in snapshot["queued_driver_inputs"]}
     assert killed_worker["pending_input_id"] in queued_ids
@@ -184,8 +166,6 @@ def test_a_replacement_worker_process_starts_and_serves_the_same_session(killed_
         assert result.ok, result.detail
         print(f"\nreplacement worker pid {replacement._process.pid} initialised")
 
-        # A command issued against the *dead* worker's revision is refused as
-        # stale rather than executed against a session that restarted at zero.
         stale = replacement.request(
             WorkerCommand.now(
                 "observe",
@@ -202,23 +182,14 @@ def test_a_replacement_worker_process_starts_and_serves_the_same_session(killed_
         replacement.stop()
 
 
-# --------------------------------------------------------------------------- #
-# part 2: recovery in the replacement runtime
-# --------------------------------------------------------------------------- #
-
-
 def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
     killed_worker: dict[str, Any], tmp_path: Path
 ):
     snapshot = killed_worker["snapshot"]
     store = open_store(tmp_path / "db")
 
-    # A session row and a recorder for the replacement process. The session id
-    # is the dead worker's, so the durable records belong to the same session.
     session = start_session(store.factory, spool_root=tmp_path / "spool")
 
-    # Persist the advice the dead worker published, rebuilt from its own
-    # snapshot. (The worker itself had no recorder — see the module docstring.)
     published = snapshot["recommendations"]
     assert published, "the dead worker's snapshot carries no published advice"
     recorder: SessionRecorder = session.recorder  # type: ignore[assignment]
@@ -242,14 +213,12 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
         f"newest {outstanding[-1]}"
     )
 
-    # 1. Expiring advice is invalidated *before* anything resumes.
     session.runtime.invalidate("session worker process terminated mid-session")
     for recommendation_id in outstanding:
         assert session.status_of(recommendation_id) is RecommendationStatus.INVALIDATED, (
             f"{recommendation_id} survived the crash as live advice"
         )
 
-    # 2. State restores from the snapshot and the event offset.
     replacement = InProcessSessionRuntime(
         bundle=load_bundle(SCENARIO_ID),
         pack=load_rule_pack(RULE_PACK_ID),
@@ -263,7 +232,6 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
     assert replacement.session_time_s == pytest.approx(snapshot["session_time_s"], abs=1e-9)
     assert replacement.revision > snapshot["revision"], "the restored session reuses a stale revision"
 
-    # Not ready until it has re-estimated and revalidated. Nothing published.
     assert replacement.ready is False
     assert replacement.last_estimate is None
     assert replacement.last_recommendation is None
@@ -274,7 +242,6 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
     assert resumed.estimate is not None, "the session resumed without re-estimating"
     assert resumed.rule_context is not None, "the session resumed without re-resolving the rules"
     assert resumed.recommendation is not None
-    # Whatever is published after the restart carries a fresh independent check.
     assert resumed.recommendation.constraint_result.checked_at_s >= snapshot["session_time_s"]
     assert resumed.recommendation.id not in outstanding, "the invalidated advice was re-published"
     print(
@@ -284,7 +251,6 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
         f"{resumed.recommendation.constraint_result.checked_at_s:.2f}s"
     )
 
-    # 3. The acknowledged driver command is never replayed.
     acknowledged = killed_worker["acknowledged_input_id"]
     pending = killed_worker["pending_input_id"]
     for _ in range(4):
@@ -294,7 +260,6 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
         "a driver command the driver had already carried out was re-actuated after the restart"
     )
 
-    # ... while the command that had *not* landed is applied exactly once.
     landed = [event for event in replacement.executions if event.id == f"exe-{pending}"]
     assert len(landed) == 1, f"the in-flight command produced {len(landed)} executions, expected 1"
     for _ in range(2):
@@ -305,6 +270,5 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
         f"in-flight {pending} produced exactly one"
     )
 
-    # And the knowledge itself survived: a fresh snapshot still names it.
     _, again = replacement.snapshot("after recovery")
     assert acknowledged in again["acknowledged_driver_inputs"]

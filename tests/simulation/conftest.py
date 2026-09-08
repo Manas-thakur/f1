@@ -13,12 +13,14 @@ adding a second set of fixture files.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from afterlap_core.config import Parameter
 from afterlap_core.simulation import ScenarioBundle, load_bundle
+
+if TYPE_CHECKING:
+    from afterlap_core.config import Parameter
 
 
 def _param(template: Parameter, value: float) -> Parameter:
@@ -80,7 +82,6 @@ def build_bundle(
                 state_updates["progress_m"] = _param(state.progress_m, progress_m[car_id])
             states[car_id] = state.model_copy(update=state_updates) if state_updates else state
         updates["initial_states"] = states
-        # The declared spacing describes the shipped states, not these overrides.
         updates["gap_ahead_s"] = None
 
     if not updates:

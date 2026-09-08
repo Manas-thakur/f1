@@ -35,11 +35,10 @@ hysteresis never delays that.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import pairwise
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from afterlap_contracts import (
     ActionCode,
@@ -53,10 +52,14 @@ from afterlap_contracts import (
     ScenarioOutcome,
 )
 
-from .objective import ObjectiveManifest
-from .optimiser import AllocationSolution
-from .segments import PlanFrame
 from .surrogate import SurrogateWeights, cvar
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from .objective import ObjectiveManifest
+    from .optimiser import AllocationSolution
+    from .segments import PlanFrame
 
 __all__ = [
     "ActivePlan",
@@ -283,8 +286,6 @@ def apply_learned_reranking(
         value, disagreement = model.continuation_value(feature)
         worst_disagreement = max(worst_disagreement, float(disagreement))
         analytic = float(outcome.terminal_value or 0.0)
-        # Remove the analytic continuation before adding the learned one, so the
-        # two are never both counted.
         utility = outcome.utility + analytic - float(value)
         losses.append(utility)
         probabilities.append(outcome.weight)

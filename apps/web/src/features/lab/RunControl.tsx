@@ -9,13 +9,7 @@ import { useSessionStore } from '@/state/sessionStore';
 import { CONSOLE_OPERATOR_ID } from '../engineer/operator';
 import styles from '../engineer/workspace.module.css';
 
-/**
- * Wall-clock pacing multipliers.
- *
- * These change how often the client asks the server to advance. They do not
- * change the simulated duration of a step, which is the separate
- * `step_duration_s` field, and they do not change physics.
- */
+
 export const PACING_OPTIONS = [0.25, 0.5, 1, 2, 4] as const;
 export type Pacing = (typeof PACING_OPTIONS)[number];
 
@@ -40,14 +34,7 @@ const COMMANDS: readonly { kind: SessionCommandKind; label: string }[] = [
   { kind: 'stop', label: 'Stop' },
 ];
 
-/**
- * Run control for a simulation session.
- *
- * Every button is a real `POST /sessions/{id}/commands` carrying the expected
- * revision and an idempotency key. Nothing here is a local animation: if the
- * server rejects the revision the control reports the conflict and re-reads,
- * rather than pretending the session moved.
- */
+
 export function RunControl({ sessionId, mode, client = apiClient, refresh }: RunControlProps) {
   const status = useSessionStore((s) => s.server.status);
   const revision = useSessionStore((s) => s.server.revision);
@@ -97,8 +84,7 @@ export function RunControl({ sessionId, mode, client = apiClient, refresh }: Run
     [client, refresh, sessionId, stepSeconds, stepValid],
   );
 
-  // Auto-advance: one `step` per wall-clock interval. Off by default, and it
-  // stops the moment the toggle is cleared or the component unmounts.
+
   const sendRef = useRef(send);
   sendRef.current = send;
   useEffect(() => {

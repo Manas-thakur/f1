@@ -15,18 +15,19 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
+from sqlalchemy.orm import Session as OrmSession
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
     ErrorCode,
+    ExperimentJob as ExperimentJobContract,
     ExperimentManifest,
     JobStatus,
 )
-from afterlap_contracts import ExperimentJob as ExperimentJobContract
 from afterlap_contracts.requests import (
     CancelExperimentRequest,
     CreateExperimentRequest,
@@ -36,7 +37,9 @@ from afterlap_contracts.requests import (
 
 from ..db import LifecycleError
 from ..db.models import ExperimentJob, Manifest, SnapshotRow
-from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+
+if TYPE_CHECKING:
+    from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
 
 router = APIRouter()
 
@@ -59,7 +62,7 @@ def _as_contract(row: ExperimentJob) -> ExperimentJobContract:
     )
 
 
-def _job(db, job_id: str) -> ExperimentJob:  # type: ignore[no-untyped-def]
+def _job(db: OrmSession, job_id: str) -> ExperimentJob:
     row = db.get(ExperimentJob, job_id)
     if row is None:
         raise LifecycleError(ErrorCode.NOT_FOUND, f"experiment job {job_id} does not exist")
@@ -165,12 +168,8 @@ async def cancel_experiment(
                 f"experiment job {job_id} is already {row.status} and cannot be cancelled",
                 status=row.status,
             )
-        # Cancelling an already-cancelled job is idempotent, not an error.
         return ExperimentStatusResponse(job=_as_contract(row), status=JobStatus.CANCELLED)
 
-    # Whatever the worker finished before it observed the cancellation is kept
-    # and labelled. Progress is not reset to zero: that would hide the scope of
-    # the partial output.
     row.status = JobStatus.CANCELLED.value
     row.partial_results = row.progress > 0.0
     row.failure = f"cancelled by {operator_id}: {payload.reason}"

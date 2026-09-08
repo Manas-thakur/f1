@@ -7,7 +7,7 @@ limit, a margin or an energy.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -21,6 +21,9 @@ from afterlap_contracts import (
     fixtures,
 )
 from afterlap_core.rules import CheckerState, SpeedProfile, SpeedSample, load_rule_pack
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 TRACK_LENGTH_M = 5_000.0
 """Synthetic track length used by every rules test."""

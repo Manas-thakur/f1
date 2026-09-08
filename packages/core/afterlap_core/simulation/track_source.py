@@ -159,8 +159,6 @@ class CompiledTrackSource:
         self.checkpoints = checkpoints or self._default_checkpoints()
         self.segments = self._segments(segment_stride_m)
 
-    # -- identity ----------------------------------------------------------- #
-
     @property
     def package(self) -> TrackPackage:
         return self._package
@@ -187,8 +185,6 @@ class CompiledTrackSource:
             if candidate.id == checkpoint_id:
                 return candidate
         raise KeyError(f"track {self.id} has no checkpoint {checkpoint_id!r}")
-
-    # -- geometry queries --------------------------------------------------- #
 
     def curvature_at(self, s_m: float) -> float:
         return self._centreline.curvature_at(s_m)
@@ -220,8 +216,6 @@ class CompiledTrackSource:
 
     def position_at(self, s_m: float) -> tuple[float, float, float]:
         return self._centreline.position_at(s_m)
-
-    # -- views for consumers that still read segments ------------------------ #
 
     def _segments(self, stride_m: float) -> tuple[TrackSegment, ...]:
         """A coarse breakpoint view for the independent ledger.
@@ -305,7 +299,6 @@ class CompiledTrackSource:
                     description=f"end of sector {index}",
                 )
             )
-        # Deduplicate by id, keeping first occurrence.
         seen: set[str] = set()
         unique: list[TrackCheckpoint] = []
         for cp in out:

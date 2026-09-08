@@ -101,9 +101,6 @@ def main(argv: list[str] | None = None) -> int:
         detail = ensure_schema(engine)
         elapsed = time.monotonic() - started
 
-        # Report what actually landed rather than asserting success. An empty
-        # alembic_version table after a successful upgrade would mean the
-        # migration directory was not found, which is a silent no-op.
         inspector = inspect(engine)
         tables = sorted(inspector.get_table_names())
         if "alembic_version" not in tables:

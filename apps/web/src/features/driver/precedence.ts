@@ -1,21 +1,4 @@
-/**
- * Driver display state precedence.
- *
- * `driver-display/TECHNICAL_SPEC.md`:
- *
- *     safety/withdrawal > stale/unavailable > active instruction > completed/neutral
- *
- * Two rules are enforced here rather than in the component, because they are
- * correctness properties and not styling:
- *
- *   - **A pending engineer selection is not approved advice.** The instruction
- *     is shown only for a recommendation the server has already moved to
- *     `selected`, `communicated` or `executing`. A `proposed` recommendation —
- *     including one with a select command in flight — shows nothing.
- *   - **A dead stream clears the instruction.** The watchdog is local and
- *     independent of any server message; a heartbeat is not evidence that
- *     telemetry is fresh, and neither is an open socket.
- */
+
 import type {
   FlagState,
   Recommendation,
@@ -36,7 +19,7 @@ export type DriverState =
   | 'completed'
   | 'neutral';
 
-/** Flags that stop everything, whatever the plan said. */
+
 export const SAFETY_FLAGS: readonly FlagState[] = [
   'red',
   'safety_car',
@@ -44,7 +27,7 @@ export const SAFETY_FLAGS: readonly FlagState[] = [
   'chequered',
 ];
 
-/** Statuses the engineer has actually put behind the instruction. */
+
 export const APPROVED_STATUSES: ReadonlySet<RecommendationStatus> = new Set<RecommendationStatus>([
   'selected',
   'communicated',
@@ -54,9 +37,9 @@ export const APPROVED_STATUSES: ReadonlySet<RecommendationStatus> = new Set<Reco
 export interface DriverInput {
   readonly mode: SessionMode | null;
   readonly connection: ConnectionStatus;
-  /** True when the local watchdog has not seen a stream update in time. */
+  
   readonly watchdogExpired: boolean;
-  /** True when a contributing source is stale, missing or invalid. */
+  
   readonly blockingQuality: boolean;
   readonly estimate: StateEstimate | null;
   readonly recommendation: Recommendation | null;
@@ -66,16 +49,16 @@ export interface DriverInput {
 
 export interface DriverView {
   readonly state: DriverState;
-  /** The one line the driver reads. Never an imperative when unsafe/stale. */
+  
   readonly primary: string;
-  /** Geometric mark, so the state does not depend on colour alone. */
+  
   readonly mark: '■' | '▲' | '●' | '◆' | '×';
   readonly trigger: string | null;
   readonly endCheckpoint: string | null;
   readonly reason: string;
-  /** True only when an approved, unexpired instruction should be displayed. */
+  
   readonly showsInstruction: boolean;
-  /** True when only aged, static vehicle context may be shown. */
+  
   readonly agedContextOnly: boolean;
 }
 
@@ -226,12 +209,7 @@ export interface EnergyTarget {
   readonly mark: '▲' | '▼' | '?';
 }
 
-/**
- * Whether stored energy is above the target the plan or the rule pack sets.
- *
- * Unknown is a first-class answer: a missing floor or a missing sample gives
- * "TARGET UNKNOWN", never a green tick and never a zero.
- */
+
 export function energyTarget(
   estimate: StateEstimate | null,
   recommendation: Recommendation | null,

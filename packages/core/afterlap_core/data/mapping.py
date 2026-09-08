@@ -20,14 +20,14 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
-from afterlap_contracts import channel as channel_spec
-from afterlap_contracts import is_registered
+from afterlap_contracts import channel as channel_spec, is_registered
 
-# (vendor_unit, si_unit) -> (scale, offset); si = vendor * scale + offset
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
 UNIT_CONVERSIONS: Final[dict[tuple[str, str], tuple[float, float]]] = {
     ("m/s", "m/s"): (1.0, 0.0),
     ("km/h", "m/s"): (1.0 / 3.6, 0.0),
@@ -51,14 +51,11 @@ UNIT_CONVERSIONS: Final[dict[tuple[str, str], tuple[float, float]]] = {
     ("ms", "s"): (1e-3, 0.0),
 }
 
-#: Vendor field names that must never reach an observation record. A simulator
-#: observation stream that leaks one of these is a truth leak, not telemetry.
 HIDDEN_TRUTH_PREFIXES: Final[tuple[str, ...]] = ("truth_", "hidden_", "world_", "gt_", "oracle_")
 HIDDEN_TRUTH_FIELDS: Final[frozenset[str]] = frozenset(
     {"world_state", "rival_battery_energy_j", "rival_energy_j", "opponent_policy", "rng_state"}
 )
 
-#: Field-name fragments whose values are never written to a manifest or a log.
 SECRET_NAME_PATTERN: Final[re.Pattern[str]] = re.compile(
     r"(password|passwd|secret|token|api[_-]?key|access[_-]?key|authorization|auth[_-]?header"
     r"|cookie|credential|bearer|private[_-]?key|signature)",

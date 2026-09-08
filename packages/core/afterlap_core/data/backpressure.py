@@ -13,9 +13,12 @@ recoverable; silent data loss is not.
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
 
 
 class BackpressurePolicy(StrEnum):
@@ -88,7 +91,6 @@ class CoalescingBuffer[T]:
                     self.coalesced_from_sequence = sequence
                 self.coalesced_to_sequence = sequence
         elif len(self._items) >= self.capacity:
-            # Evict the oldest distinct key; this is display data only.
             oldest = next(iter(self._items))
             del self._items[oldest]
             self._coalesced += 1
@@ -169,8 +171,7 @@ class LosslessBuffer[T]:
 
     def drain(self, limit: int | None = None) -> tuple[T, ...]:
         count = len(self._items) if limit is None else min(limit, len(self._items))
-        items = tuple(self._items.popleft() for _ in range(count))
-        return items
+        return tuple(self._items.popleft() for _ in range(count))
 
     def clear_fault(self) -> tuple[RecordingFault, ...]:
         faults, self._faults = tuple(self._faults), []

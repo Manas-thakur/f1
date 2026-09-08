@@ -27,13 +27,15 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 import numpy as np
 from gymnasium import spaces
 
-from afterlap_contracts import ApplicableLimits, StateEstimate
-
 from ..feature_manifest import ACTION_SIZE, PREFERENCE_WINDOW_S
+
+if TYPE_CHECKING:
+    from afterlap_contracts import ApplicableLimits, StateEstimate
 
 __all__ = [
     "ACTION_HIGH",
@@ -205,7 +207,7 @@ def compute_bounds(
         )
 
     energy_j = estimate.own_car.battery_energy_j.value
-    assert energy_j is not None  # guarded by has_energy_capability
+    assert energy_j is not None
     floor_j = limits.battery_energy_min_j
     ceiling_j = limits.battery_energy_max_j
     deploy_w = limits.deployment_ceiling_w
@@ -235,16 +237,12 @@ def compute_bounds(
         budget_upper = 0.0
         budget_status = BoundsStatus.COLLAPSED
 
-    # Reserve: what the checkpoint interval can actually reach from here.
     max_gain_j = 0.0 if recover_w is None else max(0.0, float(recover_w)) * checkpoint_interval_s
     max_loss_j = max(0.0, float(deploy_w)) * checkpoint_interval_s / discharge_efficiency
     reserve_lower = max(float(floor_j), float(energy_j) - max_loss_j)
     reserve_upper = min(float(ceiling_j), float(energy_j) + max_gain_j)
     reserve_status = BoundsStatus.OK
     if reserve_upper < reserve_lower:
-        # Ordering can only invert if the belief sits outside its own declared
-        # window. Clamp to the window and say so rather than decode a
-        # nonsensical range.
         reserve_lower = max(float(floor_j), min(float(energy_j), float(ceiling_j)))
         reserve_upper = reserve_lower
         reserve_status = BoundsStatus.COLLAPSED

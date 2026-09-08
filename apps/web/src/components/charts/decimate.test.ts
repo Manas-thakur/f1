@@ -13,7 +13,7 @@ describe('decimateMinMax preserves extrema', () => {
   it('keeps a single-sample power spike at its exact x and y', () => {
     const { x, y } = flatSeries(4_000, 120_000);
     const spikeIndex = 1_733;
-    y[spikeIndex] = 349_500; // one sample against the 350 kW ceiling
+    y[spikeIndex] = 349_500; 
     const spikeX = x[spikeIndex] as number;
 
     const result = decimateMinMax({ x, y, maxPoints: 200 });
@@ -25,7 +25,7 @@ describe('decimateMinMax preserves extrema', () => {
     const at = result.x.indexOf(spikeX);
     expect(at, 'spike x must survive decimation').toBeGreaterThanOrEqual(0);
     expect(result.y[at]).toBe(349_500);
-    expect(Math.max(...(result.y.filter((v) => v !== null) as number[]))).toBe(349_500);
+    expect(Math.max(...(result.y.filter((v) => v !== null)))).toBe(349_500);
   });
 
   it('keeps a single-sample negative trough as well', () => {
@@ -48,8 +48,8 @@ describe('decimateMinMax preserves extrema', () => {
 
   it('keeps checkpoint and rule-transition crossings exactly', () => {
     const { x, y } = flatSeries(6_000);
-    // Vary y slightly so bucket min/max do not coincidentally land on the
-    // event samples; the events must be kept because they were named.
+
+
     for (let i = 0; i < y.length; i += 1) {
       y[i] = 100 + Math.sin(i / 37) * 5;
     }

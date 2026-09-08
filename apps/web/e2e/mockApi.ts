@@ -1,12 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 
-/**
- * The mocked control plane.
- *
- * The Python API is not part of this agent's scope and lands later; every
- * `/api/v1` request is answered here so the shell can be exercised against a
- * realistic, contract-shaped response instead of a stub page.
- */
+
 export const MOCK_SESSIONS = {
   sessions: [
     {
@@ -42,8 +36,8 @@ function json(route: Route, body: unknown, status = 200): Promise<void> {
 }
 
 export async function mockApi(page: Page): Promise<void> {
-  // Playwright evaluates handlers most-recently-registered first, so the
-  // catch-all must be registered before the specific routes.
+
+
   await page.route('**/api/v1/**', (route) =>
     json(
       route,
@@ -62,7 +56,7 @@ export async function mockApi(page: Page): Promise<void> {
   await page.route('**/api/v1/models*', (route) => json(route, { models: [] }));
 }
 
-/** An empty control plane, for exercising the named empty state. */
+
 export async function mockEmptyApi(page: Page): Promise<void> {
   await page.route('**/api/v1/sessions*', (route) =>
     json(route, { sessions: [], next_cursor: null }),

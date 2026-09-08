@@ -28,9 +28,8 @@ rival truth, so no controller can reach further than any other by construction.
 from __future__ import annotations
 
 import time
-from collections.abc import Sequence
 from dataclasses import dataclass, field, fields
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from afterlap_contracts import (
     DeploymentProfile,
@@ -39,8 +38,12 @@ from afterlap_contracts import (
     ReasonCode,
     RuleContext,
 )
-from afterlap_core.simulation.observation import Observation
 from afterlap_core.simulation.policies import DriverAction
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from afterlap_core.simulation.observation import Observation
 
 __all__ = [
     "ACTIVE_PROFILES",
@@ -216,11 +219,6 @@ def assert_no_truth_access() -> None:
         raise AssertionError(f"ControlRequest exposes simulator truth through {sorted(leaked)}")
 
 
-# --------------------------------------------------------------------------- #
-# Shared legality handling
-# --------------------------------------------------------------------------- #
-
-
 def _downgrade_to_admissible(
     wanted: DeploymentProfile, admissible: Sequence[DeploymentProfile]
 ) -> DeploymentProfile | None:
@@ -320,8 +318,6 @@ class _LegalBaseline:
         """Downgrade ``wanted`` to something legal and package the decision."""
         extra = list(reasons)
         if not request.observation.has("battery_energy_j") and wanted in ACTIVE_PROFILES:
-            # SERVING_AND_EVALUATION.md: a missing own-energy capability
-            # suppresses precise energy advice. Capping is the suppression.
             wanted = DeploymentProfile.NEUTRAL
             extra.append(ReasonCode.OWN_ENERGY_UNAVAILABLE)
         profile = _downgrade_to_admissible(wanted, request.admissible_profiles)
@@ -343,11 +339,6 @@ class _LegalBaseline:
             latency_ms=latency_ms,
             provenance="baseline",
         )
-
-
-# --------------------------------------------------------------------------- #
-# The two rows that can be built today
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)
@@ -430,8 +421,6 @@ class LegalGreedyAttacker(_LegalBaseline):
             return gated
         observation = request.observation
         if not observation.has("battery_energy_j"):
-            # No own-energy channel: it cannot know whether it is spending its
-            # reserve, so it must not issue an active directive.
             return self._emit(
                 request,
                 DeploymentProfile.NEUTRAL,
@@ -449,11 +438,6 @@ class LegalGreedyAttacker(_LegalBaseline):
                 label="greedy_recover",
             )
         return self._emit(request, DeploymentProfile.OVERTAKE, latency_ms=latency(), label="greedy_attack")
-
-
-# --------------------------------------------------------------------------- #
-# Rows that cannot be built today, and hash gating
-# --------------------------------------------------------------------------- #
 
 
 class UnavailableController:

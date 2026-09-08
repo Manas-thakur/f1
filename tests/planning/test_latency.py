@@ -82,9 +82,6 @@ def test_planner_latency_percentiles(estimate, context, manifest, config, world,
     percentiles are attached to the test result and reproduced in the handoff,
     where the target is compared against them explicitly.
     """
-    # Warm the compiled solver, the rule pack and the scenario bundle. These are
-    # process-lifetime caches in production too, so including them in the
-    # steady-state percentiles would overstate the per-decision cost.
     plan(estimate, context, None, 5.0, manifest=manifest, config=config, world=world)
     plan(estimate, context, None, 5.0, manifest=manifest, config=config, world=world)
 
@@ -142,7 +139,6 @@ def test_planner_latency_percentiles(estimate, context, manifest, config, world,
 
     assert len(samples) >= 30
 
-    # Hardware-independent regression guards on the work the planner controls.
     assert last.candidate_count <= config.budgets.max_candidates
     assert last.scenario_count <= config.budgets.max_scenarios
     assert len(last.accepted) <= config.budgets.rollout_finalists
@@ -150,9 +146,6 @@ def test_planner_latency_percentiles(estimate, context, manifest, config, world,
         len(candidate.scenario_outcomes) <= config.budgets.rollout_scenarios for candidate in last.accepted
     )
 
-    # A smoke ceiling only. It is twenty times the budget, so it catches an
-    # algorithmic regression while staying clear of the host's clock behaviour.
-    # It is not the target, and passing it is not evidence the target was met.
     assert p95 <= 20.0 * budget_ms, (
         f"p95 {p95:.1f} ms is more than twenty times the {budget_ms:.0f} ms budget; "
         f"cpu reference {reference_before_ms:.0f} -> {reference_after_ms:.0f} ms"
@@ -177,10 +170,6 @@ def test_the_declared_deadline_is_never_overrun_silently(estimate, context, mani
         statuses.append(result.status)
         assert result.status in (PlanningStatus.OK, PlanningStatus.DEADLINE_EXCEEDED)
         if result.status is PlanningStatus.OK:
-            # The clock is checked before every solve and after the candidate
-            # loop; the residual is candidate serialisation and the hysteresis
-            # comparison, which are microseconds. 15 % covers them without
-            # covering a missed deadline check.
             assert result.duration_ms <= 1.15 * DEFAULT_DEADLINE_S * 1000.0
         else:
             assert result.accepted == ()

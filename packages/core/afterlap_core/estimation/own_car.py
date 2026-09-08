@@ -55,9 +55,8 @@ information -- but it never produces a point value.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -70,8 +69,12 @@ from afterlap_contracts import (
 )
 from afterlap_core.timebase import classify_freshness, laps_and_s, wrap_s
 
-from .config import OwnCarConfig
 from .context import OWN_CAR_CHANNELS, EstimationContext, FamilyDiagnostic, Observation
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
+    from .config import OwnCarConfig
 
 STATE_PROGRESS = 0
 STATE_SPEED = 1
@@ -81,7 +84,6 @@ STATE_DIM = 4
 
 STATE_NAMES: tuple[str, ...] = ("progress_m", "speed_mps", "acceleration_mps2", "battery_energy_j")
 
-#: Half-width, in sigmas, of the reachable-set bound used for partial energy.
 REACHABLE_SET_SIGMAS = 3.0
 
 
@@ -267,8 +269,6 @@ class OwnCarFilter:
         )
         self.state = self._initial_state()
 
-    # -- construction ---------------------------------------------------
-
     def _initial_state(self) -> OwnCarFilterState:
         initial = self.config.initial
         covariance = np.diag(
@@ -287,8 +287,6 @@ class OwnCarFilter:
 
     def reset(self) -> None:
         self.state = self._initial_state()
-
-    # -- prediction -----------------------------------------------------
 
     def predict_to(
         self,
@@ -386,8 +384,6 @@ class OwnCarFilter:
         noise[STATE_ENERGY, STATE_ENERGY] = energy_sigma**2 + gap_sigma**2
         return noise
 
-    # -- correction -----------------------------------------------------
-
     def measurement_variance(
         self,
         channel: str,
@@ -484,8 +480,6 @@ class OwnCarFilter:
             update_count=state.update_counts[family],
         )
         state.contributing_event_ids.append(observation.event_id)
-
-    # -- observation intake ---------------------------------------------
 
     def ingest(self, observations: Sequence[Observation], context: EstimationContext) -> None:
         """Fuse a time-ordered batch of own-car observations up to the cutoff.
@@ -723,8 +717,6 @@ class OwnCarFilter:
         current = float(self.state.mean[STATE_PROGRESS])
         return min(candidates, key=lambda candidate: abs(candidate - current))
 
-    # -- reporting -------------------------------------------------------
-
     @property
     def residual_alarm(self) -> bool:
         threshold = self.config.diagnostics.nis_alarm_threshold.value
@@ -819,9 +811,6 @@ def _scalar(
             age_s=age,
             source_id=source_id,
         )
-    # A value that exists but is far past its cadence is stale, not missing:
-    # ``missing`` is reserved for "there is no number", and the contract enforces
-    # that. Reporting the number with quality=stale is the honest description.
     reported = Quality.STALE if quality is Quality.MISSING else quality
     return ScalarValue(
         value=value,

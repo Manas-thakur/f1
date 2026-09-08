@@ -93,7 +93,6 @@ def test_a_resume_inside_the_buffer_receives_exactly_the_gap():
         assert seen == [1, 2, 3, 4, 5]
         await hub.unsubscribe(first)
 
-        # The client is away for three more envelopes.
         for sequence in range(6, 9):
             await hub.publish(_quality(sequence, f"gap event {sequence}"))
 
@@ -111,7 +110,6 @@ def test_a_cursor_older_than_the_buffer_receives_resync_required():
     async def scenario():  # type: ignore[no-untyped-def]
         for sequence in range(1, 21):
             await hub.publish(_telemetry(sequence))
-        # Cursor 2 is far outside the four-envelope window.
         subscriber, resync = await hub.subscribe(SESSION, 2)
         return resync, _drain(subscriber), subscriber.needs_resync
 
@@ -122,7 +120,6 @@ def test_a_cursor_older_than_the_buffer_receives_resync_required():
     envelope = delivered[0]
     assert envelope.event_type is StreamEventType.RESYNC_REQUIRED
     assert envelope.payload.reason == "cursor older than the retained buffer"
-    # The client is told where the retained window begins, not left to guess.
     assert envelope.payload.earliest_available_sequence == 17
 
 
@@ -131,18 +128,14 @@ def test_a_slow_client_may_lose_telemetry_but_never_loses_a_decision_or_quality_
 
     async def scenario():  # type: ignore[no-untyped-def]
         subscriber, _ = await hub.subscribe(SESSION, 0)
-        # Fill the client's queue and keep pushing telemetry it cannot take.
         for sequence in range(1, 20):
             await hub.publish(_telemetry(sequence))
         dropped = subscriber.dropped_telemetry
-        # Now a lossless event arrives at the same jammed client.
         await hub.publish(_quality(100, "battery channel went stale"))
         return dropped, subscriber.needs_resync, _drain(subscriber)
 
     dropped, needs_resync, delivered = asyncio.run(scenario())
     assert dropped > 0, "telemetry was never coalesced away, so the case is untested"
-    # The lossless event did not silently disappear: the client is either given
-    # it or told to resynchronise.
     kinds = {e.event_type for e in delivered}
     assert StreamEventType.QUALITY_CHANGED in kinds or StreamEventType.RESYNC_REQUIRED in kinds
     assert needs_resync is True
@@ -156,7 +149,6 @@ def test_a_coalesced_telemetry_view_declares_the_range_it_merged():
     assert merged.payload.coalesced_to_sequence == 40
     assert merged.payload.series[0].decimated is True
     assert merged.is_lossless is False
-    # A decision or quality envelope can never claim to have been merged.
     assert _quality(41, "x").is_lossless is True
 
 
@@ -216,8 +208,6 @@ def test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_o
 
     session.act(recommendation, OperatorAction.SELECT, idempotency_key="quarantine")
 
-    # An event type outside StreamEventType, as a stored row would look after a
-    # rollback to an older publisher or a hand-edited migration.
     with transaction(db_factory) as db:
         db.add(
             OutboxRecord(
@@ -239,9 +229,7 @@ def test_the_publisher_quarantines_an_unrepresentable_row_instead_of_inventing_o
     assert undeliverable, "the unrepresentable row was silently published as something else"
     fault = next(f for f in undeliverable if f.event_type == "operator_action")
     assert fault.outbox_id
-    # No invented envelope reached the client.
     assert all(e.sequence != 999_999 for e in delivered)
-    # And the selection itself still arrives, through its own lifecycle row.
     selected = [
         e
         for e in delivered

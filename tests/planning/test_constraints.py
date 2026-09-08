@@ -86,8 +86,6 @@ def test_raising_the_terminal_energy_target_reduces_the_deployed_budget(config, 
     assert constrained.converged
     assert constrained.deploy_j[0] < unconstrained.deploy_j[0]
     assert constrained.deploy_j[0] == pytest.approx(200_000.0, rel=1e-5)
-    # One joule of slack out of 2.2 MJ: IPOPT relaxes bounds by a few parts in
-    # 1e8, which is far below any physically meaningful energy margin.
     assert constrained.terminal_energy_j >= 2_200_000.0 - 1.0
 
 
@@ -215,14 +213,12 @@ def test_solver_success_with_checker_failure_is_not_accepted(manifest, config, e
 
     accepted_ids = {accepted.id for accepted in result.accepted}
     for candidate in rejected_by_checker:
-        # The solve itself succeeded; only the independent recheck refused it.
         assert "Solve_Succeeded" in (candidate.solver_status or "")
         assert candidate.total_requested_energy_j > 1.0
         failed = {check.check_id for check in candidate.constraint_result.failed_checks}
         assert "power_ceiling" in failed
         assert candidate.id not in accepted_ids
 
-    # And nothing the checker refused leaked into the published set.
     assert all(c.constraint_result.status is CheckStatus.PASS for c in result.accepted)
 
 

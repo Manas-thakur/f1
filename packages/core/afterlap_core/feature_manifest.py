@@ -40,8 +40,6 @@ LOOKAHEAD_OFFSETS_M: Final[tuple[float, ...]] = (100.0, 250.0, 500.0, 750.0, 100
 
 RIVAL_SLOTS: Final[tuple[str, ...]] = ("ahead", "behind")
 
-# Physical scales. Chosen from the supported scenario bounds so a normalised
-# value of about 1 is a typical magnitude and clipping at [-5, 5] is generous.
 SPEED_SCALE_MPS: Final[float] = 100.0
 ACCELERATION_SCALE_MPS2: Final[float] = 20.0
 DISTANCE_SCALE_M: Final[float] = 5_000.0
@@ -59,8 +57,6 @@ COUNT_SCALE: Final[float] = 8.0
 LAP_SCALE: Final[float] = 60.0
 PACE_SCALE_S_PER_LAP: Final[float] = 2.0
 
-# Kelvin uses an offset as well as a scale: a raw 318 K should not normalise to
-# 318/scale, which would waste the network's dynamic range on absolute zero.
 TEMPERATURE_OFFSET_K: Final[float] = 300.0
 TEMPERATURE_SCALE_K: Final[float] = 40.0
 
@@ -171,8 +167,6 @@ def _rival(start: int, slot: str) -> list[FeatureField]:
         if name.startswith("energy_belief"):
             note = f"{_SPEC}; provenance is estimated, never measured battery telemetry"
         if name == "present_flag":
-            # The absence of a rival is itself known information, so this flag
-            # is never masked: present=0 with mask=1.
             fields.append(_field(start + i, f"rival_{slot}_{name}", unit, scale, maskable=False, note=note))
         else:
             fields.append(_field(start + i, f"rival_{slot}_{name}", unit, scale, note=note))

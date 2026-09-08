@@ -9,30 +9,15 @@ export interface DialogProps {
   readonly onOpenChange: (open: boolean) => void;
   readonly title: string;
   readonly description?: string;
-  /**
-   * DOM id of the control that opened the dialog. Focus returns there on
-   * close, including when the dialog was opened from a table row that has
-   * since re-rendered.
-   */
+  
   readonly returnFocusTo?: string | null;
-  /**
-   * When true, clicking the backdrop does not close the dialog. Set this
-   * whenever the dialog holds unsaved state.
-   */
+  
   readonly blockOutsideClose?: boolean;
   readonly footer?: ReactNode;
   readonly children: ReactNode;
 }
 
-/**
- * Accessible dialog built on Radix.
- *
- * Guarantees required by SCREEN_INVENTORY's inspector pattern:
- *   - a title and a close control
- *   - Escape closes
- *   - focus is restored to the invoking control
- *   - focus never moves behind the modal
- */
+
 export function Dialog({
   open,
   onOpenChange,
@@ -51,9 +36,7 @@ export function Dialog({
     }
   }, [open]);
 
-  // Radix restores focus to the element that had it before the dialog opened.
-  // When the caller names an invoking control explicitly (a row action that
-  // may have re-rendered), we restore to that element instead.
+
   const handleCloseAutoFocus = useCallback(
     (event: Event) => {
       if (returnFocusTo === null) {
@@ -101,8 +84,8 @@ export function Dialog({
               {description}
             </RadixDialog.Description>
           ) : (
-            // Radix warns when a dialog has no description; an explicit empty
-            // one is honest and keeps the console clean.
+
+
             <RadixDialog.Description className="afterlap-visually-hidden">
               {title}
             </RadixDialog.Description>

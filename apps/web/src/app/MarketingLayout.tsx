@@ -3,13 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router';
 import { SYNTHETIC_DATA_NOTICE } from '../fixtures/notices';
 import styles from './shell.module.css';
 
-/**
- * Layout for the two product pages (`/` and `/simulation-lab`).
- *
- * These are documents, not the operator workspace, so they use a plain top nav
- * rather than the module rail. They carry no forms, no payment, no tracking
- * and no external submission of any kind.
- */
+
 export function MarketingLayout() {
   return (
     <div className={styles.webShell}>

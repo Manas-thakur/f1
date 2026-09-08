@@ -26,6 +26,7 @@ learned proposal can remove a feasible reference from the comparison.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import (
     ActionCode,
@@ -38,8 +39,10 @@ from afterlap_contracts import (
 )
 
 from ..rules import THERMAL_TEMPERATURE_UNKNOWN
-from .config import PlannerConfig
 from .segments import PlanFrame, build_frame
+
+if TYPE_CHECKING:
+    from .config import PlannerConfig
 
 __all__ = [
     "TEMPLATES",
@@ -179,13 +182,17 @@ def _missing_profile_reason(
             )
         return (
             ReasonCode.ELIGIBILITY_UNKNOWN,
-            f"overtake permission is {context.eligibility.value} under flags "
-            f"{[flag.value for flag in context.current_flags]}",
+            (
+                f"overtake permission is {context.eligibility.value} under flags "
+                f"{[flag.value for flag in context.current_flags]}"
+            ),
         )
     return (
         ReasonCode.ENERGY_FLOOR,
-        f"profile {profile.value} is not in the admissible set "
-        f"{[p.value for p in context.admissible_profiles]}",
+        (
+            f"profile {profile.value} is not in the admissible set "
+            f"{[p.value for p in context.admissible_profiles]}"
+        ),
     )
 
 

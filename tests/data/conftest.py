@@ -7,9 +7,7 @@ telemetry, a real session, or redistributed third-party data.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -24,6 +22,10 @@ from afterlap_core.data import (
     simulator_mapping,
 )
 from afterlap_core.timebase import ClockMapping
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+    from pathlib import Path
 
 SESSION_ID = "synthetic-battle-001"
 CAR_ID = "car-01"

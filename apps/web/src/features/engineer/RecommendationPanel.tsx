@@ -19,13 +19,13 @@ export interface RecommendationPanelProps {
   readonly status: ConsoleStatus;
   readonly sessionTimeS: number;
   readonly actions: RecommendationActions;
-  /** Latest observed execution for this decision, if any. */
+  
   readonly execution: ExecutionEvent | null;
-  /** On a narrow viewport the panel is a read-only summary. */
+  
   readonly readOnly: boolean;
   readonly onOpenEvidence: () => void;
   readonly evidenceButtonId: string;
-  /** Extra reason the actions are unavailable, from the shared selectors. */
+  
   readonly timeSensitiveDisabledReason: string | null;
 }
 
@@ -43,15 +43,7 @@ function expiryText(recommendation: Recommendation, sessionTimeS: number): strin
   return `${remaining.toFixed(1)} s remaining (at ${recommendation.expires_at_s.toFixed(1)} s)`;
 }
 
-/**
- * The main decision.
- *
- * Reads, in the order an engineer needs them: what to do, what starts it, what
- * ends it, why, how long it is valid and where it stands with the operator.
- * Selecting sends one idempotent command carrying the expected revision. It
- * does not actuate anything and it does not mark the recommendation selected;
- * only a server acknowledgement moves that status.
- */
+
 export function RecommendationPanel({
   recommendation,
   status,

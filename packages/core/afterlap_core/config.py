@@ -8,13 +8,15 @@ establishes realism, and the loader keeps that distinction machine-readable.
 from __future__ import annotations
 
 from enum import StrEnum
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .paths import Paths, sha256_json
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class VerificationStatus(StrEnum):

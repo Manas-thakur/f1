@@ -177,9 +177,6 @@ def _classify(relative: Path) -> str:
         return "experiment"
     if head in OPERATIONAL_TREES:
         return "operational"
-    # Everything else — the SQLite database and its WAL at the root, and any
-    # tree nobody classified — is treated as evidence. Conservative direction:
-    # it makes the guard trip sooner, never later.
     return "operational"
 
 
@@ -204,8 +201,6 @@ class ArtifactQuota:
                     try:
                         size = path.stat().st_size
                     except OSError:
-                        # A file that vanished between the walk and the stat is
-                        # not an error; it is simply no longer occupying space.
                         continue
                     count += 1
                     if _classify(path.relative_to(root)) == "experiment":
@@ -235,8 +230,6 @@ class ArtifactQuota:
     def _decide(self, *, used: int, experiment: int, free: int) -> tuple[QuotaVerdict, str]:
         policy = self.policy
 
-        # A genuinely full filesystem overrides the configured budget: the
-        # budget is an intention, free space is a fact.
         if free < policy.operational_reserve_bytes // 8:
             return (
                 QuotaVerdict.WITHDRAW,
@@ -279,8 +272,6 @@ class ArtifactQuota:
                 f"{free} B free on the filesystem"
             ),
         )
-
-    # -- admission helpers -------------------------------------------------- #
 
     def admit_experiment_job(self, job_id: str) -> QuotaReading:
         """Refuse a batch job that would write past the ceiling.

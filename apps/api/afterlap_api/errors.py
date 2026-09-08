@@ -8,9 +8,8 @@ log with the same ``request_id`` so an operator can correlate them.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -19,6 +18,9 @@ from afterlap_contracts import ApiError, ApiErrorResponse, ErrorCode
 
 from .db import LifecycleError
 from .runtime.port import RuntimeUnavailable
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI, Request
 
 logger = logging.getLogger("afterlap.api")
 
@@ -92,8 +94,6 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RuntimeUnavailable)
     async def _runtime(request: Request, exc: RuntimeUnavailable) -> JSONResponse:
-        # A session whose runtime is not attached is unavailable, never served
-        # from a stale cache as if someone were still computing it.
         return error_response(
             ApiError.of(
                 ErrorCode.CAPABILITY_UNAVAILABLE,
@@ -123,7 +123,6 @@ def install_error_handlers(app: FastAPI) -> None:
                 ErrorCode.VALIDATION_FAILED,
                 "the request body did not match the contract",
                 request_id_of(request),
-                # Field locations only; never echo the submitted values back.
                 fields=", ".join(".".join(str(p) for p in e["loc"]) for e in exc.errors()[:10]),
             )
         )
@@ -135,8 +134,7 @@ def install_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
-        # The trace is logged, never returned.
-        logger.exception(
+        logger.error(
             "unhandled error", extra={"request_id": request_id_of(request), "path": request.url.path}
         )
         return error_response(

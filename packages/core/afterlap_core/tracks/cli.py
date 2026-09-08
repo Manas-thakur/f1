@@ -18,9 +18,8 @@ import importlib
 import json
 import sys
 import urllib.error
-from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TYPE_CHECKING, Any, TextIO
 
 from pydantic import ValidationError
 
@@ -34,6 +33,9 @@ from .registry import (
     load_source_manifest,
     manifest_path,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
 
 EXIT_OK = 0
 EXIT_REFUSED = 1
@@ -72,11 +74,6 @@ def _dump(payload: Any, out: TextIO) -> None:
 def _paths(args: argparse.Namespace) -> Paths:
     root = getattr(args, "root", None)
     return Paths.default(Path(root)) if root else Paths.default()
-
-
-# --------------------------------------------------------------------------- #
-# registry
-# --------------------------------------------------------------------------- #
 
 
 def _entry_summary(entry: RegistryEntry) -> dict[str, Any]:
@@ -119,11 +116,6 @@ def cmd_registry_show(args: argparse.Namespace, out: TextIO) -> int:
         return EXIT_REFUSED
     _dump(entry.model_dump(mode="json"), out)
     return EXIT_OK
-
-
-# --------------------------------------------------------------------------- #
-# sources fetch
-# --------------------------------------------------------------------------- #
 
 
 def _record_line(cached: CachedSource) -> dict[str, Any]:
@@ -229,11 +221,6 @@ def cmd_sources_fetch(args: argparse.Namespace, out: TextIO) -> int:
     return EXIT_REFUSED if failures else EXIT_OK
 
 
-# --------------------------------------------------------------------------- #
-# delegated stages (other workers' modules)
-# --------------------------------------------------------------------------- #
-
-
 def cmd_ingest(args: argparse.Namespace, out: TextIO) -> int:
     if args.source != "openf1":
         out.write(f"refused: ingest source {args.source!r} is not implemented; only 'openf1' is declared\n")
@@ -281,11 +268,6 @@ def _jsonable(result: Any) -> Any:
 
         return asdict(result)
     return result
-
-
-# --------------------------------------------------------------------------- #
-# parser
-# --------------------------------------------------------------------------- #
 
 
 def build_parser() -> argparse.ArgumentParser:

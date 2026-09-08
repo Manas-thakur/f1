@@ -22,12 +22,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
-
-from sqlalchemy.orm import Session as OrmSession
-from sqlalchemy.orm import sessionmaker
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import (
     CapabilityState,
@@ -49,6 +45,11 @@ from ..db import (
 from ..db.models import OutcomeRecordRow
 from .degradation import PersistenceStatus
 from .spool import BoundedSpool, SpoolFull
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 logger = logging.getLogger("afterlap.session.recorder")
 
@@ -85,8 +86,6 @@ class SessionRecorder:
         self._exhausted = False
         self._failures = 0
 
-    # -- persistence gate ------------------------------------------------------
-
     def accepts_new_recommendations(self) -> bool:
         """False once the spool is exhausted: halt rather than lose the audit trail."""
         return not self._exhausted
@@ -114,8 +113,6 @@ class SessionRecorder:
             exhausted=self._exhausted,
             warnings=tuple(warnings),
         )
-
-    # -- writes ----------------------------------------------------------------
 
     def publish_recommendation(
         self,
@@ -244,8 +241,6 @@ class SessionRecorder:
             payload={"event_type": event_type, "payload": payload},
         )
 
-    # -- recovery --------------------------------------------------------------
-
     def drain_spool(self) -> tuple[int, int]:
         """Replay spooled writes in order. Returns ``(replayed, remaining)``.
 
@@ -285,8 +280,6 @@ class SessionRecorder:
             self._last_error = None
         return replayed, len(remaining)
 
-    # -- internals -------------------------------------------------------------
-
     def _attempt(
         self,
         kind: str,
@@ -299,7 +292,6 @@ class SessionRecorder:
             with command_transaction(self._factory) as db:
                 write(db)
         except LifecycleError:
-            # A refusal, not an outage. The typed error belongs to the caller.
             raise
         except Exception as exc:
             return self._degrade(kind, exc, session_time_s=session_time_s, payload=payload)
@@ -332,7 +324,6 @@ class SessionRecorder:
             self._exhausted = True
             return RecordOutcome(kind=kind, committed=False, halted=True, detail=str(full))
         if self._spool.full:
-            # Room for exactly this write and no more: the next one halts.
             self._exhausted = True
             return RecordOutcome(
                 kind=kind,
@@ -342,8 +333,6 @@ class SessionRecorder:
                 detail="spooled; the spool is now full and new recommendations are halted",
             )
         return RecordOutcome(kind=kind, committed=False, spooled=True, detail=f"spooled: {self._last_error}")
-
-    # -- replay handlers -------------------------------------------------------
 
     def _replay_decision(self, db: OrmSession, payload: dict[str, Any], session_time_s: float) -> None:
         store_decision(

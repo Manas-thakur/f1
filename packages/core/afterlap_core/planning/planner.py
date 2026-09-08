@@ -216,11 +216,6 @@ def _verify_inputs(
 ) -> tuple[PlanningStatus, tuple[ReasonCode, ...], str] | None:
     """Gate on inputs, freshness and rule coverage. ``None`` means proceed."""
     own = estimate.own_car
-    # Two independent gates, both of which the estimation module can close.
-    # ``quality.own_energy_capability`` is the session-level declaration (A05's
-    # handoff, integration action 5); ``has_energy_capability`` is the per-field
-    # one. Either being false suppresses precise energy advice: a plan that
-    # allocates joules the session cannot observe is not advice, it is a guess.
     if not estimate.quality.own_energy_capability or not own.has_energy_capability:
         return (
             PlanningStatus.INPUT_UNAVAILABLE,
@@ -289,7 +284,7 @@ def _candidate_plan(
     solution: AllocationSolution,
     evidence: RolloutEvidence | None,
     constraint_result: ConstraintResult,
-    objective_terms,
+    objective_terms: ObjectiveTerms,
     reasons: tuple[ReasonCode, ...],
     learned: LearnedOutcome,
     terminal_target_energy_j: float | None,
@@ -460,9 +455,6 @@ def plan(
     scored: list[ScoredCandidate] = []
     rejected: list[CandidatePlan] = []
 
-    # Rank the converged solves by their generation score, then re-simulate and
-    # recheck the finalists. Everything else is retained as a rejected
-    # alternative so an inspector can see what was considered.
     graded = sorted(solved, key=lambda entry: (entry.generation_score, entry.candidate_id))
 
     finalist_limit = settings.budgets.rollout_finalists
@@ -493,8 +485,6 @@ def plan(
         )
         final_terms = terms
 
-        # The checker's verdict decides acceptance. A converged solve that fails
-        # here is rejected; it is never downgraded into weaker advice.
         eligible = constraint_result.status is CheckStatus.PASS and position < finalist_limit
         if eligible and rollout_enabled and not clock.expired:
             evidence = rollout_candidate(
@@ -540,9 +530,6 @@ def plan(
         else:
             reasons.extend(learned.reason_codes)
             if constraint_result.status is CheckStatus.PASS:
-                # Legal, but outside the re-simulation budget. It is retained as a
-                # rejected alternative rather than accepted on solver evidence
-                # alone: nothing is recommended that was not re-simulated.
                 reasons.append(ReasonCode.SMALL_EXPECTED_IMPROVEMENT)
 
         plan_record = _candidate_plan(
@@ -633,8 +620,6 @@ def plan(
         candidate_count=len(enumeration.candidates),
         learned_contribution_enabled=learned_enabled,
         baseline_identity="mpc_baseline",
-        # The scenario support is part of the evidence record: a decision must
-        # never be readable without knowing how wide the opponent belief was.
         detail=f"{selection.detail}; rival energy support: {sample.energy_support}",
     )
 
@@ -673,7 +658,7 @@ def _probe_plan(
     action_code: ActionCode,
     estimate: StateEstimate,
     segments: tuple[ProfileSegment, ...],
-    terms,
+    terms: ObjectiveTerms,
 ) -> CandidatePlan:
     """A minimal plan record handed to the checker.
 
@@ -724,11 +709,6 @@ def _deadline_result(
         scenario_count=sample.count,
         candidate_count=candidate_count,
     )
-
-
-# --------------------------------------------------------------------------- #
-# recommendation
-# --------------------------------------------------------------------------- #
 
 
 def _withdraw(

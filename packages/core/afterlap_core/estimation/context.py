@@ -14,8 +14,8 @@ truth-mutation test in ``tests/estimation/test_rivals.py`` meaningful.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import (
     ChannelQuality,
@@ -26,9 +26,12 @@ from afterlap_contracts import (
     SourceCapability,
     TelemetryEvent,
 )
-from afterlap_core.timebase import ClockMapping
 
-#: Channels the own-car filter knows how to fuse.
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
+    from afterlap_core.timebase import ClockMapping
+
 OWN_CAR_CHANNELS: frozenset[str] = frozenset(
     {
         "progress_m",
@@ -42,12 +45,10 @@ OWN_CAR_CHANNELS: frozenset[str] = frozenset(
     }
 )
 
-#: Channels the rival filter consumes.
 RIVAL_CHANNELS: frozenset[str] = frozenset(
     {"progress_m", "speed_mps", "lap_distance_m", "gap_ahead_s", "gap_behind_s"}
 )
 
-#: Quality values whose sample may be fused. Anything else is recorded, not used.
 USABLE_QUALITIES: frozenset[Quality] = frozenset({Quality.VALID, Quality.DEGRADED, Quality.STALE})
 
 

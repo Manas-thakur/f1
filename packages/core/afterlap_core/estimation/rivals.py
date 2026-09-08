@@ -84,9 +84,8 @@ recovers when the evidence reverses.
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -103,8 +102,9 @@ from afterlap_core.rng import StreamRegistry, derive_seed
 
 from .config import MODE_INDEX, MODE_ORDER, RivalConfig
 
-#: Named RNG streams. Separate names mean adding a draw in one place cannot
-#: shift the sequence another place sees.
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 STREAM_INIT = "rival_init"
 STREAM_MODE = "rival_mode"
 STREAM_PROCESS = "rival_process"
@@ -118,7 +118,6 @@ STREAM_NAMES: tuple[str, ...] = (
     STREAM_SCENARIO,
 )
 
-#: Bound, in sigmas, on a single step of rival energy process noise.
 PROCESS_NOISE_CLIP_SIGMAS = 3.0
 
 
@@ -291,8 +290,6 @@ class RivalParticleFilter:
         self._last_gap_m: float | None = None
         self._last_gap_time_s: float | None = None
 
-    # -- initialisation --------------------------------------------------
-
     def _sample_prior(self) -> ParticleSet:
         """Broad plausible prior. Uniform energy, zero-mean pace, uniform modes.
 
@@ -321,8 +318,6 @@ class RivalParticleFilter:
             log_weight=log_weight,
         )
 
-    # -- model -----------------------------------------------------------
-
     def deploy_fraction(self, energy_j: np.ndarray) -> np.ndarray:
         """Saturating deployment capability. See the module docstring."""
         reference = self.config.dynamics.deploy_reference_energy_j.value
@@ -344,8 +339,6 @@ class RivalParticleFilter:
         gain = base + context.pressure * pressure
         return self.deploy_fraction(particles.energy_j) * gain
 
-    # -- propagation -----------------------------------------------------
-
     def propagate(self, dt_s: float, context: RivalContext) -> None:
         """Advance every particle by ``dt_s`` through the simplified rival model."""
         if dt_s < 0.0:
@@ -354,10 +347,7 @@ class RivalParticleFilter:
             return
         particles = self.particles
         matrix = self.config.step_transition(dt_s)
-        # The analytic per-particle mode belief is predicted forward exactly.
         particles.mode_belief = self._floor_belief(particles.mode_belief @ matrix)
-        # Age first, then transition: a particle that changes mode at this step
-        # boundary has held its new mode for zero seconds, not for dt.
         particles.mode_age_s = particles.mode_age_s + dt_s
         self._sample_mode_path(matrix, likelihood=None)
 
@@ -465,8 +455,6 @@ class RivalParticleFilter:
                 counts[index] += 1
                 self.diagnostics.support_reseeds += 1
 
-    # -- correction ------------------------------------------------------
-
     def observation_variance(self, base_sigma: float, own: OwnStateSummary, context: RivalContext) -> float:
         """Likelihood variance: observation + own-state + model + dropout."""
         residual = self.config.likelihood.model_residual_sigma_mps.value
@@ -528,9 +516,6 @@ class RivalParticleFilter:
         if measured is not None:
             gap_rate, interval_s = measured
             variance = self.gap_rate_variance(interval_s, own, context, gap_sigma_m=observation.gap_sigma_m)
-            # The gap between two cars closes at the rival's pace offset; our own
-            # absolute speed cancels, which is why this channel is usable even
-            # when only relative information is published.
             expected = offsets if context.is_ahead else -offsets
             log_likelihood += _gaussian_log_pdf(gap_rate, expected, variance)
             used += 1
@@ -562,9 +547,6 @@ class RivalParticleFilter:
         log_likelihood, used_channels = self.mode_log_likelihood(observation, own, context)
 
         if used_channels:
-            # The particle weight marginalises the mode out analytically: the
-            # continuous state is judged on its ability to explain the data under
-            # *some* intention, not under one sampled guess.
             log_belief = np.log(np.maximum(particles.mode_belief, np.finfo(np.float64).tiny))
             joint = log_belief + log_likelihood
             peak = np.max(joint, axis=1, keepdims=True)
@@ -671,15 +653,11 @@ class RivalParticleFilter:
         )
         particles.pace_bias_mps = particles.pace_bias_mps + pace_jitter
 
-    # -- reporting -------------------------------------------------------
-
     def intention_weights(self) -> IntentionWeights:
         """Posterior over reactive intentions, rounded so it sums to exactly 1."""
         weights = self.particles.weights()
         totals = weights @ self.particles.mode_belief
         total = float(np.sum(totals))
-        # A zero total can only come from an underflowed weight vector; the
-        # uniform fallback keeps the contract satisfied instead of raising.
         totals = np.full(len(MODE_ORDER), 1.0 / len(MODE_ORDER)) if total <= 0.0 else totals / total
         values = [float(v) for v in totals]
         values[-1] = 1.0 - sum(values[:-1])
@@ -780,8 +758,6 @@ class RivalParticleFilter:
             observation_age_s=age,
             lateral_geometry_known=lateral_geometry_known,
         )
-
-    # -- snapshot --------------------------------------------------------
 
     def snapshot(self) -> dict[str, Any]:
         """Particles, RNG state, mode memory and observation history."""

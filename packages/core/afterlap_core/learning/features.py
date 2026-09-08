@@ -28,8 +28,8 @@ arithmetic; it does not make an unsupported state supported.
 from __future__ import annotations
 
 import math
-from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -50,6 +50,9 @@ from ..feature_manifest import (
     VALUE_COUNT,
     feature_index,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
 
 __all__ = [
     "EncodedObservation",
@@ -227,8 +230,6 @@ class FeatureEncoder:
         self._feature_hash = manifest.content_hash()
         self._index = {f.name: f.index for f in manifest.fields}
 
-    # -- identity ----------------------------------------------------------- #
-
     @property
     def manifest(self) -> FeatureManifest:
         return self._manifest
@@ -245,8 +246,6 @@ class FeatureEncoder:
     @property
     def observation_size(self) -> int:
         return self._manifest.observation_size
-
-    # -- encoding ----------------------------------------------------------- #
 
     def encode(self, estimate: StateEstimate, context: FeatureContext) -> EncodedObservation:
         raw: list[float | None] = [None] * VALUE_COUNT
@@ -267,9 +266,6 @@ class FeatureEncoder:
             if value is None:
                 continue
             if not math.isfinite(value):
-                # A non-finite raw value is a defect upstream, not a large
-                # number. It is recorded and then treated as unknown, so nothing
-                # infinite can ever reach the network.
                 non_finite.append(index)
                 continue
             known[index] = True
@@ -281,8 +277,6 @@ class FeatureEncoder:
         clipped_indices = tuple(int(i) for i in np.flatnonzero(known & (clipped != pre_clip)))
         values = np.where(known, clipped, 0.0)
 
-        # A non-maskable field is known by construction: its value carries the
-        # information, including when that value is zero.
         mask = np.where(self._maskable, known, True)
         unknown_indices = tuple(int(i) for i in np.flatnonzero(~known))
 
@@ -304,8 +298,6 @@ class FeatureEncoder:
             revision=self._manifest.revision,
         )
 
-    # -- blocks ------------------------------------------------------------- #
-
     def _set(self, raw: list[float | None], name: str, value: float | None) -> None:
         raw[self._index[name]] = value
 
@@ -326,8 +318,6 @@ class FeatureEncoder:
 
         self._set(raw, "remaining_race_distance", _scalar(race.remaining_distance_m))
 
-        # Energy: the point value when it is identified, otherwise the midpoint
-        # of an explicit interval with the interval half-width as the spread.
         energy = _scalar(own.battery_energy_j)
         energy_sigma = _sigma(own.battery_energy_j)
         if energy is None and own.battery_energy_interval is not None:
@@ -337,9 +327,6 @@ class FeatureEncoder:
                 energy = 0.5 * (lower + upper)
                 energy_sigma = _interval_half_width(own.battery_energy_interval)
         if not estimate.quality.own_energy_capability:
-            # The session declared no usable energy capability. Publishing a
-            # number here would be exactly the invented reading the estimate
-            # refuses to make.
             energy = None
             energy_sigma = None
         self._set(raw, "own_energy_mean", energy)
@@ -375,7 +362,6 @@ class FeatureEncoder:
             if eligibility_known
             else None,
         )
-        # Whether eligibility is resolved is itself always known.
         self._set(raw, "eligibility_known_flag", float(eligibility_known))
 
     def _fill_lookahead(self, raw: list[float | None], context: FeatureContext) -> None:
@@ -383,8 +369,6 @@ class FeatureEncoder:
         for distance, sample in zip(LOOKAHEAD_OFFSETS_M, samples, strict=True):
             label = f"lookahead_{int(distance)}m"
             if sample.beyond_finish:
-                # Past the finish there is no track to preview. Everything in the
-                # sample stays masked rather than wrapping into the next lap.
                 continue
             self._set(raw, f"{label}_distance_ahead", sample.distance_ahead_m)
             self._set(raw, f"{label}_curvature", sample.curvature_inv_m)
@@ -410,7 +394,6 @@ class FeatureEncoder:
 
     def _fill_rival(self, raw: list[float | None], slot: str, view: RivalSlotView) -> None:
         prefix = f"rival_{slot}_"
-        # present_flag is not maskable: absence is known information.
         self._set(raw, f"{prefix}present_flag", float(view.present))
         belief = view.belief
         if belief is None:
@@ -418,8 +401,6 @@ class FeatureEncoder:
 
         gap = _scalar(belief.gap_s)
         if gap is not None:
-            # Positive for an ahead rival, negative for a behind one, whatever
-            # sign convention the belief itself used.
             gap = abs(gap) if belief.is_ahead else -abs(gap)
         self._set(raw, f"{prefix}gap_s", gap)
         self._set(raw, f"{prefix}relative_speed", _scalar(belief.relative_speed_mps))
@@ -433,9 +414,6 @@ class FeatureEncoder:
                 energy = 0.5 * (lower + upper)
         if energy_sigma is None:
             energy_sigma = _interval_half_width(belief.energy_interval_j)
-        # A known belief summary with a wide spread is still known. A missing
-        # prior is masked. Neither is ever labelled measured telemetry: the
-        # contract refuses that at construction.
         self._set(raw, f"{prefix}energy_belief_mean", energy)
         self._set(raw, f"{prefix}energy_belief_std", energy_sigma)
 
@@ -468,8 +446,6 @@ class FeatureEncoder:
             if history.instruction_change_count_8s is None
             else float(history.instruction_change_count_8s),
         )
-
-    # -- helpers for tests and diagnostics ---------------------------------- #
 
     def value_of(self, encoded: EncodedObservation, name: str) -> float:
         return float(encoded.values[self._index[name]])

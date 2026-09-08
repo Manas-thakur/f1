@@ -29,9 +29,6 @@ class ApiError(RuntimeError):
     """A non-2xx answer, with the typed error body attached."""
 
     def __init__(self, method: str, path: str, status: int, body: Any) -> None:
-        # Every failing route answers the `ApiErrorResponse` envelope
-        # `{"error": {code, message, retryable, request_id, details}}`. Unwrap
-        # it so a refusal reads as its typed code rather than as a status line.
         error = body.get("error") if isinstance(body, dict) else None
         source = error if isinstance(error, dict) else (body if isinstance(body, dict) else {})
         code = source.get("code")

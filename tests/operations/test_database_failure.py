@@ -25,9 +25,7 @@ spooled order once the store is back.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from afterlap_api.db.engine import command_transaction, create_session_factory
 from afterlap_api.db.models import Decision
@@ -35,6 +33,11 @@ from afterlap_api.session.degradation import DegradationRow
 from afterlap_contracts import CapabilityState
 
 from .conftest import LocalStore, actionable, start_session
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pytest
 
 
 def _decisions(factory) -> list[str]:  # type: ignore[no-untyped-def]
@@ -54,7 +57,6 @@ def test_a_broken_database_spools_writes_and_raises_a_visible_warning(
     assert committed_before, "nothing was durable before the outage; the drill would prove nothing"
     assert recorder.status().state is CapabilityState.AVAILABLE
 
-    # --- the database genuinely stops being a database ---------------------- #
     what = store.break_the_file()
     print(f"\noutage induced: {what}")
 
@@ -65,7 +67,6 @@ def test_a_broken_database_spools_writes_and_raises_a_visible_warning(
     status = recorder.status()
     print(f"spool after the outage: {status.spooled}/{status.capacity}, last error {status.last_error!r}")
 
-    # 1. The writes were absorbed, not lost and not pretended-committed.
     assert status.state is CapabilityState.DEGRADED, status
     assert status.spooled > 0, "the outage produced no spooled entries"
     assert not status.exhausted, "the spool filled sooner than this drill intends"
@@ -74,14 +75,12 @@ def test_a_broken_database_spools_writes_and_raises_a_visible_warning(
         f"the recorder recorded {status.last_error!r}, which does not look like a real driver error"
     )
 
-    # 2. The spool is durable: the entries are on disk, ordered, replayable.
     assert session.spool is not None
     positions = [entry.position for entry in session.spool.entries]
     assert positions == sorted(positions) == list(range(1, len(positions) + 1))
     on_disk = sorted((tmp_path / "spool" / session.session_id).glob("*.json"))
     assert len(on_disk) == len(positions), "the spool is in memory only"
 
-    # 3. The warning is visible, in the log and in the degradation table.
     assert any("session store write" in record.message for record in caplog.records), (
         "the outage produced no warning log line"
     )
@@ -93,12 +92,8 @@ def test_a_broken_database_spools_writes_and_raises_a_visible_warning(
     assert not finding.halts_recommendations, "a recoverable outage must not halt advice on its own"
     print(f"degradation: {finding.detail}")
 
-    # 4. Advice continues while the spool has room — degraded, warned, but not
-    #    withdrawn, because auditability is still recoverable.
     assert tick.recommendation is not None, "advice stopped while the spool still had room"
 
-    # --- recovery ----------------------------------------------------------- #
-    # The ids that were spooled, captured before the drain clears them.
     spooled_ids = [
         entry.payload["recommendation"]["id"]
         for entry in session.spool.entries
@@ -111,8 +106,6 @@ def test_a_broken_database_spools_writes_and_raises_a_visible_warning(
     assert (replayed, remaining) == (status.spooled, 0)
 
     after = _decisions(store.factory)
-    # Nothing was written during the outage: the pre-outage set is untouched
-    # and everything beyond it arrived through the replay, in spooled order.
     assert after[: len(committed_before)] == committed_before
     assert after[len(committed_before) :] == spooled_ids, (
         f"the replay wrote {after[len(committed_before) :]}, not the spooled order {spooled_ids}"
@@ -124,9 +117,6 @@ def test_an_exhausted_spool_halts_new_recommendations_to_preserve_auditability(
     store: LocalStore, tmp_path: Path
 ):
     """The spool is *exhausted for real*, by a real outage, and advice stops."""
-    # Capacity 2 so exhaustion is reached inside a short run. The recorder
-    # marks itself exhausted on the write that fills the spool, so two failed
-    # writes are enough.
     session = start_session(store.factory, spool_root=tmp_path / "spool", spool_capacity=2)
     recorder = session.recorder
     assert recorder is not None
@@ -142,9 +132,6 @@ def test_an_exhausted_spool_halts_new_recommendations_to_preserve_auditability(
         if not recorder.accepts_new_recommendations():
             break
 
-    # The write that *fills* the spool is itself spooled, so the advice it
-    # accompanied is still auditable and is correctly published. The halt
-    # applies to the next decision, so that is the tick to assert on.
     halted_tick = session.advance(1.0)
 
     status = recorder.status()
@@ -153,13 +140,11 @@ def test_an_exhausted_spool_halts_new_recommendations_to_preserve_auditability(
     assert recorder.accepts_new_recommendations() is False
     assert len(session.spool or ()) == 2, "a write was accepted past the spool's capacity"
 
-    # The halt is a *behaviour*: no new operational recommendation is published.
     assert halted_tick is not None
     assert halted_tick.recommendation is None, (
         "a recommendation was published while the audit trail could not be persisted"
     )
 
-    # Keep advancing: it must stay halted, not recover on its own.
     for _ in range(2):
         later = session.advance(1.0)
         assert later.recommendation is None
@@ -171,7 +156,6 @@ def test_an_exhausted_spool_halts_new_recommendations_to_preserve_auditability(
     assert spool_full.state is CapabilityState.UNAVAILABLE
     print(f"halt reason: {spool_full.detail}")
 
-    # And the store, once repaired, proves nothing was written while halted.
     store.repair_the_file()
     after = _decisions(store.factory)
     assert after == committed_before, (
@@ -197,7 +181,6 @@ def test_a_dead_database_socket_is_absorbed_the_same_way(store: LocalStore, tmp_
     session.advance(1.0)
 
     dead = create_engine(
-        # Port 1 on loopback: reserved, and nothing binds it.
         "postgresql+psycopg://afterlap:none@127.0.0.1:1/afterlap",
         connect_args={"connect_timeout": 1},
         pool_pre_ping=False,
@@ -215,9 +198,8 @@ def test_a_dead_database_socket_is_absorbed_the_same_way(store: LocalStore, tmp_
         dead.dispose()
         store.factory.configure(bind=store.engine)
 
-    # Recovery through the same public seam, then the spool drains in order.
     store.factory.configure(bind=store.engine)
     replayed, remaining = recorder.drain_spool()
     print(f"drain after socket recovery: replayed {replayed}, remaining {remaining}")
     assert remaining == 0 and replayed > 0
-    assert create_session_factory(store.engine) is not None  # engine still usable
+    assert create_session_factory(store.engine) is not None

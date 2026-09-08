@@ -18,7 +18,7 @@ with a revision in it, and the ORM's tables actually present.
 from __future__ import annotations
 
 import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,6 +29,9 @@ from afterlap_api.deps import Settings
 from afterlap_api.main import create_app
 
 from .conftest import RULE_PACK_ID, SCENARIO_ID, SEED
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -59,26 +62,19 @@ def test_a_cold_start_creates_the_schema_and_the_artefact_tree(cold_root: Path):
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())
 
-        # The migration actually ran. Not "a table exists" — the Alembic
-        # bookkeeping table exists *and* holds a revision, which is what
-        # distinguishes `upgrade head` from a bare `create_all`.
         assert "alembic_version" in tables, f"no alembic_version table after startup; found {sorted(tables)}"
         with engine.connect() as connection:
             revisions = [r[0] for r in connection.execute(text("select version_num from alembic_version"))]
         assert len(revisions) == 1, f"alembic_version holds {revisions}; exactly one head is expected"
         assert revisions[0], "alembic_version exists but is empty; no migration was applied"
 
-        # Every table the ORM declares is present, so the schema the
-        # application expects and the schema the migration built agree.
         expected = set(Base.metadata.tables)
         missing = expected - tables
         assert not missing, f"the migration left these ORM tables missing: {sorted(missing)}"
 
-        # The artefact tree the runtime writes into was created from nothing.
         for relative in ("artifacts", "artifacts/trajectories", "artifacts/models", "artifacts/spool"):
             assert (cold_root / relative).is_dir(), f"{relative} was not created on a cold start"
 
-        # Liveness and readiness both answer, and readiness is a measurement.
         assert client.get("/api/v1/health/live").json()["status"] == "live"
         ready = client.get("/api/v1/health/ready")
         assert ready.status_code == 200, ready.json()
@@ -87,8 +83,6 @@ def test_a_cold_start_creates_the_schema_and_the_artefact_tree(cold_root: Path):
         assert detail["contracts"] == "available"
         assert detail["numerics"] == "available"
 
-    # Reported, not asserted against a target: the number is hardware- and
-    # cache-dependent and the release report quotes it with the machine named.
     print(f"\ncold start (lifespan entered to ready): {cold_start_s:.2f} s")
     assert cold_start_s < 120.0, "a cold start that takes minutes is a broken install, not a slow one"
 
@@ -114,11 +108,9 @@ def test_a_session_can_be_created_on_a_clean_install(cold_root: Path):
         assert body["manifest"]["synthetic"] is True
         assert body["snapshot"]["revision"] == 0
 
-        # The row and its manifest are durable, not just returned.
         listed = client.get("/api/v1/sessions").json()["sessions"]
         assert [s["id"] for s in listed] == [session_id]
 
-        # And the session is operable: the lease is grantable and one step runs.
         lease = client.post(
             f"/api/v1/sessions/{session_id}/control-lease",
             json={"operator_id": "console-operator", "ttl_s": 600.0},

@@ -1,20 +1,4 @@
-/**
- * Operator actions on a recommendation.
- *
- * Four properties this hook exists to hold:
- *
- *  1. **Selection never actuates.** `select` posts to the recommendation
- *     actions route only. The simulator driver-action endpoint is not called
- *     from here, and an end-to-end test asserts no such request is issued.
- *  2. **Nothing is optimistically marked selected.** On success the hook
- *     re-reads the authoritative snapshot; it never writes a status into the
- *     store. The store has no action that would let it.
- *  3. **A 409 refreshes the evidence.** `runCommand` reports the conflict and
- *     calls `onConflict`, which re-reads the snapshot and reopens the evidence
- *     for the decision. There is no retry path.
- *  4. **`mark_communicated` is a separate action**, and so is the observed
- *     execution, which is not an operator action at all.
- */
+
 import { useCallback, useState } from 'react';
 import type { ApiError, OperatorAction, Recommendation } from '@contracts';
 
@@ -29,7 +13,7 @@ export interface ActionOutcome {
   readonly status: 'ok' | 'conflict' | 'error' | 'duplicate_suppressed';
   readonly message: string;
   readonly error: ApiError | null;
-  /** The status the server reported after applying the action. */
+  
   readonly resultingStatus: string | null;
 }
 
@@ -38,9 +22,9 @@ export interface UseRecommendationActionsOptions {
   readonly recommendation: Recommendation | null;
   readonly expectedRevision: number;
   readonly client?: ApiClient;
-  /** Re-read the snapshot. Called after success and after a conflict. */
+  
   readonly refresh: () => Promise<void> | void;
-  /** Called on a conflict so the caller can open the evidence inspector. */
+  
   readonly onConflict?: (error: ApiError) => void;
 }
 
@@ -88,8 +72,8 @@ export function useRecommendationActions({
             { idempotencyKey },
           ),
         onConflict: async (error) => {
-          // The decision the operator was looking at is no longer current.
-          // Re-read it; never resubmit.
+
+
           await refresh();
           onConflict?.(error);
         },
@@ -98,8 +82,8 @@ export function useRecommendationActions({
       setPendingAction(null);
 
       if (result.status === 'ok') {
-        // The server acknowledged. Re-read the authoritative snapshot rather
-        // than writing the returned status into the store from here.
+
+
         await refresh();
         setOutcome({
           action,

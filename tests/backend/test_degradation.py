@@ -47,8 +47,6 @@ from .conftest import (
     start_session,
 )
 
-# --- row 1: missing required own-car energy ---------------------------------------
-
 
 def test_missing_own_energy_is_analysis_only_with_no_precise_energy_directive(db_factory):
     session = start_session(db_factory, scenario_id=NO_ENERGY_SCENARIO_ID)
@@ -56,8 +54,6 @@ def test_missing_own_energy_is_analysis_only_with_no_precise_energy_directive(db
 
     estimate = tick.estimate
     assert estimate is not None
-    # The source cannot see stored energy, so the estimate says so rather than
-    # inventing a number.
     assert estimate.quality.own_energy_capability is False
     assert estimate.own_car.battery_energy_j.value is None
     assert estimate.own_car.battery_energy_j.quality is Quality.MISSING
@@ -71,7 +67,6 @@ def test_missing_own_energy_is_analysis_only_with_no_precise_energy_directive(db
     assert finding.suppresses_energy_directive is True
     assert report.analysis_only is True
 
-    # The documented consequence: no precise energy directive is issued.
     planning = tick.planning
     assert planning is not None
     assert planning.status is PlanningStatus.INPUT_UNAVAILABLE
@@ -82,12 +77,8 @@ def test_missing_own_energy_is_analysis_only_with_no_precise_energy_directive(db
     assert recommendation.plan_id is None
     assert ReasonCode.OWN_ENERGY_UNAVAILABLE in recommendation.reason_codes
 
-    # ... while the analysis itself is still published.
     assert tick.rule_context is not None
     assert tick.rule_context.applicable_limits.deployment_ceiling_w is not None
-
-
-# --- row 2: unknown opponent energy -----------------------------------------------
 
 
 def test_unknown_opponent_energy_widens_scenarios_and_never_becomes_a_point_value(db_factory):
@@ -99,8 +90,6 @@ def test_unknown_opponent_energy_widens_scenarios_and_never_becomes_a_point_valu
     for rival in estimate.rival_beliefs:
         interval = rival.energy_interval_j
         assert interval is not None, "the rival energy belief collapsed to nothing"
-        # A05's interval is a model quantile with a declared coverage; it is
-        # never a calibrated bound and never a measurement.
         assert interval.kind == "quantile"
         assert interval.coverage is not None
         assert interval.provenance is not Provenance.MEASURED
@@ -115,17 +104,12 @@ def test_unknown_opponent_energy_widens_scenarios_and_never_becomes_a_point_valu
     assert finding is not None
     assert finding.effect == "wider_scenarios_never_a_point_value"
     assert ReasonCode.RIVAL_ENERGY_UNKNOWN in finding.reason_codes
-    # The measured under-coverage travels with the finding rather than being
-    # rounded off at the edge.
     assert RIVAL_ENERGY_QUANTILE_NOTE in finding.notes
     assert "0.7885" in RIVAL_ENERGY_QUANTILE_NOTE and "0.90" in RIVAL_ENERGY_QUANTILE_NOTE
 
     published = session.advance_until(actionable)
     assert published.recommendation is not None
     assert ReasonCode.RIVAL_ENERGY_UNKNOWN in published.recommendation.reason_codes
-
-
-# --- row 3: missing event rules ---------------------------------------------------
 
 
 def test_missing_event_rules_leave_eligibility_unsupported_and_suppress_advice(db_factory):
@@ -135,8 +119,6 @@ def test_missing_event_rules_leave_eligibility_unsupported_and_suppress_advice(d
     context = tick.rule_context
     assert context is not None
     assert "overtake_gap_threshold_from_unresolved_event_document" in context.unknown_conditions
-    # Unsupported eligibility: no profile is admissible at all, rather than a
-    # permissive default.
     assert context.admissible_profiles == ()
     assert context.has_unknown_critical_condition
 
@@ -153,9 +135,6 @@ def test_missing_event_rules_leave_eligibility_unsupported_and_suppress_advice(d
     assert recommendation.action_code is ActionCode.WITHDRAW_ADVICE
     assert recommendation.constraint_result.status is CheckStatus.UNKNOWN
     assert recommendation.constraint_result.unresolved_conditions
-
-
-# --- row 4: solver timeout --------------------------------------------------------
 
 
 class _TimeoutAfter:
@@ -191,11 +170,6 @@ class _TimeoutAfter:
 
 def test_a_solver_timeout_reissues_a_revalidated_prior_plan(db_factory):
     planner = _TimeoutAfter(good_decisions=100)
-    # A three-second lead means a plan issued one decision ago still starts
-    # ahead of the car, so revalidating it is a live question rather than a
-    # foregone failure. With the default 1.2 s lead the car has already passed
-    # the plan's start point by the next decision and the prior plan is
-    # correctly withdrawn instead - that branch is the next test.
     session = start_session(
         db_factory, planner=planner, config=RuntimeConfig(driver_reaction_delay_s=0.35, lead_time_s=3.0)
     )
@@ -206,7 +180,6 @@ def test_a_solver_timeout_reissues_a_revalidated_prior_plan(db_factory):
     accepted = session.advance_until(actionable)
     prior_plan_id = accepted.planning.accepted[0].id  # type: ignore[union-attr]
 
-    # From here the solver misses every deadline.
     planner._remaining = 0
     after = session.advance(1.0)
     assert planner.timeouts >= 1
@@ -220,7 +193,6 @@ def test_a_solver_timeout_reissues_a_revalidated_prior_plan(db_factory):
     assert planning.status is PlanningStatus.OK
     assert planning.accepted[0].id == prior_plan_id, "a different plan was issued, not the prior one"
     assert ReasonCode.SOLVER_TIMEOUT in planning.reason_codes
-    # The reissued plan carries a *fresh* independent check, not the old verdict.
     assert planning.accepted[0].constraint_result.checked_at_s == pytest.approx(after.session_time_s, abs=1.0)
     assert after.recommendation is not None
     assert after.recommendation.action_code is not ActionCode.WITHDRAW_ADVICE
@@ -253,8 +225,6 @@ def test_a_prior_plan_that_no_longer_checks_out_is_withdrawn_not_carried_forward
     estimate = tick.estimate
     assert context is not None and estimate is not None
 
-    # Re-check the accepted plan against a state whose battery is nearly empty:
-    # the same plan is no longer legal.
     from afterlap_api.session.baseline_planner import checker_state_for
 
     car = __import__("afterlap_core.simulation", fromlist=["load_bundle"]).load_bundle(
@@ -282,9 +252,6 @@ def test_a_prior_plan_that_no_longer_checks_out_is_withdrawn_not_carried_forward
     assert "fail" in outcome.finding.detail
 
 
-# --- rows 5 and 6: persistence ----------------------------------------------------
-
-
 class _BrokenFactory:
     """A session factory whose sessions cannot be opened. Models a store outage."""
 
@@ -297,8 +264,6 @@ class _BrokenFactory:
 
 
 def test_a_database_failure_spools_the_write_and_raises_a_visible_warning(db_factory, tmp_path):
-    # No recorder: this session's decisions have not been stored, so the drained
-    # replay below is the first and only write of them.
     session = start_session(db_factory, with_recorder=False)
     tick = session.advance(1.0)
     estimate = tick.estimate
@@ -327,7 +292,6 @@ def test_a_database_failure_spools_the_write_and_raises_a_visible_warning(db_fac
     assert finding.halts_recommendations is False
     assert broken.accepts_new_recommendations() is True
 
-    # Recovery: point the recorder at a working store and drain in order.
     recovered = SessionRecorder(db_factory, session_id=session.session_id, spool=spool)
     replayed, remaining = recovered.drain_spool()
     assert (replayed, remaining) == (1, 0)
@@ -356,8 +320,6 @@ def test_an_exhausted_spool_halts_new_recommendations(db_factory, tmp_path):
     assert halt.effect == "halt_new_operational_recommendations"
     assert halt.halts_recommendations is True
 
-    # The halt is real: a further publish is refused outright and nothing more
-    # is spooled, so no advice exists that could not be audited.
     second = broken.publish_recommendation(
         recommendation=recommendation, estimate=estimate, session_time_s=tick.session_time_s
     )
@@ -376,7 +338,7 @@ def test_a_runtime_whose_store_is_halted_publishes_no_new_recommendation(db_fact
     with command_transaction(db_factory) as db:
         before = db.query(Decision).filter_by(session_id=session.session_id).count()
 
-    recorder._exhausted = True  # the spool filled during an outage
+    recorder._exhausted = True
     assert recorder.accepts_new_recommendations() is False
     tick = session.advance(1.0)
     assert tick.recommendation is None, "a recommendation was published while the store was halted"
@@ -389,9 +351,6 @@ def test_a_runtime_whose_store_is_halted_publishes_no_new_recommendation(db_fact
 
 def test_persistence_findings_are_absent_while_the_store_is_healthy():
     assert persistence_findings(PersistenceStatus()) == ()
-
-
-# --- row 7: training/model mismatch -----------------------------------------------
 
 
 def _bundle(**overrides) -> ModelManifest:  # type: ignore[no-untyped-def]
@@ -451,7 +410,6 @@ def test_a_model_mismatch_disables_the_learned_contribution_and_names_the_baseli
     )
     assert decision.enabled is False
     assert decision.mismatches and expected in decision.mismatches[0]
-    # The validated baseline path is named explicitly, not implied.
     assert BASELINE_IDENTITY in decision.detail
     assert decision.baseline_identity == BASELINE_IDENTITY
     finding = decision.finding

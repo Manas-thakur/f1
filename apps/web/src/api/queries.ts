@@ -1,11 +1,4 @@
-/**
- * TanStack Query bindings for REST reads.
- *
- * Immutable manifests (rulesets, models, session manifests) are cached
- * separately from mutable session state and never refetched on focus. High
- * rate telemetry does not pass through this cache at all — it arrives on the
- * WebSocket and lives in the Zustand store.
- */
+
 import { QueryClient, useQuery } from '@tanstack/react-query';
 
 import { apiClient, type ApiClient } from './client';
@@ -23,7 +16,7 @@ export function createQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         retry: (failureCount, error) => {
-          // A typed, non-retryable error is a decision, not a transient fault.
+
           if (error instanceof ApiRequestError) {
             return error.retryable && failureCount < 2;
           }

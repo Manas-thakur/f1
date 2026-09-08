@@ -7,12 +7,16 @@ lives in the simulation package and has no wire schema.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pydantic import Field, model_validator
 
 from .base import Contract, VersionedContract
 from .enums import EligibilityState, FlagState, Provenance, Quality, RivalIntention
-from .quantities import IntervalValue, ScalarValue
-from .telemetry import ChannelQuality
+
+if TYPE_CHECKING:
+    from .quantities import IntervalValue, ScalarValue
+    from .telemetry import ChannelQuality
 
 
 class OwnCarEstimate(Contract):

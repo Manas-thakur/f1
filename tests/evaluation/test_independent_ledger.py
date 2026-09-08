@@ -22,18 +22,18 @@ import math
 import re
 from dataclasses import replace
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from afterlap_core.evaluation import independent_ledger as il
 from afterlap_core.simulation import Simulator, load_bundle
-from afterlap_core.simulation.config import ScenarioBundle
 
 from .conftest import RECORD_DT_S
 
-# --------------------------------------------------------------------------- #
-# Structural independence
-# --------------------------------------------------------------------------- #
+if TYPE_CHECKING:
+    from afterlap_core.simulation.config import ScenarioBundle
+
 
 _EVALUATION_DIR = Path(il.__file__).parent
 _FORBIDDEN_IMPORTS = (
@@ -69,18 +69,11 @@ class TestStructuralIndependence:
                 assert f"from {module}" not in source, f"{path.name} imports from {module}"
 
 
-# --------------------------------------------------------------------------- #
-# Hand-computed reference equations
-# --------------------------------------------------------------------------- #
-
-
 class TestReferenceEquations:
     def test_drag_matches_a_hand_computed_value(self) -> None:
-        # 0.5 * 1.2 kg/m^3 * 1.2 m^2 * (50 m/s)^2 = 0.72 * 2500 = 1800 N
         assert il.drag_force_n(1.2, 1.2, 50.0) == pytest.approx(1800.0, abs=1e-12)
 
     def test_grade_force_matches_a_hand_computed_value(self) -> None:
-        # m g sin(grade): 798 * 9.80665 * sin(0.05) = 7825.7067 * 0.0499791693...
         expected = 798.0 * 9.80665 * math.sin(0.05)
         assert il.grade_force_n(798.0, 0.05) == pytest.approx(expected, rel=1e-15)
         assert expected == pytest.approx(391.122, abs=0.001)
@@ -90,25 +83,17 @@ class TestReferenceEquations:
         assert il.rolling_force_n(798.0, 0.012, 0.05) == pytest.approx(expected, rel=1e-15)
 
     def test_battery_conversions_go_in_opposite_directions(self) -> None:
-        # Deploying 350 kW on the DC bus at eta_discharge 0.95 costs more at the
-        # terminal; harvesting 350 kW gains less. Confusing the two is exactly
-        # the double-application error the spec forbids.
         assert il.battery_terminal_out_w(350_000.0, 0.95) == pytest.approx(368_421.0526, abs=1e-3)
         assert il.battery_terminal_in_w(350_000.0, 0.94) == pytest.approx(329_000.0, abs=1e-9)
         assert il.battery_terminal_out_w(350_000.0, 0.95) > 350_000.0
         assert il.battery_terminal_in_w(350_000.0, 0.94) < 350_000.0
 
     def test_the_thermal_derivative_is_zero_at_the_steady_state(self) -> None:
-        # C dT/dt = P_loss - h (T - T_amb) is zero at T = T_amb + P_loss / h.
         steady = 303.15 + 45_000.0 / 900.0
         assert il.thermal_derivative_k_per_s(steady, 80_000.0, 45_000.0, 900.0, 303.15) == (
             pytest.approx(0.0, abs=1e-12)
         )
 
-
-# --------------------------------------------------------------------------- #
-# A hand-computed constant-power case
-# --------------------------------------------------------------------------- #
 
 _CAR = il.CarParameters(
     car_config_id="hand-computed",
@@ -201,12 +186,8 @@ class TestHandComputedConstantPower:
     def test_the_reconstruction_matches_the_arithmetic_answer(self) -> None:
         deploy_w = 200_000.0
         dt_s = 0.1
-        frames = 100  # 10 s
+        frames = 100
 
-        # Arithmetic, done here:
-        #   terminal drain = 200000 / 0.8 = 250000 W
-        #   auxiliary      = 1000 W, drawn at the terminal
-        #   total          = 251000 W for 10 s = 2 510 000 J
         expected_drain_j = (200_000.0 / 0.8 + 1000.0) * 10.0
         assert expected_drain_j == 2_510_000.0
 
@@ -245,11 +226,6 @@ class TestHandComputedConstantPower:
         analytic = steady + (start - steady) * decay
         numeric = il._rk4_temperature(_CAR, temperature_k=start, loss_power_w=loss_w, dt_s=dt_s, substeps=8)
         assert numeric == pytest.approx(analytic, abs=1e-9)
-
-
-# --------------------------------------------------------------------------- #
-# Corruption detection: the test that proves the checker can fail
-# --------------------------------------------------------------------------- #
 
 
 class TestCorruptedTrajectoryIsDetected:
@@ -320,11 +296,6 @@ class TestCorruptedTrajectoryIsDetected:
         audit = il.reconstruct(oval_trajectory.with_frames(frames))
         assert audit.flagged
         assert any(f.frame_index == target for f in audit.frame_findings)
-
-
-# --------------------------------------------------------------------------- #
-# Line crossing
-# --------------------------------------------------------------------------- #
 
 
 class TestLineCrossingReference:
@@ -415,14 +386,8 @@ class TestLineCrossingReference:
         assert matched, "no reconstructed crossing matched a recorded one"
         assert all(c.status != "missing_from_simulator" for c in comparison)
         worst = max(abs(c.difference_s) for c in matched if c.difference_s is not None)
-        # Measured 3.6e-12 s at dt = 0.02 s on the shipped fixture; frozen here
-        # an order of magnitude above the value measured at dt = 0.05 s.
         assert worst < 1.0e-8, f"crossing-time disagreement {worst} s"
 
-
-# --------------------------------------------------------------------------- #
-# Real A03 trajectories
-# --------------------------------------------------------------------------- #
 
 _ALL_FIXTURES = (
     "two-straight-counterattack",

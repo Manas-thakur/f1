@@ -1,20 +1,9 @@
-/**
- * TypeScript mirror of `afterlap_contracts.registry`.
- *
- * The Python module is the authority. This file must derive display values
- * exactly the way `ChannelSpec.to_display` does:
- *
- *     display_value = si_value * display_scale + display_offset
- *
- * `displayDecimals` is a presentation-only addition; it does not exist on the
- * Python spec because the Python side never renders text. A drift test between
- * the two lives in `channels.test.ts` (names, units, scales and offsets).
- */
+
 import type { Provenance } from '@contracts';
 
 export interface ChannelSpec {
   readonly name: string;
-  /** Internal SI unit. All transport values are in this unit. */
+  
   readonly unit: string;
   readonly displayUnit: string;
   readonly displayScale: number;
@@ -22,7 +11,7 @@ export interface ChannelSpec {
   readonly displayDecimals: number;
   readonly family: string;
   readonly expectedProvenance: readonly Provenance[];
-  /** CSS custom property name, as declared in styles/tokens.css. */
+  
   readonly plotColourToken: string;
   readonly lowerBound: number | null;
   readonly upperBound: number | null;
@@ -216,7 +205,7 @@ export function isRegisteredChannel(name: string): boolean {
   return CHANNELS_BY_NAME.has(name);
 }
 
-/** Look up a canonical channel, failing loudly on an unregistered name. */
+
 export function channel(name: string): ChannelSpec {
   const found = CHANNELS_BY_NAME.get(name);
   if (found === undefined) {
@@ -227,12 +216,12 @@ export function channel(name: string): ChannelSpec {
   return found;
 }
 
-/** Same channel if registered, otherwise `undefined` — never a guess. */
+
 export function tryChannel(name: string): ChannelSpec | undefined {
   return CHANNELS_BY_NAME.get(name);
 }
 
-/** `display_value = si_value * display_scale + display_offset`. */
+
 export function toDisplay(spec: ChannelSpec, siValue: number): number {
   return siValue * spec.displayScale + spec.displayOffset;
 }
@@ -241,10 +230,7 @@ export function fromDisplay(spec: ChannelSpec, displayValue: number): number {
   return (displayValue - spec.displayOffset) / spec.displayScale;
 }
 
-/**
- * The CSS variable to draw this channel with. Inside a dark trace well the
- * lighter shade of the same hue is used, so legend meaning is preserved.
- */
+
 export function seriesColourVar(spec: ChannelSpec, surface: 'chrome' | 'well'): string {
   return surface === 'well' ? `var(${spec.plotColourToken}-well)` : `var(${spec.plotColourToken})`;
 }

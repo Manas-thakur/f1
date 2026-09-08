@@ -27,8 +27,8 @@ from afterlap_contracts import (
     SessionMode,
     StreamEventType,
     channel,
+    fixtures as fx,
 )
-from afterlap_contracts import fixtures as fx
 from afterlap_contracts.errors import ApiError
 from afterlap_contracts.events import (
     EstimateUpdatedPayload,
@@ -46,9 +46,6 @@ SPEC_SCHEMA = (
 SPEC_EXAMPLE = SPEC_SCHEMA.with_name("telemetry-event.example.json")
 
 
-# --- Vector 1: display conversions -------------------------------------------------
-
-
 @pytest.mark.parametrize(
     ("channel_name", "si_value", "expected_display", "expected_unit"),
     [
@@ -61,7 +58,6 @@ def test_display_conversions(channel_name, si_value, expected_display, expected_
     spec = channel(channel_name)
     assert spec.display_unit == expected_unit
     assert spec.to_display(si_value) == pytest.approx(expected_display, rel=1e-12)
-    # Round-tripping must return the original SI quantity.
     assert spec.from_display(spec.to_display(si_value)) == pytest.approx(si_value, rel=1e-12)
 
 
@@ -77,9 +73,6 @@ def test_every_registered_channel_declares_a_display_conversion():
         assert spec.unit and spec.display_unit, name
 
 
-# --- Vector 2: missing energy is null, never a displayed zero -----------------------
-
-
 def test_missing_energy_is_null_with_missing_quality():
     estimate = fx.state_estimate(energy_j=None)
     energy = estimate.own_car.battery_energy_j
@@ -87,7 +80,6 @@ def test_missing_energy_is_null_with_missing_quality():
     assert energy.quality is Quality.MISSING
     assert estimate.own_car.has_energy_capability is False
     assert estimate.quality.own_energy_capability is False
-    # The physical bounds are still available, but explicitly as bounds.
     interval = estimate.own_car.battery_energy_interval
     assert interval is not None and interval.kind == "physical_bounds"
     assert interval.coverage is None
@@ -108,9 +100,6 @@ def test_zero_is_a_legitimate_known_value():
     assert zero.is_known is True
 
 
-# --- Vector 3: a late event cannot alter a published decision -----------------------
-
-
 def test_late_event_cannot_change_a_published_decision():
     published = fx.recommendation()
     assert published.observation_cutoff_s == 12.2
@@ -119,7 +108,6 @@ def test_late_event_cannot_change_a_published_decision():
     assert late.source_time_s < published.observation_cutoff_s
     assert late.received_time_s > published.observation_cutoff_s
 
-    # The archived event exists, but the decision record is frozen.
     with pytest.raises(ValidationError):
         published.observation_cutoff_s = 12.5  # type: ignore[misc]
 
@@ -131,9 +119,6 @@ def test_late_event_cannot_change_a_published_decision():
 def test_estimate_cannot_be_created_before_its_own_cutoff():
     with pytest.raises(ValidationError, match="before its own observation cutoff"):
         fx.state_estimate().revise(created_at_s=1.0)
-
-
-# --- Vector 4: sequence gap forces resynchronisation --------------------------------
 
 
 def _envelope(sequence: int, payload) -> StreamEnvelope:
@@ -195,9 +180,6 @@ def test_envelope_round_trips_through_json():
     assert restored == original
 
 
-# --- Vector 5: idempotent selection creates one operator event ----------------------
-
-
 def test_identical_selections_share_an_idempotency_key_and_body_hash():
     first = fx.operator_event()
     second = fx.operator_event()
@@ -210,9 +192,6 @@ def test_identical_selections_share_an_idempotency_key_and_body_hash():
         "same key with a different body must be distinguishable, which is what makes it a 409"
     )
     assert ApiError.of(ErrorCode.IDEMPOTENCY_CONFLICT, "conflicting body", "req-1").http_status == 409
-
-
-# --- Vector 6: selection after expiry is rejected -----------------------------------
 
 
 def test_recommendation_expiry_is_evaluated_against_session_time():
@@ -237,9 +216,6 @@ def test_terminal_statuses_are_not_actionable():
         assert fx.recommendation(status=status).is_actionable_at(15.0) is False
 
 
-# --- Vector 7: WorldState never appears in a session snapshot -----------------------
-
-
 def test_snapshot_schema_exposes_no_simulator_truth():
     payload = fx.session_snapshot().model_dump(mode="json")
     text = json.dumps(payload).lower()
@@ -259,9 +235,6 @@ def test_rival_energy_can_never_be_labelled_measured():
                 value=2_600_000.0, unit="J", provenance=Provenance.MEASURED, quality=Quality.VALID
             )
         )
-
-
-# --- Vector 8: unknown eligibility yields no active-Overtake plan -------------------
 
 
 def test_unknown_condition_removes_every_admissible_profile():
@@ -290,9 +263,6 @@ def test_aggregate_status_cannot_disagree_with_its_checks():
         passing.revise(status=CheckStatus.FAIL)
 
 
-# --- Vector 9: driver action is rejected outside simulation -------------------------
-
-
 @pytest.mark.parametrize("mode", [SessionMode.REPLAY, SessionMode.LIVE_TEAM])
 def test_non_simulation_sessions_forbid_driver_input(mode):
     manifest = fx.session_manifest(mode=mode)
@@ -315,9 +285,6 @@ def test_source_capability_mode_must_match_its_session():
         fx.session_manifest(mode=SessionMode.SIMULATION).revise(source_capabilities=(replay_capability,))
 
 
-# --- Vector 10: reproducibility identity --------------------------------------------
-
-
 def test_manifest_hash_is_stable_for_identical_inputs():
     assert fx.session_manifest().content_hash() == fx.session_manifest().content_hash()
     assert fx.session_manifest().revise(seed=43).content_hash() != fx.session_manifest().content_hash()
@@ -327,9 +294,6 @@ def test_canonical_json_is_order_independent():
     manifest = fx.session_manifest()
     reparsed = type(manifest).model_validate_json(manifest.model_dump_json())
     assert reparsed.canonical_json() == manifest.canonical_json()
-
-
-# --- Normative seed schema agreement -------------------------------------------------
 
 
 def test_generated_telemetry_schema_matches_the_normative_seed():
@@ -373,9 +337,6 @@ def test_unknown_fields_fail_closed():
     example = json.loads(SPEC_EXAMPLE.read_text(encoding="utf-8"))
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
         TelemetryEvent.model_validate({**example, "surprise_field": 1})
-
-
-# --- Additional invariants the vectors imply ----------------------------------------
 
 
 def test_a_probability_needs_an_event_definition_and_a_horizon():

@@ -6,6 +6,16 @@ import { ApiClient } from './client';
 import { ApiRequestError } from './errors';
 import { commandKeys, runCommand } from './commands';
 
+function hrefOf(input: string | URL | Request): string {
+  if (typeof input === 'string') {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return input.url;
+}
+
 function bridge() {
   const store = useSessionStore.getState();
   return {
@@ -188,7 +198,7 @@ describe('ApiClient error decoding', () => {
   it('sends the Idempotency-Key header on a write', async () => {
     const seen: { url: string; headers: Headers }[] = [];
     const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      seen.push({ url: String(url), headers: new Headers(init?.headers) });
+      seen.push({ url: hrefOf(url), headers: new Headers(init?.headers) });
       return new Response(JSON.stringify({ accepted: true, revision: 8, sequence: 1, status: 'running' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },

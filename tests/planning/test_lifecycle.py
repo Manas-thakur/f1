@@ -252,9 +252,6 @@ def test_a_greedy_pass_is_not_credited_as_permanent_progress(config, objective):
 
     weights = build_weights(full, estimate, objective, config)
     near_weights = build_weights(near, estimate, objective, config)
-    # The rule the specification warns about: the position at the near
-    # checkpoint is banked, and neither the energy it cost nor the counterattack
-    # it invites is counted.
     permanent_progress_rule = replace(near_weights, energy_value_rate=0.0, counterattack_rate_s_per_j=0.0)
     rival = (scenario("counterattacking", reserve_j=1_800_000.0, intention=RivalIntention.ATTACK),)
     assert weights.position_penalty > 0.0
@@ -285,14 +282,11 @@ def test_a_greedy_pass_is_not_credited_as_permanent_progress(config, objective):
         "so the greedy schedule must rank below the reserved one"
     )
 
-    # The mechanism, stated numerically: the reserve deficit greedy creates is
-    # worth more seconds to the rival than greedy gained over the corridor.
     deficit_greedy = 1_800_000.0 - greedy_energy
     deficit_reserved = 1_800_000.0 - reserved_energy
     counter_swing_s = weights.counterattack_rate_s_per_j * (deficit_greedy - deficit_reserved)
     assert counter_swing_s > (reserved_time - greedy_time)
 
-    # And the two rules disagree about the ordering, which is the whole point.
     assert (naive_greedy[0] < naive_reserved[0]) is not (full_greedy[0] < full_reserved[0])
 
 

@@ -7,7 +7,7 @@ shadow another worker's file under pytest's prepend import mode.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -16,7 +16,11 @@ from afterlap_core.evaluation.independent_ledger import (
     record_trajectory,
 )
 from afterlap_core.simulation import Simulator, load_bundle
-from afterlap_core.simulation.config import ScenarioBundle
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from afterlap_core.simulation.config import ScenarioBundle
 
 RECORD_STEPS = 400
 RECORD_DT_S = 0.02

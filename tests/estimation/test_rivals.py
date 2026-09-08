@@ -48,9 +48,6 @@ def _own() -> OwnStateSummary:
     return OwnStateSummary(speed_mps=75.0, speed_variance=0.04, acceleration_mps2=0.0)
 
 
-#: Gap resolution a well-instrumented source could declare. These unit tests
-#: supply exact gaps, so declaring a small sigma is the honest description of the
-#: data they feed; the default manifest figure covers a noisier public feed.
 PRECISE_GAP_SIGMA_M = 0.05
 
 
@@ -78,9 +75,6 @@ def _drive(
         )
 
 
-# -- isolation from truth -------------------------------------------------
-
-
 def test_replacing_every_hidden_rival_state_leaves_beliefs_identical(
     own_config: OwnCarConfig, rival_config: RivalConfig
 ) -> None:
@@ -100,8 +94,6 @@ def test_replacing_every_hidden_rival_state_leaves_beliefs_identical(
         rival_energy_j=2_800_000.0,
     )
 
-    # Replace every hidden rival state with unrelated values. Energy is inverted
-    # across the window, the modes are permuted and the speeds are scrambled.
     mutated_rival = tuple(
         replace(
             truth,
@@ -120,7 +112,7 @@ def test_replacing_every_hidden_rival_state_leaves_beliefs_identical(
         scenario_id=run.scenario_id,
         own_truth=mutated_own,
         rival_truth=mutated_rival,
-        events=run.events,  # the delivered observations do not move
+        events=run.events,
         dt_s=run.dt_s,
         energy_channel=run.energy_channel,
     )
@@ -168,9 +160,6 @@ def test_rival_energy_is_never_labelled_measured(rival_config: RivalConfig) -> N
     assert belief.energy_interval_j is not None
     assert belief.energy_interval_j.kind == "quantile"
     assert belief.energy_interval_j.coverage == pytest.approx(rival_config.quantiles.interval_coverage.value)
-
-
-# -- ambiguity ------------------------------------------------------------
 
 
 @pytest.mark.parametrize("seed", [1, 99, 4242, 20260908])
@@ -259,9 +248,6 @@ def test_pace_ambiguity_is_absorbed_by_the_pace_bias_not_by_energy(rival_config:
     assert sigma > 0.4 * prior_sigma
 
 
-# -- resampling -----------------------------------------------------------
-
-
 def test_effective_sample_size_matches_its_definition() -> None:
     uniform = np.full(8, 1.0 / 8.0)
     assert effective_sample_size(uniform) == pytest.approx(8.0)
@@ -300,8 +286,6 @@ def test_resampling_fires_exactly_at_the_documented_ess_threshold(rival_config: 
     time_s = 0.0
     for step in range(30):
         time_s += 0.5
-        # Alternate between mild and very informative observations so both
-        # branches of the threshold are exercised in one run.
         gap += (2.4 if step % 5 == 0 else 0.2) * 0.5
         filter_.update(
             RivalObservation(session_time_s=time_s, gap_m=gap, gap_sigma_m=PRECISE_GAP_SIGMA_M),
@@ -325,9 +309,6 @@ def test_resampling_preserves_the_legal_energy_range(rival_config: RivalConfig) 
     assert filter_.diagnostics.resamples > 0
 
 
-# -- the support floor ----------------------------------------------------
-
-
 def test_the_weight_floor_prevents_irreversible_mode_collapse(rival_config: RivalConfig) -> None:
     """Drive hard toward one mode, then contradict it, and require recovery.
 
@@ -338,7 +319,6 @@ def test_the_weight_floor_prevents_irreversible_mode_collapse(rival_config: Riva
     filter_ = _filter(rival_config)
     floor = rival_config.filter.mode_weight_floor.value
 
-    # Phase 1: a long, strongly attacking rival.
     _drive(filter_, gap_rate_mps=1.7, steps=40, dt_s=0.5)
     after_attack = filter_.intention_weights()
     assert after_attack.attack + after_attack.defend > 0.6
@@ -348,7 +328,6 @@ def test_the_weight_floor_prevents_irreversible_mode_collapse(rival_config: Riva
     counts = np.bincount(filter_.particles.mode, minlength=len(MODE_ORDER))
     assert int(np.min(counts)) >= rival_config.filter.min_per_mode
 
-    # Phase 2: the rival abruptly starts conserving.
     _drive(filter_, gap_rate_mps=-1.2, steps=40, dt_s=0.5)
     after_conserve = filter_.intention_weights()
     assert after_conserve.conserve > after_attack.conserve * 5.0
@@ -366,9 +345,6 @@ def test_every_mode_keeps_nonzero_support_throughout_a_long_run(rival_config: Ri
         minimum_seen = min(minimum_seen, weights.conserve, weights.normal, weights.attack, weights.defend)
     floor = rival_config.filter.mode_weight_floor.value
     assert minimum_seen >= floor * 0.999, f"a mode fell to {minimum_seen:.8f}"
-
-
-# -- snapshot and restore -------------------------------------------------
 
 
 def test_snapshot_then_restore_reproduces_the_exact_particle_sequence(rival_config: RivalConfig) -> None:
@@ -438,9 +414,6 @@ def test_the_whole_estimator_state_round_trips(own_config: OwnCarConfig, rival_c
 
     assert first.revision == 1
     assert direct.canonical_json() == replayed.canonical_json()
-
-
-# -- own-state uncertainty ------------------------------------------------
 
 
 def test_own_state_uncertainty_widens_the_rival_likelihood(rival_config: RivalConfig) -> None:

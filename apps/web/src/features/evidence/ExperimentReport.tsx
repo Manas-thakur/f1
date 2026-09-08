@@ -98,15 +98,7 @@ const COVERAGE_COLUMNS: readonly Column<MatrixCoverageRow>[] = [
   { id: 'owner', header: 'Owner', cell: (row) => row.owner },
 ];
 
-/**
- * `/experiments/:experimentId/report`.
- *
- * Reads the job from `GET /experiments/{id}` and, when the control plane
- * serves it, the report bundle A13 writes. Absent evidence renders as
- * unavailable with the report's own reason. No win rate is computed here: the
- * report deliberately does not contain one, and a frontend that derived one
- * would be inventing the very claim the report refuses to make.
- */
+
 export function ExperimentReport({ client = labClient }: ExperimentReportProps) {
   const { experimentId } = useParams();
   const jobQuery = useExperiment(experimentId);
@@ -119,7 +111,7 @@ export function ExperimentReport({ client = labClient }: ExperimentReportProps) 
   });
 
   const bundle = reportQuery.data === undefined ? null : parseReportBundle(reportQuery.data);
-  // A malformed status payload is treated as no job, never as a crash.
+
   const job =
     jobQuery.data !== undefined && typeof jobQuery.data.job === 'object' && jobQuery.data.job !== null
       ? jobQuery.data

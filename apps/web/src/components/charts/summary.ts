@@ -1,7 +1,4 @@
-/**
- * Textual summaries of a chart, for nonvisual review and for the accessible
- * table that accompanies every plot.
- */
+
 import { formatChannelValue } from '../../contracts/units';
 import type { ChartSeries } from './types';
 
@@ -66,7 +63,7 @@ export function summariseSeries(series: ChartSeries): SeriesSummary {
       : `${series.label} (${series.provenance}, ${series.role} series): ` +
         `${values.length} of ${series.sampleCount} samples between ${xFromText} and ${xToText}; ` +
         `minimum ${fmt(min)}, maximum ${fmt(max)}, mean ${fmt(mean)}, last ${fmt(last)}; ` +
-        `${nativeResolutionText}` +
+        nativeResolutionText +
         (series.decimated ? ', drawn from a min/max envelope that preserves extrema' : '') +
         (gapCount > 0 ? `; ${gapCount} sample gaps` : '') +
         '.';

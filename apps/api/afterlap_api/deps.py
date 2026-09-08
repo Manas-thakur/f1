@@ -9,10 +9,8 @@ from __future__ import annotations
 
 import os
 import uuid
-from collections.abc import Iterator
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, Header, Request
 from sqlalchemy.orm import Session as OrmSession
@@ -22,6 +20,10 @@ from afterlap_contracts import SessionMode
 from .db import LifecycleError, create_db_engine, create_session_factory, default_database_url
 from .db.engine import command_transaction, transaction
 from .errors import CapabilityUnavailable, ModeNotPermitted
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from pathlib import Path
 
 DEV_OPERATOR = "engineer-dev"
 

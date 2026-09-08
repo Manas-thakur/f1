@@ -24,10 +24,10 @@ export interface ChartFrameProps {
   readonly subtitle?: string;
   readonly series: readonly ChartSeries[];
   readonly height?: number;
-  /** Shared cursor value on the series' x axis. */
+  
   readonly cursor?: number | null;
   readonly onCursorChange?: (value: number | null) => void;
-  /** Maximum points drawn per series before min/max decimation kicks in. */
+  
   readonly maxPoints?: number;
   readonly emptyArtefact?: string;
   readonly emptyAction?: ReactNode;
@@ -36,7 +36,7 @@ export interface ChartFrameProps {
 
 const WELL_COLOUR_FALLBACK = '#6ba7f2';
 
-/** Read a design token, so the plot never carries its own hard-coded palette. */
+
 function token(name: string, fallback: string): string {
   if (typeof globalThis.getComputedStyle !== 'function' || typeof document === 'undefined') {
     return fallback;
@@ -50,28 +50,16 @@ function resolveColour(channel: string): string {
   if (spec === null || spec === undefined) {
     return WELL_COLOUR_FALLBACK;
   }
-  // The lighter shade of the same hue, so legend meaning survives the dark well.
+
   return token(`${spec.plotColourToken}-well`, WELL_COLOUR_FALLBACK);
 }
 
-/**
- * Drawable width of the plot mount.
- *
- * The mount is absolutely positioned inside the trace well, so its width comes
- * from the container and never from the canvas uPlot puts inside it.
- */
+
 function availableWidth(mount: HTMLElement): number {
   return Math.max(160, Math.floor(mount.clientWidth || 640));
 }
 
-/**
- * Whether this environment can actually paint a 2D canvas.
- *
- * jsdom returns null from `getContext('2d')` and uPlot only discovers that on
- * its first animation frame, well outside any try/catch around the
- * constructor. Probing up front keeps the failure synchronous and lets the
- * panel fall back to its numeric summary instead of throwing asynchronously.
- */
+
 function canPaintCanvas(): boolean {
   if (typeof document === 'undefined') {
     return false;
@@ -83,19 +71,7 @@ function canPaintCanvas(): boolean {
   }
 }
 
-/**
- * One plot panel.
- *
- * Three things this component is responsible for that a plotting library does
- * not give for free:
- *   1. decimation that preserves extrema and event crossings exactly, and says
- *      so, together with the original sampling resolution;
- *   2. a keyboard-operable alternative to the mouse cursor, driving the same
- *      shared x position as every other panel;
- *   3. a textual numeric summary, so the chart is reviewable without sight.
- *
- * The canvas itself is `aria-hidden`: it is a picture of the table below it.
- */
+
 export function ChartFrame({
   title,
   subtitle,
@@ -133,7 +109,7 @@ export function ChartFrame({
     let min = Number.POSITIVE_INFINITY;
     let max = Number.NEGATIVE_INFINITY;
     for (const s of series) {
-      if (s.x.length === 0) continue;
+      if (s.x.length === 0) {continue;}
       min = Math.min(min, s.x[0] as number);
       max = Math.max(max, s.x[s.x.length - 1] as number);
     }
@@ -141,9 +117,9 @@ export function ChartFrame({
   }, [series]);
 
   const step = useMemo(() => {
-    if (domain === null) return 1;
+    if (domain === null) {return 1;}
     const spread = domain.max - domain.min;
-    if (spread <= 0) return 1;
+    if (spread <= 0) {return 1;}
     return Number((spread / 200).toPrecision(2));
   }, [domain]);
 
@@ -156,10 +132,8 @@ export function ChartFrame({
       setPlotAvailable(false);
       return;
     }
-    // Build one shared x grid by unioning every series' decimated x values, so
-    // uPlot can align traces that were sampled independently. Y values are
-    // converted to their display unit here, so the painted axis, the legend and
-    // the summary table all read in the same unit.
+
+
     const xs = [...new Set(prepared.flatMap((p) => p.decimated.x))].sort((a, b) => a - b);
     const data: uPlot.AlignedData = [
       xs,
@@ -196,8 +170,8 @@ export function ChartFrame({
           padding: [8, 12, 4, 4],
           legend: { show: false },
           cursor: { show: true, x: true, y: false },
-          // The x coordinate is distance or session time, never a timestamp.
-          // Without this uPlot formats it as a wall-clock time on 1/1/70.
+
+
           scales: { x: { time: false } },
           axes: [
             {
@@ -220,8 +194,8 @@ export function ChartFrame({
               labelFont: axisFont,
               label: group.unit,
               labelSize: 20,
-              // Reserve room from the widest label actually produced, so no
-              // tick is clipped at its leading digit.
+
+
               size: (_self: uPlot, values: string[] | null) =>
                 axisSizeFor(values ?? [], group.unit),
               grid: { show: group.side === 3, stroke: gridInk },
@@ -247,8 +221,8 @@ export function ChartFrame({
       );
       plotRef.current = instance;
       setPlotAvailable(true);
-      // Keep the canvas inside its container when the viewport changes; a
-      // fixed-width canvas is the classic source of horizontal page overflow.
+
+
       if (typeof ResizeObserver === 'function') {
         observer = new ResizeObserver(() => {
           const plot = plotRef.current;
@@ -259,9 +233,8 @@ export function ChartFrame({
         observer.observe(mount);
       }
     } catch {
-      // jsdom and headless environments without a 2D canvas context cannot
-      // paint. The accessible summary below is the source of truth anyway, so
-      // the panel degrades to it rather than failing.
+
+
       setPlotAvailable(false);
     }
 
@@ -274,7 +247,7 @@ export function ChartFrame({
 
   const summaries = useMemo(() => series.map(summariseSeries), [series]);
 
-  // Two series may carry the same checkpoint. List each marker once.
+
   const markers = useMemo(() => {
     const byId = new Map<string, EventMarker>();
     for (const s of series) {
@@ -393,7 +366,13 @@ export function ChartFrame({
 
       <details className={styles.summary}>
         <summary>Numeric summary and sampling detail</summary>
-        <div className={styles.summaryTableScroll} role="region" aria-label={`${title} numeric summary`} tabIndex={0}>
+        <div
+          className={styles.summaryTableScroll}
+          role="region"
+          aria-label={`${title} numeric summary`}
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          tabIndex={0}
+        >
           <table className={styles.summaryTable}>
             <caption className="afterlap-visually-hidden">{title} numeric summary</caption>
             <thead>

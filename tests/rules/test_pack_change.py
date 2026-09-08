@@ -37,10 +37,8 @@ def context_for(pack, *, progress_m, battery_energy_j, recharge_used_this_lap_j=
 def test_pack_change_changes_ruleset_hash(pack_v1, pack_v2):
     assert pack_v1.ruleset_hash != pack_v2.ruleset_hash
     assert pack_v1.ruleset_hash.startswith("sha256:")
-    # The hash is a content hash, so reloading the same file reproduces it.
     assert load_rule_pack("synthetic-pack-v1").ruleset_hash == pack_v1.ruleset_hash
     assert load_rule_pack("synthetic-pack-v2-strict").ruleset_hash == pack_v2.ruleset_hash
-    # Race control is an event stream, not part of the ruleset identity.
     assert pack_v1.ruleset_hash == pack_v1.manifest.content_hash()
 
 
@@ -101,7 +99,6 @@ def test_plan_legal_under_v1_is_reevaluated_under_v2(pack_v1, pack_v2):
     assert v2_check.status is CheckStatus.FAIL
     assert v2_check.margin == pytest.approx(v2_ceiling_w - deploy_w, abs=1e-6)
     assert v2_check.margin == pytest.approx(-50_000.0, abs=1e-6)
-    # The difference between the two verdicts is exactly the ceiling difference.
     assert v1_check.margin - v2_check.margin == pytest.approx(100_000.0, abs=1e-6)
     assert v1_result.status is CheckStatus.PASS
     assert v2_result.status is CheckStatus.FAIL
@@ -190,12 +187,10 @@ def test_checker_reports_the_new_hash_after_a_pack_update(pack_v1, pack_v2):
     selection_ruleset_hash = selected_result.ruleset_hash
     assert selection_ruleset_hash == pack_v1.ruleset_hash
 
-    # ... the coordinator promotes a new pack mid-selection ...
     v2_context = context_for(pack_v2, progress_m=950.0, battery_energy_j=2_000_000.0)
     rechecked = check_plan(plan, state, v2_context, manifest=pack_v2.manifest)
 
     assert rechecked.ruleset_hash == pack_v2.ruleset_hash
     assert rechecked.ruleset_hash != selection_ruleset_hash
-    # This inequality is the backend's rejection criterion.
     assert selection_ruleset_hash != v2_context.ruleset_hash
     assert v1_context.season_revision != v2_context.season_revision

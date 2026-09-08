@@ -12,7 +12,7 @@ export default mergeConfig(
       globals: true,
       setupFiles: [fileURLToPath(new URL('./src/test/setup.ts', import.meta.url))],
       include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-      exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
+      exclude: ['e2e/**', 'node_modules/**', 'dist/**', '**/._*'],
       restoreMocks: true,
       css: true,
     },

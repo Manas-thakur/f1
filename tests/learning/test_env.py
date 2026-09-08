@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -11,10 +12,12 @@ from stable_baselines3.common.env_checker import check_env as sb3_check_env
 
 from afterlap_contracts import ApplicableLimits, EligibilityState
 from afterlap_core.learning.actions import BoundsStatus, action_space, compute_bounds, decode_action
-from afterlap_core.learning.config import EnvConfig
 from afterlap_core.learning.env import AfterlapEnv
 
 from .conftest import SMOKE_SCENARIO, estimate_with
+
+if TYPE_CHECKING:
+    from afterlap_core.learning.config import EnvConfig
 
 FIXED_ACTION = np.array([-0.5, 0.0], dtype=np.float32)
 
@@ -26,7 +29,6 @@ def build(config: EnvConfig, scenario: str = SMOKE_SCENARIO) -> AfterlapEnv:
 class TestEnvironmentCheckers:
     def test_gymnasium_checker_passes(self, fast_env_config: EnvConfig) -> None:
         env = build(fast_env_config)
-        # skip_render_check: the environment declares no render modes at all.
         gym_check_env(env, skip_render_check=True)
         env.close()
 
@@ -85,9 +87,6 @@ class TestDeterminism:
 
         diverged_a, _, _, _, _ = left.step(np.array([1.0, 1.0], dtype=np.float32))
         diverged_b, _, _, _, _ = right.step(np.array([-1.0, -1.0], dtype=np.float32))
-        # The observations may or may not differ within one tick, but the two
-        # environments must remain independent objects; a shared simulator would
-        # make the second branch see the first one's physics.
         assert left.simulator is not right.simulator
         assert diverged_a.shape == diverged_b.shape
 
@@ -145,7 +144,6 @@ class TestActionBounds:
         assert bounds.budget_status is BoundsStatus.COLLAPSED
         assert bounds.budget_upper_j == bounds.budget_lower_j == 0.0
         decoded = decode_action(np.array([1.0, 0.0]), bounds)
-        # A collapsed range still decodes — to its single fixed value.
         assert decoded.learned_enabled is True
         assert decoded.budget_j == pytest.approx(0.0)
         assert "collapsed" in decoded.reason
@@ -176,8 +174,6 @@ class TestActionBounds:
     def test_the_raw_action_is_preserved_for_replay(self, limits) -> None:
         bounds = compute_bounds(estimate_with(), limits, checkpoint_interval_s=10.0)
         decoded = decode_action(np.array([0.25, -0.75]), bounds)
-        # Replay stores the RAW SAC action. Substituting the projected budget
-        # would train the critic on the wrong action semantics.
         assert decoded.raw_action == (0.25, -0.75)
 
 
@@ -198,12 +194,10 @@ class TestTerminationAndTruncation:
         assert steps == 3
         assert truncated is True
         assert terminated is False
-        # The terminal observation is the real one, not an auto-reset state.
         assert observation is not None
         assert np.all(np.isfinite(observation))
         assert info["episode_outcome"]["truncated"] is True
         assert info["episode_outcome"]["finished"] is False
-        # A truncation retains continuation value.
         assert info["reward_terms"]["potential_next"] != 0.0
         env.close()
 
@@ -222,7 +216,6 @@ class TestTerminationAndTruncation:
         assert outcome["finished"] is True
         assert outcome["finish_position"] >= 1
         assert outcome["distance_travelled_m"] >= env_config.scenario(SMOKE_SCENARIO).race_distance_m
-        # A true finish zeroes the potential; no bootstrap follows it.
         assert info["reward_terms"]["potential_next"] == 0.0
         env.close()
 
@@ -237,8 +230,6 @@ class TestTerminationAndTruncation:
                 break
         assert terminated
         elapsed = info["reward_terms"]["elapsed_s"]
-        # The last tick stops at the finish, so it is at most one cadence long
-        # and its reward is charged the time it really took.
         assert 0.0 < elapsed <= env_config.policy_interval_s + 1e-9
         assert info["reward_terms"]["elapsed_penalty"] == pytest.approx(-elapsed)
         env.close()
@@ -256,8 +247,6 @@ class TestExecutionTiming:
         for _ in range(3):
             env.step(np.array([1.0, 1.0], dtype=np.float32))
             queue_lengths.append(len(env.simulator.world.action_queues[ego]))
-        # The queue exists and is being used: instructions pass through the
-        # reaction-delay path rather than taking effect instantly.
         assert env.simulator.world.driver_configs[ego].reaction_delay_mean_s.value > 0.0
         assert before is not None
         assert all(length >= 0 for length in queue_lengths)
@@ -271,8 +260,6 @@ class TestExecutionTiming:
         env.reset(seed=13, options={"scenario_seed": 11})
         for _ in range(4):
             _, _, terminated, truncated, info = env.step(FIXED_ACTION)
-            # One decision per step, always. A mid-tick profile downgrade is
-            # recorded as a missed execution, never as an extra policy call.
             assert info["diagnostics"]["instructions_issued"] + info["diagnostics"]["withdrawals"] >= 1
             if terminated or truncated:
                 break

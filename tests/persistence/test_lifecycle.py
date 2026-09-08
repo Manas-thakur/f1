@@ -38,8 +38,8 @@ from afterlap_contracts import (
     OperatorAction,
     Recommendation,
     RecommendationStatus,
+    fixtures as fx,
 )
-from afterlap_contracts import fixtures as fx
 
 SESSION_ID = fx.FIXTURE_SESSION_ID
 RULESET_HASH = fx.FIXTURE_RULESET_HASH
@@ -112,9 +112,6 @@ def _act(
         )
 
 
-# --- Selection is a human record, not an actuation --------------------------------
-
-
 def test_selection_records_a_decision_without_execution(factory):
     _seed(factory)
     outcome = _act(factory)
@@ -134,8 +131,6 @@ def test_execution_requires_communication_first(factory):
     _act(factory, action=OperatorAction.SELECT, expected_revision=1, key="k1")
 
     with transaction(factory) as db:
-        # Execution observed while merely selected is stored as evidence but
-        # does not fabricate an executing state.
         result = record_execution(db, execution=fx.execution_event(), session_time_s=13.1)
         assert result is not None
         assert result.status is RecommendationStatus.SELECTED
@@ -168,9 +163,6 @@ def test_unsolicited_execution_is_not_attributed(factory):
         assert decision.status == RecommendationStatus.PROPOSED.value
 
 
-# --- Idempotency -------------------------------------------------------------------
-
-
 def test_identical_command_replays_the_original_result(factory):
     _seed(factory)
     first = _act(factory, key="idem-A")
@@ -194,9 +186,6 @@ def test_same_key_with_a_different_body_is_a_conflict(factory):
     with pytest.raises(LifecycleError) as excinfo:
         _act(factory, key="idem-B", reason="changed my mind")
     assert excinfo.value.code is ErrorCode.IDEMPOTENCY_CONFLICT
-
-
-# --- Optimistic concurrency ---------------------------------------------------------
 
 
 def test_stale_expected_revision_is_refused(factory):
@@ -233,9 +222,6 @@ def test_lease_can_be_taken_after_it_expires(factory):
         )
     assert lease.operator_id == "engineer-2"
     assert lease.revision == 2
-
-
-# --- Expiry and invalidation --------------------------------------------------------
 
 
 def test_selection_after_expiry_is_refused_and_expires_the_record(factory):
@@ -304,9 +290,6 @@ def test_mark_communicated_requires_selection_first(factory):
     assert excinfo.value.code is ErrorCode.VALIDATION_FAILED
 
 
-# --- Durability ----------------------------------------------------------------------
-
-
 def test_every_lifecycle_change_writes_an_outbox_row_in_the_same_transaction(factory):
     _seed(factory)
     _act(factory)
@@ -317,7 +300,6 @@ def test_every_lifecycle_change_writes_an_outbox_row_in_the_same_transaction(fac
 
     assert outbox, "a committed lifecycle change must leave a publishable record"
     assert all(row.published_at is None for row in outbox)
-    # Every published event sequence is unique and matches an event or transition.
     sequences = [row.sequence for row in outbox]
     assert len(set(sequences)) == len(sequences)
     assert max(sequences) <= max(e.sequence for e in events)

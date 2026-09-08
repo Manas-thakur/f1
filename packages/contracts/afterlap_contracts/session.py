@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from pydantic import Field, model_validator
 
 from .base import Contract, VersionedContract
 from .enums import CapabilityState, SessionMode
-from .estimate import StateEstimate
-from .lifecycle import ControlLease
-from .planning import Recommendation
-from .rules import RuleContext
-from .telemetry import SourceCapability
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from .estimate import StateEstimate
+    from .lifecycle import ControlLease
+    from .planning import Recommendation
+    from .rules import RuleContext
+    from .telemetry import SourceCapability
 
 
 class SessionManifest(VersionedContract):
@@ -35,10 +39,6 @@ class SessionManifest(VersionedContract):
     scenario_id: str | None = None
     synthetic: bool = True
     label: str | None = None
-    # A16 real-circuit identity. ``track_hash`` above remains the hash of the
-    # geometry document actually driven (synthetic sketch or compiled package);
-    # these pin the package and event overlay and expose the readiness rung so a
-    # UI can refuse a real-track claim below simulation_eligible.
     track_id: str | None = None
     event_id: str | None = None
     track_package_hash: str | None = None

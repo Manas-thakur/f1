@@ -15,13 +15,7 @@ import { SessionsPage } from '../pages/SessionsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { SimulationLabLandingPage } from '../pages/SimulationLabLandingPage';
 
-/**
- * The complete route table from SCREEN_INVENTORY.
- *
- * Every route now renders its real feature component. The seven that were
- * `FeaturePlaceholder` slots were swapped one element at a time by A09/A10/A11;
- * nothing else in this file changed.
- */
+
 export function AppRoutes() {
   return (
     <Routes>

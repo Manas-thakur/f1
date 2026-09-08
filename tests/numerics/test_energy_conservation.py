@@ -146,7 +146,6 @@ class TestDeployNearTheLowerBound:
             mechanical_available_w=0.0,
             aux_w=0.0,
         )
-        # 1000 J over 20 ms is 50 kW at the terminal, i.e. 47.5 kW on the bus.
         assert plan.battery_out_w == pytest.approx(50000.0, rel=1e-12)
         assert plan.actual_deploy_dc_w == pytest.approx(47500.0, rel=1e-12)
         assert plan.deploy_saturated is True

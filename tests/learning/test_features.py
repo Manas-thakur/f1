@@ -24,7 +24,6 @@ class TestManifestIdentity:
         assert encoded.observation.dtype == np.float32
         assert encoded.values.shape == (VALUE_COUNT,)
         assert encoded.mask.shape == (VALUE_COUNT,)
-        # The observation really is concat(values, mask).
         np.testing.assert_array_equal(encoded.observation[:96], encoded.values)
         np.testing.assert_array_equal(encoded.observation[96:], encoded.mask)
 
@@ -43,7 +42,6 @@ class TestUnitsByHand:
         encoded = encoder.encode(estimate_with(), context())
         index = feature_index("battery_temperature")
         field = ENERGY_V1.fields[index]
-        # The fixture publishes 318 K; the manifest subtracts 300 K then scales by 40 K.
         assert field.offset == pytest.approx(300.0)
         assert encoded.values[index] == pytest.approx((318.0 - 300.0) / 40.0)
 
@@ -56,7 +54,6 @@ class TestUnitsByHand:
     def test_lap_fraction_is_dimensionless(self, encoder: FeatureEncoder) -> None:
         encoded = encoder.encode(estimate_with(), context())
         index = feature_index("lap_fraction")
-        # The fixture's lap distance is 1950 m on a 5200 m loop.
         assert encoded.values[index] == pytest.approx(1_950.0 / TRACK_LENGTH_M)
 
     def test_gap_sign_convention(self, encoder: FeatureEncoder) -> None:
@@ -67,8 +64,6 @@ class TestUnitsByHand:
         assert encoded.values[feature_index("rival_behind_gap_s")] < 0.0
 
     def test_gap_sign_is_corrected_even_when_the_belief_disagrees(self, encoder: FeatureEncoder) -> None:
-        # A belief that reports a positive gap for a car behind must still encode
-        # negative: the sign convention belongs to the feature contract.
         behind = rival(slot="behind_1", is_ahead=False, gap_s=+1.2)
         encoded = encoder.encode(estimate_with(rivals=(behind,)), context())
         assert encoded.values[feature_index("rival_behind_gap_s")] < 0.0
@@ -98,7 +93,6 @@ class TestMasks:
         encoded = encoder.encode(estimate_with(rivals=()), context())
         present = feature_index("rival_ahead_present_flag")
         assert encoded.values[present] == 0.0
-        # present_flag is never masked: absence is known information.
         assert encoded.mask[present] == 1.0
         for name in ("gap_s", "relative_speed", "energy_belief_mean", "conserve_probability"):
             index = feature_index(f"rival_ahead_{name}")
@@ -124,7 +118,6 @@ class TestMasks:
         assert encoded.values[feature_index("rival_ahead_present_flag")] == 1.0
         assert encoded.mask[feature_index("rival_ahead_energy_belief_mean")] == 0.0
         assert encoded.values[feature_index("rival_ahead_energy_belief_mean")] == 0.0
-        # The gap is still known, so the slot is not wholly masked.
         assert encoded.mask[feature_index("rival_ahead_gap_s")] == 1.0
 
     def test_unresolved_eligibility_masks_the_value_but_not_the_known_flag(
@@ -199,7 +192,6 @@ class TestNumericalSafety:
         assert index in encoded.non_finite_indices
 
     def test_clipping_is_applied_and_the_pre_clip_value_is_logged(self, encoder: FeatureEncoder) -> None:
-        # 900 m/s against a 100 m/s scale normalises to 9, far outside [-5, 5].
         encoded = encoder.encode(estimate_with(speed_mps=900.0), context())
         index = feature_index("own_speed")
         assert encoded.values[index] == pytest.approx(5.0)
@@ -239,8 +231,6 @@ class TestTruthMutation:
         encoded_before = env.encoded
         assert encoded_before is not None
 
-        # Replace every hidden rival state. The delivered observations are the
-        # ones already buffered, so the controller's view cannot change.
         world = env.simulator.world
         ego = "own"
         for car_id, state in world.cars.items():
@@ -253,7 +243,6 @@ class TestTruthMutation:
             if car_id != ego:
                 ledger.energy_j = 42.0
 
-        # Re-encode from exactly the belief and context the environment used.
         tick = env.tick
         assert tick is not None
         again = env.encoder.encode(tick.estimate, tick.feature_context)

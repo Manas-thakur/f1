@@ -22,13 +22,15 @@ raises :class:`AdjacentRowSplitError` rather than quietly doing the wrong thing.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from afterlap_contracts import RivalIntention
 from afterlap_core.rng import derive_seed
 
-#: Two-sided normal quantile for a 90 % interval.
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+
 Z_90 = 1.6448536269514722
 
 DEFAULT_SPLIT_NAMES: tuple[str, ...] = ("training", "tuning", "calibration", "final_test")
@@ -303,7 +305,7 @@ def evaluate(
             brier.append(score)
             true_class_weights.append(weights[record.truth_intention])
 
-    report = CalibrationReport(
+    return CalibrationReport(
         split_name=split_name,
         scenario_count=len(scenario_ids(records)),
         record_count=len(records),
@@ -330,7 +332,6 @@ def evaluate(
         },
         notes=("Split by scenario. Energy error is reported only where a legitimate label exists.",),
     )
-    return report
 
 
 def _reliability(records: Sequence[CalibrationRecord], bins: int) -> tuple[ReliabilityBin, ...]:

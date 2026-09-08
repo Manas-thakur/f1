@@ -127,8 +127,6 @@ def test_present_flag_is_never_masked():
         field = ENERGY_V1.fields[feature_index(f"rival_{slot}_present_flag")]
         assert field.maskable is False
 
-    # Everything else in a rival slot is maskable, because a missing prior is
-    # genuinely unknown rather than known-to-be-absent.
     for slot in ("ahead", "behind"):
         for name in SPEC_RIVAL_ORDER:
             if name == "present_flag":
@@ -150,7 +148,6 @@ def test_temperature_uses_an_offset_so_the_range_is_useful():
     assert field.unit == "K"
     assert field.offset == 300.0
     assert field.scale == 40.0
-    # A realistic 318 K normalises to a small number, not to ~8.
     normalised = (318.0 - field.offset) / field.scale
     assert -1.0 < normalised < 1.0
 
@@ -177,8 +174,6 @@ def test_manifest_hash_is_stable_and_change_sensitive():
     assert first.content_hash() == second.content_hash()
     assert first.content_hash() == ENERGY_V1.content_hash()
 
-    # Reordering two fields must change the hash: feature order is hashed in
-    # model manifests precisely to prevent silent inference drift.
     fields = list(first.fields)
     fields[0], fields[1] = fields[1].revise(index=0), fields[0].revise(index=1)
     reordered = first.revise(fields=tuple(fields))

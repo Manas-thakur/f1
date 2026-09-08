@@ -7,10 +7,7 @@ const srcDir = fileURLToPath(new URL('./src', import.meta.url));
 const contractsDir = fileURLToPath(new URL('../../packages/contracts/generated', import.meta.url));
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
-// The Python API owns /api and /ws. In development Vite proxies both to the
-// local API process; in production nginx serves the built assets and proxies
-// the same two prefixes from the same origin, so no absolute API host is ever
-// compiled into the bundle.
+
 const API_ORIGIN = 'http://127.0.0.1:8000';
 
 export default defineConfig({
@@ -27,19 +24,15 @@ export default defineConfig({
     strictPort: true,
     fs: { allow: [repoRoot] },
     proxy: {
-      // `ws: true` is required here, not only on '/ws'. The session stream is
-      // `/api/v1/sessions/:id/stream` (decisions.md: '/ws' is reserved and
-      // unused), so it matches this rule. Without the upgrade the socket never
-      // connects, the console sits in `connecting` forever, and Select stays
-      // disabled with a message about resynchronising.
+
+
       '/api': { target: API_ORIGIN, ws: true, changeOrigin: false },
       '/ws': { target: API_ORIGIN, ws: true, changeOrigin: false },
     },
   },
   preview: {
-    // Bind explicitly to the loopback IPv4 address: the default `localhost`
-    // resolves to ::1 only on some Windows hosts, and the e2e suite then
-    // cannot reach the server it just started.
+
+
     host: '127.0.0.1',
     port: 4173,
     strictPort: true,

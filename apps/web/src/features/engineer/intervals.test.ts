@@ -75,10 +75,7 @@ describe('a quantile interval is described as a model quantile', () => {
   });
 });
 
-/**
- * The phrase is built from parts so that this assertion does not itself put
- * the forbidden literal into the source tree.
- */
+
 const PERCENT = '%';
 const FORBIDDEN = [
   `90${PERCENT} confidence`,
@@ -101,7 +98,7 @@ function sourceFiles(directory: string): readonly string[] {
 
 describe('the string "90 per cent confidence" appears nowhere in the product', () => {
   it('is absent from every source file under src/', () => {
-    // Vitest runs with apps/web as the working directory.
+
     const root = join(process.cwd(), 'src');
     const offenders: string[] = [];
     for (const file of sourceFiles(root)) {

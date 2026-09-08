@@ -117,11 +117,6 @@ class ParsedPui:
     assumptions: list[str] = field(default_factory=list)
 
 
-# --------------------------------------------------------------------------- #
-# text extraction and parsing
-# --------------------------------------------------------------------------- #
-
-
 def extract_pdf_text(data: bytes) -> list[str]:
     """Per-page text via pypdf. Replacement glyphs from the FIA header font become spaces."""
     from pypdf import PdfReader
@@ -234,7 +229,6 @@ def _parse_windows(lines: list[str], parsed: ParsedPui) -> None:
     kmh_lines = [idx for idx, line in enumerate(lines) if _RE_KMH.search(line)]
     parsed.speed_thresholds_kph = [float(v) for line in lines for v in _RE_KMH.findall(line)]
     if kmh_lines:
-        # Walk back from the first speed-threshold line over consecutive window lines.
         first = kmh_lines[0]
         zones: list[dict[str, Any]] = []
         cursor = first - 1
@@ -291,11 +285,6 @@ def _parse_curves(lines: list[str], text: str, parsed: ParsedPui) -> None:
                 "power curve is rendered as a chart; only axis ticks and legend names "
                 f"({', '.join(parsed.curve_legend) or 'none'}) reach the text layer"
             )
-
-
-# --------------------------------------------------------------------------- #
-# overlay construction
-# --------------------------------------------------------------------------- #
 
 
 def draft_overlay(event_id: str, parsed: ParsedPui, document: SourceRecord) -> EventOverlay:
@@ -423,11 +412,6 @@ def ingest_fia_document(track_id: str, event_id: str, document: Path | str, path
     return overlay
 
 
-# --------------------------------------------------------------------------- #
-# review queue
-# --------------------------------------------------------------------------- #
-
-
 def review_overlay(track_id: str, event_id: str, reviewer: str, decision: str, paths: Paths) -> EventOverlay:
     """Record one reviewer's decision on the queued overlay.
 
@@ -487,7 +471,6 @@ def overlay_effective_values(overlay: EventOverlay) -> dict[str, Any]:
             values[name] = None
             continue
         raw = getattr(overlay, name)
-        # A confirmed empty tuple is knowledge ("none defined"), so it stays a list.
         values[name] = [_plain(item) for item in raw] if isinstance(raw, tuple) else raw
     return values
 

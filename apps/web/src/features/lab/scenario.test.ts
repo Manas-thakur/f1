@@ -104,7 +104,7 @@ describe('unreviewed and unresolved inputs must be acknowledged, never relabelle
 
     const acknowledged = validateScenario(draft({ acknowledgedSynthetic: true }), unreviewed);
     expect(acknowledged.canStart).toBe(true);
-    // Acknowledging does not change what the pack says about itself.
+
     expect(
       acknowledged.issues.some((issue) => issue.message.includes('reviewed: false')),
     ).toBe(true);

@@ -40,14 +40,14 @@ from __future__ import annotations
 
 import math
 from bisect import bisect_right
-from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 from typing import TYPE_CHECKING, Any
 
-from afterlap_contracts import DeploymentProfile
-
 if TYPE_CHECKING:  # pragma: no cover - typing only
+    from collections.abc import Callable, Mapping, Sequence
+
+    from afterlap_contracts import DeploymentProfile
     from afterlap_core.simulation.config import CarConfig
     from afterlap_core.simulation.engine import Simulator
     from afterlap_core.simulation.policies import DriverAction
@@ -86,11 +86,6 @@ GRAVITY_MPS2: float = 9.80665
 
 DEFAULT_SUBSTEPS: int = 8
 """Sub-intervals per recorded frame. The run under test uses one step per frame."""
-
-
-# --------------------------------------------------------------------------- #
-# Reference equations, retyped from the specification
-# --------------------------------------------------------------------------- #
 
 
 def drag_force_n(air_density_kgpm3: float, cda_m2: float, speed_mps: float) -> float:
@@ -148,11 +143,6 @@ def thermal_derivative_k_per_s(
     if h_w_per_k < 0.0:
         raise ValueError("heat transfer coefficient must be non-negative")
     return (loss_power_w - h_w_per_k * (temperature_k - ambient_k)) / c_th_j_per_k
-
-
-# --------------------------------------------------------------------------- #
-# Parameters and geometry, read independently from the configuration documents
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,7 +204,7 @@ class TrackReference:
     mu: tuple[float, ...]
 
     @classmethod
-    def from_track_config(cls, track: Any) -> TrackReference:  # any TrackSource
+    def from_track_config(cls, track: Any) -> TrackReference:
         length = float(track.length)
         ordered = sorted(track.segments, key=lambda seg: float(seg.s_m.value))
         nodes = [float(seg.s_m.value) for seg in ordered]
@@ -247,11 +237,6 @@ class TrackReference:
 
     def mu_at(self, s_m: float) -> float:
         return self._interpolate(self.mu, s_m)
-
-
-# --------------------------------------------------------------------------- #
-# The recorded trajectory
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)
@@ -495,11 +480,6 @@ def record_trajectory(
     return recorder.finish()
 
 
-# --------------------------------------------------------------------------- #
-# Findings
-# --------------------------------------------------------------------------- #
-
-
 @dataclass(frozen=True, slots=True)
 class Discrepancy:
     """One signed difference between the reconstruction and the simulator.
@@ -670,11 +650,6 @@ class LedgerAudit:
         }
 
 
-# --------------------------------------------------------------------------- #
-# Reconstruction
-# --------------------------------------------------------------------------- #
-
-
 def _relative(difference: float, scale: float) -> float | None:
     return difference / scale if scale > 0.0 else None
 
@@ -722,8 +697,6 @@ def _rk4_speed(
         k4p = speed + h * k3v
         speed_next = speed + (h / 6.0) * (k1v + 2.0 * k2v + 2.0 * k3v + k4v)
         progress_next = progress + (h / 6.0) * (k1p + 2.0 * k2p + 2.0 * k3p + k4p)
-        # Simpson over the sub-interval for the drive work: F is constant, so
-        # this is the distance integral, which is exactly the RK4 increment.
         drive_work += drive_n * (progress_next - progress)
         speed = max(0.0, speed_next)
         progress = progress_next
@@ -807,7 +780,6 @@ def reconstruct(
         if split:
             split_frames += 1
 
-        # --- (1) bus-to-terminal conversion, exact arithmetic --------------- #
         gain_j = battery_terminal_in_w(frame.delta_harvested_dc_j, car.eta_charge)
         drain_j = battery_terminal_out_w(frame.delta_deployed_dc_j, car.eta_discharge)
         expected_delta = gain_j - drain_j - frame.delta_auxiliary_j
@@ -830,7 +802,6 @@ def reconstruct(
                 )
             )
 
-        # --- (2) battery energy re-integrated from instantaneous powers ----- #
         net_w = (
             battery_terminal_in_w(frame.harvest_power_dc_w, car.eta_charge)
             - battery_terminal_out_w(frame.deploy_power_dc_w, car.eta_discharge)
@@ -840,11 +811,9 @@ def reconstruct(
         for _ in range(substeps):
             energy_from_power += net_w * step_h
 
-        # --- (3) the CU-K ledger integrates the DC-bus quantity ------------- #
         cuk_identity_j += abs(frame.delta_recharge_cumulative_j - frame.delta_harvested_dc_j)
         cuk_from_power_j += frame.harvest_power_dc_w * frame.dt_s
 
-        # --- (4) motion, restarted from the recorded start of every frame --- #
         speed_end, _progress, _work = _rk4_speed(
             car,
             track,
@@ -859,7 +828,6 @@ def reconstruct(
             worst_speed[split] = speed_residual
             worst_speed_frame[split] = frame.index
 
-        # --- (5) work / kinetic-energy balance on the recorded trajectory --- #
         kinetic_change = (
             0.5
             * car.mass_kg
@@ -869,7 +837,6 @@ def reconstruct(
         resistive_work = _resistive_work_j(car, track, frame=frame, substeps=substeps)
         work_residual[split] += (drive_work - resistive_work) - kinetic_change
 
-        # --- (6) thermal state ---------------------------------------------- #
         temperature_end = _rk4_temperature(
             car,
             temperature_k=frame.start_temperature_k,
@@ -1075,7 +1042,6 @@ def _resistive_work_j(
 
     def integrand(tau: float) -> float:
         v = v0 + tau * (v1 - v0)
-        # Position from the trapezoidal displacement of a linear speed profile.
         s = p0 + frame.dt_s * tau * (v0 + 0.5 * tau * (v1 - v0))
         grade = track.grade_at(s % track.length_m)
         resist = (
@@ -1092,11 +1058,6 @@ def _resistive_work_j(
         weight = 4.0 if index % 2 else 2.0
         total += weight * integrand(index * h)
     return total * (h / 3.0) * frame.dt_s
-
-
-# --------------------------------------------------------------------------- #
-# Independent line-crossing reference
-# --------------------------------------------------------------------------- #
 
 
 @dataclass(frozen=True, slots=True)

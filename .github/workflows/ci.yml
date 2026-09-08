@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install
+        run: uv sync --frozen --all-packages
+      - name: Format
+        run: uv run ruff format --check .
+      - name: Lint
+        run: uv run ruff check .
+      - name: Types
+        run: uv run mypy
+      - name: Comment policy
+        run: uv run python scripts/check_no_comments.py
+      - name: Docs package
+        run: uv run python docs/tools/validate_package.py
+      - name: Schema drift
+        run: uv run python -m afterlap_contracts.schema_export --check
+      - name: Doctor
+        run: uv run python -m afterlap_core.cli doctor
+      - name: Tests
+        run: uv run pytest -q -m "not slow and not torch"
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm --filter @afterlap/web lint
+      - name: Types
+        run: pnpm --filter @afterlap/web typecheck
+      - name: Unit tests
+        run: pnpm --filter @afterlap/web test
+      - name: Build
+        run: pnpm --filter @afterlap/web build
+      - name: Playwright
+        run: pnpm --filter @afterlap/web e2e:install && pnpm --filter @afterlap/web test:e2e

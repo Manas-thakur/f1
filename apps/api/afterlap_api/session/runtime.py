@@ -43,9 +43,8 @@ import logging
 import threading
 import time
 import uuid
-from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -91,6 +90,7 @@ from afterlap_core.rules import (
 )
 from afterlap_core.simulation import DriverAction, ScenarioBundle, Simulator, capture_complete_state
 from afterlap_core.simulation.branching import snapshot_hash
+from afterlap_core.simulation.config import CarConfig
 from afterlap_core.timebase import ClockMapping
 
 from ..runtime.port import RuntimeTick
@@ -117,6 +117,9 @@ from .observation_source import (
     simulator_session_capability,
 )
 from .recorder import SessionRecorder, new_outcome_id
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 logger = logging.getLogger("afterlap.session.runtime")
 
@@ -294,10 +297,6 @@ class InProcessSessionRuntime:
         self._plan_durations_ms: list[float] = []
         self._decision_durations_ms: list[float] = []
 
-    # ------------------------------------------------------------------ #
-    # SessionRuntimePort
-    # ------------------------------------------------------------------ #
-
     def initialise(self, manifest: SessionManifest, scenario_id: str, seed: int) -> RuntimeTick:
         with self._lock:
             if manifest.mode is not SessionMode.SIMULATION:
@@ -373,8 +372,6 @@ class InProcessSessionRuntime:
             if duration_s <= 0.0:
                 raise ValueError("advance needs a positive duration")
             if self._paused:
-                # A paused session does not integrate. The caller gets the state
-                # it already had rather than a fabricated forward step.
                 return self._last_tick or self._tick(executions=())
 
             simulator = self._require_simulator()
@@ -452,8 +449,6 @@ class InProcessSessionRuntime:
                 "estimator": self._require_estimator().snapshot(),
                 "eligibility": _eligibility_snapshot(self._eligibility),
                 "event_offset": {
-                    # Restart point for the observation stream. Anything at or
-                    # before this has already been delivered to the estimator.
                     "newest_event_time_s": max(self._event_times.values(), default=None),
                     "delivered_event_ids": sorted(self._event_times),
                     "sequence": self._sequence,
@@ -494,7 +489,6 @@ class InProcessSessionRuntime:
             )
             self._pending_events.clear()
             self._queued_inputs = [_queued_from_dict(item) for item in payload["queued_driver_inputs"]]
-            # A previously acknowledged deliberate command is never replayed.
             self._acknowledged_inputs = set(payload.get("acknowledged_driver_inputs", ()))
             self._queued_inputs = [
                 queued for queued in self._queued_inputs if queued.id not in self._acknowledged_inputs
@@ -514,9 +508,6 @@ class InProcessSessionRuntime:
             self._paused = True
             self._stopped = False
 
-            # The restored session is not ready until its state has been
-            # re-estimated and its outstanding advice revalidated. Both happen
-            # in `resume_after_restore`; until then, nothing is published.
             self._last_estimate = None
             self._last_planning = None
             self._last_recommendation = None
@@ -537,10 +528,6 @@ class InProcessSessionRuntime:
     @property
     def session_time_s(self) -> float:
         return 0.0 if self._simulator is None else self._simulator.session_time_s
-
-    # ------------------------------------------------------------------ #
-    # driver execution
-    # ------------------------------------------------------------------ #
 
     def mark_communicated(self, recommendation_id: str, at_s: float | None = None) -> float:
         """Record when the engineer told the driver. Not an execution."""
@@ -595,7 +582,6 @@ class InProcessSessionRuntime:
         for queued in due:
             self._queued_inputs.remove(queued)
             if queued.id in self._acknowledged_inputs:
-                # Already applied once. A restart must not replay it.
                 continue
             self._acknowledged_inputs.add(queued.id)
             actions[self._bundle.scenario.ego_car_id] = DriverAction(profile=queued.profile_id)
@@ -652,10 +638,6 @@ class InProcessSessionRuntime:
             return ExecutionMatch.LATE
         return ExecutionMatch.MATCHED
 
-    # ------------------------------------------------------------------ #
-    # observation and ingestion
-    # ------------------------------------------------------------------ #
-
     def _collect_observations(self) -> None:
         simulator = self._require_simulator()
         source = self._require_source()
@@ -681,10 +663,6 @@ class InProcessSessionRuntime:
         for normalised in output.decision_visible():
             self._pending_events.append(normalised.event)
             self._event_times[normalised.event.event_id] = normalised.session_time_s
-
-    # ------------------------------------------------------------------ #
-    # decision
-    # ------------------------------------------------------------------ #
 
     def decide_now(self) -> RuntimeTick:
         """Run one decision cycle at the current session time without integrating.
@@ -746,8 +724,6 @@ class InProcessSessionRuntime:
 
         self._publish(estimate, context, planning, report, now_s=now, cutoff_s=cutoff)
 
-        # A02: publish the decision cutoff so a later arrival at or before it is
-        # archived but excluded from the state this decision observed.
         self._require_pipeline().finalise(cutoff)
         self._decision_durations_ms.append((time.perf_counter() - started) * 1000.0)
 
@@ -769,8 +745,10 @@ class InProcessSessionRuntime:
             integration_gap_s={gap.channel: gap.cumulative_gap_s for gap in assessment.integration_gaps},
             lateral_geometry_known=False,
             notes=(
-                "simulated observations; the source declares no electrical-power channel, so the "
-                "energy state is corrected only by battery-energy samples",
+                (
+                    "simulated observations; the source declares no electrical-power channel, so the "
+                    "energy state is corrected only by battery-energy samples"
+                ),
             ),
         )
         return update(batch, self._require_estimator(), context)
@@ -778,9 +756,6 @@ class InProcessSessionRuntime:
     def _rule_context(self, estimate: StateEstimate, *, now_s: float) -> RuleContext:
         own = estimate.own_car
         progress = float(own.progress_m.value or self._last_progress_m)
-        # The eligibility machine needs monotone progress. The estimate can
-        # jitter backwards by centimetres; clamping is recorded rather than
-        # hidden so a real regression is still visible in the counter.
         if progress < self._last_progress_m:
             self._eligibility_clamps += 1
             progress = self._last_progress_m
@@ -995,10 +970,6 @@ class InProcessSessionRuntime:
             detail=outcome.finding.detail,
         )
 
-    # ------------------------------------------------------------------ #
-    # publishing
-    # ------------------------------------------------------------------ #
-
     def _publish(
         self,
         estimate: StateEstimate,
@@ -1010,7 +981,6 @@ class InProcessSessionRuntime:
         cutoff_s: float,
     ) -> None:
         if report.halted:
-            # Halt new operational recommendations to preserve auditability.
             self._last_recommendation = None
             return
         if self._recorder is not None and not self._recorder.accepts_new_recommendations():
@@ -1024,7 +994,6 @@ class InProcessSessionRuntime:
             return
 
         candidate = planning.accepted[0]
-        # The independent checker, not the planner, decides legality.
         checked = check_plan(
             candidate,
             checker_state_for(
@@ -1168,10 +1137,6 @@ class InProcessSessionRuntime:
                 session_time_s=now_s,
             )
 
-    # ------------------------------------------------------------------ #
-    # rule changes, invalidation and recovery
-    # ------------------------------------------------------------------ #
-
     def set_rule_pack(self, pack: RulePack, *, reason: str = "ruleset changed") -> int:
         """Swap the rule pack. Outstanding advice is invalidated immediately."""
         with self._lock:
@@ -1200,8 +1165,7 @@ class InProcessSessionRuntime:
         with self._lock:
             self._paused = False
             self._next_decision_s = self.session_time_s
-            tick = self.advance(self._config.decision_interval_s)
-            return tick
+            return self.advance(self._config.decision_interval_s)
 
     @property
     def ready(self) -> bool:
@@ -1212,10 +1176,6 @@ class InProcessSessionRuntime:
             and self._last_estimate is not None
             and self._last_rule_context is not None
         )
-
-    # ------------------------------------------------------------------ #
-    # outcomes and export
-    # ------------------------------------------------------------------ #
 
     def _record_checkpoint_outcomes(self) -> None:
         simulator = self._require_simulator()
@@ -1297,10 +1257,6 @@ class InProcessSessionRuntime:
                     "progress_clamps": self._eligibility_clamps,
                 },
             }
-
-    # ------------------------------------------------------------------ #
-    # observable state
-    # ------------------------------------------------------------------ #
 
     @property
     def last_estimate(self) -> StateEstimate | None:
@@ -1385,10 +1341,6 @@ class InProcessSessionRuntime:
             finished=self._stopped,
         )
 
-    # ------------------------------------------------------------------ #
-    # helpers
-    # ------------------------------------------------------------------ #
-
     def _identity(self) -> str:
         decision = self._model_decision
         return decision.baseline_identity if decision is not None else BASELINE_IDENTITY
@@ -1406,7 +1358,7 @@ class InProcessSessionRuntime:
             1 for car_id, state in simulator.world.cars.items() if car_id != ego and state.progress_m > own
         )
 
-    def _ego_car(self):  # type: ignore[no-untyped-def]
+    def _ego_car(self) -> CarConfig:
         return self._bundle.car_configs[self._bundle.scenario.ego_car_id]
 
     def _require_running(self) -> None:
@@ -1456,11 +1408,6 @@ class InProcessSessionRuntime:
         return self._eligibility
 
 
-# ---------------------------------------------------------------------- #
-# module helpers
-# ---------------------------------------------------------------------- #
-
-
 def default_planner() -> tuple[Planner, str]:
     """Prefer A06's planner when it is importable; otherwise the baseline.
 
@@ -1504,9 +1451,6 @@ def _eligibility_machine(pack: RulePack, track_length_m: float) -> EligibilityMa
     try:
         return EligibilityMachine.from_lines(pack.manifest.detection_lines, track_length_m)
     except ValueError:
-        # The pack declares no detection/activation pair. Eligibility therefore
-        # stays UNKNOWN, which suppresses advice; guessing a line location would
-        # be exactly the invented default the plan forbids.
         return EligibilityMachine(
             detection_s_m=0.0,
             activation_s_m=0.0,

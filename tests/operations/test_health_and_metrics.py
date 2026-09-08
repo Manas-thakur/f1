@@ -23,7 +23,7 @@ session clock and the freshness tracker really sees channels age out.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
@@ -38,6 +38,9 @@ from afterlap_core.paths import Paths
 
 from .conftest import RULE_PACK_ID, SCENARIO_ID, SEED, start_session
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 STALE_OBSERVATION_RATE_HZ = 0.05
 """One sample every twenty seconds, against a one-second decision interval."""
 
@@ -51,23 +54,15 @@ def _app(tmp_path: Path) -> object:
     )
 
 
-# --------------------------------------------------------------------------- #
-# liveness and readiness are different questions
-# --------------------------------------------------------------------------- #
-
-
 def test_liveness_is_about_the_process_and_says_nothing_about_capability(tmp_path: Path):
     app = _app(tmp_path)
     with TestClient(app) as client:
-        # Strip every measured capability: liveness must still answer, because
-        # it is a statement about the loop and nothing else.
         app.state.capabilities = {}  # type: ignore[attr-defined]
         live = client.get("/api/v1/health/live")
         assert live.status_code == 200
         assert live.json()["status"] == "live"
         assert "note" in live.json()["detail"]
 
-        # ... and readiness must not.
         ready = client.get("/api/v1/health/ready")
         assert ready.status_code == 503, ready.text
         assert ready.json()["status"] == "not_ready"
@@ -106,18 +101,12 @@ def test_an_unwritable_artefact_root_is_measured_as_unavailable_and_blocks_readi
     assert report.capability_map()["storage"] is CapabilityState.UNAVAILABLE
     assert "storage" in {c.name for c in report.unavailable}
 
-    # The route, given that real measurement, refuses readiness.
     app = _app(tmp_path / "install")
     with TestClient(app) as client:
         app.state.capabilities = report.capability_map()  # type: ignore[attr-defined]
         response = client.get("/api/v1/health/ready")
         assert response.status_code == 503
         assert "storage" in response.json()["detail"]["missing"]
-
-
-# --------------------------------------------------------------------------- #
-# stale telemetry
-# --------------------------------------------------------------------------- #
 
 
 def test_a_source_that_stops_delivering_is_classified_stale_then_missing():
@@ -149,7 +138,6 @@ def test_a_source_that_stops_delivering_is_classified_stale_then_missing():
         )
     print(f"\nfreshness ladder (now_s, age_s, quality): {ladder}")
 
-    # A transport heartbeat must not make a dead channel look alive.
     tracker.heartbeat(5.0)
     still = tracker.assess(5.0).by_channel("speed_mps", "own")
     assert still is not None and still.quality is Quality.MISSING
@@ -203,9 +191,6 @@ def test_the_simulator_source_declares_its_own_delivery_rate_so_it_cannot_report
         "be fixed — check whether an end-to-end stale-telemetry drill is now possible"
     )
 
-    # Advice is still withheld here, but for the honest reason: the
-    # independent check cannot resolve eligibility from a ten-second-old
-    # state, not because anything reported staleness.
     assert tick.recommendation is not None
     assert tick.recommendation.action_code is ActionCode.WITHDRAW_ADVICE
     print(f"withheld: {tick.recommendation.display_text}")
@@ -242,7 +227,6 @@ def test_readiness_reflects_stale_telemetry(tmp_path: Path):
         assert created.status_code == 201, created.text
         session_id = created.json()["manifest"]["id"]
 
-        # Replace the attached runtime with one whose feed is genuinely stale.
         registry = app.state.runtimes  # type: ignore[attr-defined]
         registry.detach(session_id)
         stale = start_session(
@@ -263,24 +247,17 @@ def test_readiness_reflects_stale_telemetry(tmp_path: Path):
         )
 
 
-# --------------------------------------------------------------------------- #
-# metrics
-# --------------------------------------------------------------------------- #
-
-
 def test_metrics_reports_planner_time_apart_from_observation_age(tmp_path: Path):
     app = _app(tmp_path)
     with TestClient(app) as client:
         body = client.get("/metrics").json()
     print(f"\nmetrics keys: {sorted(body)}")
 
-    # Separate keys, so a fast solver cannot hide a stale feed.
     assert "planner_duration_ms" in body
     assert "observation_age_s" in body
     assert body["planner_duration_ms"].keys() >= {"p50", "p95", "p99", "samples"}
     assert body["observation_age_s"].keys() >= {"p50", "p95", "samples"}
 
-    # The rest of the operational surface the spec names.
     for key in ("uptime_s", "requests", "websocket_resyncs", "spool_depth"):
         assert key in body, f"/metrics does not report {key}"
 

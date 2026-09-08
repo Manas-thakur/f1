@@ -22,10 +22,10 @@ import styles from '../engineer/workspace.module.css';
 export interface BranchCompareProps {
   readonly sessionId: string;
   readonly client?: LabClient;
-  /** Snapshots created in this view. Labelled as such; not a server listing. */
+  
   readonly snapshots: readonly SnapshotReference[];
   readonly onSnapshotCreated: (snapshot: SnapshotReference) => void;
-  /** Reports the queued job together with exactly what was submitted. */
+  
   readonly onExperimentCreated: (
     experimentId: string,
     submission: SubmittedExperiment,
@@ -84,18 +84,7 @@ function parseSeeds(text: string): { seeds: readonly number[]; error: string | n
   return { seeds, error: null };
 }
 
-/**
- * Compare from here.
- *
- * One snapshot, one reference treatment, one candidate treatment, and the
- * *same* disturbance seed list applied to both, which is what makes the
- * comparison paired. Each branch runs its own responsive opponent inside the
- * backend; nothing here replays a fixed rival trajectory and calls it a cause.
- *
- * The alignment axis is stated explicitly and shared with every trace panel in
- * the workspace, because "the candidate is ahead" means different things at a
- * common distance and at a common elapsed time.
- */
+
 export function BranchCompare({
   sessionId,
   client = labClient,
