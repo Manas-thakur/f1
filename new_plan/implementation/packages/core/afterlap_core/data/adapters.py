@@ -254,7 +254,7 @@ class _BaseAdapter:
 SIMULATOR_MAPPING_REVISION = "sim-observation-map-2"
 
 
-def simulator_mapping(source_id: str = "simulator") -> MappingTable:
+def simulator_mapping(source_id: str = "simulator", *, include_relational: bool = False) -> MappingTable:
     """Canonical simulator observation map for an own-car stream.
 
     The simulator publishes SI values already, but the mapping still exists so
@@ -271,12 +271,23 @@ def simulator_mapping(source_id: str = "simulator") -> MappingTable:
     ``recharge_this_lap_j`` is a per-lap counter that resets, so publishing it
     beside a cumulative channel would invite a consumer to add the two.
 
-    Relational quantities are absent because an own-car stream does not emit
-    them: the simulator puts ``gap_s`` and the relative channels on a rival
-    record. A caller that genuinely has a grid declares ``gap_ahead_s`` and
-    ``gap_behind_s`` through the ``channels`` argument of
-    :func:`simulator_capability`.
+    Relational quantities are absent by default because a bare own-car stream
+    does not emit them: the simulator puts ``gap_s`` and the relative channels
+    on a rival record. A session source that computes gaps from the grid asks
+    for ``include_relational=True`` and declares the same two channels through
+    the ``channels`` argument of :func:`simulator_capability`. The default pair
+    of mapping and capability therefore stays consistent, and so does the
+    session pair, without either promising a channel its own producer cannot
+    supply.
     """
+    relational = (
+        (
+            FieldMapping("gap_ahead_s", "gap_ahead_s", "s"),
+            FieldMapping("gap_behind_s", "gap_behind_s", "s"),
+        )
+        if include_relational
+        else ()
+    )
     return MappingTable(
         mapping_revision=SIMULATOR_MAPPING_REVISION,
         source_id=source_id,
@@ -290,6 +301,7 @@ def simulator_mapping(source_id: str = "simulator") -> MappingTable:
             FieldMapping("electrical_power_w", "electrical_power_w", "W"),
             FieldMapping("battery_temperature_k", "battery_temperature_k", "K"),
             FieldMapping("recharge_cumulative_j", "recharge_ledger_j", "J"),
+            *relational,
         ),
         forbidden_fields={
             "world_state": "simulator truth is not an observation",
