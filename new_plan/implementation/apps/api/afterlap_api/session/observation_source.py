@@ -40,10 +40,13 @@ from afterlap_core.simulation.observation import Observation
 SIMULATOR_SOURCE_ID = "simulator"
 
 OWN_CHANNEL_FIELDS: Mapping[str, str] = {
-    # observation channel -> vendor field name in simulator_mapping()
+    # observation channel -> vendor field name in simulator_mapping().
+    # These are the simulator's own names, deliberately: the mapping table is
+    # the one place a rename from `s_m` to the registered `lap_distance_m` is
+    # recorded, so this source must not perform that rename itself.
     "speed_mps": "speed_mps",
     "progress_m": "progress_m",
-    "s_m": "lap_distance_m",
+    "s_m": "s_m",
     "battery_energy_j": "battery_energy_j",
     "battery_temperature_k": "battery_temperature_k",
 }
@@ -93,6 +96,7 @@ def simulator_session_capability(
     relational_channels: Sequence[str] = RELATIONAL_CHANNELS,
     clock_error_s: float = 0.0,
     observation_delay_s: float = 0.0,
+    extra_limitations: Sequence[str] = (),
 ) -> SourceCapability:
     """Declare exactly what this observation stream publishes.
 
@@ -121,6 +125,10 @@ def simulator_session_capability(
     limitations.append(
         "rival records carry derived position and speed only; rival stored energy is never published"
     )
+    # Circuit-level limitations (the real_circuit_synthetic_energy label, an
+    # unknown corridor, an unreviewed event overlay) are appended by the
+    # session factory so they travel with the stored manifest.
+    limitations.extend(extra_limitations)
     return SourceCapability(
         source_id=source_id,
         mode=SessionMode.SIMULATION,
@@ -128,7 +136,7 @@ def simulator_session_capability(
         measured_channels=supported,
         update_rates_hz=dict.fromkeys(supported, rate_hz),
         clock_error_s=clock_error_s,
-        limitations=tuple(limitations),
+        limitations=tuple(dict.fromkeys(limitations)),
     )
 
 

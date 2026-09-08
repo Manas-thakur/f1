@@ -113,9 +113,18 @@ def append_event(
     payload: dict[str, Any],
     schema_version: str = "1.0",
     publish: bool = True,
+    sequence: int | None = None,
 ) -> SessionEvent:
-    """Append one ordered session event and, optionally, its outbox row."""
-    sequence = next_sequence(db, session_id)
+    """Append one ordered session event and, optionally, its outbox row.
+
+    ``sequence`` is normally claimed here. A caller passes one only when the
+    payload has to *contain* the sequence it will be published at -- the
+    session-start snapshot event embeds a ``SessionSnapshot`` whose
+    ``last_sequence`` must be its own -- and it then claims the sequence with
+    :func:`next_sequence` first.
+    """
+    if sequence is None:
+        sequence = next_sequence(db, session_id)
     event = SessionEvent(
         id=_new_id("evt"),
         session_id=session_id,
