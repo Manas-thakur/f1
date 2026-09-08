@@ -139,11 +139,11 @@ otherwise.
 uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor
 uv run python -m pytest tests
-pnpm install --frozen-lockfile
-pnpm --filter @afterlap/web typecheck
-pnpm --filter @afterlap/web test
-pnpm --filter @afterlap/web build
-pnpm --filter @afterlap/web test:e2e
+bun install --frozen-lockfile
+bun run typecheck
+bun run test
+bun run build
+bun run test:e2e
 ```
 
 `ruff check` and `mypy` are clean across `apps`, `packages`, `workers` and
@@ -317,12 +317,12 @@ uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor
 uv run python -m pytest tests
 
-pnpm install --frozen-lockfile
-pnpm --filter @afterlap/web build
+bun install --frozen-lockfile
+bun run build
 
 # native
 uv run python -m uvicorn afterlap_api.main:app --host 127.0.0.1 --port 8000
-cd apps/web && pnpm exec vite --port 5200
+cd apps/web && bunx vite --port 5200
 
 # packaged
 cd infra && cp .env.example .env   # then set AFTERLAP_DB_PASSWORD

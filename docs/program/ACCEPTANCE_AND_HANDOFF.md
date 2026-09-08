@@ -44,7 +44,7 @@ Coordinator compares handoff write set with assignment; rejects overlapping rewr
 
 ## Initial implementation test commands
 
-Coordinator establishes `python -m pytest tests/contracts`, module-specific `python -m pytest tests/<module>`, and `npm run test` / `npm run test:e2e` in the new implementation workspace. These are required script contracts to create, not functioning commands in this documentation-only package. Record actual executable versions in lockfiles and the release manifest.
+Coordinator establishes `python -m pytest tests/contracts`, module-specific `python -m pytest tests/<module>`, and `bun run test` / `bun run test:e2e` in the new implementation workspace. These are required script contracts to create, not functioning commands in this documentation-only package. Record actual executable versions in lockfiles and the release manifest.
 
 ## Build versus research uncertainty
 

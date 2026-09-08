@@ -40,7 +40,7 @@ Wait for results, inspect the actual diffs and rerun relevant checks. Worker sum
 
 ## Wave 0 foundation
 
-Scaffold the independent uv/pnpm workspace and lock released compatible dependencies. Use canonical import paths in TECH_STACK. Freeze Pydantic contracts and generated TS/JSON schemas for StateEstimate, RuleContext, PlanCandidate, Recommendation, lifecycle/execution events, snapshots, model bundles and evaluation records. The supplied telemetry schema is a starting example, not the entire contract set.
+Scaffold the independent uv/bun workspace and lock released compatible dependencies. Use canonical import paths in TECH_STACK. Freeze Pydantic contracts and generated TS/JSON schemas for StateEstimate, RuleContext, PlanCandidate, Recommendation, lifecycle/execution events, snapshots, model bundles and evaluation records. The supplied telemetry schema is a starting example, not the entire contract set.
 
 Implement migrations, typed fixture factories, provenance/capability enums, schema drift checks and the acados build spike. Provide shared component slots, channel registry and client interfaces. Implement the documented test/start/doctor commands. Agents may not invent integration fields before contract freeze.
 

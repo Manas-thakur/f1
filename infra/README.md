@@ -40,7 +40,7 @@ Verify the loop without a browser:
 |---|---|
 | `docker-compose.yml` | db, migrate, api, batch, web; four named volumes; loopback publishes |
 | `api.Dockerfile` | Linux numerical image. Serves the API, the migration job and the batch worker |
-| `web.Dockerfile` | pnpm build stage, then nginx serving the output |
+| `web.Dockerfile` | bun build stage, then nginx serving the output |
 | `nginx.conf` | Static assets plus `/api` and `/ws` on one origin, with WebSocket upgrade |
 | `*.Dockerfile.dockerignore` | Per-Dockerfile ignore files (BuildKit reads these first) |
 | `.env.example` | Copy to `.env`. `AFTERLAP_DB_PASSWORD` has **no default** |
@@ -211,7 +211,7 @@ session, not just healthy containers."* Verified, in this order:
    separate; the session runtime is not.
 6. **Not verified on a clean machine.** Both images built and ran here, but no
    pull-and-run from a registry on a second host has been attempted, and the
-   `uv` and `pnpm` layers need network access at build time.
+   `uv` and `bun` layers need network access at build time.
 7. **`docker compose down -v` deletes the audit trail.** There is no backup
    step in this packaging, and `ROLLBACK.md` in the release bundle assumes the
    database survives. A `pg_dump` sidecar is unbuilt.

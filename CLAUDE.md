@@ -20,8 +20,8 @@ This repository is `Manas-thakur/f1` on GitHub.
 uv sync --frozen --all-packages
 uv run python -m afterlap_core.cli doctor
 uv run pytest tests/contracts tests/numerics
-pnpm --filter @afterlap/web typecheck
-pnpm --filter @afterlap/web test
+bun run typecheck
+bun run test
 ```
 
 - SI units internally; display conversions only at the UI edge.

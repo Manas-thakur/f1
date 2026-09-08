@@ -7,7 +7,7 @@ This is the implementation decision, not a list of alternatives. All production 
 | Layer | Choice | Purpose |
 |---|---|---|
 | Python | CPython 3.12, uv workspace | One scientific runtime and frozen dependency graph. |
-| Web tooling | Node.js 24, pnpm 10 | Build tooling only; no second application backend. |
+| Web tooling | Bun 1.3 | Build tooling only; no second application backend. |
 | Interface | React 19, strict TypeScript, Vite, React Router | Client-rendered operational routes and static product pages with deep links. |
 | Server state | TanStack Query | REST snapshots, mutation status and cache invalidation. |
 | Live view state | Zustand | Bounded telemetry buffers, cursor, selected channels and connection sequence. |
@@ -75,19 +75,19 @@ Use role-scoped session credentials and a single operator lease. Development boo
 
 ## Dependency freeze and commands
 
-A01 writes `infra/dependency-baseline.md` with versions, official compatibility requirements and spike evidence. Generate `uv.lock` and `pnpm-lock.yaml`; thereafter install frozen. Do not install prereleases merely because an official documentation page tracks master. Regenerate schemas in CI and fail on drift.
+A01 writes `infra/dependency-baseline.md` with versions, official compatibility requirements and spike evidence. Generate `uv.lock` and `bun.lock`; thereafter install frozen. Do not install prereleases merely because an official documentation page tracks master. Regenerate schemas in CI and fail on drift.
 
 A01 implements these command contracts:
 
 ```text
 uv sync --frozen --all-packages
-pnpm install --frozen-lockfile
+bun install --frozen-lockfile
 uv run python -m afterlap_core.cli doctor
 uv run pytest tests/contracts tests/numerics
-pnpm --filter @afterlap/web typecheck
-pnpm --filter @afterlap/web test
-pnpm --filter @afterlap/web build
-pnpm --filter @afterlap/web test:e2e
+bun run typecheck
+bun run test
+bun run build
+bun run test:e2e
 ```
 
 Doctor checks manifests, writable artifact storage and numerical solver availability without printing secrets. Compose acceptance requires a working closed-loop synthetic session, not just healthy containers. CI runs CPU correctness and UI checks; long training and held-out benchmarks are separately reproducible jobs.

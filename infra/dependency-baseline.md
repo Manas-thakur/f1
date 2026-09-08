@@ -11,7 +11,7 @@ claims about the newest release of each project.
 | Operating system | Windows 11 Home Single Language 10.0.26200 |
 | Python | CPython 3.12.14 (uv-managed) |
 | Package manager | uv 0.12.10 |
-| Node.js / pnpm | v24.19.0 / 10.34.5 |
+| Bun | 1.3.14 |
 
 ## Installed Python versions
 
@@ -88,11 +88,11 @@ uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor
 uv run python -m afterlap_core.cli generate-contracts --check
 uv run python -m pytest tests/contracts tests/numerics
-pnpm install --frozen-lockfile
-pnpm --filter @afterlap/web typecheck
-pnpm --filter @afterlap/web test
-pnpm --filter @afterlap/web build
-pnpm --filter @afterlap/web test:e2e
+bun install --frozen-lockfile
+bun run typecheck
+bun run test
+bun run build
+bun run test:e2e
 ```
 
 `--all-extras` is required: `torch`, `stable-baselines3`, `gymnasium`,

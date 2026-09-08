@@ -2,17 +2,16 @@
   "name": "afterlap-workspace",
   "version": "0.1.0",
   "private": true,
-  "description": "AFTERLAP Node workspace. Build tooling only; the application backend is Python.",
-  "engines": {
-    "node": ">=24.0.0",
-    "pnpm": ">=10.0.0"
-  },
-  "packageManager": "pnpm@10.34.5",
+  "description": "AFTERLAP web workspace. Build tooling only; the application backend is Python.",
+  "packageManager": "bun@1.3.14",
+  "workspaces": ["apps/web"],
+  "trustedDependencies": ["esbuild"],
   "scripts": {
-    "typecheck": "pnpm --filter @afterlap/web typecheck",
-    "test": "pnpm --filter @afterlap/web test",
-    "build": "pnpm --filter @afterlap/web build",
-    "test:e2e": "pnpm --filter @afterlap/web test:e2e",
-    "lint": "pnpm --filter @afterlap/web lint"
+    "typecheck": "bun run --filter @afterlap/web typecheck",
+    "test": "bun run --filter @afterlap/web test",
+    "build": "bun run --filter @afterlap/web build",
+    "test:e2e": "bun run --filter @afterlap/web test:e2e",
+    "e2e:install": "bun run --filter @afterlap/web e2e:install",
+    "lint": "bun run --filter @afterlap/web lint"
   }
 }

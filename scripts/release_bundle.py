@@ -28,7 +28,7 @@ reproducible on a machine with no VCS at all. `source_revision.kind` says
 
 **Anything absent is recorded as absent, with the command that would produce
 it.** A bundle with no frontend assets says `"state": "unavailable"` and names
-`pnpm --filter @afterlap/web build`. It never ships an empty directory and
+`bun run build`. It never ships an empty directory and
 calls it assets, and `--require-complete` turns any such gap into a non-zero
 exit for a release gate.
 
@@ -81,10 +81,8 @@ SOURCE_FILES: tuple[str, ...] = (
     "pyproject.toml",
     "uv.lock",
     "package.json",
-    "pnpm-lock.yaml",
-    "pnpm-workspace.yaml",
+    "bun.lock",
     ".python-version",
-    ".npmrc",
     "apps/api/alembic.ini",
     "apps/api/pyproject.toml",
     "apps/web/package.json",
@@ -286,7 +284,7 @@ def frontend(root: Path, staging: Path, dist: Path | None) -> Section:
     """Built web assets, or an honest statement that they were not built."""
     candidate = dist or (root / "apps" / "web" / "dist")
     index = candidate / "index.html"
-    build_command = "pnpm install --frozen-lockfile && pnpm --filter @afterlap/web build"
+    build_command = "bun install --frozen-lockfile && bun run build"
     if not index.is_file():
         return Section(
             "frontend_assets",
@@ -525,11 +523,11 @@ def test_report(staging: Path, provided: Iterable[Path]) -> Section:
         "uv run python -m afterlap_core.cli generate-contracts --check",
         "uv run python -m pytest tests/contracts tests/numerics",
         "uv run python -m pytest tests/operations",
-        "pnpm install --frozen-lockfile",
-        "pnpm --filter @afterlap/web typecheck",
-        "pnpm --filter @afterlap/web test",
-        "pnpm --filter @afterlap/web build",
-        "pnpm --filter @afterlap/web test:e2e",
+        "bun install --frozen-lockfile",
+        "bun run typecheck",
+        "bun run test",
+        "bun run build",
+        "bun run test:e2e",
     ]
     (out / "COMMANDS.md").write_text(
         "# Verification commands\n\n"
@@ -660,7 +658,7 @@ AFTERLAP_ENV=development uv run python -m uvicorn afterlap_api.main:app \\
     --host 127.0.0.1 --port 8000
 
 # second terminal
-cd apps/web && pnpm install --frozen-lockfile && pnpm exec vite --port 5200
+cd apps/web && bun install --frozen-lockfile && bunx vite --port 5200
 ```
 
 The API creates its schema on startup, so no separate migration step is needed
@@ -682,7 +680,7 @@ exits non-zero if any step does not happen.
 ## Frontend assets
 
 State in this bundle: **{frontend_state}**. If `unavailable`, build them with
-`pnpm install --frozen-lockfile && pnpm --filter @afterlap/web build`; the
+`bun install --frozen-lockfile && bun run build`; the
 compose `web` service builds them itself.
 
 ## Rollback

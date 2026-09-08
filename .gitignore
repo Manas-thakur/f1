@@ -17,7 +17,7 @@ dist/
 *.tsbuildinfo
 playwright-report/
 test-results/
-.pnpm-store/
+.bun/
 
 artifacts/**
 !artifacts/.gitkeep

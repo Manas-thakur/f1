@@ -33,7 +33,7 @@ generated schemas.
 | A03 | Simulation truth, physics, opponents, snapshots | `packages/core/afterlap_core/simulation/`, `configs/tracks/`, `configs/cars/`, `configs/scenarios/`, `tests/simulation/`, `tests/numerics/` | integrated |
 | A04 | Rules engine and independent checker | `packages/core/afterlap_core/rules/`, `configs/rules/`, `tests/rules/` | integrated |
 | A02 | Ingestion, provenance, recording, replay | `packages/core/afterlap_core/data/`, `tests/data/` | integrated |
-| A12 | Web workspace, design system, shell | `apps/web/`, `package.json`, `pnpm-workspace.yaml` | integrated |
+| A12 | Web workspace, design system, shell | `apps/web/`, `package.json`, `bun.lock` | integrated |
 
 ### Coordinator verification of wave 1
 

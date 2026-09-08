@@ -21,11 +21,11 @@ Product code lives at the repository root. Specifications, plans, design mockups
 
 ## Commands
 
-Python 3.12 and Node 24. Install with frozen locks:
+Python 3.12 and Bun 1.3. Install with frozen locks:
 
 ```
 uv sync --frozen --all-packages
-pnpm install --frozen-lockfile
+bun install --frozen-lockfile
 ```
 
 ```
@@ -35,10 +35,10 @@ uv run ruff format --check .
 uv run mypy
 uv run pytest tests/contracts tests/numerics
 uv run python docs/tools/validate_package.py
-pnpm --filter @afterlap/web lint
-pnpm --filter @afterlap/web typecheck
-pnpm --filter @afterlap/web test
-pnpm --filter @afterlap/web build
+bun run lint
+bun run typecheck
+bun run test
+bun run build
 ```
 
 CI runs the same gates. There is no local-only check.

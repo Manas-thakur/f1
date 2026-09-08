@@ -5,7 +5,7 @@ Product code lives at the repository root. Specifications live under `docs/` and
 ## Layout
 
 - Python 3.12 via `uv` at the repository root. Run `uv run ...`.
-- Node 24 / pnpm 10 for `apps/web` only.
+- Bun 1.3 for `apps/web` only.
 - Docs: `docs/program`, `docs/contracts`, module specs, `docs/design`, `docs/deck`, `docs/handoffs`.
 - Handoffs: `docs/handoffs/<agent-id>.md`.
 
