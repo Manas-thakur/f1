@@ -16,16 +16,17 @@ can tell them apart:
   A session withdrawing advice on an aged observation makes the process not
   ready, because the decision system it exists to be is not working.
 
-A paused, stopped or finished session is reported in ``detail`` and never
-fails readiness. ``infra/api.Dockerfile``'s healthcheck probes this route, so
-failing on an idle session would restart a container whose only session an
-engineer had deliberately paused.
+A created, paused, stopped or finished session is reported in ``detail`` and
+never fails readiness. ``infra/api.Dockerfile``'s healthcheck probes this
+route, so failing on an idle session would restart a container whose only
+session an engineer had just created, or had deliberately paused.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import anyio.to_thread
 from fastapi import APIRouter, Request, Response
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -45,8 +46,8 @@ router = APIRouter()
 
 REQUIRED_FOR_READINESS = ("contracts", "numerics", "storage")
 
-IDLE_LIFECYCLES = frozenset({"paused", "stopped", "finished"})
-"""Lifecycles that are idle by an operator's choice, not by a fault."""
+IDLE_LIFECYCLES = frozenset({"created", "paused", "stopped", "finished"})
+"""Lifecycles that are idle because nobody asked them to decide, not by a fault."""
 
 
 @router.get("/health/live", response_model=HealthResponse)
@@ -65,7 +66,7 @@ async def ready(request: Request, response: Response) -> HealthResponse:
         if capabilities.get(name, CapabilityState.UNAVAILABLE) is CapabilityState.UNAVAILABLE
     ]
 
-    store_error = _lifecycle_store_error(request)
+    store_error = await anyio.to_thread.run_sync(_lifecycle_store_error, request)
     if store_error is not None:
         detail["lifecycle_store"] = store_error
     else:
@@ -115,6 +116,10 @@ def _lifecycle_store_error(request: Request) -> str | None:
     issuing advice: a recommendation nobody can audit later is not one this
     system is willing to make. So a store that has gone away since startup is
     a readiness failure, not a warning.
+
+    Called from a worker thread. A blocking round trip on the event loop would
+    stall every other request while a struggling database decides whether to
+    answer, which is the opposite of what a health probe is for.
     """
     database = getattr(request.app.state, "database", None)
     engine = getattr(database, "engine", None)

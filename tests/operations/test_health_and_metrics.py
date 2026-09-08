@@ -234,6 +234,46 @@ def test_readiness_reflects_stale_telemetry(tmp_path: Path):
         )
 
 
+def test_a_created_or_paused_session_is_idle_and_does_not_fail_readiness(tmp_path: Path):
+    """Idle is not broken.
+
+    `infra/api.Dockerfile` probes `/health/ready`, so a session that nobody has
+    asked to decide yet must not restart the container holding it. The
+    demonstration runbook creates a session and then checks readiness before
+    starting it, which is exactly this sequence.
+    """
+    app = _app(tmp_path)
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/v1/sessions",
+            json={
+                "mode": "simulation",
+                "scenario_id": SCENARIO_ID,
+                "ruleset_id": RULE_PACK_ID,
+                "seed": SEED,
+            },
+            headers={"Idempotency-Key": "health-created"},
+        )
+        assert created.status_code == 201, created.text
+        session_id = created.json()["manifest"]["id"]
+
+        response = client.get("/api/v1/health/ready")
+        detail = response.json()["detail"]
+        print(f"\nwith one created session: HTTP {response.status_code} {detail.get('idle_sessions')}")
+        assert response.status_code == 200, (
+            f"a session that has not been started made the process unready ({detail})"
+        )
+        assert session_id in detail["idle_sessions"]
+        assert "sessions" not in detail, "an idle session was reported as an obstruction"
+
+        runtime = app.state.runtimes.get(session_id)  # type: ignore[attr-defined]
+        runtime.advance(1.0)
+        runtime.pause()
+        paused = client.get("/api/v1/health/ready")
+        assert paused.status_code == 200, paused.text
+        assert "paused" in paused.json()["detail"]["idle_sessions"]
+
+
 def test_metrics_reports_planner_time_apart_from_observation_age(tmp_path: Path):
     app = _app(tmp_path)
     with TestClient(app) as client:

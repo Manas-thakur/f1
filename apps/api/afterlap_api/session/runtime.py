@@ -1241,13 +1241,15 @@ class InProcessSessionRuntime:
         a fault of the process and must not fail a container healthcheck.
         """
         with self._lock:
+            estimate = self._last_estimate
             if self._stopped:
                 lifecycle = "stopped"
             elif self._paused:
                 lifecycle = "paused"
+            elif estimate is None or self._last_rule_context is None:
+                lifecycle = "created"
             else:
                 lifecycle = "running"
-            estimate = self._last_estimate
             age_s = None if estimate is None else max(0.0, self.session_time_s - estimate.cutoff_s)
             recommendation = self._last_recommendation
             withdrawn = (
@@ -1255,9 +1257,7 @@ class InProcessSessionRuntime:
             )
             obstructions: list[str] = []
             if lifecycle == "running":
-                if estimate is None or self._last_rule_context is None:
-                    obstructions.append("no estimate has been produced since the session was restored")
-                elif age_s is not None and age_s > MAX_DECISION_OBSERVATION_AGE_S:
+                if age_s is not None and age_s > MAX_DECISION_OBSERVATION_AGE_S:
                     obstructions.append(f"newest usable observation is {age_s:.1f} s old")
                 if withdrawn and recommendation is not None:
                     obstructions.append(f"advice is withdrawn: {recommendation.display_text}")
