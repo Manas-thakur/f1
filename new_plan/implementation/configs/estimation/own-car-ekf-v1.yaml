@@ -1,0 +1,181 @@
+# Own-car extended Kalman filter noise manifest.
+#
+# Every number here is a hand-tuned synthetic assumption. They were chosen by
+# running the calibration harness in afterlap_core.estimation.calibration over
+# generated trajectories and adjusting until the normalised innovation squared
+# (NIS) sat near its expected value of 1.0 per scalar channel and the nominal
+# 90 % interval covered close to 90 % of held-out scenarios. See handoffs/A05.md
+# for the measured figures. None of this is a calibrated real car.
+id: own-car-ekf-v1
+synthetic: true
+description: "Process and measurement noise for the progress/speed/acceleration/energy EKF."
+
+motion:
+  acceleration_time_constant_s:
+    value: 0.8
+    unit: "s"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.05
+    note: >-
+      First-order relaxation time of longitudinal acceleration toward the coasting
+      drag equilibrium. Shorter makes the filter forget a throttle input faster.
+  drag_per_m:
+    value: 0.000975
+    unit: "1/m"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    upper_bound: 0.01
+    note: >-
+      0.5 * rho * CdA / mass with rho=1.2 kg/m^3, CdA=1.3 m^2, mass=800 kg. The
+      coasting deceleration at speed v is drag_per_m * v^2, i.e. -5.5 m/s^2 at 75 m/s.
+      This is the only state nonlinearity in the process model.
+  process_jerk_psd:
+    value: 25.0
+    unit: "m^2/s^5"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.01
+    note: >-
+      Continuous white-noise-jerk power spectral density driving the
+      [progress, speed, acceleration] block. Acceleration 1-sigma grows as
+      sqrt(psd * dt): 1.1 m/s^2 over a 50 ms tick, 5 m/s^2 over a second.
+
+energy:
+  harvest_efficiency:
+    value: 0.92
+    unit: "1"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.1
+    upper_bound: 1.0
+    note: >-
+      Battery-side energy gained per joule of negative (harvesting) DC-bus energy.
+      Deployment is charged to the battery at unity; the loss is applied on the
+      harvest leg only, which keeps the DC-bus ledger and the battery ledger separate.
+  power_model_sigma_w:
+    value: 4000.0
+    unit: "W"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.0
+    note: >-
+      1-sigma error of the measured DC-bus power used as the integration input.
+      Contributes (sigma * dt)^2 to the energy process variance each step.
+  unobserved_gap_sigma_w:
+    value: 90000.0
+    unit: "W"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: >-
+      1-sigma power assumed over an interval the power channel did not observe.
+      Multiplied by the integration_gap_s that afterlap_core.data.quality reports,
+      so a feed dropout widens energy uncertainty instead of integrating to zero.
+  physical_min_j:
+    value: 0.0
+    unit: "J"
+    source: "synthetic:afterlap-scenario-sketch-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Lower physical bound of the battery operating window."
+  physical_max_j:
+    value: 4000000.0
+    unit: "J"
+    source: "synthetic:afterlap-scenario-sketch-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Upper physical bound of the battery operating window (synthetic rule pack)."
+
+measurement:
+  speed_sigma_mps:
+    value: 0.2
+    unit: "m/s"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.001
+    note: "Base speed-channel 1-sigma before clock inflation."
+  progress_sigma_m:
+    value: 0.6
+    unit: "m"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.001
+    note: "Base progress-channel 1-sigma before clock inflation."
+  acceleration_sigma_mps2:
+    value: 0.8
+    unit: "m/s^2"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+    note: "Only used when a source actually measures longitudinal acceleration."
+  energy_sigma_j:
+    value: 15000.0
+    unit: "J"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 1.0
+    note: "Battery-state-of-charge measurement 1-sigma at the battery terminals."
+  temperature_sigma_k:
+    value: 1.5
+    unit: "K"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.01
+    note: "Battery temperature 1-sigma; tracked outside the EKF state as a smoothed channel."
+
+initial:
+  progress_sigma_m:
+    value: 5.0
+    unit: "m"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+  speed_sigma_mps:
+    value: 2.0
+    unit: "m/s"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+  acceleration_sigma_mps2:
+    value: 0.5
+    unit: "m/s^2"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+  energy_sigma_j:
+    value: 40000.0
+    unit: "J"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 1.0
+
+diagnostics:
+  nis_alarm_threshold:
+    value: 9.0
+    unit: "1"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 1.0
+    note: >-
+      Residual alarm fires when the exponentially smoothed scalar NIS exceeds this.
+      9.0 is a 3-sigma normalised innovation. An alarm widens scenarios; it never
+      retrains anything.
+  nis_smoothing:
+    value: 0.1
+    unit: "1"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+    upper_bound: 1.0
+    note: "Exponential smoothing weight applied to each new normalised innovation."
+  max_prediction_step_s:
+    value: 0.25
+    unit: "s"
+    source: "synthetic:afterlap-ekf-tuning-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+    note: >-
+      Longest single linearisation interval. A larger elapsed time is subdivided so
+      the first-order Jacobian stays a defensible approximation.

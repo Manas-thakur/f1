@@ -1,0 +1,269 @@
+# Rival particle-filter manifest.
+#
+# AUTHORSHIP: the mode transition matrix below is a HAND-AUTHORED PRIOR. It was
+# not estimated from data, synthetic or otherwise. `transition_matrix_authorship`
+# is loaded and carried into the belief provenance so no downstream consumer can
+# mistake it for a fitted quantity. Estimating it from synthetic opponent
+# trajectories is an explicit follow-up, not something this manifest claims.
+id: rival-modes-v1
+synthetic: true
+description: "128-particle reactive-intention belief filter over conserve/normal/attack/defend."
+
+transition_matrix_authorship: hand_authored_prior
+transition_matrix_note: >-
+  Rows are conserve, normal, attack, defend in that order and each row is the
+  probability of the next mode after one mode_time_constant_s of elapsed time.
+  Values encode "modes are sticky, normal is the hub, attack and defend are
+  entered from normal far more often than from each other". No data was fitted.
+mode_order: [conserve, normal, attack, defend]
+transition_matrix:
+  - [0.82, 0.14, 0.02, 0.02]
+  - [0.08, 0.76, 0.09, 0.07]
+  - [0.04, 0.20, 0.70, 0.06]
+  - [0.04, 0.18, 0.05, 0.73]
+
+filter:
+  particle_count:
+    value: 128.0
+    unit: "1"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 8.0
+    note: "MODEL_AND_DATA_SPEC initial setting to profile, not a tuned optimum."
+  ess_resample_fraction:
+    value: 0.5
+    unit: "1"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.05
+    upper_bound: 1.0
+    note: "Systematic resampling fires when effective sample size < fraction * N."
+  mode_weight_floor:
+    value: 0.02
+    unit: "1"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    upper_bound: 0.2
+    note: >-
+      Minimum total posterior weight any single mode retains after normalisation.
+      Prevents an irreversible collapse: a mode that is contradicted for a long
+      time can still recover when the evidence reverses.
+  min_particles_per_mode:
+    value: 2.0
+    unit: "1"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 1.0
+    note: "Support floor re-seeded after resampling so a mode cannot go extinct."
+  mode_time_constant_s:
+    value: 6.0
+    unit: "s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.1
+    note: >-
+      Elapsed time over which the hand-authored transition matrix applies in full.
+      For a step dt the applied matrix is (1-lam)*I + lam*P with lam = 1-exp(-dt/tau),
+      which is stochastic for every dt and reduces to the identity as dt -> 0.
+
+behaviour:
+  base_speed_gain_mps:
+    conserve: -1.2
+    normal: 0.0
+    attack: 1.55
+    defend: 1.55
+  pressure_speed_gain_mps:
+    conserve: 0.0
+    normal: 0.0
+    attack: 0.25
+    defend: 0.55
+  base_power_w:
+    conserve: -40000.0
+    normal: 0.0
+    attack: 165000.0
+    defend: 165000.0
+  pressure_power_w:
+    conserve: 0.0
+    normal: 0.0
+    attack: 25000.0
+    defend: 55000.0
+  ambiguity_note: >-
+    attack and defend carry IDENTICAL base pace and power signatures on purpose.
+    A rival that is fast could equally be attacking the car in front or defending
+    from the car behind, and could also simply have different tyres, aero or engine
+    output. With no car close behind it (pressure = 0) the two modes are exactly
+    unidentifiable from pace, and their posterior ratio is then decided by the
+    transition prior alone, which is the honest answer. Only the pressure term --
+    contextual knowledge that someone is actually attacking this rival -- separates
+    them, and even then only partially. Any config that split them cleanly on pace
+    would be asserting knowledge the observations do not carry.
+
+dynamics:
+  deploy_reference_energy_j:
+    value: 900000.0
+    unit: "J"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 1000.0
+    note: >-
+      Energy above which a rival can sustain its mode's full pace gain. The gain is
+      scaled by clip(energy / reference, 0, 1), so the pace signal saturates: it
+      identifies "not nearly empty" and says nothing about a full battery. This is
+      why observing acceleration cannot collapse the energy posterior.
+  pace_bias_sigma_mps:
+    value: 0.35
+    unit: "m/s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Prior spread of the per-rival pace bias: tyre, aero and engine ambiguity."
+  pace_bias_time_constant_s:
+    value: 45.0
+    unit: "s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 1.0
+    note: "Ornstein-Uhlenbeck relaxation of the pace bias toward zero."
+  pace_bias_process_sigma_mps:
+    value: 0.10
+    unit: "m/s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Stationary process spread of the pace bias per mode_time_constant_s."
+  energy_process_sigma_w:
+    value: 90000.0
+    unit: "W"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.0
+    note: >-
+      Bounded process noise on the rival energy hypothesis, applied as sigma * dt
+      and clipped to +/- 3 sigma so a single step cannot teleport a battery. It
+      represents how little we know about a rival's actual DC-bus deployment
+      *within* one coarse behaviour mode; the modes span 0 to 350 kW, so tens of
+      kilowatts of within-mode uncertainty is the physical claim. Deliberately set
+      at the conservative end of that range: measured coverage of the reported 90 %
+      rival-energy interval is 0.81 (see handoffs/A05.md), so the interval is still
+      slightly optimistic, and an optimistic rival-energy interval is the more
+      dangerous error -- it lets a planner assume a rival is emptier than it is.
+  energy_min_j:
+    value: 0.0
+    unit: "J"
+    source: "synthetic:afterlap-scenario-sketch-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Legal lower bound; particles are clipped, never wrapped."
+  energy_max_j:
+    value: 4000000.0
+    unit: "J"
+    source: "synthetic:afterlap-scenario-sketch-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+  prior_energy_min_j:
+    value: 200000.0
+    unit: "J"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: >-
+      Broad plausible initialisation only. A rival at the very edges of the window
+      at an arbitrary moment mid-race is implausible enough to exclude, but the
+      prior is otherwise uniform because nothing observable pins it down.
+  prior_energy_max_j:
+    value: 3600000.0
+    unit: "J"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+  max_deploy_power_w:
+    value: 350000.0
+    unit: "W"
+    source: "synthetic:afterlap-scenario-sketch-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Physically reachable per-step energy change bound used by scenario sampling."
+
+likelihood:
+  gap_rate_sigma_mps:
+    value: 0.30
+    unit: "m/s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.001
+    note: "Noise of a gap-rate observation derived by differencing two gap samples."
+  rival_speed_sigma_mps:
+    value: 0.25
+    unit: "m/s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.001
+  gap_measurement_sigma_m:
+    value: 0.9
+    unit: "m"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.001
+    note: >-
+      1-sigma of one derived gap-distance sample: the rival's position error and
+      our own combined. Differencing two of them over an interval dt amplifies it
+      to sqrt(2) * sigma / dt, which is what the gap-rate likelihood actually uses.
+      Ignoring that amplification is the fastest way to build a filter that chases
+      position noise and reports a confident, wrong energy.
+  belief_update_interval_s:
+    value: 0.5
+    unit: "s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.01
+    note: >-
+      Cadence at which rival observations are consumed. A 20 Hz feed does not
+      carry 20 independent looks per second at a rival's intention; treating it as
+      if it did makes the posterior sqrt(20) times too sharp every second. The gap
+      rate is formed over non-overlapping intervals of at least this length.
+  model_residual_sigma_mps:
+    value: 0.45
+    unit: "m/s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: calibrated_on_synthetic
+    lower_bound: 0.0
+    note: >-
+      Irreducible mismatch between the simplified rival model and any real car.
+      Added to every likelihood variance so the filter cannot become certain from
+      a model it has no right to trust that far.
+  dropout_variance_growth_per_s:
+    value: 0.35
+    unit: "m^2/s^4"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "Extra likelihood variance per second of observation dropout."
+
+quantiles:
+  interval_coverage:
+    value: 0.9
+    unit: "1"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.5
+    upper_bound: 0.999
+    note: "Nominal coverage of the reported energy quantile interval."
+
+slots:
+  hysteresis_s:
+    value: 0.15
+    unit: "s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: >-
+      A challenger must beat the incumbent's absolute gap by this margin before it
+      can take the slot, so measurement noise alone cannot swap the identity.
+  hold_s:
+    value: 1.0
+    unit: "s"
+    source: "synthetic:afterlap-rival-filter-v1"
+    verification: synthetic_assumption
+    lower_bound: 0.0
+    note: "The challenger must hold that margin continuously for this long."
