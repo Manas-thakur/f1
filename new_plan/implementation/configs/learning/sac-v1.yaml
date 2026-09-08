@@ -1,0 +1,38 @@
+# SAC starting settings — A07-owned.
+#
+# Transcribed from the table in 07_learning/SAC_IMPLEMENTATION.md and from
+# 07_learning/training.example.json. These are starting configurations to be
+# validated, not measured optimal choices. `status` below is deliberate: this
+# document describes an experiment to run, not one that has been run.
+
+id: sac-v1
+synthetic: true
+status: initial_engineering_configuration_not_trained
+algorithm: SAC
+policy: MlpPolicy
+env_config_id: env-v1
+
+net_arch: [256, 256]
+learning_rate: 0.0003
+buffer_size: 500000
+learning_starts: 10000
+batch_size: 256
+# exp(-1/300) at a one-second policy cadence. Must equal the objective's gamma.
+gamma: 0.9966722160545233
+tau: 0.005
+ent_coef: auto
+# Matches the two-dimensional action. Confirm the library convention in the
+# pinned SB3 version before quoting it as an entropy target.
+target_entropy: -2
+train_freq: 1
+gradient_steps: 4
+n_envs: 4
+device: cpu
+seeds: [11, 29, 47, 71, 97]
+
+# Total transitions for one training seed. Choose the real allocation from a
+# measured throughput benchmark, not from this placeholder: at the planner
+# latency A06 measured, a million transitions is not reachable on the
+# development hardware. See handoffs/A07.md.
+total_timesteps: 200000
+checkpoint_every_steps: 5000
