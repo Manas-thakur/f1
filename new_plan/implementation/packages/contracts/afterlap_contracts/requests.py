@@ -27,6 +27,17 @@ class CreateSessionRequest(Contract):
     seed: int = Field(ge=0)
     model_bundle_id: str | None = None
     label: str | None = None
+    # Real-circuit identity (A16). Calendar event and physical circuit are
+    # separate ids: the 2026 Bahrain GP runs at Sepang. Both optional so a
+    # synthetic scenario needs neither; when given they must resolve to a
+    # hash-pinned track package and event overlay or the request is refused.
+    track_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
+    event_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
+    conditions_id: str | None = Field(
+        default=None,
+        pattern=r"^[a-z0-9-]+$",
+        description="A coherent weather/surface/race-control tape; absent means the static environment.",
+    )
 
 
 class CreateSessionResponse(Contract):

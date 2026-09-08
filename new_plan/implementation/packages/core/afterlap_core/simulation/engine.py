@@ -57,6 +57,7 @@ from .state import (
     WorldState,
 )
 from .track import TrackGeometry, footprints_overlap, geometry_for
+from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField
 
 _MIN_SUBSTEP_S = 1.0e-4
 """Below this, an event boundary is applied at the end of the sub-step instead
@@ -173,7 +174,9 @@ class Simulator:
     # lifecycle
     # ------------------------------------------------------------------ #
 
-    def reset(self, manifest_or_scenario: str | ScenarioConfig | ScenarioBundle, seed: int | None = None):
+    def reset(self, manifest_or_scenario: str | ScenarioConfig | ScenarioBundle, seed: int | None = None,
+        environment: EnvironmentField | None = None,
+    ):
         """Load a scenario and build the initial world state.
 
         ``seed`` overrides the scenario's own seed; the override is recorded in
@@ -248,6 +251,7 @@ class Simulator:
                 label = "ahead" if gap > clearance else "behind" if gap < -clearance else "contesting"
                 world.pairs[(a, b)] = PairState(label=label, armed=gap < -ATTEMPT_BAND_LENGTHS * clearance)
 
+        world.environment = environment if environment is not None else DEFAULT_ENVIRONMENT
         self._world = world
         self._geometry = geometry_for(bundle.track)
         self._sensor_config = scenario.observation
@@ -557,22 +561,33 @@ class Simulator:
         ledger = world.ledgers[car_id]
 
         mass = float(car.mass_kg.value)
-        rho = float(car.air_density_kgpm3.value)
         s_m = progress_m % track.length
         speed = max(0.0, speed_mps)
+        session_time_s = world.race.session_time_s
+        environment = world.environment
+
+        # Atmosphere and surface come through the EnvironmentField seam. The
+        # default StaticEnvironment returns the car document's density, still
+        # air and a unit grip multiplier, so synthetic runs are bit-identical to
+        # the pre-A16 engine; a conditions tape changes these two lines only.
+        rho = environment.air_density_kgpm3(s_m, session_time_s, float(car.air_density_kgpm3.value))
 
         curvature = track.curvature_at(s_m)
         grade = track.grade_at(s_m)
-        mu = track.mu_at(s_m)
+        mu = track.mu_at(s_m) * environment.grip_multiplier(s_m, session_time_s)
+        # Wind is projected onto the local heading; a headwind raises the air
+        # speed the drag term sees without changing ground speed.
+        heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
+        air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))
 
-        down_n = physics.downforce(rho, float(car.cla_m2.value), speed)
+        down_n = physics.downforce(rho, float(car.cla_m2.value), air_speed)
         envelope_n = physics.traction_limit(mass, physics.GRAVITY_MPS2, mu, down_n)
         # The raw demand is kept for diagnostics; only the envelope split uses
         # the clamped value, so a validation test can still see a violation.
         lateral_demand_n = mass * speed * speed * abs(curvature)
         long_envelope_n = physics.longitudinal_envelope(envelope_n, min(lateral_demand_n, envelope_n))
 
-        drag_n = physics.drag_force(rho, float(car.cda_m2.value), speed)
+        drag_n = physics.drag_force(rho, float(car.cda_m2.value), air_speed)
         roll_n = physics.rolling_force(mass, physics.GRAVITY_MPS2, float(car.crr.value), grade)
         grade_n = physics.grade_force(mass, physics.GRAVITY_MPS2, grade)
 

@@ -19,9 +19,10 @@ from afterlap_contracts import DeploymentProfile, FlagState
 from ..rng import KeyedRandom, StreamRegistry
 from ..timebase import EventPriority, EventQueue, ScheduledEvent, SessionClock
 from .battery import EnergyLedger
+from .config import CarConfig, DriverConfig, ScenarioBundle
+from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField, TrackSource
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle only matters for typing
-    from .config import CarConfig, DriverConfig, ScenarioBundle, TrackConfig
     from .policies import DriverAction, OpponentPolicy
 
 
@@ -208,10 +209,13 @@ class WorldState:
     """
 
     bundle: ScenarioBundle
-    track: TrackConfig
+    track: TrackSource
     car_configs: dict[str, CarConfig]
     driver_configs: dict[str, DriverConfig]
     seed: int
+    # Atmosphere and surface state. StaticEnvironment reproduces pre-A16
+    # behaviour exactly; a conditions tape replaces it for real circuits.
+    environment: EnvironmentField = field(default_factory=lambda: DEFAULT_ENVIRONMENT)
 
     cars: dict[str, CarState] = field(default_factory=dict)
     ledgers: dict[str, EnergyLedger] = field(default_factory=dict)

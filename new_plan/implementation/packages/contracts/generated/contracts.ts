@@ -512,6 +512,7 @@ export interface RuntimeCapabilities {
   "learned_model"?: CapabilityState;
   "persistence"?: CapabilityState;
   "driver_link"?: CapabilityState;
+  "track_geometry"?: CapabilityState;
   "notes"?: Array<string>;
 }
 
@@ -555,6 +556,14 @@ export interface SessionManifest {
   "scenario_id"?: string | null;
   "synthetic"?: boolean;
   "label"?: string | null;
+  "track_id"?: string | null;
+  "event_id"?: string | null;
+  "track_package_hash"?: string | null;
+  "event_package_hash"?: string | null;
+  "track_readiness"?: string | null;
+  "geometry_provenance"?: string | null;
+  "conditions_id"?: string | null;
+  "conditions_hash"?: string | null;
 }
 
 export type SessionMode = "simulation" | "replay" | "live_team";
@@ -835,6 +844,9 @@ export interface CreateSessionRequest {
   "seed": number;
   "model_bundle_id"?: string | null;
   "label"?: string | null;
+  "track_id"?: string | null;
+  "event_id"?: string | null;
+  "conditions_id"?: string | null;
 }
 
 export interface CreateSessionResponse {

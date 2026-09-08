@@ -15,6 +15,7 @@ appears in an ``Observation``.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
@@ -111,6 +112,11 @@ class Observation:
     def canonical_bytes(self) -> bytes:
         """Deterministic serialisation used by the isolation byte-identity test."""
         return json.dumps(self.as_plain(), sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def _known(value: float) -> float | None:
+    """``nan`` from an unsurveyed corridor becomes an honest ``None`` on the wire."""
+    return None if math.isnan(value) else value
 
 
 def _quantise(value: float, quantum: float) -> float:
@@ -258,7 +264,7 @@ def observe(
                 "track_length_m": world.track.length,
                 "curvature_inv_m": world.track.curvature_at(truth["s_m"]),
                 "mu": world.track.mu_at(truth["s_m"]),
-                "width_m": world.track.width_at(truth["s_m"]),
+                "width_m": _known(world.track.width_at(truth["s_m"])),
                 "active_profile": truth["active_profile_code"],
                 "delay_s": float(sensor_config.delay_s.value),
                 "energy_channel_available": sensor_config.energy_channel_available,

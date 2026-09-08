@@ -35,6 +35,21 @@ class SessionManifest(VersionedContract):
     scenario_id: str | None = None
     synthetic: bool = True
     label: str | None = None
+    # A16 real-circuit identity. ``track_hash`` above remains the hash of the
+    # geometry document actually driven (synthetic sketch or compiled package);
+    # these pin the package and event overlay and expose the readiness rung so a
+    # UI can refuse a real-track claim below simulation_eligible.
+    track_id: str | None = None
+    event_id: str | None = None
+    track_package_hash: str | None = None
+    event_package_hash: str | None = None
+    track_readiness: str | None = Field(
+        default=None,
+        pattern=r"^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
+    )
+    geometry_provenance: str | None = None
+    conditions_id: str | None = None
+    conditions_hash: str | None = None
 
     @model_validator(mode="after")
     def _capabilities_match_mode(self) -> SessionManifest:
@@ -86,6 +101,13 @@ class RuntimeCapabilities(Contract):
     learned_model: CapabilityState = CapabilityState.UNAVAILABLE
     persistence: CapabilityState = CapabilityState.AVAILABLE
     driver_link: CapabilityState = CapabilityState.UNAVAILABLE
+    track_geometry: CapabilityState = Field(
+        default=CapabilityState.DEGRADED,
+        description=(
+            "available only for a simulation_eligible real-circuit package; degraded for a "
+            "synthetic sketch or a real circuit below that rung; unavailable when no geometry loads."
+        ),
+    )
     notes: tuple[str, ...] = ()
 
 
