@@ -1,4 +1,3 @@
-# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -10,8 +9,8 @@ venv/
 .coverage
 htmlcov/
 .hypothesis/
+.eslintcache
 
-# Node
 node_modules/
 dist/
 .vite/
@@ -20,9 +19,8 @@ playwright-report/
 test-results/
 .pnpm-store/
 
-# Artifacts and data
-new_plan/implementation/artifacts/**
-!new_plan/implementation/artifacts/.gitkeep
+artifacts/**
+!artifacts/.gitkeep
 *.parquet
 *.duckdb
 *.pt
@@ -31,14 +29,13 @@ new_plan/implementation/artifacts/**
 runs/
 tensorboard/
 
-# Local environment
 .env
 .env.*
 !.env.example
 *.log
 
-# OS / editor
 .DS_Store
+._*
 Thumbs.db
 .idea/
 .vscode/
