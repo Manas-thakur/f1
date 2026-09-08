@@ -111,7 +111,11 @@ from .degradation import (
     conservative_energy_floor_j,
     solver_timeout_outcome,
 )
-from .observation_source import SimulatorObservationSource, simulator_session_capability
+from .observation_source import (
+    SimulatorObservationSource,
+    relational_channels_for,
+    simulator_session_capability,
+)
 from .recorder import SessionRecorder, new_outcome_id
 
 logger = logging.getLogger("afterlap.session.runtime")
@@ -314,6 +318,7 @@ class InProcessSessionRuntime:
             capability = simulator_session_capability(
                 energy_channel_available=observation.energy_channel_available,
                 rate_hz=self._config.observation_rate_hz,
+                relational_channels=relational_channels_for(self._bundle),
                 observation_delay_s=float(observation.delay_s.value),
             )
             self._source = SimulatorObservationSource(
