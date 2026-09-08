@@ -157,7 +157,7 @@ def check_solver() -> CheckResult:
     silently substituting an unconstrained heuristic.
     """
     try:
-        import casadi as ca
+        ca = importlib.import_module("casadi")
     except Exception as exc:
         return CheckResult("solver", CapabilityState.UNAVAILABLE, f"casadi unavailable: {exc}")
 
