@@ -262,6 +262,21 @@ class CarConfig(ConfigDocument):
     aux_load_w: Parameter
     regen_enabled: bool = True
     regen_share: Parameter
+    regen_grip_floor: Parameter | None = Field(
+        default=None,
+        description=(
+            "Grip multiplier at or below which no regenerative braking is usable (energy_limits). "
+            "None uses the module default; at the dry reference (1.0) the law has no effect."
+        ),
+    )
+    charge_acceptance_start_temperature_k: Parameter | None = Field(
+        default=None,
+        description="Battery charge-acceptance ramp start (energy_limits). None: no thermal harvest limit.",
+    )
+    charge_acceptance_end_temperature_k: Parameter | None = Field(
+        default=None,
+        description="Battery charge-acceptance ramp end; zero acceptance at or above. None: no limit.",
+    )
 
     c_th_j_per_k: Parameter
     h_w_per_k: Parameter
@@ -282,6 +297,17 @@ class CarConfig(ConfigDocument):
             raise ValueError("eta_charge must be in (0, 1]")
         if self.derate_end_temperature_k.value <= self.derate_start_temperature_k.value:
             raise ValueError("derate end temperature must exceed the start temperature")
+        acceptance = (self.charge_acceptance_start_temperature_k, self.charge_acceptance_end_temperature_k)
+        if (acceptance[0] is None) != (acceptance[1] is None):
+            raise ValueError("charge acceptance start and end temperatures must be declared together")
+        if (
+            acceptance[0] is not None
+            and acceptance[1] is not None
+            and acceptance[1].value <= acceptance[0].value
+        ):
+            raise ValueError("charge acceptance end temperature must exceed the start temperature")
+        if self.regen_grip_floor is not None and not 0.0 <= self.regen_grip_floor.value < 1.0:
+            raise ValueError("regen_grip_floor must lie in [0, 1)")
         speeds = [point.speed_mps.value for point in self.ice_power_map]
         if speeds != sorted(speeds) or len(set(speeds)) != len(speeds):
             raise ValueError("the ICE power map needs strictly increasing speed breakpoints")
