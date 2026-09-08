@@ -85,6 +85,17 @@ CHANNELS: Final[tuple[ChannelSpec, ...]] = (
         lower_bound=0.0,
     ),
     _spec(
+        name="s_m",
+        unit="m",
+        display_unit="m",
+        display_scale=1.0,
+        family="motion",
+        expected_provenance=(Provenance.MEASURED, Provenance.SIMULATED),
+        plot_colour_token="--series-progress",
+        lower_bound=0.0,
+        note="Along-track distance within the current lap, as emitted by the simulator observation path.",
+    ),
+    _spec(
         name="battery_energy_j",
         unit="J",
         display_unit="MJ",

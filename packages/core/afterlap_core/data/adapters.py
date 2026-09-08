@@ -356,6 +356,7 @@ def simulator_capability(
         or (
             "speed_mps",
             "progress_m",
+            "s_m",
             "acceleration_mps2",
             "battery_energy_j",
             "electrical_power_w",

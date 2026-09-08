@@ -67,9 +67,8 @@ class Paths:
     def resolve_within(self, candidate: str | Path, root: Path | None = None) -> Path:
         """Resolve ``candidate`` and refuse anything outside a writable root."""
         base = (root or self.artifacts).resolve()
-        target = (
-            (base / candidate).resolve() if not Path(candidate).is_absolute() else Path(candidate).resolve()
-        )
+        text = os.fspath(candidate).replace("\\", "/")
+        target = (base / text).resolve() if not Path(text).is_absolute() else Path(text).resolve()
         try:
             target.relative_to(base)
         except ValueError as exc:
