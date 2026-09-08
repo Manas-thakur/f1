@@ -81,8 +81,10 @@ class _Grip:
 
 
 def _monza_bundle(**overrides) -> ScenarioBundle:
-    """The shipped scenario moved onto the compiled Monza package, ego at 100 m on the main straight."""
-    track = load_track("monza")
+    try:
+        track = load_track("monza")
+    except FileNotFoundError as exc:
+        pytest.skip(f"compiled monza package is not in artifacts/: {exc}")
     shipped = build_bundle(**overrides)
     scenario = shipped.scenario
     states = {}

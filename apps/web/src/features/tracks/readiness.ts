@@ -29,8 +29,12 @@ export const SIMULATION_ELIGIBLE_UNREACHABLE =
   'No circuit reaches simulation_eligible. That rung requires a surveyed corridor, which location telemetry cannot supply, so nothing here is a validated real-track simulation.';
 
 function rank(rung: ReadinessRung | null): number {
-  if (rung === null) return -2;
-  if (rung === 'rejected') return -1;
+  if (rung === null) {
+    return -2;
+  }
+  if (rung === 'rejected') {
+    return -1;
+  }
   return READINESS_LADDER.indexOf(rung);
 }
 
@@ -39,9 +43,15 @@ export function readinessRank(rung: ReadinessRung | null): number {
 }
 
 export function readinessTone(rung: ReadinessRung | null): BadgeTone {
-  if (rung === null) return 'failure';
-  if (rung === 'rejected') return 'failure';
-  if (rung === 'discovered') return 'neutral';
+  if (rung === null) {
+    return 'failure';
+  }
+  if (rung === 'rejected') {
+    return 'failure';
+  }
+  if (rung === 'discovered') {
+    return 'neutral';
+  }
   return 'attention';
 }
 

@@ -12,14 +12,22 @@ export interface ConditionsSelectorProps {
 }
 
 function sourceTone(sourceKind: string | null) {
-  if (sourceKind === 'openf1') return 'reference' as const;
-  if (sourceKind === 'synthetic') return 'attention' as const;
+  if (sourceKind === 'openf1') {
+    return 'reference' as const;
+  }
+  if (sourceKind === 'synthetic') {
+    return 'attention' as const;
+  }
   return 'neutral' as const;
 }
 
 function sourceText(sourceKind: string | null): string {
-  if (sourceKind === 'openf1') return 'openf1 (recorded, unofficial)';
-  if (sourceKind === 'synthetic') return 'synthetic';
+  if (sourceKind === 'openf1') {
+    return 'openf1 (recorded, unofficial)';
+  }
+  if (sourceKind === 'synthetic') {
+    return 'synthetic';
+  }
   return sourceKind ?? 'source not reported';
 }
 
@@ -133,7 +141,7 @@ export function ConditionsSelector({
       <p className={styles.attribution}>
         No conditions calibration evidence exists for any circuit, so no tape carries
         condition_calibrated. A tape reproduces one recorded session; it is not a distribution and
-        not a forecast. The catalogue declares no circuit binding, so check the tape's altitude and
+        not a forecast. The catalogue declares no circuit binding, so check the tape altitude and
         session against the circuit you selected.
       </p>
     </div>

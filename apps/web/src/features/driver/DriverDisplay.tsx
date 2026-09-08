@@ -228,7 +228,6 @@ export function DriverDisplay({
           value={ownCar?.electrical_power_w.value ?? null}
         />
         <BigNumber label="Lap distance" channel="progress_m" value={ownCar?.progress_m.value ?? null} />
-        {}
         <BigNumber
           label="Lateral position"
           channel="lateral_position_m"

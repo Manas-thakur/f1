@@ -38,10 +38,18 @@ function project(x: readonly number[], y: readonly number[]): Projection | null 
   for (let i = 0; i < x.length; i += 1) {
     const px = x[i] as number;
     const py = -(y[i] as number);
-    if (px < minX) minX = px;
-    if (px > maxX) maxX = px;
-    if (py < minY) minY = py;
-    if (py > maxY) maxY = py;
+    if (px < minX) {
+      minX = px;
+    }
+    if (px > maxX) {
+      maxX = px;
+    }
+    if (py < minY) {
+      minY = py;
+    }
+    if (py > maxY) {
+      maxY = py;
+    }
   }
   const rawSpanX = maxX - minX;
   const rawSpanY = maxY - minY;
@@ -132,7 +140,6 @@ export function CircuitMap({ centreline, displayName, readiness }: CircuitMapPro
             x2={projection.scaleBarM}
             y2={projection.scaleY.toFixed(1)}
           />
-          {}
           <text
             className={styles.mapScaleText}
             x={0}
@@ -155,10 +162,8 @@ export function CircuitMap({ centreline, displayName, readiness }: CircuitMapPro
         </span>
         <span>
           {drawn} of{' '}
-          {centreline.source_point_count === null ? (
+          {centreline.source_point_count ?? (
             <span className={styles.unavailable}>an unreported number of</span>
-          ) : (
-            centreline.source_point_count
           )}{' '}
           compiled samples, strided server-side at{' '}
           {centreline.stride_m === null ? (

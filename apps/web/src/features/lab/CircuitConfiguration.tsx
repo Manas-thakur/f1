@@ -156,7 +156,7 @@ export function CircuitConfiguration({
       <h3>Conditions</h3>
       {trackId === null ? (
         <p className="afterlap-small afterlap-muted">
-          Select a circuit first. A condition tape carries the venue's altitude and an absolute
+          Select a circuit first. A condition tape carries the venue altitude and an absolute
           wind heading, so it is only meaningful bound to one circuit.
         </p>
       ) : conditionsQuery.isPending ? (

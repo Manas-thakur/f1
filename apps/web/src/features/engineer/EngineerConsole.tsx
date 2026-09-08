@@ -42,10 +42,18 @@ const EVIDENCE_BUTTON_ID = 'engineer-open-evidence';
 const DECISION_STEPS = ['Observe', 'Review', 'Select', 'Communicate', 'Verify'] as const;
 
 function decisionStep(status: string | null | undefined): number {
-  if (status === 'completed' || status === 'executing') return 4;
-  if (status === 'communicated') return 3;
-  if (status === 'selected') return 2;
-  if (status === 'proposed') return 1;
+  if (status === 'completed' || status === 'executing') {
+    return 4;
+  }
+  if (status === 'communicated') {
+    return 3;
+  }
+  if (status === 'selected') {
+    return 2;
+  }
+  if (status === 'proposed') {
+    return 1;
+  }
   return 0;
 }
 

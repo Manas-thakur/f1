@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link } from 'react-router';
 import type { ApiError, SessionManifest, SessionMode } from '@contracts';
 
@@ -60,30 +60,17 @@ export function ScenarioPanel({
       : (scenarioEntries.find((entry) => entry.scenario_id === draft.scenarioId.trim()) ?? null);
   const scenarioUnavailableReason = selectedScenario?.unavailable_reason ?? null;
 
-  const validation = useMemo(
-    () =>
-      validateScenario(draft, {
-        ruleManifest: rulesetQuery.data?.manifest ?? null,
-        rulesetError: rulesetQuery.isError
-          ? 'the control plane returned an error for this rule pack id'
-          : null,
-        rulesetLoading: draft.rulesetId.trim() !== '' && rulesetQuery.isPending,
-        models: modelsQuery.data?.models ?? [],
-        scenarioIds,
-        scenarioCatalogueError,
-        scenarioUnavailableReason,
-      }),
-    [
-      draft,
-      modelsQuery.data,
-      rulesetQuery.data,
-      rulesetQuery.isError,
-      rulesetQuery.isPending,
-      scenarioCatalogueError,
-      scenarioUnavailableReason,
-      scenarioIds === null ? null : scenarioIds.join(','),
-    ],
-  );
+  const validation = validateScenario(draft, {
+    ruleManifest: rulesetQuery.data?.manifest ?? null,
+    rulesetError: rulesetQuery.isError
+      ? 'the control plane returned an error for this rule pack id'
+      : null,
+    rulesetLoading: draft.rulesetId.trim() !== '' && rulesetQuery.isPending,
+    models: modelsQuery.data?.models ?? [],
+    scenarioIds,
+    scenarioCatalogueError,
+    scenarioUnavailableReason,
+  });
 
   const set = useCallback(
     <K extends keyof ScenarioDraft>(key: K, value: ScenarioDraft[K]) => {
@@ -336,7 +323,7 @@ export function ScenarioPanel({
               <span className="afterlap-mono">
                 {shortHash(createdManifest.conditions_hash) ?? 'unavailable'}
               </span>
-              . These are the server's values, not this panel's request.
+              . These are the values the server returned, not the values this panel requested.
             </>
           )}
         </Notice>

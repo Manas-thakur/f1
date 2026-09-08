@@ -25,7 +25,7 @@ type CorridorVerdict = 'available' | 'degraded' | 'unavailable' | 'undeclared';
 
 function corridorVerdict(capabilities: RuntimeCapabilities | null | undefined): CorridorVerdict {
   const state = capabilities?.lateral_geometry;
-  return state === undefined ? 'undeclared' : state;
+  return state ?? 'undeclared';
 }
 
 function corridorSummary(verdict: CorridorVerdict): string {
@@ -59,7 +59,7 @@ function Item({ term, value }: { readonly term: string; readonly value: string |
     <span>
       <span className={styles.identityKey}>{term}</span>
       <span className={styles.identityValue}>
-        {value === null ? <span className={styles.unavailable}>unavailable</span> : value}
+        {value ?? <span className={styles.unavailable}>unavailable</span>}
       </span>
     </span>
   );
@@ -195,7 +195,7 @@ export function SessionCircuitPanel({ manifest, capabilities }: SessionCircuitId
           <p className="afterlap-small afterlap-muted">
             The control plane declares lateral geometry{' '}
             <span className="afterlap-mono">{verdict}</span> for this session, re-read from the
-            package this session's hash pins.{' '}
+            package the hash on this session pins.{' '}
             {verdict === 'available' ? '' : CORRIDOR_UNKNOWN_REASON}
           </p>
           {verdict === 'available' ? null : (
