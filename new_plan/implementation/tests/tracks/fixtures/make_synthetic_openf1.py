@@ -67,7 +67,15 @@ def main() -> None:
 
     # Lap plan per driver: (lap_number, kind). kind: clean | first | pit_out | no_duration | slow
     plan = {
-        1: [(1, "first"), (2, "pit_out"), (3, "no_duration"), (4, "slow"), (5, "clean"), (6, "clean"), (7, "clean")],
+        1: [
+            (1, "first"),
+            (2, "pit_out"),
+            (3, "no_duration"),
+            (4, "slow"),
+            (5, "clean"),
+            (6, "clean"),
+            (7, "clean"),
+        ],
         2: [(1, "first"), (2, "clean"), (3, "slow"), (4, "clean"), (5, "pit_out")],
     }
     for driver, laps in plan.items():
@@ -87,6 +95,10 @@ def main() -> None:
                 times.append(tk)
                 s_along.append((tk - t_rel) * speed)
             t_rel += duration
+        # A short tail after the last lap so its location window brackets the lap end.
+        for k in range(int(np.ceil(3.0 / dt))):
+            times.append(t_rel + k * dt)
+            s_along.append((k * dt) * SPEED_MPS)
         times_arr = np.asarray(times)
         s_arr = np.asarray(s_along) % length
         theta = np.interp(s_arr, s_tab, theta_tab)
