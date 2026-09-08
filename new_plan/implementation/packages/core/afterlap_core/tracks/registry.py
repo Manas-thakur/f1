@@ -179,6 +179,27 @@ class SourceManifest(_Frozen):
     openf1: OpenF1Sources = OpenF1Sources()
     fia_documents: tuple[FiaDocumentRef, ...] = ()
     permissions: Permissions
+    length_tolerance_fraction: float | None = Field(
+        default=None,
+        gt=0.0,
+        lt=0.1,
+        description=(
+            "Declared tolerance for the compiled arc length against the official length. "
+            "Required when the geometry is a driven line rather than a surveyed centreline; "
+            "the validator records it in the report (D-12)."
+        ),
+    )
+    length_tolerance_justification: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Why the declared tolerance is physically justified for this source class.",
+    )
+
+    @model_validator(mode="after")
+    def _tolerance_is_justified(self) -> SourceManifest:
+        if (self.length_tolerance_fraction is None) != (self.length_tolerance_justification is None):
+            raise ValueError("length_tolerance_fraction and length_tolerance_justification go together")
+        return self
 
     @model_validator(mode="after")
     def _sessions_are_unique(self) -> SourceManifest:

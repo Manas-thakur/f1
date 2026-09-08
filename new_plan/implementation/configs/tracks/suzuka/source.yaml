@@ -8,6 +8,12 @@ official_length_m:
   source_url: https://www.formula1.com/en/racing/2026/japan
   retrieved_at: "2026-09-08T14:20:47.457455Z"
   sha256: 9caea8a3a94ae7348df261b00bb1c48ab856b3799a744fb0624d8bf64a75b3fb
+length_tolerance_fraction: 0.01
+length_tolerance_justification: >-
+  Geometry is the median driven line from OpenF1 location telemetry, not a surveyed centreline.
+  A racing line cuts apexes and runs wide on exits, so its arc length differs from the FIA
+  centreline by up to about one percent; the deviation is recorded in the validation report and
+  the package remains labelled openf1_location_telemetry with corridor unknown (D-12).
 openf1:
   sessions:
     - session_key: 10006
