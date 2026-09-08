@@ -35,6 +35,7 @@ afterlap-api = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 addopts = "-q --strict-markers --strict-config"
 markers = [
     "slow: long-running (training / large benchmark) test",
