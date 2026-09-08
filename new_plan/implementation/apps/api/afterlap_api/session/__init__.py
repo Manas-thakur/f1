@@ -15,6 +15,8 @@
 * :mod:`.publisher` — transactional-outbox drain onto the stream hub.
 * :mod:`.factory` — :class:`~.factory.SessionFactory`, what
   ``routes/sessions.py`` expects on ``app.state.session_factory``.
+* :mod:`.circuit` — real-circuit identity: track package, event overlay and
+  conditions tape resolved and hashed, with a named refusal for each.
 """
 
 from __future__ import annotations
@@ -25,6 +27,17 @@ from .baseline_planner import (
     Planner,
     PlanRequest,
     checker_state_for,
+)
+from .circuit import (
+    MINIMUM_READINESS,
+    REAL_CIRCUIT_LABEL,
+    CircuitIdentity,
+    CircuitRefusal,
+    describe_track,
+    overlay_content_hash,
+    resolve_conditions,
+    resolve_event,
+    resolve_track_package,
 )
 from .degradation import (
     RIVAL_ENERGY_QUANTILE_NOTE,
@@ -72,12 +85,16 @@ from .spool import BoundedSpool, SpoolEntry, SpoolFull
 
 __all__ = [
     "BASELINE_IDENTITY",
+    "MINIMUM_READINESS",
+    "REAL_CIRCUIT_LABEL",
     "RIVAL_ENERGY_QUANTILE_NOTE",
     "SIMULATOR_SOURCE_ID",
     "SYNTHETIC_GAP_THRESHOLD",
     "UNRESOLVED_GAP_THRESHOLD",
     "BaselinePlanner",
     "BoundedSpool",
+    "CircuitIdentity",
+    "CircuitRefusal",
     "DeduplicatingConsumer",
     "DegradationFinding",
     "DegradationInputs",
@@ -113,7 +130,12 @@ __all__ = [
     "checker_state_for",
     "default_planner",
     "default_runtime_config",
+    "describe_track",
+    "overlay_content_hash",
     "resolve_artefacts",
+    "resolve_conditions",
+    "resolve_event",
+    "resolve_track_package",
     "simulator_session_capability",
     "solver_timeout_outcome",
     "validate_combination",

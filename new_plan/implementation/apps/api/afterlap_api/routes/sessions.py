@@ -19,6 +19,7 @@ from sqlalchemy import select, update
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
+    CapabilityState,
     ControlLease,
     ErrorCode,
     ExecutionEvent,
@@ -32,7 +33,9 @@ from afterlap_contracts import (
     SessionSummary,
     SnapshotReference,
     StreamEnvelope,
+    StreamEventType,
 )
+from afterlap_contracts.events import SnapshotPayload
 from afterlap_contracts.requests import (
     AcquireLeaseRequest,
     AcquireLeaseResponse,
@@ -49,11 +52,13 @@ from afterlap_contracts.requests import (
     SessionCommandResponse,
     SessionListResponse,
 )
+from afterlap_core.tracks.loader import TrackPackageError, load_track_package
+from afterlap_core.tracks.package import ReadinessStatus
 
 from ..db import LifecycleError, acquire_lease, apply_operator_action, body_hash_of
 from ..db.models import ControlLease as ControlLeaseRow
 from ..db.models import Decision, ExecutionEventRow, Manifest, Session, SnapshotRow
-from ..db.repository import expire_due, require_lease
+from ..db.repository import append_event, expire_due, next_sequence, require_lease
 from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId, require_simulation_mode
 from ..errors import CapabilityUnavailable
 from ..stream import StreamHub
@@ -95,10 +100,91 @@ def _manifest_of(db, row: Session) -> SessionManifest:  # type: ignore[no-untype
     return SessionManifest.model_validate(stored.payload)
 
 
+def _geometry_states(
+    request: Request, manifest: SessionManifest
+) -> tuple[CapabilityState, CapabilityState, list[str]]:
+    """``(track_geometry, lateral_geometry, notes)`` from the geometry on disk.
+
+    Read from the *package*, not from the mode. Three facts decide it:
+
+    * a compiled package at or above ``geometry_validated`` genuinely supplies
+      metric geometry, so ``track_geometry`` is available;
+    * a synthetic sketch supplies invented curvature and widths, so
+      ``track_geometry`` is degraded and says why -- never available, because
+      that would present a fixture as a circuit;
+    * ``lateral_geometry`` follows the *corridor*, never the mode. An unknown
+      corridor means ``width_at`` returns ``nan`` and the lateral degree of
+      freedom is disabled, so the capability is unavailable however the
+      session is driven (D-10).
+    """
+    from ..session.circuit import (
+        MINIMUM_READINESS,
+        SYNTHETIC_SKETCH_GEOMETRY_NOTE,
+        UNKNOWN_CORRIDOR_NOTE,
+    )
+
+    notes: list[str] = []
+    if manifest.mode is not SessionMode.SIMULATION:
+        notes.append(
+            f"Session mode {manifest.mode.value!r} has no simulator geometry; a replay or team-feed "
+            "runtime is not implemented."
+        )
+        return CapabilityState.UNAVAILABLE, CapabilityState.UNAVAILABLE, notes
+
+    if manifest.track_package_hash is None:
+        # No compiled package: a synthetic sketch. Its corridor widths exist but
+        # are invented, so lateral geometry is degraded rather than unavailable.
+        notes.append(SYNTHETIC_SKETCH_GEOMETRY_NOTE)
+        return CapabilityState.DEGRADED, CapabilityState.DEGRADED, notes
+
+    from afterlap_core.tracks.package import readiness_rank
+
+    from .catalog import catalogue_paths
+
+    readiness = manifest.track_readiness
+    try:
+        rung = readiness_rank(ReadinessStatus(readiness)) if readiness else -1
+    except ValueError:
+        rung = -1
+    if rung < readiness_rank(MINIMUM_READINESS):
+        notes.append(
+            f"Compiled package {manifest.track_id!r} records readiness {readiness!r}, below "
+            f"{MINIMUM_READINESS.value}: its geometry may not drive the simulator."
+        )
+        return CapabilityState.UNAVAILABLE, CapabilityState.UNAVAILABLE, notes
+
+    track_geometry = CapabilityState.AVAILABLE
+
+    # The corridor is not on the manifest, so it is read back from the package
+    # the manifest pins. A package whose hash no longer matches is treated as
+    # unknown: the geometry on disk is not the geometry this session ran.
+    corridor_known: bool | None = None
+    try:
+        package = load_track_package(str(manifest.track_id), catalogue_paths(request))
+    except (TrackPackageError, ValueError) as exc:
+        notes.append(
+            f"The corridor of package {manifest.track_id!r} cannot be re-read ({exc}); lateral "
+            "geometry is reported unavailable rather than assumed."
+        )
+    else:
+        if package.package_hash != manifest.track_package_hash:
+            notes.append(
+                f"Package {manifest.track_id!r} on disk hashes to "
+                f"{(package.package_hash or 'unhashed')[:12]} but this session ran "
+                f"{manifest.track_package_hash[:12]}; the corridor cannot be confirmed."
+            )
+        else:
+            corridor_known = package.lateral_geometry_known
+
+    if corridor_known:
+        return track_geometry, CapabilityState.AVAILABLE, notes
+    if corridor_known is False:
+        notes.append(UNKNOWN_CORRIDOR_NOTE)
+    return track_geometry, CapabilityState.UNAVAILABLE, notes
+
+
 def _capabilities(request: Request, manifest: SessionManifest) -> RuntimeCapabilities:
     """Report what this session can actually do, from measured state."""
-    from afterlap_contracts import CapabilityState
-
     probed = getattr(request.app.state, "capabilities", {})
     energy_capable = any(
         capability.measures("battery_energy_j") for capability in manifest.source_capabilities
@@ -106,17 +192,16 @@ def _capabilities(request: Request, manifest: SessionManifest) -> RuntimeCapabil
     notes = (
         ["Synthetic scenario. Not measured telemetry and not a calibrated car."] if manifest.synthetic else []
     )
+    track_geometry, lateral_geometry, geometry_notes = _geometry_states(request, manifest)
+    notes.extend(geometry_notes)
     for capability in manifest.source_capabilities:
         notes.extend(capability.limitations)
 
     return RuntimeCapabilities(
         own_energy=CapabilityState.AVAILABLE if energy_capable else CapabilityState.UNAVAILABLE,
         rival_energy=CapabilityState.UNAVAILABLE,
-        lateral_geometry=(
-            CapabilityState.AVAILABLE
-            if manifest.mode is SessionMode.SIMULATION
-            else CapabilityState.UNAVAILABLE
-        ),
+        lateral_geometry=lateral_geometry,
+        track_geometry=track_geometry,
         rules_coverage=CapabilityState.DEGRADED,
         solver=probed.get("solver", CapabilityState.UNAVAILABLE),
         learned_model=probed.get("learning", CapabilityState.UNAVAILABLE),
@@ -213,12 +298,40 @@ async def create_session(
         model_hash=manifest.model_hash,
         synthetic=manifest.synthetic,
         label=manifest.label,
+        # A16 circuit identity, copied from the manifest so the row and the
+        # manifest can be checked against each other and against the stream.
+        track_id=manifest.track_id,
+        track_package_hash=manifest.track_package_hash,
+        event_id=manifest.event_id,
+        event_package_hash=manifest.event_package_hash,
+        conditions_id=manifest.conditions_id,
+        conditions_hash=manifest.conditions_hash,
+        track_readiness=manifest.track_readiness,
+        geometry_provenance=manifest.geometry_provenance,
     )
     db.add(row)
     db.flush()
 
+    # The session-start event. It carries the whole manifest, so a consumer
+    # reads `track_id` and `track_package_hash` off the stream and checks them
+    # against the persisted row without a second request. The sequence is
+    # claimed first because the embedded snapshot reports it as its own
+    # `last_sequence`.
+    sequence = next_sequence(db, row.id)
+    snapshot = _build_snapshot(request, db, row)
+    append_event(
+        db,
+        session_id=row.id,
+        event_type=StreamEventType.SNAPSHOT.value,
+        session_time_s=row.session_time_s,
+        payload=SnapshotPayload(snapshot=snapshot).model_dump(mode="json"),
+        schema_version=SCHEMA_VERSION,
+        sequence=sequence,
+    )
+    db.flush()
+
     _registry(request).attach(manifest.id, runtime)
-    return CreateSessionResponse(manifest=manifest, snapshot=_build_snapshot(request, db, row))
+    return CreateSessionResponse(manifest=manifest, snapshot=snapshot)
 
 
 @router.get("/sessions", response_model=SessionListResponse)
@@ -499,6 +612,10 @@ async def create_snapshot(
         snapshot_hash=snapshot_hash,
         session_time_s=row.session_time_s,
         label=payload.label,
+        # A replay is only reproducible against the geometry it was captured
+        # on, so the handle carries the circuit identity of its session.
+        track_id=row.track_id,
+        track_package_hash=row.track_package_hash,
     )
     db.add(record)
     db.flush()

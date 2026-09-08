@@ -57,6 +57,7 @@ from ..db.models import (
     TelemetryChunk,
 )
 from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+from ..session.circuit import REAL_CIRCUIT_LABEL
 
 router = APIRouter()
 
@@ -214,6 +215,21 @@ def build_export_body(db, row: Session, start_s: float | None, end_s: float | No
             "last_sequence": row.last_sequence,
             "scenario_id": row.scenario_id,
         },
+        # A16 circuit identity, read from the persisted row rather than from the
+        # manifest copy, so an export proves what the *store* recorded. Null
+        # means the session had no compiled package, event overlay or tape --
+        # never that the value is unknown.
+        "circuit": {
+            "track_id": row.track_id,
+            "track_package_hash": row.track_package_hash,
+            "track_readiness": row.track_readiness,
+            "geometry_provenance": row.geometry_provenance,
+            "event_id": row.event_id,
+            "event_package_hash": row.event_package_hash,
+            "conditions_id": row.conditions_id,
+            "conditions_hash": row.conditions_hash,
+            "run_label": REAL_CIRCUIT_LABEL if row.track_package_hash else None,
+        },
         "selected_range": {"start_session_time_s": start_s, "end_session_time_s": end_s},
         "manifest": manifest.model_dump(mode="json"),
         "hashes": {
@@ -223,6 +239,9 @@ def build_export_body(db, row: Session, start_s: float | None, end_s: float | No
             "ruleset": row.ruleset_hash,
             "model": row.model_hash,
             "objective": manifest.objective_hash,
+            "track_package": row.track_package_hash,
+            "event_package": row.event_package_hash,
+            "conditions": row.conditions_hash,
         },
         "software_versions": {
             "python": sys.version.split()[0],

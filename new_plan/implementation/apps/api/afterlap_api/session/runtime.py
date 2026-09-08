@@ -333,7 +333,7 @@ class InProcessSessionRuntime:
                 SourcePipelineConfig(
                     session_id=manifest.id,
                     source_id=self._source.source_id,
-                    mapping=simulator_mapping(self._source.source_id),
+                    mapping=simulator_mapping(self._source.source_id, include_relational=True),
                     capability=capability,
                     provenance=Provenance.SIMULATED,
                     clock=ClockMapping(source_id=self._source.source_id, offset_s=0.0),

@@ -67,6 +67,20 @@ class Session(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
     label: Mapped[str | None] = mapped_column(String(200))
 
+    # A16 real-circuit identity. All nullable: a synthetic-sketch session has
+    # no package, no event overlay and no conditions tape, and a null here
+    # means "there is none", never "unknown". Every value is a copy of the
+    # session manifest's, so a stored row can be checked against the manifest
+    # and against the stream event that announced the session.
+    track_id: Mapped[str | None] = mapped_column(String(64))
+    track_package_hash: Mapped[str | None] = mapped_column(String(80))
+    event_id: Mapped[str | None] = mapped_column(String(64))
+    event_package_hash: Mapped[str | None] = mapped_column(String(80))
+    conditions_id: Mapped[str | None] = mapped_column(String(64))
+    conditions_hash: Mapped[str | None] = mapped_column(String(80))
+    track_readiness: Mapped[str | None] = mapped_column(String(32))
+    geometry_provenance: Mapped[str | None] = mapped_column(String(48))
+
     events: Mapped[list[SessionEvent]] = relationship(back_populates="session", cascade="all, delete-orphan")
     decisions: Mapped[list[Decision]] = relationship(back_populates="session", cascade="all, delete-orphan")
 
@@ -338,6 +352,12 @@ class SnapshotRow(Base):
     session_time_s: Mapped[float] = mapped_column(Float, nullable=False)
     label: Mapped[str | None] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+    # A replay is only reproducible against the geometry it was captured on, so
+    # the replay handle carries the circuit identity of the session that made
+    # it. Copied from the session row; nullable for a synthetic sketch.
+    track_id: Mapped[str | None] = mapped_column(String(64))
+    track_package_hash: Mapped[str | None] = mapped_column(String(80))
 
     __table_args__ = (Index("ix_snapshot_session", "session_id", "session_time_s"),)
 
