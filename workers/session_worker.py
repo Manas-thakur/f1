@@ -34,7 +34,7 @@ import queue as queue_module
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 logger = logging.getLogger("afterlap.workers.session")
 
@@ -372,7 +372,7 @@ class SessionWorkerHandle:
 
     def receive(self, timeout_s: float = DEFAULT_COMMAND_TIMEOUT_S) -> WorkerResult:
         try:
-            return self._results.get(True, timeout_s)
+            return cast(WorkerResult, self._results.get(True, timeout_s))
         except queue_module.Empty as exc:
             raise WorkerUnavailable(f"no result within {timeout_s} s") from exc
 

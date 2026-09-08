@@ -32,7 +32,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from afterlap_api.db.engine import transaction
 from afterlap_api.db.models import ExperimentJob
@@ -298,7 +298,7 @@ def read_report(reports_root: Path, job_id: str) -> dict[str, Any] | None:
     path = Path(reports_root) / f"{job_id}.json"
     if not path.exists():
         return None
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
 
 
 def run_forever(  # pragma: no cover - the polling loop is the process entry point
