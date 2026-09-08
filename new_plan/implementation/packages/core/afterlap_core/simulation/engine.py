@@ -251,7 +251,9 @@ class Simulator:
                 label = "ahead" if gap > clearance else "behind" if gap < -clearance else "contesting"
                 world.pairs[(a, b)] = PairState(label=label, armed=gap < -ATTEMPT_BAND_LENGTHS * clearance)
 
-        world.environment = environment if environment is not None else DEFAULT_ENVIRONMENT
+        if environment is None:
+            environment = bundle.environment if bundle.environment is not None else DEFAULT_ENVIRONMENT
+        world.environment = environment
         self._world = world
         self._geometry = geometry_for(bundle.track)
         self._sensor_config = scenario.observation

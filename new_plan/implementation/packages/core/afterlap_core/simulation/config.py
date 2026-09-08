@@ -405,6 +405,16 @@ class ScenarioConfig(ConfigDocument):
     )
     rule_pack: str = "synthetic-pack-v1-unreviewed"
     status_note: str | None = None
+    event_id: str | None = Field(
+        default=None,
+        pattern=r"^[a-z0-9-]+$",
+        description="Event overlay of the track package to apply; None means no event-specific FIA values.",
+    )
+    conditions_id: str | None = Field(
+        default=None,
+        pattern=r"^[a-z0-9-]+$",
+        description="Conditions tape under configs/conditions; None means the static reference environment.",
+    )
 
     @model_validator(mode="after")
     def _consistent_scenario(self) -> ScenarioConfig:
@@ -466,6 +476,8 @@ class ScenarioBundle(_Frozen):
     scenario: ScenarioConfig
     track: Any  # TrackSource: TrackConfig or a compiled real-circuit package
     car_configs: dict[str, CarConfig]
+    environment: Any = None  # EnvironmentField resolved from scenario.conditions_id; None = static reference
+    environment_hash: str | None = None  # content hash of the conditions tape, recorded on the manifest
 
     @property
     def bundle_hash(self) -> str:
@@ -475,6 +487,7 @@ class ScenarioBundle(_Frozen):
             {
                 "scenario": self.scenario.config_hash,
                 "track": self.track.config_hash,
+                "conditions": self.environment_hash,
                 "cars": {car_id: cfg.config_hash for car_id, cfg in sorted(self.car_configs.items())},
             }
         )
