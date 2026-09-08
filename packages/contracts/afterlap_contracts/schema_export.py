@@ -12,6 +12,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .base import SCHEMA_VERSION
+from .catalogue import (
+    CentrelineResponse,
+    ConditionsListResponse,
+    ConditionsSummary,
+    EventOverlaySummary,
+    FeatureSummary,
+    ScenarioListResponse,
+    ScenarioSummary,
+    SourceSummary,
+    TrackDetailResponse,
+    TrackListResponse,
+    TrackSummary,
+    ValidationSummary,
+)
 from .errors import ApiError, ApiErrorResponse
 from .estimate import StateEstimate
 from .events import StreamEnvelope
@@ -104,6 +118,18 @@ EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     RulesetResponse,
     ExportJobResponse,
     DecisionEvidenceResponse,
+    SourceSummary,
+    EventOverlaySummary,
+    TrackSummary,
+    ValidationSummary,
+    FeatureSummary,
+    TrackListResponse,
+    TrackDetailResponse,
+    CentrelineResponse,
+    ConditionsSummary,
+    ConditionsListResponse,
+    ScenarioSummary,
+    ScenarioListResponse,
 )
 
 

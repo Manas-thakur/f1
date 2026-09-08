@@ -38,6 +38,7 @@ from afterlap_contracts.requests import (
 from ..db import LifecycleError
 from ..db.models import ExperimentJob, Manifest, SnapshotRow
 from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+from ..redaction import artefact_relative
 
 router = APIRouter()
 
@@ -130,7 +131,7 @@ async def get_experiment(request: Request, job_id: str, db: DbSession) -> Experi
     report_path: str | None = None
     if row.report_hash is not None:
         reports = getattr(request.app.state, "reports_root", None)
-        report_path = None if reports is None else str(reports / f"{row.id}.json")
+        report_path = None if reports is None else artefact_relative(reports / f"{row.id}.json")
     return ExperimentStatusResponse(
         job=_as_contract(row), status=JobStatus(row.status), report_path=report_path
     )

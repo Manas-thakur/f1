@@ -102,6 +102,26 @@ export interface CheckpointOutcome {
   "ahead_of_rival"?: boolean | null;
 }
 
+export interface ConditionsSummary {
+  "conditions_id": string;
+  "description"?: string | null;
+  "source": string;
+  "available": boolean;
+  "content_hash"?: string | null;
+  "sample_count"?: number | null;
+  "duration_s"?: number | null;
+  "rainfall_minutes"?: number | null;
+  "session_key"?: number | null;
+  "altitude_m"?: number | null;
+  "altitude_source"?: string | null;
+  "permission"?: string | null;
+  "retrieved_at"?: string | null;
+  "time_origin_utc"?: string | null;
+  "gust_enabled"?: boolean;
+  "frozen_tape_available"?: boolean;
+  "unavailable_reason"?: string | null;
+}
+
 export interface ConstraintCheck {
   "check_id": string;
   "status": CheckStatus;
@@ -169,6 +189,23 @@ export interface EstimateUpdatedPayload {
   "estimate": StateEstimate;
 }
 
+export interface EventOverlaySummary {
+  "event_id": string;
+  "review_status": string;
+  "reviewer_count": number;
+  "confirmed": boolean;
+  "overlay_hash": string;
+  "ruleset_hash": string;
+  "detection_line_count": number;
+  "activation_line_count": number;
+  "standard_curve_points": number;
+  "overtake_curve_points": number;
+  "unknown_fields"?: Array<string>;
+  "fia_document_hashes"?: Array<string>;
+  "effective_values_resolved"?: Array<string>;
+  "effective_values_unknown"?: Array<string>;
+}
+
 export interface ExecutionEvent {
   "schema_version": "1.0";
   "id": string;
@@ -225,6 +262,14 @@ export interface FeatureField {
   "clip_high"?: number;
   "maskable"?: boolean;
   "provenance_note"?: string | null;
+}
+
+export interface FeatureSummary {
+  "start_finish_s_m": number;
+  "sector_count": number;
+  "corner_count": number;
+  "corner_ids"?: Array<string>;
+  "pit_lane_excluded"?: boolean;
 }
 
 export type FlagState = "green" | "yellow" | "double_yellow" | "safety_car" | "virtual_safety_car" | "red" | "chequered" | "unknown";
@@ -539,6 +584,26 @@ export interface ScenarioOutcome {
   "feasible"?: boolean;
 }
 
+export interface ScenarioSummary {
+  "scenario_id": string;
+  "description"?: string | null;
+  "track_id"?: string | null;
+  "conditions_id"?: string | null;
+  "event_id"?: string | null;
+  "synthetic"?: boolean | null;
+  "status_note"?: string | null;
+  "rule_pack"?: string | null;
+  "ego_car_id"?: string | null;
+  "car_ids"?: Array<string>;
+  "duration_s"?: number | null;
+  "seed"?: number | null;
+  "real_circuit"?: boolean;
+  "track_readiness"?: string | null;
+  "track_package_hash"?: string | null;
+  "run_label"?: string | null;
+  "unavailable_reason"?: string | null;
+}
+
 export type SessionCommandKind = "start" | "pause" | "resume" | "stop" | "step";
 
 export interface SessionManifest {
@@ -611,6 +676,17 @@ export interface SourceCapability {
   "license_note"?: string | null;
 }
 
+export interface SourceSummary {
+  "source_id": string;
+  "title": string;
+  "url": string;
+  "retrieved_at": string;
+  "sha256"?: string | null;
+  "permission": string;
+  "priority"?: number | null;
+  "document_revision"?: string | null;
+}
+
 export interface StateEstimate {
   "schema_version": "1.0";
   "session_id": string;
@@ -655,6 +731,36 @@ export interface TelemetryViewPayload {
   "coalesced_to_sequence"?: number | null;
 }
 
+export interface TrackSummary {
+  "track_id": string;
+  "display_name": string;
+  "country"?: string | null;
+  "registry_readiness"?: string | null;
+  "official_length_m"?: number | null;
+  "official_length_verified"?: boolean;
+  "official_length_source_url"?: string | null;
+  "official_length_sha256"?: string | null;
+  "event_ids"?: Array<string>;
+  "package_present"?: boolean;
+  "package_hash"?: string | null;
+  "readiness"?: string | null;
+  "geometry_provenance"?: string | null;
+  "corridor_quality"?: string | null;
+  "lateral_geometry_surveyed"?: boolean | null;
+  "nominal_length_m"?: number | null;
+  "point_count"?: number | null;
+  "sample_spacing_m"?: number | null;
+  "arrays_sha256"?: string | null;
+  "source_count"?: number | null;
+  "licence_labels"?: Array<string>;
+  "closure_error_m"?: number | null;
+  "length_error_fraction"?: number | null;
+  "simulation_ready"?: boolean;
+  "event_overlay_ids"?: Array<string>;
+  "unavailable_reason"?: string | null;
+  "notes"?: Array<string>;
+}
+
 export interface TreatmentSpec {
   "treatment_id": string;
   "controller": string;
@@ -668,6 +774,16 @@ export interface Trigger {
   "progress_m"?: number | null;
   "gap_threshold_s"?: number | null;
   "description": string;
+}
+
+export interface ValidationSummary {
+  "status": string;
+  "closure_error_m"?: number | null;
+  "length_error_fraction"?: number | null;
+  "official_length_m"?: number | null;
+  "report_path"?: string | null;
+  "checks"?: Record<string, string>;
+  "notes"?: Array<string>;
 }
 
 export interface TelemetryEvent {
@@ -943,4 +1059,57 @@ export interface DecisionEvidenceResponse {
   "estimate_revision": number;
   "operator_events"?: Array<OperatorEvent>;
   "execution_events"?: Array<ExecutionEvent>;
+}
+
+export interface TrackListResponse {
+  "schema_version"?: string;
+  "season"?: number | null;
+  "snapshot_date"?: string | null;
+  "minimum_readiness_to_drive"?: string;
+  "notice"?: string;
+  "tracks"?: Array<TrackSummary>;
+}
+
+export interface TrackDetailResponse {
+  "schema_version"?: string;
+  "notice"?: string;
+  "track": TrackSummary;
+  "validation"?: ValidationSummary | null;
+  "features"?: FeatureSummary | null;
+  "sources"?: Array<SourceSummary>;
+  "event_overlays"?: Array<EventOverlaySummary>;
+}
+
+export interface CentrelineResponse {
+  "schema_version"?: string;
+  "track_id": string;
+  "package_hash": string;
+  "arrays_sha256"?: string | null;
+  "readiness": string;
+  "geometry_provenance": string;
+  "corridor_quality": string;
+  "length_m": number;
+  "source_point_count": number;
+  "sample_spacing_m": number;
+  "stride_m": number;
+  "index_stride": number;
+  "point_count": number;
+  "units"?: Record<string, string>;
+  "s_m"?: Array<number>;
+  "x_m"?: Array<number>;
+  "y_m"?: Array<number>;
+  "curvature_1pm"?: Array<number>;
+  "notice"?: string;
+}
+
+export interface ConditionsListResponse {
+  "schema_version"?: string;
+  "conditions"?: Array<ConditionsSummary>;
+  "notice"?: string;
+}
+
+export interface ScenarioListResponse {
+  "schema_version"?: string;
+  "scenarios"?: Array<ScenarioSummary>;
+  "notice"?: string;
 }
