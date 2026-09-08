@@ -1,5 +1,0 @@
-packages:
-  - "apps/web"
-
-onlyBuiltDependencies:
-  - esbuild

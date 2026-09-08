@@ -1,0 +1,28 @@
+# Per-Dockerfile ignore file (BuildKit reads `<dockerfile>.dockerignore` before
+# the context-root `.dockerignore`). It lives here because the compose build
+# context is the implementation workspace root, which this package does not own.
+#
+# Everything host-specific is excluded so the image is built from source plus
+# uv.lock and nothing else. In particular the Windows `.venv` must never be
+# copied: its interpreter and its compiled extensions are not Linux binaries.
+.venv/
+**/.venv/
+node_modules/
+**/node_modules/
+artifacts/
+apps/web/
+tests/
+handoffs/
+.git/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.sqlite3
+**/*.sqlite3-wal
+**/*.sqlite3-shm
+bun.lock
+package.json

@@ -1,0 +1,17 @@
+{
+  "name": "afterlap-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AFTERLAP web workspace. Build tooling only; the application backend is Python.",
+  "packageManager": "bun@1.3.14",
+  "workspaces": ["apps/web"],
+  "trustedDependencies": ["esbuild"],
+  "scripts": {
+    "typecheck": "bun run --filter @afterlap/web typecheck",
+    "test": "bun run --filter @afterlap/web test",
+    "build": "bun run --filter @afterlap/web build",
+    "test:e2e": "bun run --filter @afterlap/web test:e2e",
+    "e2e:install": "bun run --filter @afterlap/web e2e:install",
+    "lint": "bun run --filter @afterlap/web lint"
+  }
+}

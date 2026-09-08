@@ -1,0 +1,356 @@
+# AFTERLAP synthetic rule pack v1
+#
+# SYNTHETIC AND UNREVIEWED. Every number below is an illustrative engineering
+# value chosen so the software is executable and testable. Nothing here is a
+# transcription of an FIA document, nothing here has been reviewed by a
+# regulatory reviewer, and this pack must never be presented as a real Grand
+# Prix pack. Coverage is declared per concern; there is no blanket badge.
+#
+# Article numbers name the source family a real transcription would come from
+# (see rules/RULE_MATRIX.md and sources/SOURCE_REGISTER.md). They record
+# *where to look*, not that the value below was read from there.
+
+id: synthetic-pack-v1
+synthetic: true
+reviewed: false
+description: >-
+  Illustrative synthetic rule pack. Values match
+  afterlap_contracts.fixtures.rule_manifest(). Not a transcription of any FIA
+  document; every reviewer field is null.
+season_revision: synthetic-2026-r0
+
+season:
+  id: synthetic-season-2026-r0
+
+  statements:
+    absolute_power_ceiling_w:
+      value: 350000.0
+      unit: W
+      measurement_bus: ers_k_dc
+      representation: "deployment_power_w(ers_k_dc) <= 350000"
+      article: C5.2.7
+      source_id: R02
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+      note: >-
+        Illustrative absolute DC ceiling at the ERS-K bus. Never compared
+        against a battery-gain figure.
+
+    battery_energy_min_j:
+      value: 0.0
+      unit: J
+      measurement_bus: battery
+      representation: "battery_energy_j >= 0"
+      article: C5.2.9
+      source_id: R02
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+      note: >-
+        Physical operating-range floor, not a per-lap refill allowance.
+
+    battery_energy_max_j:
+      value: 4000000.0
+      unit: J
+      measurement_bus: battery
+      representation: "battery_energy_j <= 4000000"
+      article: C5.2.9
+      source_id: R02
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+      note: >-
+        Illustrative 0-4 MJ operating window. A trajectory must stay inside it
+        at every interior point, not only at its endpoints.
+
+    recharge_allowance_per_lap_j:
+      value: 8500000.0
+      unit: J
+      measurement_bus: cu_k_dc
+      representation: "cumulative_charge_bus_energy_j(this_lap) <= 8500000"
+      article: C5.2.10
+      source_id: R02
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+      note: >-
+        Measured on the CU-K DC bus. Battery energy gain differs from this by
+        conversion losses and is a separate ledger.
+
+    recharge_measurement_bus:
+      text_value: cu_k_dc
+      representation: "recharge ledger is accumulated at the CU-K DC bus"
+      article: C5.2.10
+      source_id: R02
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+
+    max_power_ramp_w_per_s:
+      value: 700000.0
+      unit: W/s
+      measurement_bus: ers_k_dc
+      representation: "abs(d(deployment_power_w)/dt) <= 700000"
+      article: C5.12
+      source_id: R02
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+      note: >-
+        Applied to driver-commanded profile transitions, not to the power unit's
+        own tracking of the speed curve.
+
+    overtake_profile_extra_power_w:
+      value: 0.0
+      unit: W
+      measurement_bus: ers_k_dc
+      representation: "overtake profile grants permission, not extra ceiling"
+      article: B7.2
+      source_id: R03
+      source_url: https://www.fia.com/regulation/category/2182
+      published_date: "2026-08-05"
+      effective_date: "2026-08-05"
+      reviewer: null
+      note: >-
+        Zero by construction in this pack: eligibility is permission to use a
+        profile and is never a source of battery energy.
+
+  power_curves:
+    - curve_id: baseline-speed-curve
+      measurement_bus: ers_k_dc
+      points:
+        - {speed_mps: 0.0, max_power_w: 350000.0}
+        - {speed_mps: 80.0, max_power_w: 350000.0}
+        - {speed_mps: 95.0, max_power_w: 150000.0}
+        - {speed_mps: 110.0, max_power_w: 0.0}
+      statement:
+        representation: "piecewise-linear ceiling in speed, flat outside the breakpoint range"
+        article: C5.2.8
+        source_id: R02
+        source_url: https://www.fia.com/regulation/category/2182
+        published_date: "2026-08-05"
+        effective_date: "2026-08-05"
+        reviewer: null
+        unit: W
+        measurement_bus: ers_k_dc
+        note: >-
+          Illustrative shape. A real pack takes the curve from the event's power
+          unit information document.
+
+  thermal_derate:
+    onset_k: 353.15
+    full_derate_k: 373.15
+    min_factor: 0.6
+    statement:
+      representation: "derate factor falls linearly from 1.0 at 353.15 K to 0.6 at 373.15 K"
+      article: synthetic-thermal-derate
+      source_id: SYNTHETIC
+      reviewer: null
+      unit: dimensionless
+      measurement_bus: ers_k_dc
+      note: >-
+        Engineering model invented for this project. No FIA article was
+        resolved for it, so its coverage row is review_required.
+
+  coverage:
+    - concern: Electrical DC ceiling
+      status: implemented_and_tested
+      reference_keys: [absolute_power_ceiling_w]
+      test_ids:
+        - test_power_curves.py::test_ceiling_at_exact_threshold
+        - test_power_curves.py::test_absolute_ceiling_and_curve_intersect_at_declared_bus
+        - test_checker.py::test_power_above_speed_curve_fails_with_negative_margin
+      note: Absolute ceiling enforced at the ERS-K DC bus by the independent checker.
+
+    - concern: Speed/context curves
+      status: implemented_and_tested
+      test_ids:
+        - test_power_curves.py::test_ceiling_epsilon_below_and_above_threshold
+        - test_power_curves.py::test_ceiling_interpolates_between_breakpoints
+        - test_power_curves.py::test_ceiling_extrapolates_flat_outside_range
+        - test_power_curves.py::test_ceiling_is_continuous_at_every_breakpoint
+        - test_power_curves.py::test_event_sector_curve_overrides_the_season_curve
+      note: Piecewise-linear evaluation plus event-sector lookup.
+
+    - concern: Charge range
+      status: implemented_and_tested
+      reference_keys: [battery_energy_min_j, battery_energy_max_j]
+      test_ids:
+        - test_checker.py::test_interior_energy_minimum_is_rejected_though_endpoints_are_legal
+        - test_checker.py::test_legal_plan_passes_every_check
+      note: Operating-range constraint checked at interior extrema, not a lap refill.
+
+    - concern: Recharge allowance
+      status: implemented_and_tested
+      reference_keys: [recharge_allowance_per_lap_j, recharge_measurement_bus]
+      test_ids:
+        - test_checker.py::test_recharge_allowance_is_measured_on_the_charge_bus
+        - test_checker.py::test_recharge_ledger_resets_at_a_lap_rollover
+      note: Cumulative CU-K DC ledger with a per-lap reset.
+
+    - concern: Power demand transitions
+      status: implemented_and_tested
+      reference_keys: [max_power_ramp_w_per_s]
+      test_ids:
+        - test_checker.py::test_impossible_ramp_is_rejected
+      note: Stateful profile-transition feasibility.
+
+    - concern: Overtake permission
+      status: implemented_and_tested
+      reference_keys: [overtake_profile_extra_power_w]
+      test_ids:
+        - test_eligibility.py::test_detection_between_ticks_resolves_at_interpolated_time
+        - test_eligibility.py::test_two_lines_in_one_interval_fire_in_order
+        - test_eligibility.py::test_missing_detection_never_promotes_to_active
+        - test_eligibility.py::test_lap_reset_clears_only_lap_scoped_state
+        - test_eligibility.py::test_eligibility_is_permission_not_energy
+      note: Detection/activation state machine with interpolated crossings.
+
+    - concern: Flags and conditions
+      status: implemented_and_tested
+      test_ids:
+        - test_eligibility.py::test_safety_state_interruption_invalidates_active_permission
+        - test_pack_change.py::test_checker_reports_the_new_hash_after_a_pack_update
+      note: Race-control invalidation and ruleset-hash based stale-plan rejection.
+
+    - concern: Driver information path
+      status: not_applicable
+      note: >-
+        Owned by the API and simulation modules. The rules module computes no
+        network driver capability and grants none.
+
+    - concern: Unknown referenced documents
+      status: implemented_and_tested
+      test_ids:
+        - test_unknown.py::test_unknown_pack_yields_no_admissible_profiles
+        - test_unknown.py::test_unknown_check_has_no_margin
+        - test_unknown.py::test_aggregate_is_unknown_when_any_check_is_unknown
+      note: >-
+        Unresolved conditions are first-class; they empty the admissible set and
+        force an unknown aggregate rather than a permissive default.
+
+    - concern: Thermal and torque derating
+      status: review_required
+      test_ids:
+        - test_checker.py::test_thermal_derate_lowers_the_ceiling_and_rejects_the_plan
+        - test_unknown.py::test_missing_temperature_makes_thermal_derate_unknown
+      note: >-
+        The derate model is implemented and exercised, but it is an invented
+        engineering curve with no resolved regulatory source. Torque limiting is
+        not modelled at all.
+
+    - concern: Event-specific curves, allowances and line locations
+      status: review_required
+      note: >-
+        R04 shows the shape of a circuit power-unit information document. No
+        such document has been transcribed here; the event level of this pack is
+        illustrative.
+
+    - concern: Execution lead time
+      status: implemented_and_tested
+      test_ids:
+        - test_checker.py::test_insufficient_execution_lead_time_fails
+      note: >-
+        An operational constraint of this product, not an FIA article: the
+        driver must have time to begin the segment.
+
+  unknown_conditions:
+    - condition: event_supporting_document_referenced_but_not_resolved
+      critical: false
+      scope: advisory
+      note: >-
+        The season regulations reference supporting documents that were not
+        resolved for this pack. It is recorded on the manifest so that no
+        consumer can read a passing check as evidence that every applicable
+        condition was resolved. It is marked
+        advisory because it does not gate any quantity this pack resolves; that
+        assertion is itself unreviewed, and if the document turns out to alter
+        one of these quantities this pack is wrong and must be revised.
+
+event_pack:
+  id: synthetic-event-01
+  power_curves:
+    - curve_id: synthetic-event-sector-2-curve
+      measurement_bus: ers_k_dc
+      sector_ids: [sector-2]
+      points:
+        - {speed_mps: 0.0, max_power_w: 300000.0}
+        - {speed_mps: 70.0, max_power_w: 300000.0}
+        - {speed_mps: 95.0, max_power_w: 120000.0}
+        - {speed_mps: 110.0, max_power_w: 0.0}
+      statement:
+        representation: "sector-scoped ceiling overriding the season curve inside sector-2"
+        article: C5.2.8
+        source_id: R04
+        source_url: https://www.fia.com/regulation/category/2182
+        published_date: "2026-05-04"
+        effective_date: "2026-05-04"
+        reviewer: null
+        unit: W
+        measurement_bus: ers_k_dc
+        note: Illustrative event-sector curve; not transcribed from a real event document.
+
+  detection_lines:
+    - line_id: detect-1
+      kind: detection
+      s_m: 1600.0
+      statement:
+        representation: "eligibility observed when the car crosses s_m = 1600"
+        article: B7.2
+        source_id: R03
+        source_url: https://www.fia.com/regulation/category/2182
+        published_date: "2026-08-05"
+        effective_date: "2026-08-05"
+        reviewer: null
+        unit: m
+    - line_id: activate-1
+      kind: activation
+      s_m: 1900.0
+      statement:
+        representation: "permission activates when the car crosses s_m = 1900"
+        article: B7.2
+        source_id: R03
+        source_url: https://www.fia.com/regulation/category/2182
+        published_date: "2026-08-05"
+        effective_date: "2026-08-05"
+        reviewer: null
+        unit: m
+    - line_id: attack-exit
+      kind: checkpoint
+      s_m: 2100.0
+      statement:
+        representation: "attack outcome checkpoint at s_m = 2100"
+        article: B7.2
+        source_id: R03
+        reviewer: null
+        unit: m
+        note: Product checkpoint used for outcome evaluation; also bounds the activation zone.
+    - line_id: counterattack-exit
+      kind: checkpoint
+      s_m: 3500.0
+      statement:
+        representation: "counterattack outcome checkpoint at s_m = 3500"
+        article: B7.2
+        source_id: R03
+        reviewer: null
+        unit: m
+
+race_control:
+  - at_session_time_s: 0.0
+    label: session-start-green
+    flags: [green]
+  - at_session_time_s: 600.0
+    label: illustrative-virtual-safety-car
+    flags: [virtual_safety_car]
+    invalidates_eligibility: true
+    note: Illustrative timestamped race-control state; not a real instruction.
+  - at_session_time_s: 660.0
+    label: illustrative-green-restart
+    flags: [green]
