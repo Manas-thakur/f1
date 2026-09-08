@@ -182,7 +182,7 @@ max-statements = 120
 [tool.mypy]
 python_version = "3.12"
 files = ["packages", "apps/api", "scripts", "tests", "docs/tools/validate_package.py"]
-exclude = ["packages/contracts/generated", "apps/web", "docs/deck", "docs/tools/complete_package.py", "docs/tools/revise_design.py", "workers/"]
+exclude = ["packages/contracts/generated", "apps/web", "docs/deck", "docs/tools/complete_package.py", "docs/tools/revise_design.py", "workers/", ".venv/"]
 explicit_package_bases = true
 mypy_path = "packages/contracts:packages/core:apps/api:scripts"
 namespace_packages = true
@@ -209,6 +209,13 @@ ignore_missing_imports = true
 module = [
     "casadi",
     "casadi.*",
+]
+ignore_missing_imports = true
+ignore_errors = true
+follow_imports = "skip"
+
+[[tool.mypy.overrides]]
+module = [
     "stable_baselines3",
     "stable_baselines3.*",
     "gymnasium",
