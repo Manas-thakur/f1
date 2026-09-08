@@ -548,6 +548,45 @@ def load_scenario(scenario_id: str, paths: Paths | None = None) -> ScenarioConfi
     return ScenarioConfig.model_validate(load_config("scenarios", scenario_id, paths))
 
 
+def resolve_bundle(
+    scenario: str | ScenarioConfig,
+    paths: Paths | None = None,
+    *,
+    seed: int | None = None,
+    allow_network: bool = False,
+) -> ScenarioBundle:
+    """``load_bundle`` plus the conditions tape the scenario names.
+
+    This lives here, below both planning and learning, because all three of
+    the planner, the training environment and the control plane must resolve a
+    scenario the same way. When they did not, the planner re-simulated a
+    real-circuit scenario under still, dry reference air while the episode it
+    was advising ran under a measured weather tape, and nothing reported the
+    disagreement.
+
+    A scenario without ``conditions_id`` is returned untouched, with the
+    static reference environment, so every existing synthetic scenario keeps
+    its exact bundle identity.
+    """
+    bundle = load_bundle(scenario, paths)
+    conditions_id = bundle.scenario.conditions_id
+    if conditions_id is None:
+        return bundle
+    from ..conditions.loader import environment_for, load_conditions, load_conditions_config
+
+    tape = load_conditions(conditions_id, paths, allow_network=allow_network)
+    config = load_conditions_config(conditions_id, paths)
+    environment = environment_for(
+        tape,
+        bundle.track,
+        seed=bundle.scenario.seed if seed is None else int(seed),
+        rubber_fraction=config.rubber_fraction,
+    )
+    return bundle.model_copy(
+        update={"environment": environment, "environment_hash": tape.content_hash}
+    )
+
+
 def load_bundle(scenario: str | ScenarioConfig, paths: Paths | None = None) -> ScenarioBundle:
     """Resolve a scenario and every document it references."""
     config = load_scenario(scenario, paths) if isinstance(scenario, str) else scenario

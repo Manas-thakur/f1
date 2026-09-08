@@ -1,0 +1,111 @@
+# Learning environment revision with real-circuit scenario families — A16-7.
+#
+# Identical cadence, planner mode, reward and warm-up rules to env-v1. The only
+# difference is the scenario set: the four synthetic fixtures plus one
+# real-circuit battle per compiled package that has a scenario document. It is
+# a SEPARATE revision because env-v1 is pinned by the serving and checkpoint
+# tests and because a replay buffer collected here is not interchangeable with
+# one collected on the synthetic loops alone.
+#
+# Real-circuit scenarios run on OpenF1 driven-line geometry (CC BY-NC-SA 4.0)
+# with a bound OpenF1 weather tape; the car, battery and driver are synthetic.
+# Every such episode is labelled real_circuit_synthetic_energy. A scenario
+# whose package is below geometry_validated is REFUSED at reset by load_track;
+# it is not defaulted to a synthetic sketch. The observation contract is the
+# frozen energy-v1 manifest: the actor sees eight lookahead geometry samples,
+# never a track id.
+#
+# WHICH REAL CIRCUITS ARE LISTED BELOW
+#
+# Only circuits whose compiled package is at geometry_validated or above, as
+# derived by the independent validator, are listed. As of the A16-7 validator
+# run that is monza and spa.
+#
+# Pending, therefore NOT listed here:
+#   monaco        package is `discovered` (compiled arc length 1.3-1.8 % short
+#                 of the official length, outside the declared 1 % tolerance)
+#   mexico-city   package is `discovered`, same arc-length shortfall
+#   singapore     package is `discovered`, same arc-length shortfall
+#   suzuka        package is `rejected` (implausible grade spikes in the OpenF1
+#                 elevation channel)
+#
+# `configs/scenarios/monaco-real-battle.yaml` and
+# `configs/scenarios/mexico-city-real-battle.yaml` are kept on disk: they are
+# complete and correct scenario documents whose only blocker is package
+# geometry. Add their ids back to this list — as a NEW environment revision —
+# once the validator puts those packages at geometry_validated. Listing them
+# now would make one reset in four raise TrackPackageError mid-run, which is a
+# broken revision rather than an honest one. Readiness is never edited into
+# place, and no other circuit stands in for a pending one.
+
+id: env-real-v1
+synthetic: true
+objective_id: objective-v1
+
+policy_interval_s: 1.0
+physics_step_s: 0.05
+preference_window_s: 10.0
+checkpoint_interval_s: 10.0
+max_episode_steps: 60
+planner_mode: no_rollout
+planner_deadline_s: 0.2
+
+# synthetic-pack-v1 detects the overtake permission at s_m = 1600 and activates
+# it at s_m = 1900 on every circuit, so the real-circuit scenarios start their
+# ego at 1400 m and warm up past the activation line under the conserving
+# profile. Part of the scenario starting state; identical for every controller.
+warmup_profile: harvest
+warmup_limit_s: 180.0
+plan_validity_s: 3.0
+replan_energy_tolerance_j: 50000.0
+
+reference_pace_provenance: >-
+  Fixed per-scenario pace, taken as the scenario's declared initial speed. A
+  synthetic engineering assumption; it is not measured and it is not a lap-time
+  model of any real circuit, including the real-circuit scenarios below.
+
+scenarios:
+  # -- synthetic fixtures, unchanged from env-v1 ------------------------------ #
+  - id: two-straight-counterattack
+    family: counterattack
+    race_distance_m: 2400.0
+    reference_pace_mps: 72.0
+    rule_pack: synthetic-pack-v1
+    seeds: [11, 29, 47, 71, 97]
+    warmup_to_progress_m: 1650.0
+  - id: oval-defend-hold
+    family: defend
+    race_distance_m: 2200.0
+    reference_pace_mps: 68.0
+    rule_pack: synthetic-pack-v1
+    seeds: [11, 29, 47, 71, 97]
+    warmup_to_progress_m: 1650.0
+  - id: oval-low-energy
+    family: low_energy
+    race_distance_m: 2000.0
+    reference_pace_mps: 65.0
+    rule_pack: synthetic-pack-v1
+    seeds: [11, 29, 47, 71, 97]
+    warmup_to_progress_m: 1650.0
+  - id: loop-no-energy-channel
+    family: no_energy_channel
+    race_distance_m: 2200.0
+    reference_pace_mps: 70.0
+    rule_pack: synthetic-pack-v1
+    seeds: [11, 29, 47, 71, 97]
+    warmup_to_progress_m: 1950.0
+  # -- real-circuit battles (real_circuit_synthetic_energy) ------------------ #
+  - id: monza-real-battle
+    family: real_circuit_battle
+    race_distance_m: 2400.0
+    reference_pace_mps: 75.0
+    rule_pack: synthetic-pack-v1
+    seeds: [11, 29, 47, 71, 97]
+    warmup_to_progress_m: 1950.0
+  - id: spa-real-battle
+    family: real_circuit_battle
+    race_distance_m: 2400.0
+    reference_pace_mps: 70.0
+    rule_pack: synthetic-pack-v1
+    seeds: [11, 29, 47, 71, 97]
+    warmup_to_progress_m: 1950.0

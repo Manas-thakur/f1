@@ -1,0 +1,70 @@
+# Own car 0.65 s behind a rival on the Spa-Francorchamps lap, deciding whether to attack now or reserve energy.
+# Real-circuit synthetic scenario: the geometry is the compiled spa package; nothing else is measured.
+id: spa-real-battle
+synthetic: true
+description: "Own car 0.65 s behind a defending rival on the Spa-Francorchamps lap (spa compiled package), deciding whether to attack now or reserve energy."
+track_id: spa
+conditions_id: spa-2025-race
+ego_car_id: own
+rule_pack: synthetic-pack-v1-unreviewed
+status_note: "Real circuit geometry (OpenF1 driven line, CC BY-NC-SA 4.0); car, battery and driver parameters are synthetic. Label: real_circuit_synthetic_energy."
+seed: 42
+duration_s: {value: 60.0, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "Scenario length used by the default run loop."}
+cars:
+  own: synthetic-2026
+  rival: synthetic-2026
+initial_states:
+  own:
+    progress_m: {value: 1400.0, unit: "m", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    speed_mps: {value: 70.0, unit: "m/s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    energy_j: {value: 2400000.0, unit: "J", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Synthetic starting charge; the sampler replaces it from the declared real_circuit_synthetic_energy distribution."}
+    temperature_k: {value: 308.15, unit: "K", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 200.0}
+    lateral_d_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption}
+    profile: neutral
+  rival:
+    progress_m: {value: 1445.5, unit: "m", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    speed_mps: {value: 70.0, unit: "m/s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    energy_j: {value: 2800000.0, unit: "J", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Synthetic starting charge; the sampler replaces it from the declared real_circuit_synthetic_energy distribution."}
+    temperature_k: {value: 308.15, unit: "K", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 200.0}
+    lateral_d_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption}
+    profile: neutral
+drivers:
+  own:
+    reaction_delay_mean_s: {value: 0.35, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Mean human execution delay."}
+    reaction_delay_std_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Spread of the execution delay."}
+    execution_jitter_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Additional timing jitter."}
+    line_tracking_gain: {value: 2.5, unit: "1/s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "First-order lateral line-tracking gain."}
+    braking_envelope_fraction: {value: 0.92, unit: "1", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.1, upper_bound: 1.0, note: "Fraction of the tyre envelope the driver uses under braking."}
+  rival:
+    reaction_delay_mean_s: {value: 0.35, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Mean human execution delay."}
+    reaction_delay_std_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Spread of the execution delay."}
+    execution_jitter_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Additional timing jitter."}
+    line_tracking_gain: {value: 2.5, unit: "1/s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "First-order lateral line-tracking gain."}
+    braking_envelope_fraction: {value: 0.92, unit: "1", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.1, upper_bound: 1.0, note: "Fraction of the tyre envelope the driver uses under braking."}
+opponent_policies:
+  rival:
+    kind: defend
+    params:
+      reserve_energy_j: {value: 800000.0, unit: "J", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, note: "Rival holds this much back."}
+      engage_gap_s: {value: 1.0, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, note: "Gap at which the rival starts defending."}
+      release_gap_s: {value: 1.6, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, note: "Gap at which the rival stops defending."}
+observation:
+  delay_s: {value: 0.15, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "End-to-end observation delay before a controller sees a value."}
+  noise_sigma:
+    speed_mps: {value: 0.15, unit: "m/s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Speed channel 1-sigma noise."}
+    progress_m: {value: 0.5, unit: "m", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Progress channel 1-sigma noise."}
+    gap_s: {value: 0.02, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Derived gap 1-sigma noise."}
+    relative_progress_m: {value: 0.4, unit: "m", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Relative progress 1-sigma noise."}
+  quantisation:
+    speed_mps: {value: 0.01, unit: "m/s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Reported speed resolution."}
+    gap_s: {value: 0.001, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Reported gap resolution."}
+  expose_rival_energy: false
+  energy_channel_available: true
+  energy_provenance: simulated
+  noise_time_bin_s: {value: 0.01, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 1e-06, note: "Physical time bin that keys exogenous noise draws."}
+evaluation_checkpoints:
+  - sector-1-end
+  - sector-2-end
+  - sector-3-end
+retention_checkpoint_id: sector-3-end
+gap_ahead_s: {value: 0.65, unit: "s", source: "synthetic:afterlap-real-circuit-scenario-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Declared initial spacing; validated against the initial states."}

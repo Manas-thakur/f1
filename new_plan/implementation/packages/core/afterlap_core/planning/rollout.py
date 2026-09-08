@@ -55,9 +55,9 @@ from ..simulation import (
     Simulator,
     Treatment,
     capture_complete_state,
-    load_bundle,
     run_branch,
 )
+from ..simulation.config import resolve_bundle
 from .config import PlannerConfig
 from .scenarios import PlanScenario
 from .segments import PlanFrame
@@ -84,7 +84,14 @@ class PlanningWorld:
 
     @classmethod
     def from_scenario(cls, scenario_id: str = "two-straight-counterattack", *, seed: int = 20260908):
-        bundle = load_bundle(scenario_id)
+        """Build a planning world for a scenario, under the conditions it names.
+
+        ``resolve_bundle`` rather than ``load_bundle``: a real-circuit scenario
+        names a weather tape, and a planner that re-simulated under still, dry
+        reference air while the session ran under that tape would advise on a
+        car it was not driving.
+        """
+        bundle = resolve_bundle(scenario_id, seed=seed)
         rivals = bundle.scenario.rival_ids
         return cls(
             bundle=bundle,
