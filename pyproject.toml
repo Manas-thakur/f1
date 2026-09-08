@@ -236,7 +236,7 @@ module = ["afterlap_contracts.fixtures", "afterlap_contracts.schema_export"]
 disable_error_code = ["arg-type", "return-value", "no-any-return"]
 
 [[tool.mypy.overrides]]
-module = ["demo", "release_bundle", "batch_worker_main", "doctor", "migrate", "afterlap_ops.*"]
+module = ["demo", "release_bundle", "batch_worker_main", "doctor", "migrate", "afterlap_ops.*", "batch_worker", "session_worker"]
 ignore_errors = true
 
 [[tool.mypy.overrides]]
