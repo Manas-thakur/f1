@@ -156,6 +156,10 @@ def metrics_response(app: FastAPI) -> JSONResponse:
     metrics: RequestMetrics | None = getattr(app.state, "metrics", None)
     if metrics is None:
         return JSONResponse({"detail": "metrics are not initialised"}, status_code=503)
+    hub = getattr(app.state, "hub", None)
+    resyncs = getattr(hub, "resync_count", None)
+    if resyncs is not None:
+        metrics.websocket_resyncs = int(resyncs)
     return JSONResponse(metrics.snapshot())
 
 

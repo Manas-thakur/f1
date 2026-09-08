@@ -460,6 +460,30 @@ def _remember_state(request: Request, session_id: str, tick: RuntimeTick) -> Non
         store = {}
         request.app.state.latest_state = store
     store[session_id] = {"estimate": tick.estimate, "rule_context": tick.rule_context}
+    _observe_decision_metrics(request, session_id, tick)
+
+
+def _observe_decision_metrics(request: Request, session_id: str, tick: RuntimeTick) -> None:
+    """Record planner time, observation age and spool depth for one decision.
+
+    Planner time and end-to-end observation age are recorded separately and
+    deliberately: a fast solver on a stale feed would otherwise look identical
+    to a fast solver on a fresh one, which is the confusion
+    ``operations/TECHNICAL_SPEC.md`` asks the two metrics to prevent.
+    """
+    metrics = getattr(request.app.state, "metrics", None)
+    if metrics is None:
+        return
+    if tick.planning is not None:
+        metrics.observe_planner(tick.planning.duration_ms)
+    if tick.estimate is not None:
+        metrics.observe_observation_age(max(0.0, tick.session_time_s - tick.estimate.cutoff_s))
+    registry = _registry_optional(request)
+    if registry is None or not registry.has(session_id):
+        return
+    persistence = getattr(registry.get(session_id), "persistence", None)
+    if persistence is not None:
+        metrics.spool_depth = persistence.spooled
 
 
 @router.post(

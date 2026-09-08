@@ -87,6 +87,7 @@ class StreamHub:
         self._buffer_size = buffer_size
         self._client_queue = client_queue
         self._lock = asyncio.Lock()
+        self._resyncs = 0
 
     def channel(self, session_id: str) -> SessionChannel:
         channel = self._channels.get(session_id)
@@ -151,7 +152,18 @@ class StreamHub:
                 self._resync_envelope(channel.session_id, channel, "client too slow for a lossless event")
             )
 
+    @property
+    def resync_count(self) -> int:
+        """How many resync instructions this process has issued.
+
+        Counted at the point the envelope is built, so a cursor outside the
+        retained window and a client too slow for a lossless event both land
+        here: to an operator they are the same failure to keep up.
+        """
+        return self._resyncs
+
     def _resync_envelope(self, session_id: str, channel: SessionChannel, reason: str) -> StreamEnvelope:
+        self._resyncs += 1
         return StreamEnvelope(
             schema_version=SCHEMA_VERSION,
             session_id=session_id,
