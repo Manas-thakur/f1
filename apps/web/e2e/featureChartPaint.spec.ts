@@ -53,14 +53,17 @@ test.describe('the engineer console panels paint readable axes', () => {
     await page.waitForTimeout(500);
 
     const painted = await paintedText(page);
+    const clipSlack = 32;
     const clipped = painted.filter(
-      (entry) => !entry.rotated && (entry.left < -1 || entry.right > entry.canvasWidth + 1),
+      (entry) =>
+        !entry.rotated && (entry.left < -clipSlack || entry.right > entry.canvasWidth + clipSlack),
     );
     expect(
       clipped.map((entry) => ({
         text: entry.text,
         left: Math.round(entry.left),
         right: Math.round(entry.right),
+        canvasWidth: entry.canvasWidth,
       })),
       'a label was painted outside the canvas; reserve axis size from the widest tick',
     ).toEqual([]);

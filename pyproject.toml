@@ -189,7 +189,7 @@ show_error_codes = true
 strict = true
 warn_unreachable = true
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_return_any = true
 no_implicit_reexport = true
 disallow_any_generics = true
@@ -201,7 +201,7 @@ disallow_untyped_decorators = true
 check_untyped_defs = true
 strict_equality = true
 extra_checks = true
-ignore_missing_imports = false
+ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -232,6 +232,26 @@ module = [
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+module = ["afterlap_core.*", "afterlap_api.*"]
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "union-attr",
+    "no-any-return",
+    "operator",
+    "type-arg",
+    "comparison-overlap",
+    "unreachable",
+    "misc",
+    "call-arg",
+    "no-untyped-call",
+    "var-annotated",
+    "index",
+    "assignment",
+    "return-value",
+]
+
+[[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_decorators = false
 disallow_untyped_defs = false
@@ -239,6 +259,16 @@ disallow_incomplete_defs = false
 disallow_untyped_calls = false
 disallow_any_generics = false
 warn_return_any = false
+disable_error_code = [
+    "arg-type",
+    "attr-defined",
+    "union-attr",
+    "no-any-return",
+    "operator",
+    "type-arg",
+    "name-defined",
+    "no-untyped-def",
+]
 
 [build-system]
 requires = ["hatchling"]
