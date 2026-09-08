@@ -1003,6 +1003,12 @@ class Simulator:
                     "battery_temperature_k": state.battery_temperature_k,
                     "recharge_this_lap_j": state.recharge_ledger_this_lap_j,
                     "recharge_cumulative_j": state.recharge_ledger_j,
+                    # Signed DC-bus power, using the channel registry's stated
+                    # convention: positive deploys to the wheels, negative
+                    # harvests. The estimator integrates this to propagate
+                    # energy; without it there is nothing to integrate and the
+                    # energy belief drifts on the correction term alone.
+                    "electrical_power_w": state.deploy_power_dc_w - state.harvest_power_dc_w,
                     "active_profile_code": state.active_profile.value,
                 }
                 for car_id, state in world.cars.items()

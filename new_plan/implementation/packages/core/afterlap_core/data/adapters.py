@@ -347,18 +347,29 @@ def simulator_capability(
     channels: Sequence[str] | None = None,
     clock_error_s: float = 0.0,
 ) -> SourceCapability:
-    """Capability for a simulator observation stream (synthetic by definition)."""
+    """Capability for a simulator observation stream (synthetic by definition).
+
+    The default list is exactly what ``afterlap_core.simulation.observation``
+    emits for an own car. Declaring a channel the source cannot actually supply
+    is the same dishonesty as calling a configured value measured, and
+    ``tests/data/test_capability_matches_emission.py`` fails if the two drift:
+    a consumer that trusts this list and finds nothing arriving has no way to
+    tell a missing channel from a broken feed.
+
+    Rival-derived quantities (``gap_s`` and the relative channels) are not
+    listed here because they belong to a rival observation record rather than
+    to the own-car stream.
+    """
     supported = tuple(
         channels
         or (
             "speed_mps",
-            "lap_distance_m",
             "progress_m",
+            "s_m",
+            "acceleration_mps2",
             "battery_energy_j",
             "electrical_power_w",
             "battery_temperature_k",
-            "gap_ahead_s",
-            "gap_behind_s",
         )
     )
     return SourceCapability(

@@ -37,6 +37,7 @@ OWN_CHANNELS: tuple[str, ...] = (
     "battery_temperature_k",
     "recharge_this_lap_j",
     "recharge_cumulative_j",
+    "electrical_power_w",
 )
 """Own-car channels that may be observed. ``battery_energy_j`` is gated."""
 
