@@ -93,7 +93,7 @@ export function formatYTick(value: number, decimals: number): string {
 
 export function axisSizeFor(labels: readonly string[], labelText: string | null): number {
   const widest = labels.reduce((max, label) => Math.max(max, label.length), 0);
-  const tickRoom = Math.ceil(widest * 7.6) + 16;
+  const tickRoom = Math.ceil(widest * 9.5) + 16;
   const labelRoom = labelText === null ? 0 : 20;
   return Math.max(44, tickRoom + labelRoom);
 }
