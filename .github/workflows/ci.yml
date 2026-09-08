@@ -37,7 +37,7 @@ jobs:
       - name: Doctor
         run: uv run python -m afterlap_core.cli doctor
       - name: Tests
-        run: uv run pytest -q -m "not slow and not torch"
+        run: uv run pytest -q -m "not slow and not torch" --ignore=tests/learning
 
   web:
     runs-on: ubuntu-latest

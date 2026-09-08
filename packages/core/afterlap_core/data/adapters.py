@@ -259,13 +259,11 @@ def simulator_mapping(source_id: str = "simulator") -> MappingTable:
         source_id=source_id,
         entries=(
             FieldMapping("speed_mps", "speed_mps", "m/s"),
-            FieldMapping("lap_distance_m", "lap_distance_m", "m"),
             FieldMapping("progress_m", "progress_m", "m"),
+            FieldMapping("acceleration_mps2", "acceleration_mps2", "m/s^2"),
             FieldMapping("battery_energy_j", "battery_energy_j", "J"),
             FieldMapping("electrical_power_w", "electrical_power_w", "W"),
             FieldMapping("battery_temperature_k", "battery_temperature_k", "K"),
-            FieldMapping("gap_ahead_s", "gap_ahead_s", "s"),
-            FieldMapping("gap_behind_s", "gap_behind_s", "s"),
         ),
         forbidden_fields={
             "world_state": "simulator truth is not an observation",
@@ -358,7 +356,6 @@ def simulator_capability(
         or (
             "speed_mps",
             "progress_m",
-            "s_m",
             "acceleration_mps2",
             "battery_energy_j",
             "electrical_power_w",

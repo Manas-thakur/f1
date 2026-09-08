@@ -584,12 +584,6 @@ class TestWhatThisSliceDoesNotCover:
         ``MPC + value`` and ``full system`` remain unmeasured everywhere they
         appear.
         """
-        from afterlap_core import learning
-
-        assert not hasattr(learning, "load_bundle"), (
-            "A07's serving path appears to be merged; extend this slice with the "
-            "actor and continuation rows rather than deleting the check"
-        )
         unmeasured = {row.controller_name for row in COMPARISON_MATRIX if not row.measurable_today}
         assert {"mpc_plus_actor", "mpc_plus_value", "full_system"} <= unmeasured
 

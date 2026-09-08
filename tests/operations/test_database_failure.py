@@ -27,6 +27,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+import pytest
+
 from afterlap_api.db.engine import command_transaction, create_session_factory
 from afterlap_api.db.models import Decision
 from afterlap_api.session.degradation import DegradationRow
@@ -36,8 +38,6 @@ from .conftest import LocalStore, actionable, start_session
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
 
 def _decisions(factory) -> list[str]:  # type: ignore[no-untyped-def]
@@ -174,6 +174,8 @@ def test_a_dead_database_socket_is_absorbed_the_same_way(store: LocalStore, tmp_
     the drill fast without changing what fails.
     """
     from sqlalchemy import create_engine
+
+    pytest.importorskip("psycopg")
 
     session = start_session(store.factory, spool_root=tmp_path / "spool", spool_capacity=8)
     recorder = session.recorder

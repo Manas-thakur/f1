@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
@@ -37,9 +37,7 @@ from afterlap_contracts.requests import (
 
 from ..db import LifecycleError
 from ..db.models import ExperimentJob, Manifest, SnapshotRow
-
-if TYPE_CHECKING:
-    from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
 
 router = APIRouter()
 

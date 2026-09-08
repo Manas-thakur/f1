@@ -57,11 +57,10 @@ from ..db.models import (
     SessionEvent,
     TelemetryChunk,
 )
+from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
 
 router = APIRouter()
 

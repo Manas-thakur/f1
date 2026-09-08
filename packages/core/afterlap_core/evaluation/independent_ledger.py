@@ -44,10 +44,11 @@ from dataclasses import dataclass
 from itertools import pairwise
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:  # pragma: no cover - typing only
+from afterlap_contracts import DeploymentProfile
+
+if TYPE_CHECKING:
     from collections.abc import Callable, Mapping, Sequence
 
-    from afterlap_contracts import DeploymentProfile
     from afterlap_core.simulation.config import CarConfig
     from afterlap_core.simulation.engine import Simulator
     from afterlap_core.simulation.policies import DriverAction

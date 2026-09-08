@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import uuid
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import Depends, Header, Request
@@ -23,7 +24,6 @@ from .errors import CapabilityUnavailable, ModeNotPermitted
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 DEV_OPERATOR = "engineer-dev"
 
