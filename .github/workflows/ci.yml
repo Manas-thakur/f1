@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Install
-        run: uv sync --frozen --all-packages
+        run: uv sync --frozen --all-packages --extra solver
       - name: Format
         run: uv run ruff format --check .
       - name: Lint
