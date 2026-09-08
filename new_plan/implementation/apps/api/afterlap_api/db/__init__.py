@@ -8,6 +8,7 @@ from .engine import (
     create_db_engine,
     create_session_factory,
     default_database_url,
+    ensure_schema,
     transaction,
 )
 from .models import Base
@@ -36,6 +37,7 @@ __all__ = [
     "create_db_engine",
     "create_session_factory",
     "default_database_url",
+    "ensure_schema",
     "expire_due",
     "invalidate_outstanding",
     "record_execution",

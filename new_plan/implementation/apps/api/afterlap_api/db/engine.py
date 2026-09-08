@@ -58,6 +58,33 @@ def create_session_factory(engine: Engine) -> sessionmaker[OrmSession]:
     return sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
 
+def ensure_schema(engine: Engine) -> str:
+    """Bring the database up to the current migration head.
+
+    The application must not assume someone ran a migration job first. A clean
+    install that answers 503 for every session because a table is missing is a
+    broken install, not a configuration reminder -- and the failure surfaces as
+    an opaque 500 from deep inside the ORM rather than as anything actionable.
+
+    Alembic is used for both engines so development and deployment share one
+    code path; ``tests/persistence/test_migrations.py`` already asserts the
+    migrated schema matches the ORM metadata column for column.
+
+    Returns a short description of what it did, for the startup log.
+    """
+    from alembic import command
+    from alembic.config import Config
+
+    api_root = Path(__file__).resolve().parents[2]
+    config = Config(str(api_root / "alembic.ini"))
+    config.set_main_option("script_location", str(api_root / "afterlap_api" / "migrations"))
+    config.set_main_option("sqlalchemy.url", str(engine.url.render_as_string(hide_password=False)))
+    config.attributes["connection"] = None
+
+    command.upgrade(config, "head")
+    return f"schema at migration head for {engine.dialect.name}"
+
+
 def create_all(engine: Engine) -> None:
     """Create the schema directly.
 

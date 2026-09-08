@@ -19,6 +19,7 @@ from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION, CapabilityStat
 from afterlap_core.diagnostics import run_doctor
 from afterlap_core.paths import ArtifactStore, Paths
 
+from .db import ensure_schema
 from .deps import Database, Settings
 from .errors import install_error_handlers
 from .observability import RequestMetrics, configure_logging, metrics_response
@@ -38,6 +39,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
     paths = Paths.default(settings.artifact_root).ensure()
     app.state.database = Database(settings.database_url)
+
+    # A clean install must be able to run. Without this the first session
+    # creation fails deep inside the ORM with "no such table", which surfaces
+    # as an opaque 500 rather than anything an operator can act on.
+    logger.info("database schema: %s", ensure_schema(app.state.database.engine))
+
     app.state.hub = StreamHub(buffer_size=settings.stream_buffer)
     app.state.runtimes = RuntimeRegistry()
     app.state.artifact_store = ArtifactStore(paths.artifacts / "objects")
