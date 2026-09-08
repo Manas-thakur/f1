@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import TYPE_CHECKING, Annotated
+from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -16,9 +17,6 @@ from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION, CapabilityStat
 
 from .diagnostics import run_doctor
 from .paths import Paths
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 app = typer.Typer(
     name="afterlap",
