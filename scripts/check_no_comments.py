@@ -20,6 +20,7 @@ SKIP_DIR_NAMES = {
     ".pytest_cache",
     "deck",
     "mockups",
+    "new_plan",
 }
 SKIP_FILE_NAMES = {"complete_package.py", "revise_design.py"}
 ALLOWED_PYTHON = (

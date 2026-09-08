@@ -1,0 +1,25 @@
+id: static-reference
+description: >
+  Synthetic reference atmosphere: ISA sea level (288.15 K, 101325 Pa), dry air,
+  still, no rainfall. Track temperature sits inside the grip plateau so the
+  surface multiplier is exactly 1.0. Density is 1.2250 kg/m^3 from the moist-air
+  formula at zero humidity, which differs from the car document's 1.2 sketch
+  value on purpose: this tape is a physical reference, not the pre-A16 default.
+source: synthetic
+altitude_m: 0.0
+altitude_source: "ISA sea level by definition (ISO 2533:1975)"
+synthetic:
+  air_temperature_k: 288.15
+  track_temperature_k: 300.0
+  pressure_pa: 101325.0
+  humidity_fraction: 0.0
+  wind_speed_mps: 0.0
+  wind_direction_deg: 0.0
+  rainfall: false
+  duration_s: 7200.0
+  sample_interval_s: 300.0
+gust:
+  enabled: false
+rubber_fraction: 0.0
+notes:
+  - "synthetic; every value is a declared constant"

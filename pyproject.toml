@@ -56,6 +56,8 @@ extend-exclude = [
     "docs/design/mockups",
     "docs/tools/complete_package.py",
     "docs/tools/revise_design.py",
+    "docs/**/*.md",
+    "new_plan",
     "**/._*",
 ]
 
