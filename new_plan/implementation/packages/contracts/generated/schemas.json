@@ -1831,6 +1831,33 @@
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "properties": {
+        "conditions_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A coherent weather/surface/race-control tape; absent means the static environment.",
+          "title": "Conditions Id"
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Id"
+        },
         "label": {
           "anyOf": [
             {
@@ -1872,6 +1899,19 @@
           "minimum": 0,
           "title": "Seed",
           "type": "integer"
+        },
+        "track_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Id"
         }
       },
       "required": [
@@ -3522,6 +3562,11 @@
             "solver": {
               "$ref": "#/$defs/CapabilityState",
               "default": "available"
+            },
+            "track_geometry": {
+              "$ref": "#/$defs/CapabilityState",
+              "default": "degraded",
+              "description": "available only for a simulation_eligible real-circuit package; degraded for a synthetic sketch or a real circuit below that rung; unavailable when no geometry loads."
             }
           },
           "title": "RuntimeCapabilities",
@@ -3629,10 +3674,70 @@
               "title": "Car Hashes",
               "type": "object"
             },
+            "conditions_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Hash"
+            },
+            "conditions_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Id"
+            },
             "created_at": {
               "format": "date-time",
               "title": "Created At",
               "type": "string"
+            },
+            "event_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Id"
+            },
+            "event_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Package Hash"
+            },
+            "geometry_provenance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Geometry Provenance"
             },
             "id": {
               "minLength": 1,
@@ -3715,6 +3820,43 @@
               "minLength": 1,
               "title": "Track Hash",
               "type": "string"
+            },
+            "track_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Id"
+            },
+            "track_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Package Hash"
+            },
+            "track_readiness": {
+              "anyOf": [
+                {
+                  "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Readiness"
             }
           },
           "required": [
@@ -3756,7 +3898,8 @@
                 "persistence": "available",
                 "rival_energy": "unavailable",
                 "rules_coverage": "degraded",
-                "solver": "available"
+                "solver": "available",
+                "track_geometry": "degraded"
               }
             },
             "estimate": {
@@ -12142,10 +12285,70 @@
           "title": "Car Hashes",
           "type": "object"
         },
+        "conditions_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conditions Hash"
+        },
+        "conditions_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conditions Id"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
           "type": "string"
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Id"
+        },
+        "event_package_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Package Hash"
+        },
+        "geometry_provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry Provenance"
         },
         "id": {
           "minLength": 1,
@@ -12228,6 +12431,43 @@
           "minLength": 1,
           "title": "Track Hash",
           "type": "string"
+        },
+        "track_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Id"
+        },
+        "track_package_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Package Hash"
+        },
+        "track_readiness": {
+          "anyOf": [
+            {
+              "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Readiness"
         }
       },
       "required": [
@@ -13883,6 +14123,11 @@
             "solver": {
               "$ref": "#/$defs/CapabilityState",
               "default": "available"
+            },
+            "track_geometry": {
+              "$ref": "#/$defs/CapabilityState",
+              "default": "degraded",
+              "description": "available only for a simulation_eligible real-circuit package; degraded for a synthetic sketch or a real circuit below that rung; unavailable when no geometry loads."
             }
           },
           "title": "RuntimeCapabilities",
@@ -13990,10 +14235,70 @@
               "title": "Car Hashes",
               "type": "object"
             },
+            "conditions_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Hash"
+            },
+            "conditions_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Id"
+            },
             "created_at": {
               "format": "date-time",
               "title": "Created At",
               "type": "string"
+            },
+            "event_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Id"
+            },
+            "event_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Package Hash"
+            },
+            "geometry_provenance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Geometry Provenance"
             },
             "id": {
               "minLength": 1,
@@ -14076,6 +14381,43 @@
               "minLength": 1,
               "title": "Track Hash",
               "type": "string"
+            },
+            "track_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Id"
+            },
+            "track_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Package Hash"
+            },
+            "track_readiness": {
+              "anyOf": [
+                {
+                  "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Readiness"
             }
           },
           "required": [
@@ -14316,7 +14658,8 @@
             "persistence": "available",
             "rival_energy": "unavailable",
             "rules_coverage": "degraded",
-            "solver": "available"
+            "solver": "available",
+            "track_geometry": "degraded"
           }
         },
         "estimate": {
@@ -17329,6 +17672,11 @@
             "solver": {
               "$ref": "#/$defs/CapabilityState",
               "default": "available"
+            },
+            "track_geometry": {
+              "$ref": "#/$defs/CapabilityState",
+              "default": "degraded",
+              "description": "available only for a simulation_eligible real-circuit package; degraded for a synthetic sketch or a real circuit below that rung; unavailable when no geometry loads."
             }
           },
           "title": "RuntimeCapabilities",
@@ -17436,10 +17784,70 @@
               "title": "Car Hashes",
               "type": "object"
             },
+            "conditions_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Hash"
+            },
+            "conditions_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Id"
+            },
             "created_at": {
               "format": "date-time",
               "title": "Created At",
               "type": "string"
+            },
+            "event_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Id"
+            },
+            "event_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Package Hash"
+            },
+            "geometry_provenance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Geometry Provenance"
             },
             "id": {
               "minLength": 1,
@@ -17522,6 +17930,43 @@
               "minLength": 1,
               "title": "Track Hash",
               "type": "string"
+            },
+            "track_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Id"
+            },
+            "track_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Package Hash"
+            },
+            "track_readiness": {
+              "anyOf": [
+                {
+                  "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Readiness"
             }
           },
           "required": [
@@ -17563,7 +18008,8 @@
                 "persistence": "available",
                 "rival_energy": "unavailable",
                 "rules_coverage": "degraded",
-                "solver": "available"
+                "solver": "available",
+                "track_geometry": "degraded"
               }
             },
             "estimate": {
