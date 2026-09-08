@@ -1,0 +1,67 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Length 860 >>
+stream
+BT
+/F1 9 Tf
+11 TL
+36 800 Td
+(SYNTHETIC FIXTURE - NOT AN FIA DOCUMENT - TEST DATA ONLY) Tj T*
+(ROUND No. R99) Tj T*
+(VENUE Synthetic Loop) Tj T*
+(CENTRELINE 2.400 km) Tj T*
+(FORMAT Standard) Tj T*
+(Document 3) Tj T*
+(Date 01 January 2026) Tj T*
+(Maximum Recharge per lap) Tj T*
+(Overtake not active Overtake active) Tj T*
+(8.0 MJ 8.5 MJ 6.0 MJ 8.5 MJ 8.5 MJ 1000 m 100 kW/s) Tj T*
+(Detection Line Activation Line) Tj T*
+(1200 m 1350 m) Tj T*
+(L5 L6) Tj T*
+(Detection Gap 1.0 s) Tj T*
+(Main Overtaking Zones) Tj T*
+(T1-T2) Tj T*
+(T5-T6) Tj T*
+(300-500) Tj T*
+(1400-1700) Tj T*
+(240km/h) Tj T*
+(240km/h) Tj T*
+(Race laps 57) Tj T*
+(Base - Standard vCar \(km/h\) MGUK DC Power \(kW\)) Tj T*
+(220 350) Tj T*
+(260 300) Tj T*
+(300 250) Tj T*
+(340 200) Tj T*
+(Base - Overtake vCar \(km/h\) MGUK DC Power \(kW\)) Tj T*
+(220 350) Tj T*
+(300 350) Tj T*
+(340 300) Tj T*
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000338 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1249
+%%EOF

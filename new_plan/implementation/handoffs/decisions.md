@@ -442,3 +442,23 @@ package and the result satisfies `TrackSource`; the engine runs and replays
 deterministically on a compiled package; a headwind/density/grip environment
 changes the trajectory through the two sites and never makes the car faster;
 an unknown corridor disables lateral motion and a validated one restores it.
+
+## D-11 — OpenF1 data is used under CC BY-NC-SA 4.0 and labelled accordingly
+
+**Raised by:** A16-1, which verified the licence text while recording source
+permissions.
+
+**Finding.** openf1.org states its data is "Licensed under CC BY-NC-SA 4.0"
+and "intended solely for non-commercial analysis"; the site also describes the
+data as unofficial. This is the priority-3 geometry and weather source for the
+real-circuit packages.
+
+**Decision.** Every OpenF1-derived `SourceRecord` carries that permission text
+verbatim with the verification date. Compiled packages and conditions tapes
+built from OpenF1 inherit the non-commercial, share-alike, attribution terms
+and say so in their source list; the release report repeats it. No OpenF1
+value is presented as official: the geometry is a driven line, not a surveyed
+centreline, and the weather is a trackside station reading, not a certified
+condition. Redistribution of the compiled artefacts beyond research use needs
+a licence review; until then `artifacts/` stays out of the repository and only
+hashes travel with commits.
