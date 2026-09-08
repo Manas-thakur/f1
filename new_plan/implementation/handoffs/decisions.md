@@ -382,3 +382,63 @@ Both were rewritten to keep what they were guarding rather than deleted.
   the row is now inserted directly, and a second test asserts at the source
   that an operator action produces no outbox row while remaining durable audit
   evidence.
+
+## D-10 — real circuits enter through a `TrackSource` seam; the run stays labelled synthetic
+
+**Raised by:** the coordinator, opening the A16 real-track programme
+(`new_plan/17_real_tracks_conditions/`).
+
+**Decision.** The engine, geometry helper, independent ledger and learning
+encoder are typed against a structural `TrackSource` protocol
+(`simulation/track_source.py`) rather than `TrackConfig`. A compiled
+real-circuit package (`tracks/package.py`, loaded by `tracks/loader.py`) is
+presented through `CompiledTrackSource`; `load_track` tries the synthetic YAML
+first and falls back to the package directory, so every existing fixture
+resolves exactly as before. Atmosphere and surface enter through an
+`EnvironmentField` read at exactly two engine sites -- the density used for
+drag and downforce (with wind projected onto the heading as air speed) and the
+grip multiplier on `mu`. `StaticEnvironment` reproduces the pre-A16 numbers bit
+for bit and is the default; `tests/simulation` and `tests/numerics` pass
+unchanged under it.
+
+**What a real circuit does and does not make real.**
+
+- Geometry provenance and the readiness rung live on the package and are
+  derived from validation evidence; the Pydantic validator refuses a package
+  whose status was edited above its evidence.
+- OpenF1 `/location` telemetry is a priority-3 geometry source. A package built
+  from it can reach `geometry_validated` when closure and official-length checks
+  pass; it cannot claim a corridor, so `corridor_quality` is `unknown`,
+  `width_at` returns `nan`, the lateral degree of freedom is disabled (the car
+  holds the centreline) and no contact or wheel-to-wheel claim is made. Only a
+  surveyed or validated corridor re-enables it.
+- FIA event overlays (detection/activation lines, power curves, recharge
+  allowances) resolve to *unknown* downstream until two distinct reviewers have
+  confirmed them against the hashed FIA document. `event_rules_validated`
+  requires that confirmation structurally.
+- Car, battery and driver parameters remain the synthetic documents already
+  shipped. A run on a real circuit is therefore labelled
+  `real_circuit_synthetic_energy`; nothing in the package or the source can
+  combine genuine geometry with synthetic energy into a claim of measured
+  fidelity. Reference `mu` on a compiled source carries
+  `synthetic_assumption` provenance.
+
+**Dependencies.** `pypdf` added to `afterlap-core` for transcribing FIA
+Power Unit Information PDFs into the overlay review queue. `pyproj`, `shapely`
+and `fastf1` are deliberately not added: OpenF1 coordinates are already a local
+metric frame, and the pipeline needs no reprojection.
+
+**Affected contracts.** `CreateSessionRequest` gains optional `track_id`,
+`event_id`, `conditions_id`. `SessionManifest` gains `track_id`, `event_id`,
+`track_package_hash`, `event_package_hash`, `track_readiness`,
+`geometry_provenance`, `conditions_id`, `conditions_hash`.
+`RuntimeCapabilities` gains `track_geometry`. All optional; contract revision
+unchanged; generated artefacts regenerated and the drift test passes.
+
+**Regression coverage.** `tests/tracks/` -- readiness cannot be edited into
+place; hash verification of both the package document and the arrays; a
+`discovered` package cannot drive the simulator; `load_track` falls back to the
+package and the result satisfies `TrackSource`; the engine runs and replays
+deterministically on a compiled package; a headwind/density/grip environment
+changes the trajectory through the two sites and never makes the car faster;
+an unknown corridor disables lateral motion and a validated one restores it.
