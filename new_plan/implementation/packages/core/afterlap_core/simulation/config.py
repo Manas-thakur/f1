@@ -464,7 +464,7 @@ class ScenarioBundle(_Frozen):
     """A scenario resolved together with the documents it references."""
 
     scenario: ScenarioConfig
-    track: TrackConfig
+    track: Any  # TrackSource: TrackConfig or a compiled real-circuit package
     car_configs: dict[str, CarConfig]
 
     @property
@@ -485,8 +485,20 @@ class ScenarioBundle(_Frozen):
 # --------------------------------------------------------------------------- #
 
 
-def load_track(track_id: str, paths: Paths | None = None) -> TrackConfig:
-    return TrackConfig.model_validate(load_config("tracks", track_id, paths))
+def load_track(track_id: str, paths: Paths | None = None):
+    """Resolve a track by id.
+
+    A synthetic sketch lives at ``configs/tracks/<id>.yaml``. A compiled real
+    circuit lives under ``artifacts/tracks/<id>/`` as a hash-pinned package and
+    is loaded through :mod:`afterlap_core.tracks.loader`. The YAML is checked
+    first so every existing fixture resolves exactly as before.
+    """
+    try:
+        return TrackConfig.model_validate(load_config("tracks", track_id, paths))
+    except FileNotFoundError:
+        from ..tracks.loader import load_track_package_source
+
+        return load_track_package_source(track_id, paths)
 
 
 def load_car(car_id: str, paths: Paths | None = None) -> CarConfig:

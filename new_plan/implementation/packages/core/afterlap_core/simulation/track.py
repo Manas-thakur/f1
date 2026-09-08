@@ -21,7 +21,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..timebase import wrap_s
-from .config import TrackConfig
+from .track_source import TrackSource
 
 _INTEGRATION_STEP_M = 0.5
 
@@ -92,7 +92,7 @@ def separation_distance(a: CarFootprint, b: CarFootprint) -> float:
 class TrackGeometry:
     """Arc-length mapping, heading integral and footprint construction."""
 
-    def __init__(self, track: TrackConfig) -> None:
+    def __init__(self, track: TrackSource) -> None:
         self.track = track
         self.length_m = track.length
         count = max(2, round(self.length_m / _INTEGRATION_STEP_M) + 1)
@@ -215,14 +215,22 @@ class TrackGeometry:
         )
 
     def lateral_limit(self, s_m: float, car_width_m: float) -> float:
-        """Largest ``|d|`` that keeps the whole car inside the track edges."""
-        return max(0.0, 0.5 * (self.track.width_at(s_m) - car_width_m))
+        """Largest ``|d|`` that keeps the whole car inside the track edges.
+
+        A compiled real circuit whose corridor is unknown reports ``nan`` width.
+        The lateral degree of freedom is then disabled (the car holds the
+        centreline) rather than granted an invented width.
+        """
+        width = self.track.width_at(s_m)
+        if math.isnan(width):
+            return 0.0
+        return max(0.0, 0.5 * (width - car_width_m))
 
 
-_GEOMETRY_CACHE: dict[int, tuple[TrackConfig, TrackGeometry]] = {}
+_GEOMETRY_CACHE: dict[int, tuple[TrackSource, TrackGeometry]] = {}
 
 
-def geometry_for(track: TrackConfig) -> TrackGeometry:
+def geometry_for(track: TrackSource) -> TrackGeometry:
     """Cached geometry for a track document; the document is immutable.
 
     Keyed by object identity with the document held alongside, so a reused

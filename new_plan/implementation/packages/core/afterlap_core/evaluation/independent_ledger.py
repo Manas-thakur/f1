@@ -48,7 +48,7 @@ from typing import TYPE_CHECKING, Any
 from afterlap_contracts import DeploymentProfile
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from afterlap_core.simulation.config import CarConfig, TrackConfig
+    from afterlap_core.simulation.config import CarConfig
     from afterlap_core.simulation.engine import Simulator
     from afterlap_core.simulation.policies import DriverAction
 
@@ -214,8 +214,8 @@ class TrackReference:
     mu: tuple[float, ...]
 
     @classmethod
-    def from_track_config(cls, track: TrackConfig) -> TrackReference:
-        length = float(track.length_m.value)
+    def from_track_config(cls, track: Any) -> TrackReference:  # any TrackSource
+        length = float(track.length)
         ordered = sorted(track.segments, key=lambda seg: float(seg.s_m.value))
         nodes = [float(seg.s_m.value) for seg in ordered]
         curvature = [float(seg.curvature_inv_m.value) for seg in ordered]
