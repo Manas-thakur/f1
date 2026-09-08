@@ -7,21 +7,17 @@ second human decision.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime
 
 from pydantic import Field
 
 from .base import Contract
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from .enums import DeploymentProfile, JobStatus, OperatorAction, SessionCommandKind, SessionMode
-    from .lifecycle import ControlLease, ExecutionEvent, OperatorEvent
-    from .models import ExperimentJob, ModelManifest
-    from .planning import Recommendation
-    from .rules import RuleManifest
-    from .session import SessionManifest, SessionSnapshot, SessionSummary, SnapshotReference
+from .enums import DeploymentProfile, JobStatus, OperatorAction, SessionCommandKind, SessionMode
+from .lifecycle import ControlLease, ExecutionEvent, OperatorEvent
+from .models import ExperimentJob, ModelManifest
+from .planning import Recommendation
+from .rules import RuleManifest
+from .session import SessionManifest, SessionSnapshot, SessionSummary, SnapshotReference
 
 
 class CreateSessionRequest(Contract):

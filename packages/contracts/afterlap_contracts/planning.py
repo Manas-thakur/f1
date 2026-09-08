@@ -6,8 +6,6 @@ are kept as separate fields. A utility number is never reported as seconds.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from pydantic import Field, model_validator
 
 from .base import Contract, VersionedContract
@@ -18,10 +16,8 @@ from .enums import (
     ReasonCode,
     RecommendationStatus,
 )
-
-if TYPE_CHECKING:
-    from .quantities import ProbabilityStatement
-    from .rules import ConstraintResult
+from .quantities import ProbabilityStatement
+from .rules import ConstraintResult
 
 
 class ProfileSegment(Contract):

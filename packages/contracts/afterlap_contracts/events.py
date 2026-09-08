@@ -6,20 +6,18 @@ resynchronise from a snapshot rather than applying a delta to the wrong state.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, TypeAdapter, model_validator
 
 from .base import Contract, VersionedContract
 from .enums import StreamEventType
-
-if TYPE_CHECKING:
-    from .estimate import StateEstimate
-    from .lifecycle import ExecutionEvent
-    from .planning import Recommendation
-    from .rules import RuleContext
-    from .session import SessionSnapshot
-    from .telemetry import ChannelQuality
+from .estimate import StateEstimate
+from .lifecycle import ExecutionEvent
+from .planning import Recommendation
+from .rules import RuleContext
+from .session import SessionSnapshot
+from .telemetry import ChannelQuality
 
 
 class TelemetrySeries(Contract):

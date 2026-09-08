@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from datetime import datetime
 
 from pydantic import Field, model_validator
 
 from .base import Contract, VersionedContract
 from .enums import CapabilityState, SessionMode
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from .estimate import StateEstimate
-    from .lifecycle import ControlLease
-    from .planning import Recommendation
-    from .rules import RuleContext
-    from .telemetry import SourceCapability
+from .estimate import StateEstimate
+from .lifecycle import ControlLease
+from .planning import Recommendation
+from .rules import RuleContext
+from .telemetry import SourceCapability
 
 
 class SessionManifest(VersionedContract):

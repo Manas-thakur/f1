@@ -21,13 +21,11 @@ Three things follow, and all three are enforced by code rather than by prose:
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-    from datetime import datetime
+from typing import Any
 
 __all__ = [
     "FORBIDDEN_CLAIM_PATTERNS",
