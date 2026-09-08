@@ -217,3 +217,69 @@ keyed by `(scenario, seed, event_type, physical_time_bin)` — the infrastructur
 is already in place for it — and then re-establishing the bootstrap's seed level.
 Until that exists, held-out intervals are scenario-resampled only, and must be
 described that way.
+
+---
+
+## D-07 — five integration defects found by running the assembled product
+
+**Raised by:** coordinator, driving the real API and the real UI in a browser
+after all module suites were green.
+
+764 Python tests, 322 web unit tests and 157 browser tests passed, and the
+product still could not complete a single decision. Each defect below sat in a
+seam that no module owned, which is exactly where module-level testing cannot
+reach.
+
+### 1. A clean install had no schema
+
+`create_all()` was called by tests and by nothing else. The first
+`POST /sessions` failed with `no such table: manifest`, surfacing as an opaque
+500. Fixed by running the Alembic migration to head during startup, so
+development and deployment share one path.
+
+### 2. Lost update on the session row
+
+The command route loaded a `Session` row, called `runtime.advance()` — which
+records decisions and events through the recorder, **committing in its own
+transaction and incrementing that same row** — and then applied
+`row.revision += 1` to its now-stale copy. The response reported a revision the
+row did not hold, so the client's next `expected_revision` was rejected as
+stale after the very first step. Fixed with an atomic SQL `UPDATE`, then a
+re-read.
+
+### 3. The WebSocket was never proxied
+
+`decisions.md` settles the stream at `/api/v1/sessions/{id}/stream`, but the
+dev proxy carried `ws: true` only on the unused `/ws` rule. The socket never
+upgraded, the console sat in `connecting` forever, and every command control
+stayed disabled behind a resynchronising message.
+
+### 4. A relational channel reported as a missing measurement
+
+The session declared `gap_behind_s` unconditionally. In a two-car scenario with
+the ego car at the back, nothing is ever behind it, so the channel never
+arrived, was classified `missing`, escalated the source to stale, and **blocked
+every recommendation for the entire session**.
+
+Gap channels are relational, not sensors: an empty slot is *known information*,
+which the feature contract already encodes by leaving the rival `present_flag`
+unmaskable. They are now declared from the scenario's starting grid — the three
+attack scenarios declare `gap_ahead_s` only, `oval-defend-hold` declares
+`gap_behind_s` only.
+
+This is the same family as the earlier declared-versus-emitted defect, and the
+third time a capability promised something no source could supply.
+
+### 5. The console sent the wrong revision
+
+`EngineerConsole` passed the **session** revision as `expected_revision` on the
+recommendation action route, which does optimistic concurrency on the
+**recommendation**. Every select failed with "expected revision 27, current
+is 0". The unit test asserted the same wrong value, so it passed against the
+bug; the test's premise was corrected rather than the fix reverted.
+
+**Consequence for the release report.** No claim about the closed loop should
+rest on module suites alone. The loop was verified by driving the real API and
+clicking through the real console: a session reaches an actionable instruction,
+selection moves it to `selected` while execution still reads *not observed*,
+and `mark communicated` becomes available as a separate action.

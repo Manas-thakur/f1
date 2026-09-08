@@ -27,7 +27,12 @@ export default defineConfig({
     strictPort: true,
     fs: { allow: [repoRoot] },
     proxy: {
-      '/api': { target: API_ORIGIN, changeOrigin: false },
+      // `ws: true` is required here, not only on '/ws'. The session stream is
+      // `/api/v1/sessions/:id/stream` (decisions.md: '/ws' is reserved and
+      // unused), so it matches this rule. Without the upgrade the socket never
+      // connects, the console sits in `connecting` forever, and Select stays
+      // disabled with a message about resynchronising.
+      '/api': { target: API_ORIGIN, ws: true, changeOrigin: false },
       '/ws': { target: API_ORIGIN, ws: true, changeOrigin: false },
     },
   },

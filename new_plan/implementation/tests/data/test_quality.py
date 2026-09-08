@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from .conftest import CAR_ID, observation, public_config, simulator_config
 
 from afterlap_contracts import Quality
 from afterlap_core.data import (
@@ -14,6 +13,8 @@ from afterlap_core.data import (
     public_replay_capability,
     simulator_capability,
 )
+
+from .conftest import CAR_ID, observation, public_config, simulator_config
 
 
 def _tracker(rate_hz: float, *, clock_uncertainty_s: float = 0.0, channel: str = "speed_mps"):

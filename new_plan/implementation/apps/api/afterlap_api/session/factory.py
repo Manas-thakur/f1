@@ -34,7 +34,7 @@ from afterlap_core.simulation.config import load_scenario
 
 from ..db import LifecycleError
 from .baseline_planner import BaselinePlanner
-from .observation_source import simulator_session_capability
+from .observation_source import relational_channels_for, simulator_session_capability
 from .recorder import SessionRecorder
 from .runtime import InProcessSessionRuntime, Planner, RuntimeConfig, default_runtime_config
 
@@ -196,6 +196,7 @@ def build_manifest(
     capability = simulator_session_capability(
         energy_channel_available=observation.energy_channel_available,
         rate_hz=observation_rate_hz,
+        relational_channels=relational_channels_for(artefacts.bundle),
         observation_delay_s=float(observation.delay_s.value),
     )
     return SessionManifest(

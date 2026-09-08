@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from './Providers';
 import { AppRoutes } from './routes';
 import { SYNTHETIC_DATA_NOTICE } from '../fixtures/notices';
+import { SESSION_SNAPSHOT } from '../test/contractFixtures';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -49,6 +50,18 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
+      // The snapshot route must be matched before the collection route: the
+      // feature views read it, and answering with a session list would hand
+      // them a structurally wrong snapshot.
+      if (url.includes('/snapshot')) {
+        return jsonResponse(SESSION_SNAPSHOT);
+      }
+      if (url.includes('/models')) {
+        return jsonResponse({ models: [] });
+      }
+      if (url.includes('/experiments')) {
+        return jsonResponse([]);
+      }
       if (url.includes('/sessions')) {
         return jsonResponse(SESSION_LIST);
       }
@@ -101,26 +114,26 @@ describe('the synthetic-data notice', () => {
   });
 });
 
-describe('feature route placeholders', () => {
-  it('name the owning agent and the missing artefact, and draw no fake chart', async () => {
+describe('feature routes render their own view', () => {
+  it('the engineer console names its decision panel rather than a placeholder', async () => {
     renderAt('/sessions/s1/engineer');
-    expect(await screen.findByText(/owned by/)).toHaveTextContent('A09');
-    expect(screen.getByText(/missing artefact:/)).toBeInTheDocument();
-    expect(screen.queryByRole('slider')).toBeNull();
-    expect(screen.queryByRole('table')).toBeNull();
+    expect(await screen.findByRole('heading', { name: 'Decision' })).toBeInTheDocument();
+    expect(screen.queryByText(/owned by/)).toBeNull();
   });
 
-  it('names A10 for the lab and replay routes and A11 for the driver route', async () => {
+  it('the lab, replay and driver routes render their own controls', async () => {
     const lab = renderAt('/sessions/s1/lab');
-    expect(await screen.findByText(/owned by/)).toHaveTextContent('A10');
+    expect(await screen.findByRole('heading', { name: 'Run control' })).toBeInTheDocument();
     lab.unmount();
 
     const replay = renderAt('/sessions/s1/replay');
-    expect(await screen.findByText(/owned by/)).toHaveTextContent('A10');
+    expect(
+      await screen.findByRole('heading', { name: 'Alignment and cursor' }),
+    ).toBeInTheDocument();
     replay.unmount();
 
     renderAt('/sessions/s1/driver');
-    expect(await screen.findByText(/owned by/)).toHaveTextContent('A11');
+    expect(await screen.findByTestId('driver-primary')).toBeInTheDocument();
   });
 });
 

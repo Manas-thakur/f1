@@ -29,7 +29,7 @@ declared channel that is never published would be a false capability claim.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
 from afterlap_contracts import Quality, SessionMode, SourceCapability
@@ -64,9 +64,20 @@ BASE_CHANNELS: tuple[str, ...] = (
     "progress_m",
     "lap_distance_m",
     "battery_temperature_k",
-    "gap_ahead_s",
-    "gap_behind_s",
 )
+"""Own-car channels a simulator session always publishes."""
+
+RELATIONAL_CHANNELS: tuple[str, ...] = ("gap_ahead_s", "gap_behind_s")
+"""Gap channels, which exist only while some car occupies the corresponding slot.
+
+These are *relational*, not sensors. An empty slot is known information -- the
+feature contract encodes exactly that by leaving the rival ``present_flag``
+unmaskable -- so a gap with no counterpart must not be reported as a missing
+measurement. Declaring one unconditionally made a two-car scenario report
+``gap_behind_s`` missing forever, which escalated the source to stale and
+blocked every recommendation for the whole session.
+"""
+
 ENERGY_CHANNEL = "battery_energy_j"
 
 
@@ -79,17 +90,27 @@ def simulator_session_capability(
     source_id: str = SIMULATOR_SOURCE_ID,
     energy_channel_available: bool,
     rate_hz: float,
+    relational_channels: Sequence[str] = RELATIONAL_CHANNELS,
     clock_error_s: float = 0.0,
     observation_delay_s: float = 0.0,
 ) -> SourceCapability:
     """Declare exactly what this observation stream publishes.
+
+    ``relational_channels`` names the gap channels a slot can actually be filled
+    for in this scenario. A two-car session with the ego car at the back has no
+    car behind it, so declaring ``gap_behind_s`` would promise a measurement
+    that can never arrive.
 
     ``battery_energy_j`` appears only when the scenario's observation
     configuration actually carries it. A source that cannot see stored energy
     says so, and estimation then reports ``own_energy_capability=False`` rather
     than inventing a number.
     """
-    supported = BASE_CHANNELS + ((ENERGY_CHANNEL,) if energy_channel_available else ())
+    supported = (
+        BASE_CHANNELS
+        + tuple(c for c in RELATIONAL_CHANNELS if c in set(relational_channels))
+        + ((ENERGY_CHANNEL,) if energy_channel_available else ())
+    )
     limitations = [
         SYNTHETIC_NOTICE,
         "simulated observations from a reduced physical model; not a measured car",
@@ -109,6 +130,32 @@ def simulator_session_capability(
         clock_error_s=clock_error_s,
         limitations=tuple(limitations),
     )
+
+
+def relational_channels_for(bundle) -> tuple[str, ...]:
+    """Which gap channels this scenario can ever fill.
+
+    Decided from the starting grid order: a car with nobody behind it never
+    produces ``gap_behind_s``, and promising that channel would make an empty
+    slot look like a broken feed for the whole session.
+    """
+    scenario = bundle.scenario
+    ego = scenario.ego_car_id
+    initial = scenario.initial_states
+    ego_progress = float(initial[ego].progress_m.value)
+
+    ahead = any(
+        float(state.progress_m.value) > ego_progress for car_id, state in initial.items() if car_id != ego
+    )
+    behind = any(
+        float(state.progress_m.value) < ego_progress for car_id, state in initial.items() if car_id != ego
+    )
+    channels: list[str] = []
+    if ahead:
+        channels.append("gap_ahead_s")
+    if behind:
+        channels.append("gap_behind_s")
+    return tuple(channels)
 
 
 class SimulatorObservationSource:
@@ -295,9 +342,11 @@ __all__ = [
     "ENERGY_CHANNEL",
     "FORBIDDEN_RIVAL_FIELDS",
     "OWN_CHANNEL_FIELDS",
+    "RELATIONAL_CHANNELS",
     "RIVAL_CHANNEL_FIELDS",
     "SIMULATOR_SOURCE_ID",
     "SimulatorObservationSource",
     "TruthIsolationError",
+    "relational_channels_for",
     "simulator_session_capability",
 ]

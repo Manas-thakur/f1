@@ -7,7 +7,6 @@ archived but cannot alter that decision record.
 from __future__ import annotations
 
 import pytest
-from .conftest import SESSION_ID, observation, simulator_config
 
 from afterlap_core.data import (
     LABEL_EXCLUDED_FROM_FINALISED,
@@ -19,6 +18,8 @@ from afterlap_core.data import (
     TelemetryRecorder,
     sort_normalised,
 )
+
+from .conftest import SESSION_ID, observation, simulator_config
 
 CUTOFF_S = 12.2
 

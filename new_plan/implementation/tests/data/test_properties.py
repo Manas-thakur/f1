@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from .conftest import SESSION_ID, observation, public_config, simulator_config
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
 
@@ -23,6 +22,8 @@ from afterlap_core.data import (
     normalised_signature,
     sort_normalised,
 )
+
+from .conftest import SESSION_ID, observation, public_config, simulator_config
 
 MAPPING_REVISION = "sim-observation-map-1"
 SETTINGS = settings(
