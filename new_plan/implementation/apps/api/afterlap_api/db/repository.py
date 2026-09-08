@@ -251,7 +251,12 @@ def store_decision(
         session_id=recommendation.session_id,
         event_type="recommendation_updated",
         session_time_s=recommendation.created_at_s,
-        payload={"recommendation": recommendation.model_dump(mode="json")},
+        # The payload carries its own discriminator so a stored row validates
+        # as a StreamEnvelope without the publisher having to repair it.
+        payload={
+            "event_type": "recommendation_updated",
+            "recommendation": recommendation.model_dump(mode="json"),
+        },
     )
     return decision
 
@@ -391,6 +396,11 @@ def apply_operator_action(
         db, decision, recommendation, _RESULTING_STATUS[action], session_time_s, reason=reason
     )
 
+    # An operator action is durable audit, not a stream message: there is no
+    # StreamEventType for it, and the lifecycle change it caused is already
+    # published by _transition as recommendation_updated. Writing an outbox row
+    # here would queue something no client can validate, so it is appended to
+    # the event log with publish=False.
     operator_event = append_event(
         db,
         session_id=session_id,
@@ -403,6 +413,7 @@ def apply_operator_action(
             "reason": reason,
             "resulting_status": updated.status.value,
         },
+        publish=False,
     )
 
     session_row.revision += 1
@@ -517,7 +528,10 @@ def record_execution(
         session_id=execution.session_id,
         event_type="execution_observed",
         session_time_s=session_time_s,
-        payload={"execution": execution.model_dump(mode="json")},
+        payload={
+            "event_type": "execution_observed",
+            "execution": execution.model_dump(mode="json"),
+        },
     )
 
     if execution.recommendation_id is None:
