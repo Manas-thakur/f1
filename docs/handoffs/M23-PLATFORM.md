@@ -341,14 +341,31 @@ this branch, rather than described.
   probe calls; the compose wiring itself is reviewed, not run.
 * **PostgreSQL was not exercised.** Everything above ran on SQLite. A08 §9.6
   already records this.
-* **One unexplained refusal, seen once.** On the very first live runbook, the
-  control-lease request answered 404 `session ses-... does not exist` for a
-  session whose row was present in the database file. It did not recur across
-  four subsequent runs, including two consecutive runbooks on one server after
-  the readiness fix, and no drill reproduces it. It is recorded because it was
-  observed, not because it is understood; SQLite WAL with a pooled reader is
-  the obvious suspect and A14 already notes SQLite write contention under the
-  publisher.
+* **A pre-existing race between `POST /sessions` and the next request, newly
+  measured.** A control-lease request issued immediately after creating a
+  session sometimes answers 404 `session ... does not exist` for a session
+  whose row is already in the database file. It surfaced as an intermittent
+  failure of the runbook's step 3. It is not introduced here: 20 back-to-back
+  create-then-lease cycles against `origin/main` at `b316857` failed 2 of 20,
+  and the same 20 against this branch failed 0 of 20 in the same sample. The
+  shape fits the FastAPI `yield`-dependency boundary, where `transaction()`
+  commits in dependency teardown rather than before the response is written,
+  so a client that is fast enough reads a snapshot taken before the commit.
+  It is far more frequent when the SQLite file sits on a filesystem with weak
+  locking; on the exFAT volume this branch was developed on it fires on most
+  runs, and on APFS it is the 1-in-10 above.
+  Reproduce with:
+
+  ```
+  # create, then immediately take the lease, twenty times
+  for i in $(seq 1 20); do ... POST /api/v1/sessions ; POST .../control-lease ; done
+  ```
+
+  Fixing it means moving the commit ahead of the response for every mutating
+  route, which is a transaction-boundary change across the whole control plane
+  and belongs in its own change rather than in this one. Recorded here so it
+  is not rediscovered as a flaky test.
+
 * **A stale batch worker is visible but not acted on.** Nothing requeues a job
   whose worker died holding its lease; the lease simply expires. That is
   `workers/batch_worker.py`'s existing behaviour and is unchanged.
