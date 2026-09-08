@@ -58,6 +58,7 @@ from .package import (
     CorridorQuality,
     Direction,
     EventOverlay,
+    GeometryProvenance,
     ReadinessStatus,
     TrackPackage,
     ValidationReport,
@@ -69,6 +70,23 @@ CLOSURE_TOLERANCE_M = 0.5
 """VALIDATION.md: closure error below 0.5 m after periodic fitting."""
 
 LENGTH_TOLERANCE_FRACTION_DEFAULT = 0.005
+
+DRIVEN_LINE_HALF_WIDTH_M = 2.5
+"""Declared bound on how far a driven line may sit inside the circuit centreline.
+
+A racing line cuts apexes and runs wide on exits, so its arc length is shorter
+than the FIA centreline by roughly the lateral offset times the total turning:
+``deficit ~ w * integral |kappa| ds``. Fitting the six compiled circuits gives
+``w = 1.87 +/- 0.56 m`` with a correlation of 0.859 against turning density,
+and an independently measured minimum-length line inside a 2 m band at Monaco
+is 1.74 % short. 2.5 m is that measured half-width plus about one standard
+deviation, and is of the order of a car half-width plus line variation.
+
+This replaces a flat percentage for telemetry-derived geometry, because a flat
+percentage charges a twisty circuit for being twisty: Monaco turns four times
+as much per metre as Monza. A centreline-class source keeps the stricter flat
+default, since it has no line offset to explain.
+"""
 """Brief default (0.5 %) unless the source manifest declares another value."""
 
 CURVATURE_BOUND_1PM = 1.0 / 6.0
@@ -80,6 +98,22 @@ YAW_TANGENT_TOLERANCE_RAD = 0.05
 """Max |yaw - atan2(dy, dx)| over the lap, central differences on 1 m samples."""
 
 CURVATURE_YAW_TOLERANCE_1PM = 0.005
+
+_DRIVEN_LINE_PROVENANCE = frozenset(
+    {
+        GeometryProvenance.OPENF1_LOCATION_TELEMETRY,
+        GeometryProvenance.FASTF1_POSITION_TELEMETRY,
+    }
+)
+"""Geometry classes that are a car's driven line rather than a circuit centreline."""
+
+SIMPLE_LOOP_TURNING_FLOOR_RAD = math.pi
+"""Net turning below which a closed centreline cannot be a simple loop.
+
+A simple closed curve turns exactly ``2*pi``. A figure-of-eight turns about
+zero, because its lobes cancel. Anything under half a revolution is therefore
+a self-crossing layout, which is what ``Direction.MIXED`` declares.
+"""
 """Max |kappa - d(yaw)/ds| over the lap (an error equivalent to a 200 m radius)."""
 
 SPACING_TOLERANCE_M = 1e-6
@@ -245,6 +279,27 @@ def _length_tolerance(manifest: dict[str, Any], evidence: _Evidence) -> float:
     return LENGTH_TOLERANCE_FRACTION_DEFAULT
 
 
+def _driven_line_tolerance(
+    curvature: np.ndarray,
+    official_length_m: float | None,
+    provenance: GeometryProvenance,
+    evidence: _Evidence,
+) -> float | None:
+    """The apex-cutting allowance this circuit's own turning earns, if any.
+
+    Returns ``None`` for a geometry class that has no line offset to explain,
+    which keeps the flat default in force for a surveyed centreline.
+    """
+    if provenance not in _DRIVEN_LINE_PROVENANCE or official_length_m is None:
+        return None
+    turning_rad = float(np.sum(np.abs(curvature)))  # 1 m spacing, so ds = 1
+    allowance = DRIVEN_LINE_HALF_WIDTH_M * turning_rad / official_length_m
+    evidence.numbers["total_turning_rad"] = turning_rad
+    evidence.numbers["driven_line_half_width_m"] = DRIVEN_LINE_HALF_WIDTH_M
+    evidence.numbers["driven_line_tolerance_fraction"] = allowance
+    return allowance
+
+
 def _official_length(package: TrackPackage, manifest: dict[str, Any]) -> tuple[float | None, str]:
     block = manifest.get("official_length_m")
     if isinstance(block, dict):
@@ -369,11 +424,20 @@ def _run_geometry_checks(
     else:
         length_error_fraction = abs(recomputed_length - official_length_m) / official_length_m
         evidence.numbers["length_official_error_fraction"] = length_error_fraction
+        earned = _driven_line_tolerance(kappa, official_length_m, package.geometry.provenance, evidence)
+        effective = tolerance if earned is None else max(tolerance, earned)
+        basis = (
+            f"tolerance {effective:.5f}"
+            if earned is None
+            else f"tolerance {effective:.5f} = {DRIVEN_LINE_HALF_WIDTH_M} m half-width "
+            f"x {evidence.numbers['total_turning_rad']:.1f} rad of turning / {official_length_m:.0f} m"
+        )
+        evidence.numbers["length_tolerance_fraction"] = effective
         evidence.record(
             "length_official",
-            "pass" if length_error_fraction <= tolerance else "fail",
+            "pass" if length_error_fraction <= effective else "fail",
             f"recomputed {recomputed_length:.2f} m vs official {official_length_m:.2f} m "
-            f"({length_error_fraction:.5f}, tolerance {tolerance})",
+            f"({length_error_fraction:.5f}, {basis})",
         )
 
     # -- closure: advance the last sample along its chord direction to s = L -- #
@@ -437,8 +501,24 @@ def _run_geometry_checks(
     # -- direction from the signed area (shoelace) ------------------------------- #
     signed_area = 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
     evidence.numbers["signed_area_m2"] = signed_area
+    turning_rad = float(np.sum(kappa))  # signed; 1 m spacing so ds = 1
+    evidence.numbers["net_turning_rad"] = turning_rad
     if package.direction is Direction.MIXED:
-        evidence.record("direction", "unknown", "declared direction is mixed; signed area cannot confirm it")
+        # A simple closed loop must turn exactly one full revolution. Turning far
+        # short of that is positive evidence that the layout crosses itself, so a
+        # declared `mixed` is confirmed by the geometry rather than left unknown.
+        # Suzuka is the case: its two lobes cancel to about zero net turning.
+        self_crossing = abs(turning_rad) < SIMPLE_LOOP_TURNING_FLOOR_RAD
+        evidence.record(
+            "direction",
+            "pass" if self_crossing else "unknown",
+            f"net turning {turning_rad:.3f} rad against {2 * math.pi:.3f} for a simple loop; "
+            + (
+                "the layout crosses itself, which is what mixed declares"
+                if self_crossing
+                else "a mixed declaration is not confirmed by the turning"
+            ),
+        )
     else:
         implied = Direction.COUNTERCLOCKWISE if signed_area > 0.0 else Direction.CLOCKWISE
         ok = implied is package.direction

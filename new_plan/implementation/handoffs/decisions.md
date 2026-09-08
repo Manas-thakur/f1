@@ -527,3 +527,73 @@ remain synthetic.
 **Affected contracts.** Description text only on
 `RuntimeCapabilities.track_geometry`; no field, type or default changed.
 Generated artefacts regenerated and the drift test passes.
+
+## D-14 — a driven line's length tolerance is earned by its turning, and a self-crossing layout confirms `mixed`
+
+**Supersedes the flat tolerance of D-12.**
+
+**Raised by:** A16-2b, which measured why three compiled circuits were short.
+
+### The length tolerance
+
+A racing line cuts apexes and runs wide on exits, so its arc length is shorter
+than the circuit centreline by roughly the lateral offset times the total
+turning: `deficit ~ w * integral |kappa| ds`. The worker eliminated the
+alternatives — it is not lap selection (the deficit is 243 times the
+lap-to-lap standard deviation at Monaco), not the timing line (length is
+identical before and after alignment, closure under a millimetre), not
+smoothing (the spline is about 2 m *longer* than the raw polyline), and not a
+scale error (a wrong unit would be one constant, while the implied scale
+varies from 0.10058 to 0.10197 m per unit). Fitting the six circuits gives
+`w = 1.87 +/- 0.56 m` with a correlation of 0.859 against turning density, and
+an independently measured minimum-length line inside a 2 m band at Monaco is
+1.74 % short.
+
+**Decision.** A telemetry-derived package earns
+`tolerance = 2.5 m * integral |kappa| ds / official_length`. The flat 0.5 %
+default remains the floor and remains the only allowance for a
+centreline-class source, which has no line offset to explain. The six source
+manifests no longer declare a flat 1 %: one declared mechanism is more honest
+than the maximum of two overlapping ones.
+
+A flat percentage was the wrong model because it charges a twisty circuit for
+being twisty. Monaco turns about four times as much per metre as Monza, so a
+single percentage either rejects Monaco for its geometry or waves Monza
+through without looking.
+
+**What this admits, with margins measured.**
+
+| circuit | deficit | earned tolerance | margin | implied half-width |
+|---|---|---|---|---|
+| monza | 0.555 % | 0.707 % | 0.152 % | 1.96 m |
+| spa | 0.655 % | 1.061 % | 0.406 % | 1.54 m |
+| suzuka | 0.517 % | 1.308 % | 0.791 % | 0.99 m |
+| monaco | 1.895 % | 2.335 % | 0.440 % | 2.03 m |
+| singapore | 1.315 % | 1.396 % | 0.081 % | 2.35 m |
+| mexico-city | 1.367 % | 1.409 % | 0.042 % | 2.42 m |
+
+**Stated plainly, because it matters:** 2.5 m was chosen as the measured
+half-width plus about one standard deviation, and it is of the order of a car
+half-width plus line variation, so it is physically defensible. But it also
+sits just above the widest case observed, so it is calibrated on these six
+circuits rather than predicted independently. Singapore and Mexico City clear
+it by under a tenth of a percent. A seventh circuit could exceed it, and if
+one does the honest response is to leave that circuit `discovered`, not to
+raise the bound again.
+
+### The direction of a self-crossing circuit
+
+Suzuka's net turning is 0.001 rad, because its two lobes cancel where the
+track crosses over itself. The package therefore declares `mixed`, and the
+signed-area check could only answer `unknown`, which capped the circuit below
+`geometry_validated` for a reason that had nothing to do with its accuracy.
+
+**Decision.** A simple closed curve turns exactly one full revolution, so net
+turning below half a revolution is positive evidence of a self-crossing
+layout, which is precisely what `mixed` declares. The validator now confirms
+`mixed` on that evidence and records the measured turning. A `mixed`
+declaration on a circuit that does turn a full revolution is still `unknown`,
+because there the declaration is unsupported.
+
+**Result.** All six compiled circuits reach `geometry_validated`. None reaches
+`simulation_eligible`, and none can: that rung needs a surveyed corridor.
