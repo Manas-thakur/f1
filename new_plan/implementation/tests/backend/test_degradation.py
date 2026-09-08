@@ -395,6 +395,16 @@ def test_persistence_findings_are_absent_while_the_store_is_healthy():
 
 
 def _bundle(**overrides) -> ModelManifest:  # type: ignore[no-untyped-def]
+    """An APPROVED bundle, so a test can isolate one mismatch at a time.
+
+    These tests originally built an ``unevaluated`` bundle, which passed only
+    because ``check_model_compatibility`` ignored ``approval_status``. That was
+    A14-7: manifest agreement was treated as approval. Approval is now a gate
+    of its own, covered in ``test_model_gate.py``, so a bundle here is approved
+    and each case varies exactly the field it is named after.
+    """
+    from afterlap_contracts import ApprovalStatus, PromotionPolicy
+
     payload = {
         "schema_version": SCHEMA_VERSION,
         "id": "sac-candidate-1",
@@ -405,6 +415,16 @@ def _bundle(**overrides) -> ModelManifest:  # type: ignore[no-untyped-def]
         "reward_revision": "objective-v1",
         "supported_scenario_families": ("two-straight-counterattack",),
         "created_at": datetime.now(UTC),
+        "approval_status": ApprovalStatus.APPROVED,
+        "benchmark_report_hash": "sha256:" + "d" * 64,
+        "promotion_policy": PromotionPolicy(
+            enabled=True,
+            minimum_benefit=2.0,
+            benefit_metric="utility_difference_vs_mpc_only",
+            downside_noninferiority_limit=1.0,
+            latency_limit_ms=200.0,
+            frozen_at=datetime(2026, 9, 8, tzinfo=UTC),
+        ),
     }
     payload.update(overrides)
     return ModelManifest(**payload)
