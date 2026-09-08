@@ -28,6 +28,10 @@ with, rather than hidden inside the numbers:
   ``CheckerState.charge_bus_efficiency`` — the recharge allowance is a
   **charge-bus** figure and is never compared against a battery-gain figure;
 * battery drain is ``P_dep`` divided by ``CheckerState.discharge_efficiency``.
+  ``requested_budget_j`` is battery-side (decisions.md D-01), so it is scaled
+  *by* that efficiency when deriving bus power and divided by it again here;
+  the two conversions cancel and the ledger integrates the requested battery
+  energy exactly.
 
 ``unknown`` is a first-class outcome and always carries ``margin=None``.
 """
@@ -293,7 +297,13 @@ def _segment_model(
     if segment.requested_budget_j == 0.0:
         deploy_scale = 0.0
     elif ceiling_integral > 0.0:
-        deploy_scale = segment.requested_budget_j / ceiling_integral
+        # ``requested_budget_j`` is energy leaving the BATTERY (decisions.md D-01),
+        # while ``ceiling_integral`` is bus headroom. Scale by the discharge
+        # efficiency here so the resulting bus power is a genuine bus figure; the
+        # later ledger step divides that bus power back by the same efficiency to
+        # recover battery drain. Converting in only one of the two places drains
+        # the modelled battery by 1/eta too much -- 5.3% at eta=0.95.
+        deploy_scale = segment.requested_budget_j * state.discharge_efficiency / ceiling_integral
     else:
         # The ceiling is zero across the whole segment. Spread the request
         # uniformly in time so the ceiling check still fails on real numbers.
@@ -303,7 +313,8 @@ def _segment_model(
         if segment.harvest_target_j == 0.0 or speed_integral <= 0.0
         else segment.harvest_target_j / speed_integral
     )
-    uniform = segment.requested_budget_j / duration if duration > 0.0 else 0.0
+    # Uniform fallback is a bus figure too, for the same reason as deploy_scale.
+    uniform = segment.requested_budget_j * state.discharge_efficiency / duration if duration > 0.0 else 0.0
     return _SegmentModel(
         index=index,
         segment=segment,

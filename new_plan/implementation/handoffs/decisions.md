@@ -113,3 +113,60 @@ the field that decides how everything else is interpreted.
 
 **Affected contracts.** Every `VersionedContract` subclass. Construction sites
 pass `schema_version=SCHEMA_VERSION` explicitly.
+
+---
+
+## D-05 — the checker converts the deployment budget once, not twice
+
+**Raised by:** A06 (planning) as contract proposal P-01, during integration
+against the merged rules checker.
+
+**Question.** D-01 fixed `requested_budget_j` as energy leaving the battery. The
+merged checker read the same number two different ways: it derived bus power as
+`requested_budget_j / ceiling_integral`, where `ceiling_integral` is the time
+integral of the ERS-K DC bus ceiling — a bus-side reading — and then divided that
+bus power by `discharge_efficiency` again when integrating the battery ledger.
+
+**Verified by the coordinator**, reproducing the arithmetic in isolation:
+
+| `eta_discharge` | battery drain for a 700 kJ request | error |
+|---|---|---|
+| 1.00 | 700.0 kJ | 0.00 % |
+| 0.95 | 736.8 kJ | +5.26 % |
+| 0.90 | 777.8 kJ | +11.11 % |
+| 0.80 | 875.0 kJ | +25.00 % |
+
+**Why it had not bitten.** `CheckerState.discharge_efficiency` defaults to `1.0`,
+documented by A04 as "not modelled here", and every shipped fixture used that
+default. At `eta = 1.0` the two readings coincide exactly, so the defect was
+latent rather than wrong-in-practice.
+
+**Which way it failed.** Conservatively. The checker over-stated both the bus
+power and the battery drain, so it could reject a legal plan but never accept an
+illegal one. That is the safe direction, and it is still wrong: an integrator
+setting a realistic efficiency would have got a checker that silently
+over-drained the modelled battery by up to a quarter, distorting planner
+behaviour and every downstream evaluation.
+
+**Decision.** Option 1 of P-01, as A06 recommended. The deployment budget is
+scaled *by* the discharge efficiency when deriving bus power, and the later
+divide is kept. The two conversions cancel, so the bus ceiling is compared
+against a genuine bus figure and the battery ledger integrates exactly the
+requested battery joules. The uniform-power fallback is scaled the same way for
+the same reason.
+
+**Affected contracts.** None. `afterlap_core.rules.checker` behaviour only;
+D-01 stands unchanged and `ProfileSegment` is untouched.
+
+**Regression coverage.** `tests/rules/test_bus_conversion.py` exercises this
+through the public `check_plan` so the defect is visible in a verdict rather
+than in an internal number: a request for exactly the available battery energy
+lands on the floor at `eta` of 1.0, 0.95, 0.90 and 0.80, and an over-request
+fails by the amount actually over-requested rather than that figure inflated by
+`1/eta`. The test was falsified against the old arithmetic first — reverting the
+fix fails five of its seven cases — so it is known to have teeth.
+
+**Consequence for A06.** Its interim workaround, pinning
+`discharge_efficiency = 1.0` in `planning.segments.checker_state_for`, is no
+longer required. It remains harmless and can be relaxed whenever a realistic
+efficiency is wanted.
