@@ -8,7 +8,15 @@ Research for this conversation was checked on 8 September 2026. Official documen
 | R02 | [Technical Issue 20](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf) | C5 energy/power constraints and C8 driver/telemetry boundary |
 | R03 | [Sporting Issue 08](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf) | Sporting energy/eligibility framework; event applicability requires review |
 | R04 | [Miami power-unit information](https://www.fia.com/system/files/decision-document/2026_miami_grand_prix_-_power_unit_information.pdf) | Example of circuit-specific curves, allowances and line locations |
+| R05 | [FIA Formula 1 event documents](https://www.fia.com/documents/formula-1) | Event-specific circuit maps, race-director notes and power-unit information |
+| F01 | [Official 2026 Formula 1 schedule](https://www.formula1.com/en/racing/2026) | Current event order and circuit-page registry snapshot |
+| F02 | [Malaysia to host the 2026 Bahrain Grand Prix](https://www.formula1.com/en/latest/article/formula-1-and-fia-confirm-malaysia-will-join-2026-calendar-as-host-venue-for-bahrain-grand-prix.6lL7vjFEM2VVynRHvg1TCf.6lL7vjFEM2VVynRHvg1TCf) | Evidence for separating calendar-event identity from physical-circuit identity |
+| F03 | [Monza circuit page](https://www.formula1.com/en/racing/2026/italy) | Nominal length and high-speed circuit characteristics |
+| F04 | [Monaco circuit page](https://www.formula1.com/en/racing/2026/monaco) | Nominal length and narrow, difficult-passing circuit characteristics |
+| F05 | [Madring circuit page](https://www.formula1.com/en/racing/2026/spain) | Current nominal length, lap count and corner count |
+| F06 | [Sepang circuit page](https://www.formula1.com/en/racing/2026/bahrain) | Current nominal length, lap count and weather context |
 | D01 | [OpenF1 API](https://openf1.org/docs/) | Available public channels, approximate sampling and location limitations |
+| D02 | [FastF1 documentation](https://docs.fastf1.dev/) | Historical session timing, telemetry, weather and event context |
 | M01 | [TUM lap-time simulator](https://github.com/TUMFTM/laptime-simulation) | Reduced-order lap/energy simulation reference; not 2026 F1-ready |
 | M02 | [TUM trajectory optimisation](https://github.com/TUMFTM/global_racetrajectory_optimization) | Track/racing-line and powertrain-aware modelling reference |
 | L01 | [Soft Actor-Critic paper](https://arxiv.org/abs/1801.01290) | Chosen continuous-action RL algorithm |

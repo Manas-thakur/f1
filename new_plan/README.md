@@ -40,6 +40,8 @@ The intended product helps a race engineer choose an electrical deployment strat
 | [14_operations](14_operations/TECHNICAL_SPEC.md) | Deployment, observability, security, incident recovery |
 | [15_presentation](15_presentation/DEMO_RUNBOOK.md) | Presentation narrative and honest claims |
 | [16_sources](16_sources/SOURCE_REGISTER.md) | Official references, research and verification scope |
+| [17_real_tracks_conditions](17_real_tracks_conditions/README.md) | Actual 2026 circuits, event overlays, race conditions and RL generalisation |
+| [presentation](presentation/README.md) | Final-round deck, speaker notes, visual assets and sources |
 
 ## What is delivered versus planned
 

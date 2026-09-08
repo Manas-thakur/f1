@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "snapshot_date": "2026-09-08",
+  "status": "official_schedule_snapshot_requires_refresh_before_use",
+  "calendar_source": "https://www.formula1.com/en/racing/2026",
+  "notes": [
+    "Calendar event identity is separate from physical track identity.",
+    "Nominal lengths and lap counts are scale checks, not driveable geometry.",
+    "Refresh against Formula 1 and FIA event documents before each event."
+  ],
+  "events": [
+    {"round": 1, "event_id": "2026-australia", "event_name": "Australian Grand Prix", "track_id": "melbourne", "circuit_name": "Albert Park Circuit", "nominal_length_m": 5278, "race_laps": 58, "f1_page": "https://www.formula1.com/en/racing/2026/australia"},
+    {"round": 2, "event_id": "2026-china", "event_name": "Chinese Grand Prix", "track_id": "shanghai", "circuit_name": "Shanghai International Circuit", "nominal_length_m": 5451, "race_laps": 56, "f1_page": "https://www.formula1.com/en/racing/2026/china"},
+    {"round": 3, "event_id": "2026-japan", "event_name": "Japanese Grand Prix", "track_id": "suzuka", "circuit_name": "Suzuka Circuit", "nominal_length_m": 5807, "race_laps": 53, "f1_page": "https://www.formula1.com/en/racing/2026/japan"},
+    {"round": 4, "event_id": "2026-miami", "event_name": "Miami Grand Prix", "track_id": "miami", "circuit_name": "Miami International Autodrome", "nominal_length_m": 5412, "race_laps": 57, "f1_page": "https://www.formula1.com/en/racing/2026/miami"},
+    {"round": 5, "event_id": "2026-canada", "event_name": "Canadian Grand Prix", "track_id": "montreal", "circuit_name": "Circuit Gilles-Villeneuve", "nominal_length_m": 4361, "race_laps": 70, "f1_page": "https://www.formula1.com/en/racing/2026/canada"},
+    {"round": 6, "event_id": "2026-monaco", "event_name": "Monaco Grand Prix", "track_id": "monaco", "circuit_name": "Circuit de Monaco", "nominal_length_m": 3337, "race_laps": 78, "f1_page": "https://www.formula1.com/en/racing/2026/monaco"},
+    {"round": 7, "event_id": "2026-barcelona-catalunya", "event_name": "Barcelona-Catalunya Grand Prix", "track_id": "catalunya", "circuit_name": "Circuit de Barcelona-Catalunya", "nominal_length_m": 4657, "race_laps": 66, "f1_page": "https://www.formula1.com/en/racing/2026/barcelona-catalunya"},
+    {"round": 8, "event_id": "2026-austria", "event_name": "Austrian Grand Prix", "track_id": "spielberg", "circuit_name": "Red Bull Ring", "nominal_length_m": 4318, "race_laps": 71, "f1_page": "https://www.formula1.com/en/racing/2026/austria"},
+    {"round": 9, "event_id": "2026-great-britain", "event_name": "British Grand Prix", "track_id": "silverstone", "circuit_name": "Silverstone Circuit", "nominal_length_m": 5891, "race_laps": 52, "f1_page": "https://www.formula1.com/en/racing/2026/great-britain"},
+    {"round": 10, "event_id": "2026-belgium", "event_name": "Belgian Grand Prix", "track_id": "spa", "circuit_name": "Circuit de Spa-Francorchamps", "nominal_length_m": 7004, "race_laps": 44, "f1_page": "https://www.formula1.com/en/racing/2026/belgium"},
+    {"round": 11, "event_id": "2026-hungary", "event_name": "Hungarian Grand Prix", "track_id": "hungaroring", "circuit_name": "Hungaroring", "nominal_length_m": 4381, "race_laps": 70, "f1_page": "https://www.formula1.com/en/racing/2026/hungary"},
+    {"round": 12, "event_id": "2026-netherlands", "event_name": "Dutch Grand Prix", "track_id": "zandvoort", "circuit_name": "Circuit Zandvoort", "nominal_length_m": 4259, "race_laps": 72, "f1_page": "https://www.formula1.com/en/racing/2026/netherlands"},
+    {"round": 13, "event_id": "2026-italy", "event_name": "Italian Grand Prix", "track_id": "monza", "circuit_name": "Autodromo Nazionale Monza", "nominal_length_m": 5793, "race_laps": 53, "f1_page": "https://www.formula1.com/en/racing/2026/italy"},
+    {"round": 14, "event_id": "2026-spain", "event_name": "Spanish Grand Prix", "track_id": "madring", "circuit_name": "Madring", "nominal_length_m": 5416, "race_laps": 57, "f1_page": "https://www.formula1.com/en/racing/2026/spain"},
+    {"round": 15, "event_id": "2026-azerbaijan", "event_name": "Azerbaijan Grand Prix", "track_id": "baku", "circuit_name": "Baku City Circuit", "nominal_length_m": 6003, "race_laps": 51, "f1_page": "https://www.formula1.com/en/racing/2026/azerbaijan"},
+    {"round": 16, "event_id": "2026-bahrain-gp-malaysia", "event_name": "Bahrain Grand Prix in Malaysia", "track_id": "sepang", "circuit_name": "Sepang International Circuit", "nominal_length_m": 5543, "race_laps": 56, "f1_page": "https://www.formula1.com/en/racing/2026/bahrain"},
+    {"round": 17, "event_id": "2026-singapore", "event_name": "Singapore Grand Prix", "track_id": "singapore", "circuit_name": "Marina Bay Street Circuit", "nominal_length_m": 4927, "race_laps": 62, "f1_page": "https://www.formula1.com/en/racing/2026/singapore"},
+    {"round": 18, "event_id": "2026-united-states", "event_name": "United States Grand Prix", "track_id": "austin", "circuit_name": "Circuit of the Americas", "nominal_length_m": 5513, "race_laps": 56, "f1_page": "https://www.formula1.com/en/racing/2026/united-states"},
+    {"round": 19, "event_id": "2026-mexico", "event_name": "Mexico City Grand Prix", "track_id": "mexico-city", "circuit_name": "Autódromo Hermanos Rodríguez", "nominal_length_m": 4304, "race_laps": 71, "f1_page": "https://www.formula1.com/en/racing/2026/mexico"},
+    {"round": 20, "event_id": "2026-brazil", "event_name": "São Paulo Grand Prix", "track_id": "interlagos", "circuit_name": "Autódromo José Carlos Pace", "nominal_length_m": 4309, "race_laps": 71, "f1_page": "https://www.formula1.com/en/racing/2026/brazil"},
+    {"round": 21, "event_id": "2026-las-vegas", "event_name": "Las Vegas Grand Prix", "track_id": "las-vegas", "circuit_name": "Las Vegas Strip Circuit", "nominal_length_m": 6201, "race_laps": 50, "f1_page": "https://www.formula1.com/en/racing/2026/las-vegas"},
+    {"round": 22, "event_id": "2026-qatar", "event_name": "Qatar Grand Prix", "track_id": "lusail", "circuit_name": "Lusail International Circuit", "nominal_length_m": 5419, "race_laps": 57, "f1_page": "https://www.formula1.com/en/racing/2026/qatar"},
+    {"round": 23, "event_id": "2026-abu-dhabi", "event_name": "Abu Dhabi Grand Prix", "track_id": "yas-marina", "circuit_name": "Yas Marina Circuit", "nominal_length_m": 5281, "race_laps": 58, "f1_page": "https://www.formula1.com/en/racing/2026/abu-dhabi"}
+  ]
+}

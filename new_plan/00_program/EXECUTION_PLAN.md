@@ -38,3 +38,5 @@ An agent may finish its local work while a downstream gate remains blocked. The 
 ## Coordinator launch
 
 Use the complete [master implementation prompt](BUILD_WITH_AGENTS.md) and [selected stack](TECH_STACK.md). Their canonical source layout maps the logical paths in module briefs to importable packages.
+
+A16 owns real-circuit and condition packages. Start its source/schema work in wave 1; integrate validated geometry in wave 2; complete event overlays and circuit-conditioned evaluation with A03/A04/A07/A13 in waves 3–4. A16 may not mark a track simulation-eligible without the evidence in `17_real_tracks_conditions/VALIDATION.md`.
