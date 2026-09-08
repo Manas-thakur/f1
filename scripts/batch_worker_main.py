@@ -241,9 +241,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-jobs", type=int, default=None)
     parser.add_argument("--once", action="store_true", help="Poll once and exit (used by tests).")
     parser.add_argument("--wait-for-database", type=float, default=60.0, metavar="SECONDS")
+    parser.add_argument(
+        "--healthcheck",
+        action="store_true",
+        help="Exit 0 if this worker's heartbeat is recent, 1 otherwise. Used as the container probe.",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+
+    if args.healthcheck:
+        return _healthcheck()
 
     from workers.batch_worker import BatchWorker
 
@@ -279,6 +287,25 @@ def main(argv: list[str] | None = None) -> int:
 
     completed = 0
     last_verdict: QuotaVerdict | None = None
+
+    def beat(state: str, *, detail: str | None = None, job_id: str | None = None) -> None:
+        """Report this worker's own state into the shared artefact root.
+
+        This service runs no HTTP server, so without a heartbeat a wedged
+        worker is indistinguishable from an idle one to everything outside its
+        own process. Written on every poll, not only on a state change: the
+        age is the signal.
+        """
+        _write_heartbeat(
+            paths.artifacts,
+            worker_id=worker.worker_id,
+            state=state,
+            detail=detail,
+            jobs_completed=completed,
+            current_job_id=job_id,
+            quota_verdict=None if last_verdict is None else last_verdict.value,
+        )
+
     try:
         while not stop.requested and (args.max_jobs is None or completed < args.max_jobs):
             reading = quota.read()
@@ -286,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
                 logger.warning("artefact quota %s: %s", reading.verdict.value, reading.detail)
                 last_verdict = reading.verdict
             if not reading.accepts_experiment_jobs:
+                beat("refusing_work_on_quota", detail=reading.detail)
                 if args.once:
                     return 0
                 time.sleep(args.poll_interval)
@@ -293,6 +321,7 @@ def main(argv: list[str] | None = None) -> int:
 
             claimed = worker.claim()
             if claimed is None:
+                beat("idle", detail="no queued experiment job to claim")
                 if args.once:
                     return 0
                 time.sleep(args.poll_interval)
@@ -300,6 +329,7 @@ def main(argv: list[str] | None = None) -> int:
 
             job_id, manifest_hash = claimed
             logger.info("claimed experiment job %s (manifest %s)", job_id, manifest_hash)
+            beat("running", detail=f"manifest {manifest_hash}", job_id=job_id)
             outcome = worker.run(job_id, manifest_hash, runner)
             completed += 1
             logger.info(
@@ -310,11 +340,39 @@ def main(argv: list[str] | None = None) -> int:
                 list(outcome.completed_units),
                 outcome.failure,
             )
+            beat("idle", detail=f"job {outcome.job_id} finished {outcome.status.value}")
             if args.once:
                 return 0
+        beat("stopped", detail="the worker loop exited")
     finally:
         engine.dispose()
     return 0
+
+
+def _write_heartbeat(artifacts_root: Path, **fields: Any) -> None:
+    """Write one heartbeat, never failing the worker over it.
+
+    A heartbeat is diagnostic. An unwritable artefact root is already reported
+    by the quota reading and by the API's own storage probe; losing the job
+    that is running because the report could not be written would be worse
+    than losing the report.
+    """
+    from afterlap_api.worker_health import WorkerHeartbeat
+
+    try:
+        WorkerHeartbeat.now(**fields).write(artifacts_root)
+    except OSError as exc:
+        logger.warning("could not write the batch worker heartbeat: %s", exc)
+
+
+def _healthcheck() -> int:
+    """Container probe: 0 while this worker's heartbeat is recent."""
+    from afterlap_api.worker_health import worker_status
+    from afterlap_core.paths import Paths
+
+    status = worker_status(Paths.default().artifacts)
+    print(f"batch worker {status.status}: {status.detail}")
+    return 0 if status.live else 1
 
 
 if __name__ == "__main__":

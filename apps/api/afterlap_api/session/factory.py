@@ -329,7 +329,17 @@ class SessionFactory:
         """
         return self._paths
 
-    def create(self, payload: CreateSessionRequest) -> tuple[SessionManifest, InProcessSessionRuntime]:
+    def create(
+        self, payload: CreateSessionRequest, *, session_id: str | None = None
+    ) -> tuple[SessionManifest, InProcessSessionRuntime]:
+        """Resolve, validate and start one session.
+
+        ``session_id`` pins the manifest id instead of minting one. An
+        out-of-process worker is addressed by an id the control plane chose
+        before the child existed; without this the child's durable records
+        would carry a different id from the commands that produced them, and
+        one session's history would silently split in two.
+        """
         artefacts = resolve_artefacts(
             scenario_id=payload.scenario_id,
             ruleset_id=payload.ruleset_id,
@@ -350,6 +360,7 @@ class SessionFactory:
             mode=payload.mode,
             seed=payload.seed,
             label=payload.label,
+            session_id=session_id,
             observation_rate_hz=config.observation_rate_hz,
         )
         recorder: SessionRecorder | None = None

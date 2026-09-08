@@ -32,9 +32,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from afterlap_contracts import CapabilityState
 from afterlap_contracts.requests import HealthResponse
+from afterlap_core.paths import Paths
 
 from ..runtime.port import RuntimeUnavailable
 from ..session.runtime import SessionRuntimeError
+from ..worker_health import BATCH_WORKER, worker_status
 
 if TYPE_CHECKING:
     from ..runtime.registry import RuntimeRegistry
@@ -75,6 +77,8 @@ async def ready(request: Request, response: Response) -> HealthResponse:
     if unready:
         detail["sessions"] = "; ".join(unready)
 
+    detail["batch_worker"] = _batch_worker(request).status
+
     if missing or store_error is not None or unready:
         response.status_code = 503
         if missing:
@@ -82,6 +86,26 @@ async def ready(request: Request, response: Response) -> HealthResponse:
         return HealthResponse(status="not_ready", detail=detail)
 
     return HealthResponse(status="ready", detail=detail)
+
+
+@router.get("/health/workers")
+async def workers(request: Request) -> dict[str, Any]:
+    """What each background worker last reported about itself.
+
+    Separate from readiness on purpose. A stale batch worker means queued
+    experiments are not being claimed; it does not mean a decision cannot be
+    made, and ``ARCHITECTURE.md`` puts experiment work first in line to stop
+    when resources run short. Reporting it here keeps a wedged worker visible
+    without letting it take the control plane down with it.
+    """
+    status = _batch_worker(request)
+    return {"workers": [status.as_dict()]}
+
+
+def _batch_worker(request: Request) -> Any:
+    settings = getattr(request.app.state, "settings", None)
+    root = Paths.default(getattr(settings, "artifact_root", None)).artifacts
+    return worker_status(root, BATCH_WORKER)
 
 
 def _lifecycle_store_error(request: Request) -> str | None:
