@@ -8,6 +8,7 @@ import { useSessionStore } from '@/state/sessionStore';
 import { useSessionRuntime, type SessionRuntimeOptions } from '../engineer/sessionRuntime';
 import styles from '../engineer/workspace.module.css';
 import { BranchCompare } from './BranchCompare';
+import { CircuitConfiguration } from './CircuitConfiguration';
 import { ExperimentJobs, type SubmittedExperiment } from './ExperimentJobs';
 import { RunControl } from './RunControl';
 import { ScenarioPanel } from './ScenarioPanel';
@@ -68,6 +69,14 @@ export function SimulationLab({
         </div>
       </div>
 
+      <ol className={styles.labFlow} aria-label="Simulation workflow">
+        <li><span>Configure</span><small>circuit and conditions</small></li>
+        <li><span>Run</span><small>deterministic scenario</small></li>
+        <li><span>Snapshot</span><small>freeze starting state</small></li>
+        <li><span>Branch</span><small>change one treatment</small></li>
+        <li><span>Review</span><small>compare outcomes</small></li>
+      </ol>
+
       <Notice tone="attention" testId="lab-synthetic-label">
         Synthetic laboratory. Physics, opponents and rule packs here are illustrative fixtures;
         nothing produced in this view is a measurement of a real car or evidence of compliance.
@@ -81,6 +90,8 @@ export function SimulationLab({
 
       <div className={styles.columns}>
         <div className={styles.stack}>
+          <CircuitConfiguration />
+
           {sessionId === undefined ? null : (
             <RunControl
               sessionId={sessionId}

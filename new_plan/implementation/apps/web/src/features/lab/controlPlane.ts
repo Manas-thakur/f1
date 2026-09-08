@@ -58,7 +58,16 @@ export interface CreateExportRequestBody {
   readonly end_session_time_s?: number | null;
 }
 
-/** `afterlap_contracts.requests.CreateSessionRequest`. */
+/**
+ * `afterlap_contracts.requests.CreateSessionRequest`.
+ *
+ * `track_id`, `event_id` and `conditions_id` are the real-circuit identity
+ * fields the generated `CreateSessionRequest` now carries; the laboratory
+ * sends the ids the operator picked and the control plane resolves them.
+ * Sending them does not make a run real — the session manifest comes back with
+ * the readiness rung and the package hash, and the views label the run
+ * `real_circuit_synthetic_energy`.
+ */
 export interface CreateSessionRequestBody {
   readonly mode: SessionMode;
   readonly scenario_id: string;
@@ -66,6 +75,9 @@ export interface CreateSessionRequestBody {
   readonly seed: number;
   readonly model_bundle_id?: string | null;
   readonly label?: string | null;
+  readonly track_id?: string | null;
+  readonly event_id?: string | null;
+  readonly conditions_id?: string | null;
 }
 
 type FetchLike = typeof fetch;

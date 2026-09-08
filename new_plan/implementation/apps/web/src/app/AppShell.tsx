@@ -83,7 +83,10 @@ function ModuleRail() {
     <header className={styles.rail}>
       <NavLink to="/" className={styles.brand ?? ''}>
         <span className={styles.brandMark} aria-hidden="true" />
-        AFTERLAP
+        <span className={styles.brandLockup}>
+          <strong>AFTERLAP</strong>
+          <small>Race strategy system</small>
+        </span>
       </NavLink>
       <nav className={styles.railNav} aria-label="Modules">
         {groups.map((group) => (
@@ -92,7 +95,7 @@ function ModuleRail() {
             <ul>
               {group.links.map((link) => (
                 <li key={link.to}>
-                  <NavLink to={link.to} className={styles.railLink ?? ''} end={false}>
+                  <NavLink to={link.to} className={styles.railLink ?? ''} end>
                     {link.label}
                   </NavLink>
                 </li>
@@ -102,7 +105,8 @@ function ModuleRail() {
         ))}
       </nav>
       <div className={styles.railBottom}>
-        <span>Working name. No affiliation implied.</span>
+        <span className={styles.railBottomLabel}>Operating boundary</span>
+        <span>Simulation and decision support. Human selection remains authoritative.</span>
       </div>
     </header>
   );

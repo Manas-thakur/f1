@@ -31,18 +31,18 @@ export const EMPTY_DRAFT: ScenarioDraft = {
 };
 
 /**
- * Scenario and rule-pack ids shipped in `configs/`. These are suggestions for
- * the operator, not an authority: the control plane resolves the documents and
- * is free to reject an id that is not present.
+ * Rule-pack ids shipped in `configs/rulesets`. These are suggestions for the
+ * operator, not an authority: the control plane resolves the documents and is
+ * free to reject an id that is not present.
+ *
+ * The scenario list is **not** here. It used to be a hardcoded array in this
+ * file, which meant the laboratory offered five names whether or not the
+ * control plane could resolve any of them, and could not offer a sixth. It is
+ * now read from `GET /api/v1/scenarios` and reaches validation through
+ * `ValidationContext.scenarioIds`; when that route cannot be read the id is
+ * left unchecked here and the warning says so, rather than a shipped list
+ * standing in for the server's answer.
  */
-export const SHIPPED_SCENARIO_IDS: readonly string[] = [
-  'two-straight-counterattack',
-  'oval-defend-hold',
-  'oval-low-energy',
-  'loop-regen-disabled',
-  'loop-no-energy-channel',
-];
-
 export const SHIPPED_RULESET_IDS: readonly string[] = [
   'synthetic-pack-v1',
   'synthetic-pack-v2-strict',
@@ -64,6 +64,21 @@ export interface ValidationContext {
   readonly rulesetError: string | null;
   readonly rulesetLoading: boolean;
   readonly models: readonly ModelManifest[];
+  /**
+   * Scenario ids from `GET /api/v1/scenarios`, or null when that route could
+   * not be read. Null is not an empty list: an empty list means the control
+   * plane resolves no scenario, null means nobody knows yet.
+   */
+  readonly scenarioIds?: readonly string[] | null;
+  /** Why the scenario catalogue could not be read, when it could not. */
+  readonly scenarioCatalogueError?: string | null;
+  /**
+   * The catalogue's own refusal for the chosen scenario, when it gave one —
+   * a circuit with no compiled package, or one below the readiness floor.
+   * The control plane would reject the session, so this is an error here, not
+   * a warning to be acknowledged away.
+   */
+  readonly scenarioUnavailableReason?: string | null;
 }
 
 export interface ValidationResult {
@@ -102,12 +117,30 @@ export function validateScenario(
       severity: 'error',
       message: 'Scenario ids are lower-case identifiers, for example two-straight-counterattack.',
     });
-  } else if (!SHIPPED_SCENARIO_IDS.includes(draft.scenarioId.trim())) {
+  } else if (context.scenarioIds === undefined || context.scenarioIds === null) {
     issues.push({
       field: 'scenarioId',
       severity: 'warning',
       message:
-        'This id is not one of the scenarios shipped in configs/scenarios. The control plane will reject it if it does not resolve.',
+        context.scenarioCatalogueError === undefined || context.scenarioCatalogueError === null
+          ? 'The scenario catalogue has not been read, so this id cannot be checked here. The control plane will reject it if it does not resolve.'
+          : `The scenario catalogue could not be read (${context.scenarioCatalogueError}), so this id cannot be checked here. No shipped list is used in its place, and the control plane will reject the id if it does not resolve.`,
+    });
+  } else if (!context.scenarioIds.includes(draft.scenarioId.trim())) {
+    issues.push({
+      field: 'scenarioId',
+      severity: 'warning',
+      message:
+        'This id is not one the control plane listed at GET /api/v1/scenarios. It will be rejected if it does not resolve.',
+    });
+  } else if (
+    context.scenarioUnavailableReason !== undefined &&
+    context.scenarioUnavailableReason !== null
+  ) {
+    issues.push({
+      field: 'scenarioId',
+      severity: 'error',
+      message: `The control plane reports this scenario as unrunnable: ${context.scenarioUnavailableReason}`,
     });
   }
 
