@@ -402,6 +402,7 @@ def ingest_fia_document(track_id: str, event_id: str, document: Path | str, path
             aside = target.with_name(f"{event_id}.superseded-{(previous_sha or 'nohash')[:12]}.json")
             target.replace(aside)
             superseded = aside.name
+    overlay = overlay.with_hash()
     atomic_write_json(target, overlay.model_dump(mode="json"))
     atomic_write_json(
         target.with_name(f"{event_id}.extraction.json"),
@@ -454,6 +455,7 @@ def review_overlay(track_id: str, event_id: str, reviewer: str, decision: str, p
     updated = overlay.model_copy(update={"reviewers": reviewers, "review_status": status})
 
     target = event_overlay_path(track_id, event_id, paths)
+    updated = updated.with_hash()
     atomic_write_json(target, updated.model_dump(mode="json"))
     log = target.with_name(f"{event_id}.reviews.jsonl")
     entry = {
