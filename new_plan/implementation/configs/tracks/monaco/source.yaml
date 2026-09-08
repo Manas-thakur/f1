@@ -1,0 +1,27 @@
+# Source manifest for Circuit de Monaco (monaco). Field names are fixed in handoffs/A16-1.md.
+# Declares which public sources the compiler may consume. Nothing here is geometry.
+track_id: monaco
+display_name: "Circuit de Monaco"
+direction: clockwise  # declared expectation; the compiler confirms it from session progression
+official_length_m:
+  value: 3337
+  source_url: https://www.formula1.com/en/racing/2026/monaco
+  retrieved_at: "2026-09-08T14:20:34.662732Z"
+  sha256: 80c02aab260e736a40686d69b2f99798a5be53327620bc7212f24e025b40bf01
+openf1:
+  sessions:
+    - session_key: 9979
+      year: 2025
+      session_name: Race
+      driver_number: null
+      note: "OpenF1 circuit_short_name 'Monte Carlo'; 2025-05-25"
+fia_documents:
+  - event_id: 2026-monaco
+    url: https://www.fia.com/system/files/decision-document/2026_monaco_grand_prix_-_power_unit_information.pdf
+    title: "2026 Monaco Grand Prix - Power Unit Information (Document 4, 03 Jun 2026)"
+  - event_id: 2026-monaco
+    url: https://www.fia.com/system/files/decision-document/2026_monaco_grand_prix_-_race_directors_competition_notes.pdf
+    title: "2026 Monaco Grand Prix - Race Director's Competition Notes (Document 5, 04 Jun 2026)"
+permissions:
+  geometry: "OpenF1 /location telemetry (api.openf1.org): public API, free for non-commercial use per openf1.org; priority-3 source. Empirical racing line only; it defines neither legal boundaries nor ERS state. No map artwork is traced."
+  documents: "FIA public decision documents from fia.com/documents/formula-1; reference-only, values transcribed by two reviewers against the hashed PDF. Formula1.com circuit page used for length/lap-count scale checks only; review terms before redistribution."
