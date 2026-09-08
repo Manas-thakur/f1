@@ -1,0 +1,44 @@
+# Commissioning smoke benchmark.
+#
+# SYNTHETIC. This is a *tuning* manifest, deliberately small: it exists so the
+# harness itself can be exercised end to end in a test suite. It is far too
+# small to support any claim about controller quality, and the report it
+# produces says so. It is not the held-out test manifest and must never be
+# quoted as one.
+id: commissioning-smoke
+split: tuning
+synthetic: true
+description: >-
+  Two scenarios by two seeds over a 20 s horizon. Exercises the harness, the
+  paired bookkeeping and the report writer. Not a study.
+
+scenario_ids:
+  - two-straight-counterattack
+  - oval-defend-hold
+
+seeds: [42, 43]
+
+families:
+  two-straight-counterattack: loop-counterattack
+  oval-defend-hold: oval-defence
+
+horizon_s: 20.0
+dt_s: 0.02
+decision_interval_s: 1.0
+compute_budget_ms: 200.0
+rule_pack_id: synthetic-pack-v1
+
+checkpoint_ids: []
+
+frozen_at: "2026-09-08T00:00:00Z"
+
+notes:
+  - "Four independent units per controller. A paired bootstrap over four units
+     cannot resolve anything; the interval it produces is reported as evidence
+     of the plumbing, not of a benefit."
+  - "The MPC and learned rows of the comparison matrix are not merged, so they
+     appear in the report as unmeasured."
+  - "The horizon is 20 s rather than the 8 s a smoke test would otherwise need,
+     because the rival defend policy does not change state inside 8 s on this
+     fixture: shorter branches produce identical opponent behaviour and would
+     make the paired comparison look artificially clean."
