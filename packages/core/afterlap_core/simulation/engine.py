@@ -46,6 +46,7 @@ from .battery import EnergyLedger, LedgerPlan, SaturationEvent
 from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, load_bundle
 from .energy_limits import ElectricalLimits, EventEnergyLimits
 from .observation import Observation, observe
+from .overtake import OvertakeTracker, corridor_known
 from .policies import DriverAction, OpponentPolicy, build_policy
 from .state import (
     CarState,
@@ -59,6 +60,7 @@ from .state import (
 )
 from .track import TrackGeometry, footprints_overlap, geometry_for
 from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField
+from .wake import DISABLED as WAKE_DISABLED, FREE_AIR as WAKE_FREE_AIR, WakeEffect, WakeModel
 
 _MIN_SUBSTEP_S = 1.0e-4
 """Below this, an event boundary is applied at the end of the sub-step instead
@@ -164,6 +166,14 @@ class StepReport:
     """Recorded rather than hidden: the reduced model has no understeer escape,
     so a state where lateral demand exceeds the tyre envelope is reported as an
     unsupported condition instead of being silently clipped."""
+    wake_effects: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Per car: the aerodynamic interaction applied at the last force evaluation
+    (``WakeEffect.describe``), including whether the lateral offset behind it was
+    known. Diagnostics; the dynamics read the multipliers, not this record."""
+    overtake_stages: dict[str, dict[str, Any]] = field(default_factory=dict)
+    """Per registered pair ``"a|b"``: the four-stage overtake record
+    (``OvertakeRecord.as_dict``). Empty unless :meth:`Simulator.follow_overtake`
+    registered the pair. ``overlap`` is ``unavailable`` on an unknown corridor."""
 
 
 class Simulator:
@@ -175,6 +185,9 @@ class Simulator:
         self._sensor_config: ObservationConfig | None = None
         self._event_limits: EventEnergyLimits = EventEnergyLimits.none()
         self._electrical_limits: dict[str, ElectricalLimits] = {}
+        self._wake: WakeModel | None = None
+        self._wake_effects: dict[str, WakeEffect] = {}
+        self._overtake_trackers: dict[tuple[str, str], OvertakeTracker] = {}
 
     def reset(
         self,
@@ -182,6 +195,7 @@ class Simulator:
         seed: int | None = None,
         environment: EnvironmentField | None = None,
         event_overlay: Any | None = None,
+        wake: WakeModel | None = None,
     ) -> Simulator:
         """Load a scenario and build the initial world state.
 
@@ -190,6 +204,12 @@ class Simulator:
         produced it. ``event_overlay`` overrides the overlay the scenario's
         ``event_id`` would load from the track package; either way only values
         confirmed by two reviewers ever tighten an electrical limit.
+
+        ``wake`` installs an aerodynamic interaction model
+        (:class:`~.wake.WakeModel`). It is ``None`` by default because every
+        coefficient in that model is an uncalibrated declared assumption, so a
+        run has to ask for it; without it the drag and downforce multipliers are
+        exactly 1.0 and the trajectory is bit-identical to a pre-wake run.
         """
         bundle = (
             manifest_or_scenario
@@ -201,6 +221,9 @@ class Simulator:
             event_overlay if event_overlay is not None else self._load_event_overlay(bundle)
         )
         self._electrical_limits = {}
+        self._wake = wake
+        self._wake_effects = {}
+        self._overtake_trackers = {}
         effective_seed = scenario.seed if seed is None else int(seed)
         world = WorldState(
             bundle=bundle,
@@ -288,6 +311,87 @@ class Simulator:
     def electrical_limits(self, car_id: str) -> ElectricalLimits | None:
         """The limits in force at the last force evaluation of ``car_id``; ``None`` before the first step."""
         return self._electrical_limits.get(car_id)
+
+    @property
+    def wake_model(self) -> WakeModel | None:
+        """The installed aerodynamic interaction model, or ``None`` when free air."""
+        return self._wake
+
+    def wake_effect(self, car_id: str) -> WakeEffect | None:
+        """The interaction applied at the last force evaluation of ``car_id``."""
+        return self._wake_effects.get(car_id)
+
+    def follow_overtake(
+        self,
+        overtaking_car_id: str,
+        overtaken_car_id: str,
+        *,
+        retention_checkpoint_id: str | None = None,
+    ) -> OvertakeTracker:
+        """Register an ordered pair for four-stage overtake labelling.
+
+        The tracker is fed from truth after every step and its record appears in
+        ``StepReport.overtake_stages``. Nothing is registered by default, so a
+        run that does not ask for stage labelling behaves exactly as before.
+        ``retention_checkpoint_id`` defaults to the scenario's own retention
+        checkpoint.
+        """
+        if retention_checkpoint_id is None:
+            retention_checkpoint_id = self.world.bundle.scenario.retention_checkpoint_id
+        tracker = OvertakeTracker(
+            overtaking_car_id,
+            overtaken_car_id,
+            retention_checkpoint_id=retention_checkpoint_id,
+        )
+        self._overtake_trackers[(overtaking_car_id, overtaken_car_id)] = tracker
+        return tracker
+
+    def overtake_tracker(self, overtaking_car_id: str, overtaken_car_id: str) -> OvertakeTracker | None:
+        return self._overtake_trackers.get((overtaking_car_id, overtaken_car_id))
+
+    def _wake_effect_for(
+        self, car_id: str, progress_m: float, lateral_d_m: float, speed_mps: float
+    ) -> WakeEffect:
+        """Aerodynamic interaction imposed on ``car_id`` by the car ahead.
+
+        Simulator truth, not an observation: the leader is the nearest car ahead
+        in unwrapped progress, read at the start of the sub-step. The lateral
+        offset is passed to the model only when the corridor is surveyed at both
+        cars' positions; otherwise it is ``None`` and the model estimates the tow
+        from longitudinal separation under its declared in-line assumption,
+        making no side-by-side or contact claim (decision D-10).
+
+        With no model installed, or nothing ahead, the returned multipliers are
+        exactly 1.0.
+        """
+        model = self._wake
+        if model is None:
+            return WAKE_DISABLED
+        world = self.world
+        leader_id: str | None = None
+        nearest = float("inf")
+        for other_id, other in world.cars.items():
+            if other_id == car_id:
+                continue
+            delta = other.progress_m - progress_m
+            if 0.0 < delta < nearest:
+                nearest = delta
+                leader_id = other_id
+        if leader_id is None:
+            return WAKE_FREE_AIR
+        leader = world.cars[leader_id]
+        clearance = self._clearance_m(world.bundle, car_id, leader_id)
+        own_s = progress_m % world.track.length
+        lateral_offset: float | None = None
+        if corridor_known(world, own_s) and corridor_known(world, leader.s_m):
+            lateral_offset = lateral_d_m - leader.lateral_d_m
+        return model.evaluate(
+            separation_m=nearest - clearance,
+            lateral_offset_m=lateral_offset,
+            relative_speed_mps=leader.speed_mps - speed_mps,
+            leader_speed_mps=leader.speed_mps,
+            leader_car_id=leader_id,
+        )
 
     @staticmethod
     def _clearance_m(bundle: ScenarioBundle, a: str, b: str) -> float:
@@ -392,6 +496,7 @@ class Simulator:
             self._process_events(world.race.session_time_s, report)
 
         self._detect_passes(report)
+        self._update_overtake_stages(report)
         self._record_truth_sample()
         world.race.step_index += 1
         world.last_dt_s = dt_s
@@ -562,12 +667,15 @@ class Simulator:
         heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
         air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))
 
-        down_n = physics.downforce(rho, float(car.cla_m2.value), air_speed)
+        wake_effect = self._wake_effect_for(car_id, progress_m, lateral_d_m, speed)
+        self._wake_effects[car_id] = wake_effect
+
+        down_n = physics.downforce(rho, wake_effect.downforce_multiplier * float(car.cla_m2.value), air_speed)
         envelope_n = physics.traction_limit(mass, physics.GRAVITY_MPS2, mu, down_n)
         lateral_demand_n = mass * speed * speed * abs(curvature)
         long_envelope_n = physics.longitudinal_envelope(envelope_n, min(lateral_demand_n, envelope_n))
 
-        drag_n = physics.drag_force(rho, float(car.cda_m2.value), air_speed)
+        drag_n = physics.drag_force(rho, wake_effect.drag_multiplier * float(car.cda_m2.value), air_speed)
         roll_n = physics.rolling_force(mass, physics.GRAVITY_MPS2, float(car.crr.value), grade)
         grade_n = physics.grade_force(mass, physics.GRAVITY_MPS2, grade)
 
@@ -711,6 +819,9 @@ class Simulator:
             limits = self._electrical_limits.get(car_id)
             if limits is not None:
                 report.electrical_limits[car_id] = limits.describe()
+            effect = self._wake_effects.get(car_id)
+            if effect is not None:
+                report.wake_effects[car_id] = effect.describe()
 
             state.progress_m = trial.progress_m
             laps, s_m = laps_and_s(trial.progress_m, world.track.length)
@@ -923,9 +1034,22 @@ class Simulator:
                 pair.completed_progress_m = None
                 pair.retained_evaluated = False
 
+    def _update_overtake_stages(self, report: StepReport) -> None:
+        """Feed every registered pair's stage machine from truth. Inert when none."""
+        if not self._overtake_trackers:
+            return
+        world = self.world
+        for (a, b), tracker in self._overtake_trackers.items():
+            tracker.update(world)
+            report.overtake_stages[f"{a}|{b}"] = tracker.record(world).as_dict()
+
     def _evaluate_retention(self, car_id: str, checkpoint_id: str, moment: float, report: StepReport) -> None:
         """Decide retained-pass at the scenario's named retention checkpoint."""
         world = self.world
+        for (a, b), tracker in self._overtake_trackers.items():
+            if a == car_id:
+                tracker.retention_checkpoint(world, checkpoint_id)
+                report.overtake_stages[f"{a}|{b}"] = tracker.record(world).as_dict()
         retention = world.bundle.scenario.retention_checkpoint_id
         if retention is None or checkpoint_id != retention:
             return
