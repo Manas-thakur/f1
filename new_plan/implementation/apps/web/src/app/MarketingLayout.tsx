@@ -23,6 +23,10 @@ export function MarketingLayout() {
               <span className={styles.brandMark} aria-hidden="true" />
               AFTERLAP
             </Link>
+            <div className={styles.webNavMeta}>
+              <span>Simulation decision system</span>
+              <span>Energy · Overtake · Evidence</span>
+            </div>
             <nav aria-label="Product pages">
               <ul className={styles.webNavLinks}>
                 <li>

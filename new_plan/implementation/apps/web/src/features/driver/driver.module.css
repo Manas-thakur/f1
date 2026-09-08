@@ -52,6 +52,35 @@
   min-width: 0;
 }
 
+.commandGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(230px, 0.65fr);
+  gap: var(--s3);
+}
+
+.instructionBlock {
+  min-height: 220px;
+}
+
+.targetBlock {
+  align-content: space-between;
+  background: var(--raised);
+}
+
+.targetText {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  font: 650 clamp(24px, 4vw, 36px) / 1.1 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.commandConditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s6);
+}
+
 .primaryBlock[data-state='instruction'] {
   border-color: var(--accent);
 }
@@ -116,6 +145,7 @@
   display: grid;
   gap: 2px;
   min-width: 0;
+  background: var(--raised);
 }
 
 .numberLabel {
@@ -175,5 +205,15 @@
 
   .primaryBlock {
     padding: var(--s3);
+  }
+}
+
+@media (max-width: 768px) {
+  .commandGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .instructionBlock {
+    min-height: 0;
   }
 }

@@ -1,16 +1,23 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import type { ApiError, SessionMode } from '@contracts';
+import type { ApiError, SessionManifest, SessionMode } from '@contracts';
 
 import { newIdempotencyKey } from '@/api/client';
 import { guidanceFor, toApiError } from '@/api/errors';
 import { useModels, useRuleset } from '@/api/queries';
+import {
+  catalogueFailureText,
+  trackCatalogueClient,
+  type TrackCatalogueClient,
+} from '@/api/trackCatalogue';
+import { useScenarioCatalogue } from '@/api/trackQueries';
 import { Button, Field, Notice, Panel, StatusBadge } from '@/components';
+import { shortHash } from '../tracks/readiness';
+import { useCircuitSelection } from './circuitSelection';
 import { labClient, type LabClient } from './controlPlane';
 import {
   EMPTY_DRAFT,
   SHIPPED_RULESET_IDS,
-  SHIPPED_SCENARIO_IDS,
   issuesFor,
   validateScenario,
   type ScenarioDraft,
@@ -20,6 +27,8 @@ import styles from '../engineer/workspace.module.css';
 export interface ScenarioPanelProps {
   readonly client?: LabClient;
   readonly initialDraft?: ScenarioDraft;
+  /** Test seam for the scenario catalogue read. */
+  readonly catalogueClient?: TrackCatalogueClient;
 }
 
 /**
@@ -32,14 +41,39 @@ export interface ScenarioPanelProps {
  * the fieldset below says exactly that instead of collecting values that would
  * be silently discarded.
  */
-export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }: ScenarioPanelProps) {
+export function ScenarioPanel({
+  client = labClient,
+  initialDraft = EMPTY_DRAFT,
+  catalogueClient = trackCatalogueClient,
+}: ScenarioPanelProps) {
   const [draft, setDraft] = useState<ScenarioDraft>(initialDraft);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [createdSessionId, setCreatedSessionId] = useState<string | null>(null);
+  // The manifest the control plane returned, so the confirmation reports what
+  // the server actually resolved rather than what this panel asked for.
+  const [createdManifest, setCreatedManifest] = useState<SessionManifest | null>(null);
 
   const rulesetQuery = useRuleset(draft.rulesetId.trim() === '' ? undefined : draft.rulesetId.trim());
   const modelsQuery = useModels();
+  const scenarioQuery = useScenarioCatalogue(catalogueClient);
+
+  // The circuit panel owns the selection; this panel only forwards the two ids
+  // the create-session contract carries.
+  const trackId = useCircuitSelection((s) => s.trackId);
+  const conditionsId = useCircuitSelection((s) => s.conditionsId);
+
+  const scenarioCatalogueError = scenarioQuery.isError
+    ? catalogueFailureText('GET /api/v1/scenarios', scenarioQuery.error)
+    : null;
+  const scenarioEntries = scenarioQuery.data?.scenarios ?? null;
+  const scenarioIds =
+    scenarioEntries === null ? null : scenarioEntries.map((entry) => entry.scenario_id);
+  const selectedScenario =
+    scenarioEntries === null
+      ? null
+      : (scenarioEntries.find((entry) => entry.scenario_id === draft.scenarioId.trim()) ?? null);
+  const scenarioUnavailableReason = selectedScenario?.unavailable_reason ?? null;
 
   const validation = useMemo(
     () =>
@@ -50,8 +84,22 @@ export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }
           : null,
         rulesetLoading: draft.rulesetId.trim() !== '' && rulesetQuery.isPending,
         models: modelsQuery.data?.models ?? [],
+        scenarioIds,
+        scenarioCatalogueError,
+        scenarioUnavailableReason,
       }),
-    [draft, modelsQuery.data, rulesetQuery.data, rulesetQuery.isError, rulesetQuery.isPending],
+    [
+      draft,
+      modelsQuery.data,
+      rulesetQuery.data,
+      rulesetQuery.isError,
+      rulesetQuery.isPending,
+      scenarioCatalogueError,
+      scenarioUnavailableReason,
+      // A new array identity every render would defeat the memo; the joined
+      // ids are the value that actually matters to validation.
+      scenarioIds === null ? null : scenarioIds.join(','),
+    ],
   );
 
   const set = useCallback(
@@ -65,6 +113,7 @@ export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }
     setPending(true);
     setError(null);
     setCreatedSessionId(null);
+    setCreatedManifest(null);
     try {
       const response = await client.createSession(
         {
@@ -76,16 +125,21 @@ export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }
             ? {}
             : { model_bundle_id: draft.modelBundleId.trim() }),
           ...(draft.label.trim() === '' ? {} : { label: draft.label.trim() }),
+          // Omitted, never null-padded: no circuit selected means the scenario
+          // document's own track applies, not a circuit this panel invented.
+          ...(trackId === null ? {} : { track_id: trackId }),
+          ...(conditionsId === null ? {} : { conditions_id: conditionsId }),
         },
         { idempotencyKey: newIdempotencyKey() },
       );
       setCreatedSessionId(response.manifest.id);
+      setCreatedManifest(response.manifest);
     } catch (caught: unknown) {
       setError(toApiError(caught, 'the session could not be created'));
     } finally {
       setPending(false);
     }
-  }, [client, draft]);
+  }, [client, conditionsId, draft, trackId]);
 
   const fieldState = (field: Parameters<typeof issuesFor>[1]) =>
     issuesFor(validation, field).some((issue) => issue.severity === 'error') ? 'error' : 'default';
@@ -104,6 +158,12 @@ export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }
         </StatusBadge>
         <StatusBadge label="Rule pack review state">
           {rulesetQuery.data?.manifest.reviewed === true ? 'reviewed' : 'not reviewed'}
+        </StatusBadge>
+        <StatusBadge label="Selected circuit" tone={trackId === null ? 'neutral' : 'attention'}>
+          {trackId === null ? 'no circuit selected' : `circuit ${trackId}`}
+        </StatusBadge>
+        <StatusBadge label="Selected conditions" tone="neutral">
+          {conditionsId === null ? 'no conditions tape' : `tape ${conditionsId}`}
         </StatusBadge>
       </div>
 
@@ -178,10 +238,33 @@ export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }
       </div>
 
       <datalist id="lab-scenario-ids">
-        {SHIPPED_SCENARIO_IDS.map((id) => (
+        {(scenarioIds ?? []).map((id) => (
           <option key={id} value={id} />
         ))}
       </datalist>
+      {scenarioCatalogueError === null ? null : (
+        <Notice tone="failure" testId="scenario-catalogue-unavailable">
+          The scenario catalogue is unavailable, so no id suggestions are offered and the id below
+          cannot be checked before it is sent. {scenarioCatalogueError} No shipped list is used in
+          its place.
+        </Notice>
+      )}
+
+      {selectedScenario === null ? null : (
+        <p className="afterlap-small afterlap-muted" data-testid="scenario-resolves-to">
+          The control plane resolves this scenario to circuit{' '}
+          <span className="afterlap-mono">{selectedScenario.track_id ?? 'unreported'}</span>
+          {selectedScenario.real_circuit
+            ? ` — a compiled package at readiness ${
+                selectedScenario.track_readiness ?? 'unreported'
+              }, hash ${shortHash(selectedScenario.track_package_hash) ?? 'unreported'}, run as ${
+                selectedScenario.run_label ?? 'an unlabelled run'
+              }`
+            : ' — a synthetic track document, not a real circuit'}
+          , with conditions{' '}
+          <span className="afterlap-mono">{selectedScenario.conditions_id ?? 'none'}</span>.
+        </p>
+      )}
       <datalist id="lab-ruleset-ids">
         {SHIPPED_RULESET_IDS.map((id) => (
           <option key={id} value={id} />
@@ -249,6 +332,32 @@ export function ScenarioPanel({ client = labClient, initialDraft = EMPTY_DRAFT }
           <Link to={`/sessions/${createdSessionId}/lab`}>Open its laboratory</Link> or{' '}
           <Link to={`/sessions/${createdSessionId}/engineer`}>its engineer console</Link>. A new
           configuration is a new session; it never mutates an archived experiment.
+          {createdManifest === null ? null : (
+            <>
+              {' '}
+              The control plane resolved circuit{' '}
+              <span className="afterlap-mono">
+                {createdManifest.track_id ?? 'none (synthetic track document)'}
+              </span>{' '}
+              at readiness{' '}
+              <span className="afterlap-mono">
+                {createdManifest.track_readiness ?? 'unavailable'}
+              </span>
+              , package hash{' '}
+              <span className="afterlap-mono">
+                {shortHash(createdManifest.track_package_hash) ?? 'unavailable'}
+              </span>
+              , conditions{' '}
+              <span className="afterlap-mono">
+                {createdManifest.conditions_id ?? 'none'}
+              </span>{' '}
+              at tape hash{' '}
+              <span className="afterlap-mono">
+                {shortHash(createdManifest.conditions_hash) ?? 'unavailable'}
+              </span>
+              . These are the server's values, not this panel's request.
+            </>
+          )}
         </Notice>
       )}
 

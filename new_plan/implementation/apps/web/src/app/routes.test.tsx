@@ -76,7 +76,7 @@ afterEach(() => {
 
 describe('every route renders exactly one h1 and the required landmarks', () => {
   const routes: readonly [string, string | RegExp][] = [
-    ['/', /Energy deployment decisions/],
+    ['/', /Decide where electrical energy changes the race/],
     ['/simulation-lab', /Reproducible experiments/],
     ['/sessions', 'Sessions'],
     ['/settings', 'Settings'],
