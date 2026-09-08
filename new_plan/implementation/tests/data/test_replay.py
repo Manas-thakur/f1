@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from .conftest import observation, simulator_config
 
 from afterlap_contracts import SessionMode
 from afterlap_core.data import (
@@ -15,6 +14,8 @@ from afterlap_core.data import (
     SnapshotStore,
     badge_for,
 )
+
+from .conftest import observation, simulator_config
 
 
 def _records(count: int = 10):

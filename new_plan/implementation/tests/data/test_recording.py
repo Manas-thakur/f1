@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 
 import pytest
-from .conftest import SESSION_ID, observation, simulator_config
 
 from afterlap_contracts import Quality
 from afterlap_core.data import (
@@ -19,6 +18,8 @@ from afterlap_core.data import (
     redact_url,
 )
 from afterlap_core.data.recording import REDACTED
+
+from .conftest import SESSION_ID, observation, simulator_config
 
 MAPPING_REVISION = "sim-observation-map-1"
 

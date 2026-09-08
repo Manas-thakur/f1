@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from .conftest import PUBLIC_SOURCE, SYNTHETIC_FIXTURE_NOTICE, observation, public_row, write_public_archive
 
 from afterlap_contracts import CapabilityState, EligibilityState, Provenance, SessionMode, is_registered
 from afterlap_contracts.fixtures import session_manifest
@@ -30,6 +29,8 @@ from afterlap_core.data import (
     simulator_mapping,
     validate_mapping_against_capability,
 )
+
+from .conftest import PUBLIC_SOURCE, SYNTHETIC_FIXTURE_NOTICE, observation, public_row, write_public_archive
 
 MANIFEST = session_manifest()
 
@@ -155,9 +156,9 @@ def test_a_drs_style_historical_field_is_not_mapped_to_overtake_eligibility(tmp_
 
 
 def test_ingesting_a_drs_field_archives_it_without_producing_a_channel(tmp_path):
-    from .conftest import public_config
-
     from afterlap_core.data import IngestionPipeline
+
+    from .conftest import public_config
 
     pipeline = IngestionPipeline(public_config(reorder_window_s=0.0))
     output = pipeline.ingest_all(

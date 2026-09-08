@@ -3,13 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from .conftest import (
-    CAR_ID,
-    SESSION_ID,
-    observation,
-    public_config,
-    simulator_config,
-)
 
 from afterlap_contracts import Provenance, Quality, channel
 from afterlap_core.data import (
@@ -25,6 +18,14 @@ from afterlap_core.data import (
     TelemetryRecorder,
 )
 from afterlap_core.data.recording import ChunkReader
+
+from .conftest import (
+    CAR_ID,
+    SESSION_ID,
+    observation,
+    public_config,
+    simulator_config,
+)
 
 
 def _speed_records(output_records):
