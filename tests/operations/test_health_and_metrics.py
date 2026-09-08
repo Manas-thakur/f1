@@ -10,9 +10,11 @@
     rejections, ... disk/spool usage ... Report planner time separately from
     end-to-end observation age.
 
-Three of these tests confirm behaviour that is present. Two are
-`xfail(strict=True)` because the behaviour is specified and absent, and they
-name the defect and the patch. Nothing here is weakened to pass.
+Every test here confirms behaviour that is present. Two of them
+(`test_readiness_reflects_stale_telemetry` and
+`test_metrics_actually_records_planner_duration_and_observation_age`) were
+`xfail(strict=True)` against defects A14-4 and A14-2; both defects are fixed
+and the markers are gone. Nothing here is weakened to pass.
 
 **How the stale-telemetry condition is genuinely caused.** The session's
 observation rate is configured to one sample every twenty seconds while
@@ -196,21 +198,6 @@ def test_the_simulator_source_declares_its_own_delivery_rate_so_it_cannot_report
     print(f"withheld: {tick.recommendation.display_text}")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DEFECT A14-4. `operations/TECHNICAL_SPEC.md`: 'A healthy HTTP server with stale "
-        "telemetry is not a ready decision system.' `/health/ready` reads only the "
-        "process-level doctor report captured at startup, so it answers 200 while every "
-        "session in the process is withdrawing advice. Nothing about a session's observation "
-        "age, its degradation findings or its `ready` flag reaches the endpoint. The patch — a "
-        "session-health term in `/health/ready` — is in handoffs/A14-integration-patch.md. "
-        "This test asserts the required behaviour and is expected to fail until that lands. "
-        "See also LIMITATION A14-9: the simulator source cannot itself report stale, so the "
-        "condition here is a session that is withdrawing advice rather than one whose feed is "
-        "classified stale."
-    ),
-)
 def test_readiness_reflects_stale_telemetry(tmp_path: Path):
     app = _app(tmp_path)
     with TestClient(app) as client:
@@ -262,20 +249,6 @@ def test_metrics_reports_planner_time_apart_from_observation_age(tmp_path: Path)
         assert key in body, f"/metrics does not report {key}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DEFECT A14-2. `RequestMetrics.observe_planner`, `observe_observation_age` and "
-        "`spool_depth` have no caller anywhere in `apps/` — `grep -rn observe_planner apps/` "
-        "matches only the definition. So `/metrics` reports the *shape* the operations "
-        "specification asks for while `planner_duration_ms.samples` and "
-        "`observation_age_s.samples` stay at zero for the life of the process, and spool usage "
-        "is always reported as empty even during an outage. Verified by running the demo "
-        "runbook against a live server: after a complete session both sample counts were 0. "
-        "The patch is in handoffs/A14-integration-patch.md. This test asserts the required "
-        "behaviour and is expected to fail until that lands."
-    ),
-)
 def test_metrics_actually_records_planner_duration_and_observation_age(tmp_path: Path):
     app = _app(tmp_path)
     with TestClient(app) as client:
