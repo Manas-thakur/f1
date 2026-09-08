@@ -1,0 +1,38 @@
+{
+  "schema_version": "1",
+  "track_id": "monza",
+  "display_name": "Autodromo Nazionale Monza",
+  "direction": "clockwise",
+  "nominal_length_m": 5793,
+  "geometry": {
+    "sample_spacing_m": 1,
+    "point_count": 0,
+    "crs": null,
+    "arrays_path": null,
+    "corridor_quality": "unknown"
+  },
+  "features": {
+    "start_finish_s_m": 0,
+    "sectors": [],
+    "corners": [],
+    "pit_lane_excluded": true
+  },
+  "event_overlay": null,
+  "sources": [
+    {
+      "source_id": "formula1-2026-italy-page",
+      "title": "Italian Grand Prix 2026 - F1 Race",
+      "url": "https://www.formula1.com/en/racing/2026/italy",
+      "retrieved_at": "2026-09-08T00:00:00Z",
+      "sha256": null,
+      "permission": "reference-only; review terms before redistribution"
+    }
+  ],
+  "validation": {
+    "status": "discovered",
+    "closure_error_m": null,
+    "length_error_fraction": null,
+    "report_path": null
+  },
+  "package_hash": null
+}

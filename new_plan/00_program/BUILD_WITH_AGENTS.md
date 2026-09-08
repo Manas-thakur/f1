@@ -11,8 +11,9 @@ You are the lead implementation agent for AFTERLAP. Build the complete product s
 1. Write production code only inside `new_plan/implementation/`. Ignore unrelated parent-project content: do not inspect, modify, import, delete or reuse it. Read the documentation under `new_plan`; preserve its mockups as design references.
 2. Read AGENTS.md, README.md, TECH_STACK.md, ARCHITECTURE.md, DECISIONS.md, all contracts, DESIGN_SYSTEM.md, DESIGN_REVISION_02.md and the module map before dispatch.
 3. Current tech stack and design revision supersede older visual descriptions and logical package paths. Preserve numerical, rule and observation invariants. Record any remaining resolution in `implementation/handoffs/decisions.md`, naming affected contracts.
-4. Keep synthetic/public/team provenance explicit. Never invent measured battery state, trained weights, benchmark wins, licensed data or FIA approval. Driver communication is simulator-only.
-5. The local synthetic product requires no paid service, external publication, messages to other people or production credentials. Record future external integration prerequisites separately.
+4. Read `17_real_tracks_conditions` and dispatch A16. Real-circuit support requires compiled metric geometry, event overlays and condition validation. A circuit name or image over synthetic dynamics does not satisfy it.
+5. Keep synthetic/public/team provenance explicit. Never invent measured battery state, trained weights, benchmark wins, licensed data or FIA approval. Driver communication is simulator-only.
+6. The local synthetic product requires no paid service, external publication, messages to other people or production credentials. Record future external integration prerequisites separately.
 
 ## Actual orchestration
 
@@ -47,11 +48,11 @@ Implement migrations, typed fixture factories, provenance/capability enums, sche
 
 | Wave | Work packages | Required result |
 |---|---|---|
-| 1 | A02 ingestion, A03 simulator, A04 rules, A12 shell/primitives | Timestamp tests; convergence and energy ledger; independent rule boundaries; accessible shell. |
+| 1 | A02 ingestion, A03 simulator, A04 rules, A12 shell/primitives, A16 track registry/schema | Timestamp tests; convergence and energy ledger; independent rule boundaries; accessible shell; versioned circuit manifests. |
 | 1b | A09 engineer, A10 lab/replay, A11 driver | Routes against typed fixtures with explicit pending/stale/unavailable states. Dispatch as capacity frees. |
-| 2 | A05 estimation, A06 baseline planner, A08 API, A13 evaluation | Observed simulator → estimate → checked plan → actual stream. |
+| 2 | A05 estimation, A06 baseline planner, A08 API, A13 evaluation, A16 geometry compiler | Observed simulator → estimate → checked plan → actual stream; validated metric geometry with derived curvature, grade and boundaries. |
 | 2b | A14 operations, A07 feature/environment contracts | Packaged failure recovery; Gym environment and information isolation. |
-| 3 | A07 training/value, A09/A10/A11 integration, A13 experiments | Frozen candidate, real lifecycle and branching, held-out results. |
+| 3 | A07 training/value, A09/A10/A11 integration, A13 experiments, A16 event/condition integration | Frozen candidate, real lifecycle and branching, held-out circuit and combined-condition results. |
 | 4 | A15 presentation, coordinator and A13 independent review | Reproducible release with evidence-linked claims. |
 
 Read the learning README and all linked specifications before training. The validated baseline runs while candidates train. Implement the learned components even if promotion fails; implementation completion and model approval are distinct.
