@@ -112,3 +112,23 @@ performance, stated limitations and the claims this release does not support.
 | Three uncalled metrics (A14-2) | `observe_planner`, `observe_observation_age`, `spool_depth` have no caller. |
 | Spawned worker persistence (A14-10) | An out-of-process session has no recorder and mints its own id. |
 | acados | Absent on this platform; CasADi/IPOPT is the active solver (D-02). |
+
+## A16 — real circuits and race conditions
+
+Coordinator-owned seams (integrated on `main`, PR #18): `tracks/package.py`,
+`tracks/loader.py`, `tracks/provenance.py`, `simulation/track_source.py`
+(`TrackSource`, `EnvironmentField`, `StaticEnvironment`, `CompiledTrackSource`),
+engine environment hooks, session-contract identity fields, D-10.
+
+| Worker | Scope | Allowed write paths | State |
+|---|---|---|---|
+| A16-1 | Registry, source manifests, CLI | `tracks/registry.py`, `tracks/cli.py`, `configs/tracks/registry/`, `configs/tracks/<id>/source.yaml`, `tests/tracks/test_registry.py`, `tests/tracks/test_cli.py` | implementing |
+| A16-2 | OpenF1 ingestion, B-spline compiler, compiled packages | `tracks/ingest/`, `tracks/compile.py`, `tests/tracks/test_openf1_ingest.py`, `tests/tracks/test_compile.py`, `artifacts/tracks/<id>/` | implementing |
+| A16-3 | Independent validator, FIA overlay two-reviewer queue | `tracks/validate.py`, `tracks/fia_overlay.py`, `tests/tracks/test_validate.py`, `tests/tracks/test_fia_overlay.py`, `artifacts/tracks/<id>/events/` | implementing |
+| A16-4 | Atmosphere, wind, grip, tyres, race control, OpenF1 weather tapes | `afterlap_core/conditions/`, `configs/conditions/`, `artifacts/conditions/`, `tests/conditions/` | implementing |
+| A16-5 | Energy deployment, battery, regeneration extensions | TBD after wave A | dependency-ready |
+| A16-6 | Traffic, wake, reactive rivals | TBD after wave A | dependency-ready |
+| A16-7 | Gym env cross-circuit sampler, held-out split, no-track-ID leak | TBD after wave A | dependency-ready |
+| A16-8 | API, persistence, streams: tracks/scenarios routes, factory resolution | TBD after wave A | dependency-ready |
+| A16-9 | Lab, Engineer OS, Driver Display integration | TBD after wave B | dependency-ready |
+| A16-10 | Cross-circuit evaluation, 13-point E2E on two circuits | TBD after wave B | dependency-ready |
