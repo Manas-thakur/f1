@@ -32,7 +32,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 CIRCUITS = ("monza", "spa")
 CONDITIONS = {"monza": "monza-2025-race", "spa": "spa-2025-race"}
@@ -87,6 +87,11 @@ class Ledger:
                 f"[{self.circuit}] claim {self._current['claim']} ({self._current['title']}): {message}"
             )
         self._current["held"] = True
+
+    def fail(self, message: str) -> NoReturn:
+        """Refute the current claim. Never returns, so what follows is unreachable."""
+        self.hold(False, message)
+        raise AcceptanceFailure(message)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -195,7 +200,8 @@ def physics_claims(circuit: str, ledger: Ledger) -> dict[str, Any]:
     package = load_track_package(circuit)
     track = load_track(circuit)
     ledger.note("readiness", package.validation.status.value)
-    ledger.note("package hash", package.package_hash[:16])
+    package_hash = package.package_hash or ""
+    ledger.note("package hash", package_hash[:16])
     ledger.note("lap length (m)", round(track.length, 1))
     ledger.note("official length (m)", package.validation.official_length_m)
     ledger.note("length error", round(package.validation.length_error_fraction or -1, 5))
@@ -212,7 +218,7 @@ def physics_claims(circuit: str, ledger: Ledger) -> dict[str, Any]:
         track.lateral_geometry_surveyed is False and math.isnan(track.width_at(10.0)),
         "an unsurveyed corridor must report nan width and refuse lateral claims",
     )
-    measured["package_hash"] = package.package_hash
+    measured["package_hash"] = package_hash
     measured["length_m"] = track.length
 
     ledger.claim(2, "the recorded weather changes the car's behaviour")
@@ -458,7 +464,7 @@ def api_claims(circuit: str, ledger: Ledger, measured: dict[str, Any], root: Pat
         if recommendation is None:
             last = (snapshot.get("recommendation") or {}).get("action_code")
             ledger.note("last action code", last)
-            ledger.hold(False, "no actionable recommendation was published on a real circuit")
+            ledger.fail("no actionable recommendation was published on a real circuit")
         ledger.note("action", recommendation["action_code"])
         ledger.note("display text", recommendation["display_text"][:80])
         ledger.note("admissible actions", recommendation.get("admissible_actions"))
@@ -563,6 +569,8 @@ def api_claims(circuit: str, ledger: Ledger, measured: dict[str, Any], root: Pat
 
         with transaction(app.state.database.factory) as db:
             row_db = db.get(SessionRow, session_id)
+            if row_db is None:
+                ledger.fail(f"the session {session_id} was never persisted at all")
             persisted = {
                 "track_id": row_db.track_id,
                 "track_package_hash": row_db.track_package_hash,
@@ -644,8 +652,8 @@ def main(argv: list[str] | None = None) -> int:
     total = sum(len(r["claims"]) for r in results)
     print(f"\n{'=' * 72}")
     print(f"claims held: {held} of {total} across {len(args.circuits)} circuits")
-    for failure in failures:
-        print(f"  REFUTED {failure}")
+    for refutation in failures:
+        print(f"  REFUTED {refutation}")
     if args.json:
         args.json.write_text(
             json.dumps({"circuits": args.circuits, "results": results, "failures": failures}, indent=2),
