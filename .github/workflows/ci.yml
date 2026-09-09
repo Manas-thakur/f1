@@ -81,7 +81,7 @@ jobs:
       - name: Install Python
         run: uv sync --frozen --all-packages
       - name: Cross-platform Python contracts
-        run: uv run pytest tests/operations/test_platform_portability.py tests/operations/test_model_regime.py tests/operations/test_worker_heartbeat.py
+        run: uv run pytest tests/operations/test_platform_portability.py tests/operations/test_model_regime.py tests/operations/test_worker_heartbeat.py tests/operations/test_session_process_runtime.py
       - name: Install web
         run: bun install --frozen-lockfile
       - name: Cross-platform web types
