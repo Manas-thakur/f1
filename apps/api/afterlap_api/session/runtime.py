@@ -232,6 +232,39 @@ class PlanApplication:
         return not self.applied
 
 
+MAX_DECISION_OBSERVATION_AGE_S = 2.0
+"""Above this, the newest observation a decision could use is too old to use."""
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionHealth:
+    """Whether one session can currently produce a decision, and why not.
+
+    ``lifecycle`` is reported separately from ``obstructions`` on purpose. A
+    paused or stopped session has no obstruction: it is idle because an
+    operator made it idle. Conflating the two would make a container
+    healthcheck restart a process whose only session an engineer had paused.
+    """
+
+    lifecycle: str
+    observation_age_s: float | None = None
+    withdrawing_advice: bool = False
+    halted: bool = False
+    persistence_state: str = "available"
+    obstructions: tuple[str, ...] = ()
+
+    @property
+    def idle(self) -> bool:
+        return self.lifecycle != "running"
+
+    @property
+    def can_decide(self) -> bool:
+        return not self.obstructions
+
+    def summary(self) -> str:
+        return self.lifecycle if self.can_decide else "; ".join(self.obstructions)
+
+
 class InProcessSessionRuntime:
     """A complete :class:`~afterlap_api.runtime.port.SessionRuntimePort`."""
 
@@ -354,6 +387,10 @@ class InProcessSessionRuntime:
                 expected_reward_revision=self._objective_version,
                 baseline_identity=BASELINE_IDENTITY,
                 scenario_family=self._bundle.scenario.id,
+                expected_ruleset_hash=self._pack.ruleset_hash,
+                expected_track_id=manifest.track_id,
+                expected_track_package_hash=manifest.track_package_hash,
+                expected_conditions_id=manifest.conditions_id,
             )
 
             self._revision = 1
@@ -1177,6 +1214,64 @@ class InProcessSessionRuntime:
             and self._last_rule_context is not None
         )
 
+    @property
+    def paused(self) -> bool:
+        return self._paused
+
+    @property
+    def stopped(self) -> bool:
+        return self._stopped
+
+    @property
+    def persistence(self) -> PersistenceStatus:
+        """Measured health of this session's lifecycle store.
+
+        The runtime already assesses this every tick to produce the database
+        and spool degradation rows; without an accessor nothing outside the
+        runtime could report spool usage, so ``/metrics`` reported an empty
+        spool during an outage.
+        """
+        return PersistenceStatus() if self._recorder is None else self._recorder.status()
+
+    def decision_health(self) -> DecisionHealth:
+        """Whether this session could decide *now*, and the reason when it cannot.
+
+        A paused or stopped session is reported with its lifecycle state and no
+        obstruction: it is not deciding because nobody asked it to, which is not
+        a fault of the process and must not fail a container healthcheck.
+        """
+        with self._lock:
+            estimate = self._last_estimate
+            if self._stopped:
+                lifecycle = "stopped"
+            elif self._paused:
+                lifecycle = "paused"
+            elif estimate is None or self._last_rule_context is None:
+                lifecycle = "created"
+            else:
+                lifecycle = "running"
+            age_s = None if estimate is None else max(0.0, self.session_time_s - estimate.cutoff_s)
+            recommendation = self._last_recommendation
+            withdrawn = (
+                recommendation is not None and recommendation.action_code is ActionCode.WITHDRAW_ADVICE
+            )
+            obstructions: list[str] = []
+            if lifecycle == "running":
+                if age_s is not None and age_s > MAX_DECISION_OBSERVATION_AGE_S:
+                    obstructions.append(f"newest usable observation is {age_s:.1f} s old")
+                if withdrawn and recommendation is not None:
+                    obstructions.append(f"advice is withdrawn: {recommendation.display_text}")
+                if self._last_degradation.halted:
+                    obstructions.append("recommendations are halted by a degradation finding")
+            return DecisionHealth(
+                lifecycle=lifecycle,
+                observation_age_s=age_s,
+                withdrawing_advice=withdrawn,
+                halted=self._last_degradation.halted,
+                persistence_state=self.persistence.state.value,
+                obstructions=tuple(obstructions),
+            )
+
     def _record_checkpoint_outcomes(self) -> None:
         simulator = self._require_simulator()
         ego = self._bundle.scenario.ego_car_id
@@ -1564,9 +1659,11 @@ def _refused(
 
 
 __all__ = [
+    "MAX_DECISION_OBSERVATION_AGE_S",
     "SNAPSHOT_SCHEMA",
     "SYNTHETIC_GAP_THRESHOLD",
     "UNRESOLVED_GAP_THRESHOLD",
+    "DecisionHealth",
     "EligibilityPolicy",
     "InProcessSessionRuntime",
     "IngestionReport",

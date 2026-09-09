@@ -1416,6 +1416,522 @@
       "title": "CandidatePlan",
       "type": "object"
     },
+    "CentrelineResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Downsampled geometry, with the hashes that pin the arrays it came from.",
+      "properties": {
+        "arrays_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arrays Sha256"
+        },
+        "corridor_quality": {
+          "title": "Corridor Quality",
+          "type": "string"
+        },
+        "curvature_1pm": {
+          "default": [],
+          "items": {
+            "type": "number"
+          },
+          "title": "Curvature 1Pm",
+          "type": "array"
+        },
+        "geometry_provenance": {
+          "title": "Geometry Provenance",
+          "type": "string"
+        },
+        "index_stride": {
+          "title": "Index Stride",
+          "type": "integer"
+        },
+        "length_m": {
+          "title": "Length M",
+          "type": "number"
+        },
+        "notice": {
+          "default": "Compiled circuit geometry only. Car, battery and driver parameters are synthetic documents, so a session on any circuit here is labelled real_circuit_synthetic_energy.",
+          "title": "Notice",
+          "type": "string"
+        },
+        "package_hash": {
+          "title": "Package Hash",
+          "type": "string"
+        },
+        "point_count": {
+          "title": "Point Count",
+          "type": "integer"
+        },
+        "readiness": {
+          "title": "Readiness",
+          "type": "string"
+        },
+        "s_m": {
+          "default": [],
+          "items": {
+            "type": "number"
+          },
+          "title": "S M",
+          "type": "array"
+        },
+        "sample_spacing_m": {
+          "title": "Sample Spacing M",
+          "type": "number"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_point_count": {
+          "title": "Source Point Count",
+          "type": "integer"
+        },
+        "stride_m": {
+          "title": "Stride M",
+          "type": "number"
+        },
+        "track_id": {
+          "title": "Track Id",
+          "type": "string"
+        },
+        "units": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Units",
+          "type": "object"
+        },
+        "x_m": {
+          "default": [],
+          "items": {
+            "type": "number"
+          },
+          "title": "X M",
+          "type": "array"
+        },
+        "y_m": {
+          "default": [],
+          "items": {
+            "type": "number"
+          },
+          "title": "Y M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "track_id",
+        "package_hash",
+        "readiness",
+        "geometry_provenance",
+        "corridor_quality",
+        "length_m",
+        "source_point_count",
+        "sample_spacing_m",
+        "stride_m",
+        "index_stride",
+        "point_count"
+      ],
+      "title": "CentrelineResponse",
+      "type": "object"
+    },
+    "ConditionsListResponse": {
+      "$defs": {
+        "ConditionsSummary": {
+          "additionalProperties": false,
+          "description": "One conditions document and the frozen tape it does or does not have.",
+          "properties": {
+            "altitude_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Altitude M"
+            },
+            "altitude_source": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Altitude Source"
+            },
+            "available": {
+              "title": "Available",
+              "type": "boolean"
+            },
+            "conditions_id": {
+              "title": "Conditions Id",
+              "type": "string"
+            },
+            "content_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Content Hash"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Description"
+            },
+            "duration_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Duration S"
+            },
+            "frozen_tape_available": {
+              "default": false,
+              "description": "Whether a frozen tape exists in the deployment's cache. Whether, not where: the cache path describes the machine and a client cannot read it.",
+              "title": "Frozen Tape Available",
+              "type": "boolean"
+            },
+            "gust_enabled": {
+              "default": false,
+              "title": "Gust Enabled",
+              "type": "boolean"
+            },
+            "permission": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Permission"
+            },
+            "rainfall_minutes": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Rainfall Minutes"
+            },
+            "retrieved_at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Retrieved At"
+            },
+            "sample_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Sample Count"
+            },
+            "session_key": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Session Key"
+            },
+            "source": {
+              "title": "Source",
+              "type": "string"
+            },
+            "time_origin_utc": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Time Origin Utc"
+            },
+            "unavailable_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Unavailable Reason"
+            }
+          },
+          "required": [
+            "conditions_id",
+            "source",
+            "available"
+          ],
+          "title": "ConditionsSummary",
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "conditions": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ConditionsSummary"
+          },
+          "title": "Conditions",
+          "type": "array"
+        },
+        "notice": {
+          "default": "A conditions tape is a station reading or declared synthetic constants, never a certified condition. Tapes are resolved offline: nothing here triggers a network fetch.",
+          "title": "Notice",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "title": "ConditionsListResponse",
+      "type": "object"
+    },
+    "ConditionsSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One conditions document and the frozen tape it does or does not have.",
+      "properties": {
+        "altitude_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Altitude M"
+        },
+        "altitude_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Altitude Source"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "conditions_id": {
+          "title": "Conditions Id",
+          "type": "string"
+        },
+        "content_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Content Hash"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration S"
+        },
+        "frozen_tape_available": {
+          "default": false,
+          "description": "Whether a frozen tape exists in the deployment's cache. Whether, not where: the cache path describes the machine and a client cannot read it.",
+          "title": "Frozen Tape Available",
+          "type": "boolean"
+        },
+        "gust_enabled": {
+          "default": false,
+          "title": "Gust Enabled",
+          "type": "boolean"
+        },
+        "permission": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Permission"
+        },
+        "rainfall_minutes": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rainfall Minutes"
+        },
+        "retrieved_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrieved At"
+        },
+        "sample_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Count"
+        },
+        "session_key": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Session Key"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "time_origin_utc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Time Origin Utc"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unavailable Reason"
+        }
+      },
+      "required": [
+        "conditions_id",
+        "source",
+        "available"
+      ],
+      "title": "ConditionsSummary",
+      "type": "object"
+    },
     "ConstraintResult": {
       "$defs": {
         "CheckStatus": {
@@ -6164,6 +6680,99 @@
       "title": "DriverActionResponse",
       "type": "object"
     },
+    "EventOverlaySummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "An event overlay and how far through the two-reviewer queue it is.",
+      "properties": {
+        "activation_line_count": {
+          "title": "Activation Line Count",
+          "type": "integer"
+        },
+        "confirmed": {
+          "title": "Confirmed",
+          "type": "boolean"
+        },
+        "detection_line_count": {
+          "title": "Detection Line Count",
+          "type": "integer"
+        },
+        "effective_values_resolved": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Effective Values Resolved",
+          "type": "array"
+        },
+        "effective_values_unknown": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Effective Values Unknown",
+          "type": "array"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "fia_document_hashes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Fia Document Hashes",
+          "type": "array"
+        },
+        "overlay_hash": {
+          "title": "Overlay Hash",
+          "type": "string"
+        },
+        "overtake_curve_points": {
+          "title": "Overtake Curve Points",
+          "type": "integer"
+        },
+        "review_status": {
+          "title": "Review Status",
+          "type": "string"
+        },
+        "reviewer_count": {
+          "title": "Reviewer Count",
+          "type": "integer"
+        },
+        "ruleset_hash": {
+          "title": "Ruleset Hash",
+          "type": "string"
+        },
+        "standard_curve_points": {
+          "title": "Standard Curve Points",
+          "type": "integer"
+        },
+        "unknown_fields": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Unknown Fields",
+          "type": "array"
+        }
+      },
+      "required": [
+        "event_id",
+        "review_status",
+        "reviewer_count",
+        "confirmed",
+        "overlay_hash",
+        "ruleset_hash",
+        "detection_line_count",
+        "activation_line_count",
+        "standard_curve_points",
+        "overtake_curve_points"
+      ],
+      "title": "EventOverlaySummary",
+      "type": "object"
+    },
     "ExecutionEvent": {
       "$defs": {
         "DeploymentProfile": {
@@ -6629,6 +7238,7 @@
             }
           ],
           "default": null,
+          "description": "Where the report sits inside the deployment's artefact tree, relative to it (artifacts/reports/<id>.json). Never an absolute path.",
           "title": "Report Path"
         },
         "status": {
@@ -6686,6 +7296,7 @@
             }
           ],
           "default": null,
+          "description": "Where the export sits inside the deployment's artefact tree, relative to it (artifacts/exports/<id>.<format>). Never an absolute path: that describes the machine rather than the artefact.",
           "title": "Path"
         },
         "status": {
@@ -6836,6 +7447,44 @@
         "preference_window_s"
       ],
       "title": "FeatureManifest",
+      "type": "object"
+    },
+    "FeatureSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "corner_count": {
+          "title": "Corner Count",
+          "type": "integer"
+        },
+        "corner_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Corner Ids",
+          "type": "array"
+        },
+        "pit_lane_excluded": {
+          "default": true,
+          "title": "Pit Lane Excluded",
+          "type": "boolean"
+        },
+        "sector_count": {
+          "title": "Sector Count",
+          "type": "integer"
+        },
+        "start_finish_s_m": {
+          "title": "Start Finish S M",
+          "type": "number"
+        }
+      },
+      "required": [
+        "start_finish_s_m",
+        "sector_count",
+        "corner_count"
+      ],
+      "title": "FeatureSummary",
       "type": "object"
     },
     "LifecycleTransition": {
@@ -7059,6 +7708,19 @@
               "title": "Rule Family",
               "type": "string"
             },
+            "ruleset_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Content hash of the rule pack this bundle was trained against. `rule_family` names the pack; this pins its contents, because a pack whose limits moved is a different environment under the same id.",
+              "title": "Ruleset Hash"
+            },
             "schema_version": {
               "const": "1.0",
               "title": "Schema Version",
@@ -7075,6 +7737,15 @@
               ],
               "default": null
             },
+            "supported_conditions_ids": {
+              "default": [],
+              "description": "Conditions tapes inside the training split. Empty means none was used, so a session running under a tape is outside the regime this bundle was evaluated in.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Supported Conditions Ids",
+              "type": "array"
+            },
             "supported_scenario_families": {
               "default": [],
               "items": {
@@ -7082,6 +7753,23 @@
               },
               "title": "Supported Scenario Families",
               "type": "array"
+            },
+            "supported_track_ids": {
+              "default": [],
+              "description": "Circuits inside this bundle's training split. Empty means the split is undeclared, which is not a claim of coverage: a session on a compiled real circuit refuses a bundle that does not name it.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Supported Track Ids",
+              "type": "array"
+            },
+            "track_package_hashes": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Per-circuit compiled package hash the bundle trained against. Recompiled geometry under the same circuit id is different dynamics, so a hash that disagrees disables the learned contribution even when the id matches.",
+              "title": "Track Package Hashes",
+              "type": "object"
             },
             "training_code_revision": {
               "anyOf": [
@@ -7510,6 +8198,19 @@
           "title": "Rule Family",
           "type": "string"
         },
+        "ruleset_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Content hash of the rule pack this bundle was trained against. `rule_family` names the pack; this pins its contents, because a pack whose limits moved is a different environment under the same id.",
+          "title": "Ruleset Hash"
+        },
         "schema_version": {
           "const": "1.0",
           "title": "Schema Version",
@@ -7526,6 +8227,15 @@
           ],
           "default": null
         },
+        "supported_conditions_ids": {
+          "default": [],
+          "description": "Conditions tapes inside the training split. Empty means none was used, so a session running under a tape is outside the regime this bundle was evaluated in.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported Conditions Ids",
+          "type": "array"
+        },
         "supported_scenario_families": {
           "default": [],
           "items": {
@@ -7533,6 +8243,23 @@
           },
           "title": "Supported Scenario Families",
           "type": "array"
+        },
+        "supported_track_ids": {
+          "default": [],
+          "description": "Circuits inside this bundle's training split. Empty means the split is undeclared, which is not a claim of coverage: a session on a compiled real circuit refuses a bundle that does not name it.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported Track Ids",
+          "type": "array"
+        },
+        "track_package_hashes": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Per-circuit compiled package hash the bundle trained against. Recompiled geometry under the same circuit id is different dynamics, so a hash that disagrees disables the learned contribution even when the id matches.",
+          "title": "Track Package Hashes",
+          "type": "object"
         },
         "training_code_revision": {
           "anyOf": [
@@ -11914,6 +12641,427 @@
       "title": "RulesetResponse",
       "type": "object"
     },
+    "ScenarioListResponse": {
+      "$defs": {
+        "ScenarioSummary": {
+          "additionalProperties": false,
+          "description": "One scenario document and the circuit it actually resolves to.\n\nEvery field but ``scenario_id`` is nullable: a document that fails to parse\nis still listed, with ``unavailable_reason`` and nulls, because omitting it\nwould look identical to it not existing. A null is \"not known from this\ndocument\", never a zero standing in for one.",
+          "properties": {
+            "car_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Car Ids",
+              "type": "array"
+            },
+            "conditions_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Conditions Id"
+            },
+            "description": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Description"
+            },
+            "duration_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Duration S"
+            },
+            "ego_car_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Ego Car Id"
+            },
+            "event_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Event Id"
+            },
+            "real_circuit": {
+              "default": false,
+              "title": "Real Circuit",
+              "type": "boolean"
+            },
+            "rule_pack": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Rule Pack"
+            },
+            "run_label": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Run Label"
+            },
+            "scenario_id": {
+              "title": "Scenario Id",
+              "type": "string"
+            },
+            "seed": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Seed"
+            },
+            "status_note": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Status Note"
+            },
+            "synthetic": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Synthetic"
+            },
+            "track_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Id"
+            },
+            "track_package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Package Hash"
+            },
+            "track_readiness": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Track Readiness"
+            },
+            "unavailable_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Unavailable Reason"
+            }
+          },
+          "required": [
+            "scenario_id"
+          ],
+          "title": "ScenarioSummary",
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "notice": {
+          "default": "Every scenario is synthetic in its car, battery and driver parameters. A scenario whose track resolves to a compiled package runs as real_circuit_synthetic_energy.",
+          "title": "Notice",
+          "type": "string"
+        },
+        "scenarios": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ScenarioSummary"
+          },
+          "title": "Scenarios",
+          "type": "array"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "title": "ScenarioListResponse",
+      "type": "object"
+    },
+    "ScenarioSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One scenario document and the circuit it actually resolves to.\n\nEvery field but ``scenario_id`` is nullable: a document that fails to parse\nis still listed, with ``unavailable_reason`` and nulls, because omitting it\nwould look identical to it not existing. A null is \"not known from this\ndocument\", never a zero standing in for one.",
+      "properties": {
+        "car_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Car Ids",
+          "type": "array"
+        },
+        "conditions_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conditions Id"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "duration_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Duration S"
+        },
+        "ego_car_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ego Car Id"
+        },
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Id"
+        },
+        "real_circuit": {
+          "default": false,
+          "title": "Real Circuit",
+          "type": "boolean"
+        },
+        "rule_pack": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rule Pack"
+        },
+        "run_label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Run Label"
+        },
+        "scenario_id": {
+          "title": "Scenario Id",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "status_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status Note"
+        },
+        "synthetic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Synthetic"
+        },
+        "track_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Id"
+        },
+        "track_package_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Package Hash"
+        },
+        "track_readiness": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Track Readiness"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unavailable Reason"
+        }
+      },
+      "required": [
+        "scenario_id"
+      ],
+      "title": "ScenarioSummary",
+      "type": "object"
+    },
     "SessionCommand": {
       "$defs": {
         "SessionCommandKind": {
@@ -14973,6 +16121,78 @@
         "clock_error_s"
       ],
       "title": "SourceCapability",
+      "type": "object"
+    },
+    "SourceSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One hashed raw input of a package, with its permission text verbatim.",
+      "properties": {
+        "document_revision": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Document Revision"
+        },
+        "permission": {
+          "title": "Permission",
+          "type": "string"
+        },
+        "priority": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Priority"
+        },
+        "retrieved_at": {
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        },
+        "source_id": {
+          "title": "Source Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "title",
+        "url",
+        "retrieved_at",
+        "permission"
+      ],
+      "title": "SourceSummary",
       "type": "object"
     },
     "StateEstimate": {
@@ -18800,6 +20020,1336 @@
       ],
       "title": "TelemetryEvent",
       "type": "object"
+    },
+    "TrackDetailResponse": {
+      "$defs": {
+        "EventOverlaySummary": {
+          "additionalProperties": false,
+          "description": "An event overlay and how far through the two-reviewer queue it is.",
+          "properties": {
+            "activation_line_count": {
+              "title": "Activation Line Count",
+              "type": "integer"
+            },
+            "confirmed": {
+              "title": "Confirmed",
+              "type": "boolean"
+            },
+            "detection_line_count": {
+              "title": "Detection Line Count",
+              "type": "integer"
+            },
+            "effective_values_resolved": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Effective Values Resolved",
+              "type": "array"
+            },
+            "effective_values_unknown": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Effective Values Unknown",
+              "type": "array"
+            },
+            "event_id": {
+              "title": "Event Id",
+              "type": "string"
+            },
+            "fia_document_hashes": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Fia Document Hashes",
+              "type": "array"
+            },
+            "overlay_hash": {
+              "title": "Overlay Hash",
+              "type": "string"
+            },
+            "overtake_curve_points": {
+              "title": "Overtake Curve Points",
+              "type": "integer"
+            },
+            "review_status": {
+              "title": "Review Status",
+              "type": "string"
+            },
+            "reviewer_count": {
+              "title": "Reviewer Count",
+              "type": "integer"
+            },
+            "ruleset_hash": {
+              "title": "Ruleset Hash",
+              "type": "string"
+            },
+            "standard_curve_points": {
+              "title": "Standard Curve Points",
+              "type": "integer"
+            },
+            "unknown_fields": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Unknown Fields",
+              "type": "array"
+            }
+          },
+          "required": [
+            "event_id",
+            "review_status",
+            "reviewer_count",
+            "confirmed",
+            "overlay_hash",
+            "ruleset_hash",
+            "detection_line_count",
+            "activation_line_count",
+            "standard_curve_points",
+            "overtake_curve_points"
+          ],
+          "title": "EventOverlaySummary",
+          "type": "object"
+        },
+        "FeatureSummary": {
+          "additionalProperties": false,
+          "properties": {
+            "corner_count": {
+              "title": "Corner Count",
+              "type": "integer"
+            },
+            "corner_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Corner Ids",
+              "type": "array"
+            },
+            "pit_lane_excluded": {
+              "default": true,
+              "title": "Pit Lane Excluded",
+              "type": "boolean"
+            },
+            "sector_count": {
+              "title": "Sector Count",
+              "type": "integer"
+            },
+            "start_finish_s_m": {
+              "title": "Start Finish S M",
+              "type": "number"
+            }
+          },
+          "required": [
+            "start_finish_s_m",
+            "sector_count",
+            "corner_count"
+          ],
+          "title": "FeatureSummary",
+          "type": "object"
+        },
+        "SourceSummary": {
+          "additionalProperties": false,
+          "description": "One hashed raw input of a package, with its permission text verbatim.",
+          "properties": {
+            "document_revision": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Document Revision"
+            },
+            "permission": {
+              "title": "Permission",
+              "type": "string"
+            },
+            "priority": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Priority"
+            },
+            "retrieved_at": {
+              "title": "Retrieved At",
+              "type": "string"
+            },
+            "sha256": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Sha256"
+            },
+            "source_id": {
+              "title": "Source Id",
+              "type": "string"
+            },
+            "title": {
+              "title": "Title",
+              "type": "string"
+            },
+            "url": {
+              "title": "Url",
+              "type": "string"
+            }
+          },
+          "required": [
+            "source_id",
+            "title",
+            "url",
+            "retrieved_at",
+            "permission"
+          ],
+          "title": "SourceSummary",
+          "type": "object"
+        },
+        "TrackSummary": {
+          "additionalProperties": false,
+          "description": "Registry identity joined with whatever the compiled package proves.",
+          "properties": {
+            "arrays_sha256": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Arrays Sha256"
+            },
+            "closure_error_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Closure Error M"
+            },
+            "corridor_quality": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Corridor Quality"
+            },
+            "country": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Country"
+            },
+            "display_name": {
+              "title": "Display Name",
+              "type": "string"
+            },
+            "event_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Event Ids",
+              "type": "array"
+            },
+            "event_overlay_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Event Overlay Ids",
+              "type": "array"
+            },
+            "geometry_provenance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Geometry Provenance"
+            },
+            "lateral_geometry_surveyed": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Lateral Geometry Surveyed"
+            },
+            "length_error_fraction": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Length Error Fraction"
+            },
+            "licence_labels": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Licence Labels",
+              "type": "array"
+            },
+            "nominal_length_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Nominal Length M"
+            },
+            "notes": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Notes",
+              "type": "array"
+            },
+            "official_length_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length M"
+            },
+            "official_length_sha256": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length Sha256"
+            },
+            "official_length_source_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length Source Url"
+            },
+            "official_length_verified": {
+              "default": false,
+              "title": "Official Length Verified",
+              "type": "boolean"
+            },
+            "package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Package Hash"
+            },
+            "package_present": {
+              "default": false,
+              "title": "Package Present",
+              "type": "boolean"
+            },
+            "point_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Point Count"
+            },
+            "readiness": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Readiness"
+            },
+            "registry_readiness": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Registry Readiness"
+            },
+            "sample_spacing_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Sample Spacing M"
+            },
+            "simulation_ready": {
+              "default": false,
+              "title": "Simulation Ready",
+              "type": "boolean"
+            },
+            "source_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Count"
+            },
+            "track_id": {
+              "title": "Track Id",
+              "type": "string"
+            },
+            "unavailable_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Unavailable Reason"
+            }
+          },
+          "required": [
+            "track_id",
+            "display_name"
+          ],
+          "title": "TrackSummary",
+          "type": "object"
+        },
+        "ValidationSummary": {
+          "additionalProperties": false,
+          "description": "The independent validator's verdict, as recorded in the package.",
+          "properties": {
+            "checks": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "title": "Checks",
+              "type": "object"
+            },
+            "closure_error_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Closure Error M"
+            },
+            "length_error_fraction": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Length Error Fraction"
+            },
+            "notes": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Notes",
+              "type": "array"
+            },
+            "official_length_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length M"
+            },
+            "report_path": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Filename of the report inside the package directory, never an absolute path.",
+              "title": "Report Path"
+            },
+            "status": {
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "title": "ValidationSummary",
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "event_overlays": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/EventOverlaySummary"
+          },
+          "title": "Event Overlays",
+          "type": "array"
+        },
+        "features": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FeatureSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "notice": {
+          "default": "Compiled circuit geometry only. Car, battery and driver parameters are synthetic documents, so a session on any circuit here is labelled real_circuit_synthetic_energy.",
+          "title": "Notice",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "sources": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/SourceSummary"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "track": {
+          "$ref": "#/$defs/TrackSummary"
+        },
+        "validation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ValidationSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "track"
+      ],
+      "title": "TrackDetailResponse",
+      "type": "object"
+    },
+    "TrackListResponse": {
+      "$defs": {
+        "TrackSummary": {
+          "additionalProperties": false,
+          "description": "Registry identity joined with whatever the compiled package proves.",
+          "properties": {
+            "arrays_sha256": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Arrays Sha256"
+            },
+            "closure_error_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Closure Error M"
+            },
+            "corridor_quality": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Corridor Quality"
+            },
+            "country": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Country"
+            },
+            "display_name": {
+              "title": "Display Name",
+              "type": "string"
+            },
+            "event_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Event Ids",
+              "type": "array"
+            },
+            "event_overlay_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Event Overlay Ids",
+              "type": "array"
+            },
+            "geometry_provenance": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Geometry Provenance"
+            },
+            "lateral_geometry_surveyed": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Lateral Geometry Surveyed"
+            },
+            "length_error_fraction": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Length Error Fraction"
+            },
+            "licence_labels": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Licence Labels",
+              "type": "array"
+            },
+            "nominal_length_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Nominal Length M"
+            },
+            "notes": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "title": "Notes",
+              "type": "array"
+            },
+            "official_length_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length M"
+            },
+            "official_length_sha256": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length Sha256"
+            },
+            "official_length_source_url": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Official Length Source Url"
+            },
+            "official_length_verified": {
+              "default": false,
+              "title": "Official Length Verified",
+              "type": "boolean"
+            },
+            "package_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Package Hash"
+            },
+            "package_present": {
+              "default": false,
+              "title": "Package Present",
+              "type": "boolean"
+            },
+            "point_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Point Count"
+            },
+            "readiness": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Readiness"
+            },
+            "registry_readiness": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Registry Readiness"
+            },
+            "sample_spacing_m": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Sample Spacing M"
+            },
+            "simulation_ready": {
+              "default": false,
+              "title": "Simulation Ready",
+              "type": "boolean"
+            },
+            "source_count": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Source Count"
+            },
+            "track_id": {
+              "title": "Track Id",
+              "type": "string"
+            },
+            "unavailable_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Unavailable Reason"
+            }
+          },
+          "required": [
+            "track_id",
+            "display_name"
+          ],
+          "title": "TrackSummary",
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "minimum_readiness_to_drive": {
+          "default": "geometry_validated",
+          "title": "Minimum Readiness To Drive",
+          "type": "string"
+        },
+        "notice": {
+          "default": "Compiled circuit geometry only. Car, battery and driver parameters are synthetic documents, so a session on any circuit here is labelled real_circuit_synthetic_energy.",
+          "title": "Notice",
+          "type": "string"
+        },
+        "schema_version": {
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "season": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Season"
+        },
+        "snapshot_date": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshot Date"
+        },
+        "tracks": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TrackSummary"
+          },
+          "title": "Tracks",
+          "type": "array"
+        }
+      },
+      "title": "TrackListResponse",
+      "type": "object"
+    },
+    "TrackSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Registry identity joined with whatever the compiled package proves.",
+      "properties": {
+        "arrays_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arrays Sha256"
+        },
+        "closure_error_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closure Error M"
+        },
+        "corridor_quality": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Corridor Quality"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Country"
+        },
+        "display_name": {
+          "title": "Display Name",
+          "type": "string"
+        },
+        "event_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "event_overlay_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Overlay Ids",
+          "type": "array"
+        },
+        "geometry_provenance": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Geometry Provenance"
+        },
+        "lateral_geometry_surveyed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lateral Geometry Surveyed"
+        },
+        "length_error_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Length Error Fraction"
+        },
+        "licence_labels": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Licence Labels",
+          "type": "array"
+        },
+        "nominal_length_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Nominal Length M"
+        },
+        "notes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "official_length_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Official Length M"
+        },
+        "official_length_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Official Length Sha256"
+        },
+        "official_length_source_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Official Length Source Url"
+        },
+        "official_length_verified": {
+          "default": false,
+          "title": "Official Length Verified",
+          "type": "boolean"
+        },
+        "package_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package Hash"
+        },
+        "package_present": {
+          "default": false,
+          "title": "Package Present",
+          "type": "boolean"
+        },
+        "point_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Point Count"
+        },
+        "readiness": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Readiness"
+        },
+        "registry_readiness": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Registry Readiness"
+        },
+        "sample_spacing_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sample Spacing M"
+        },
+        "simulation_ready": {
+          "default": false,
+          "title": "Simulation Ready",
+          "type": "boolean"
+        },
+        "source_count": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Count"
+        },
+        "track_id": {
+          "title": "Track Id",
+          "type": "string"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unavailable Reason"
+        }
+      },
+      "required": [
+        "track_id",
+        "display_name"
+      ],
+      "title": "TrackSummary",
+      "type": "object"
+    },
+    "ValidationSummary": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "The independent validator's verdict, as recorded in the package.",
+      "properties": {
+        "checks": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Checks",
+          "type": "object"
+        },
+        "closure_error_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Closure Error M"
+        },
+        "length_error_fraction": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Length Error Fraction"
+        },
+        "notes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        },
+        "official_length_m": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Official Length M"
+        },
+        "report_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Filename of the report inside the package directory, never an absolute path.",
+          "title": "Report Path"
+        },
+        "status": {
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ValidationSummary",
+      "type": "object"
     }
   },
   "models": [
@@ -18809,6 +21359,9 @@
     "ApiErrorResponse",
     "BenchmarkReport",
     "CandidatePlan",
+    "CentrelineResponse",
+    "ConditionsListResponse",
+    "ConditionsSummary",
     "ConstraintResult",
     "ControlLease",
     "CreateExperimentRequest",
@@ -18817,12 +21370,14 @@
     "DecisionEvidenceResponse",
     "DriverActionRequest",
     "DriverActionResponse",
+    "EventOverlaySummary",
     "ExecutionEvent",
     "ExperimentJob",
     "ExperimentManifest",
     "ExperimentStatusResponse",
     "ExportJobResponse",
     "FeatureManifest",
+    "FeatureSummary",
     "LifecycleTransition",
     "ModelListResponse",
     "ModelManifest",
@@ -18836,6 +21391,8 @@
     "RuleContext",
     "RuleManifest",
     "RulesetResponse",
+    "ScenarioListResponse",
+    "ScenarioSummary",
     "SessionCommand",
     "SessionCommandRequest",
     "SessionCommandResponse",
@@ -18845,10 +21402,15 @@
     "SessionSummary",
     "SnapshotReference",
     "SourceCapability",
+    "SourceSummary",
     "StateEstimate",
     "StreamEnvelope",
     "TelemetryChunkManifest",
-    "TelemetryEvent"
+    "TelemetryEvent",
+    "TrackDetailResponse",
+    "TrackListResponse",
+    "TrackSummary",
+    "ValidationSummary"
   ],
   "schema_version": "1.0",
   "title": "AFTERLAP contract bundle"

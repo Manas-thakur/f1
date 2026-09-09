@@ -129,7 +129,13 @@ class WorkerResult:
 
 @dataclass(frozen=True, slots=True)
 class WorkerConfig:
-    """Everything the child needs to build the runtime for itself."""
+    """Everything the child needs to build the runtime for itself.
+
+    ``database_url`` and ``artifact_root`` are what make an out-of-process
+    session auditable. Without them the child records nothing, so everything
+    it decided dies with the process; the control plane can only recover what
+    happens to be in the last snapshot it asked for.
+    """
 
     session_id: str
     scenario_id: str
@@ -137,6 +143,8 @@ class WorkerConfig:
     seed: int
     label: str | None = None
     decision_interval_s: float | None = None
+    database_url: str | None = None
+    artifact_root: str | None = None
 
 
 class _Queue(Protocol):
@@ -270,11 +278,17 @@ def _dispatch(command: WorkerCommand, runtime: Any, config: WorkerConfig) -> tup
 
 
 def _build_runtime(config: WorkerConfig) -> Any:
+    """Build this worker's session, owning the id the control plane gave it.
+
+    The manifest id is pinned to ``config.session_id``: commands route by that
+    id, so a freshly minted one would make the child's durable records
+    unreachable from the commands that produced them.
+    """
     from afterlap_api.session.factory import SessionFactory
     from afterlap_contracts import SessionMode
     from afterlap_contracts.requests import CreateSessionRequest
 
-    factory = SessionFactory()
+    factory = SessionFactory(recorder_factory=_recorder_factory(config))
     _, runtime = factory.create(
         CreateSessionRequest(
             mode=SessionMode.SIMULATION,
@@ -282,9 +296,61 @@ def _build_runtime(config: WorkerConfig) -> Any:
             ruleset_id=config.ruleset_id,
             seed=config.seed,
             label=config.label,
-        )
+        ),
+        session_id=config.session_id,
     )
     return runtime
+
+
+def _spool_root(config: WorkerConfig) -> Any:
+    """The spool directory under the configured artefact root, if there is one.
+
+    Only the artefact root moves. Configuration documents stay where the
+    application reads them, exactly as ``main.py``'s lifespan arranges it: a
+    worker that resolved its scenario from a per-run artefact tree would be
+    reading different documents from the control plane that commands it.
+    """
+    from pathlib import Path
+
+    from afterlap_core.paths import Paths
+
+    if config.artifact_root is None:
+        return None
+    return Paths.default(Path(config.artifact_root)).ensure().spool
+
+
+def _recorder_factory(config: WorkerConfig) -> Any:
+    """A durable recorder for the child, or ``None`` when none was configured.
+
+    ``None`` is an explicit unavailable result, not a silent one: the caller
+    that built a ``WorkerConfig`` without a ``database_url`` asked for a
+    session that records nothing, and ``SessionWorkerHandle.records_durably``
+    reports that back rather than implying an audit trail exists.
+
+    The child never migrates. Schema and lifecycle rows are the control
+    plane's: it registers the session before spawning the worker, and a
+    decision has a foreign key onto that row.
+    """
+    if config.database_url is None:
+        logger.warning(
+            "session worker %s has no database_url; this session records nothing",
+            config.session_id,
+        )
+        return None
+
+    from afterlap_api.db import create_db_engine, create_session_factory
+    from afterlap_api.session.recorder import SessionRecorder
+    from afterlap_api.session.spool import BoundedSpool
+
+    engine = create_db_engine(config.database_url)
+    factory = create_session_factory(engine)
+    spool_root = _spool_root(config)
+
+    def build(session_id: str) -> Any:
+        spool = None if spool_root is None else BoundedSpool(spool_root, session_id)
+        return SessionRecorder(factory, session_id=session_id, spool=spool)
+
+    return build
 
 
 def _tick_payload(tick: Any) -> dict[str, Any]:
@@ -358,6 +424,11 @@ class SessionWorkerHandle:
     @property
     def alive(self) -> bool:
         return self._process is not None and self._process.is_alive()
+
+    @property
+    def records_durably(self) -> bool:
+        """Whether this worker's session writes a durable audit trail."""
+        return self.config.database_url is not None
 
     def send(self, command: WorkerCommand) -> None:
         """Enqueue one command. Refuses rather than growing the bounded queue."""

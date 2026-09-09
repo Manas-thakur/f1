@@ -33,9 +33,22 @@ from typing import Annotated, Any
 
 import numpy as np
 from fastapi import APIRouter, Query, Request
-from pydantic import BaseModel, ConfigDict, Field
 
-from afterlap_contracts import SCHEMA_VERSION, ErrorCode
+from afterlap_contracts import (
+    CentrelineResponse,
+    ConditionsListResponse,
+    ConditionsSummary,
+    ErrorCode,
+    EventOverlaySummary,
+    FeatureSummary,
+    ScenarioListResponse,
+    ScenarioSummary,
+    SourceSummary,
+    TrackDetailResponse,
+    TrackListResponse,
+    TrackSummary,
+    ValidationSummary,
+)
 from afterlap_core.conditions import ConditionsUnavailable, load_conditions
 from afterlap_core.conditions.loader import load_conditions_config, tape_cache_path
 from afterlap_core.config import list_configs
@@ -53,6 +66,7 @@ from afterlap_core.tracks.loader import (
 from afterlap_core.tracks.package import TrackPackage, readiness_rank
 
 from ..db import LifecycleError
+from ..redaction import scrub_local_paths
 from ..session.circuit import (
     MINIMUM_READINESS,
     REAL_CIRCUIT_LABEL,
@@ -61,11 +75,6 @@ from ..session.circuit import (
 )
 
 router = APIRouter()
-
-CATALOGUE_NOTICE = (
-    "Compiled circuit geometry only. Car, battery and driver parameters are synthetic documents, so "
-    f"a session on any circuit here is labelled {REAL_CIRCUIT_LABEL}."
-)
 
 MAX_CENTRELINE_POINTS = 20000
 """A stride that would return more than this is refused rather than silently coarsened."""
@@ -86,202 +95,6 @@ def catalogue_paths(request: Request) -> Paths:
     return from_factory or Paths.default()
 
 
-class _Payload(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-
-class SourceSummary(_Payload):
-    """One hashed raw input of a package, with its permission text verbatim."""
-
-    source_id: str
-    title: str
-    url: str
-    retrieved_at: str
-    sha256: str | None = None
-    permission: str
-    priority: int | None = None
-    document_revision: str | None = None
-
-
-class EventOverlaySummary(_Payload):
-    """An event overlay and how far through the two-reviewer queue it is."""
-
-    event_id: str
-    review_status: str
-    reviewer_count: int
-    confirmed: bool
-    overlay_hash: str
-    ruleset_hash: str
-    detection_line_count: int
-    activation_line_count: int
-    standard_curve_points: int
-    overtake_curve_points: int
-    unknown_fields: tuple[str, ...] = ()
-    fia_document_hashes: tuple[str, ...] = ()
-    effective_values_resolved: tuple[str, ...] = ()
-    effective_values_unknown: tuple[str, ...] = ()
-
-
-class TrackSummary(_Payload):
-    """Registry identity joined with whatever the compiled package proves."""
-
-    track_id: str
-    display_name: str
-    country: str | None = None
-    registry_readiness: str | None = None
-    official_length_m: float | None = None
-    official_length_verified: bool = False
-    official_length_source_url: str | None = None
-    official_length_sha256: str | None = None
-    event_ids: tuple[str, ...] = ()
-
-    package_present: bool = False
-    package_hash: str | None = None
-    readiness: str | None = None
-    geometry_provenance: str | None = None
-    corridor_quality: str | None = None
-    lateral_geometry_surveyed: bool | None = None
-    nominal_length_m: float | None = None
-    point_count: int | None = None
-    sample_spacing_m: float | None = None
-    arrays_sha256: str | None = None
-    source_count: int | None = None
-    licence_labels: tuple[str, ...] = ()
-    closure_error_m: float | None = None
-    length_error_fraction: float | None = None
-    simulation_ready: bool = False
-    event_overlay_ids: tuple[str, ...] = ()
-    unavailable_reason: str | None = None
-    notes: tuple[str, ...] = ()
-
-
-class TrackListResponse(_Payload):
-    schema_version: str = SCHEMA_VERSION
-    season: int | None = None
-    snapshot_date: str | None = None
-    minimum_readiness_to_drive: str = MINIMUM_READINESS.value
-    notice: str = CATALOGUE_NOTICE
-    tracks: tuple[TrackSummary, ...] = ()
-
-
-class ValidationSummary(_Payload):
-    status: str
-    closure_error_m: float | None = None
-    length_error_fraction: float | None = None
-    official_length_m: float | None = None
-    report_path: str | None = None
-    checks: dict[str, str] = Field(default_factory=dict)
-    notes: tuple[str, ...] = ()
-
-
-class FeatureSummary(_Payload):
-    start_finish_s_m: float
-    sector_count: int
-    corner_count: int
-    corner_ids: tuple[str, ...] = ()
-    pit_lane_excluded: bool = True
-
-
-class TrackDetailResponse(_Payload):
-    schema_version: str = SCHEMA_VERSION
-    notice: str = CATALOGUE_NOTICE
-    track: TrackSummary
-    validation: ValidationSummary | None = None
-    features: FeatureSummary | None = None
-    sources: tuple[SourceSummary, ...] = ()
-    event_overlays: tuple[EventOverlaySummary, ...] = ()
-
-
-class CentrelineResponse(_Payload):
-    """Downsampled geometry, with the hashes that pin the arrays it came from."""
-
-    schema_version: str = SCHEMA_VERSION
-    track_id: str
-    package_hash: str
-    arrays_sha256: str | None = None
-    readiness: str
-    geometry_provenance: str
-    corridor_quality: str
-    length_m: float
-    source_point_count: int
-    sample_spacing_m: float
-    stride_m: float
-    index_stride: int
-    point_count: int
-    units: dict[str, str] = Field(default_factory=dict)
-    s_m: tuple[float, ...] = ()
-    x_m: tuple[float, ...] = ()
-    y_m: tuple[float, ...] = ()
-    curvature_1pm: tuple[float, ...] = ()
-    notice: str = CATALOGUE_NOTICE
-
-
-class ConditionsSummary(_Payload):
-    conditions_id: str
-    description: str | None = None
-    source: str
-    available: bool
-    content_hash: str | None = None
-    sample_count: int | None = None
-    duration_s: float | None = None
-    rainfall_minutes: float | None = None
-    session_key: int | None = None
-    altitude_m: float | None = None
-    altitude_source: str | None = None
-    permission: str | None = None
-    retrieved_at: str | None = None
-    time_origin_utc: str | None = None
-    gust_enabled: bool = False
-    frozen_tape_path: str | None = None
-    unavailable_reason: str | None = None
-
-
-class ConditionsListResponse(_Payload):
-    schema_version: str = SCHEMA_VERSION
-    conditions: tuple[ConditionsSummary, ...] = ()
-    notice: str = (
-        "A conditions tape is a station reading or declared synthetic constants, never a certified "
-        "condition. Tapes are resolved offline: nothing here triggers a network fetch."
-    )
-
-
-class ScenarioSummary(_Payload):
-    """One scenario document and the circuit it actually resolves to.
-
-    Every field but ``scenario_id`` is nullable: a document that fails to parse
-    is still listed, with ``unavailable_reason`` and nulls, because omitting it
-    would look identical to it not existing. A null is "not known from this
-    document", never a zero standing in for one.
-    """
-
-    scenario_id: str
-    description: str | None = None
-    track_id: str | None = None
-    conditions_id: str | None = None
-    event_id: str | None = None
-    synthetic: bool | None = None
-    status_note: str | None = None
-    rule_pack: str | None = None
-    ego_car_id: str | None = None
-    car_ids: tuple[str, ...] = ()
-    duration_s: float | None = None
-    seed: int | None = None
-    real_circuit: bool = False
-    track_readiness: str | None = None
-    track_package_hash: str | None = None
-    run_label: str | None = None
-    unavailable_reason: str | None = None
-
-
-class ScenarioListResponse(_Payload):
-    schema_version: str = SCHEMA_VERSION
-    scenarios: tuple[ScenarioSummary, ...] = ()
-    notice: str = (
-        "Every scenario is synthetic in its car, battery and driver parameters. A scenario whose track "
-        f"resolves to a compiled package runs as {REAL_CIRCUIT_LABEL}."
-    )
-
-
 def _licence_labels(package: TrackPackage) -> tuple[str, ...]:
     return tuple(dict.fromkeys(source.permission for source in package.sources))
 
@@ -293,9 +106,9 @@ def _load_package_or_reason(track_id: str, paths: Paths) -> tuple[TrackPackage |
     try:
         return load_track_package(track_id, paths), None
     except TrackPackageError as exc:
-        return None, str(exc)
+        return None, scrub_local_paths(str(exc))
     except ValueError as exc:
-        return None, f"package document is invalid: {exc}"
+        return None, scrub_local_paths(f"package document is invalid: {exc}")
 
 
 def _overlay_ids(track_id: str, paths: Paths) -> tuple[str, ...]:
@@ -566,7 +379,7 @@ async def list_conditions_tapes(request: Request) -> ConditionsListResponse:
                     conditions_id=conditions_id,
                     source="unknown",
                     available=False,
-                    unavailable_reason=f"conditions document is invalid: {exc}",
+                    unavailable_reason=scrub_local_paths(f"conditions document is invalid: {exc}"),
                 )
             )
             continue
@@ -584,8 +397,8 @@ async def list_conditions_tapes(request: Request) -> ConditionsListResponse:
                     altitude_m=config.altitude_m,
                     altitude_source=config.altitude_source,
                     gust_enabled=config.gust.enabled,
-                    frozen_tape_path=str(cache) if cache.exists() else None,
-                    unavailable_reason=str(exc),
+                    frozen_tape_available=cache.exists(),
+                    unavailable_reason=scrub_local_paths(str(exc)),
                 )
             )
             continue
@@ -607,7 +420,7 @@ async def list_conditions_tapes(request: Request) -> ConditionsListResponse:
                 retrieved_at=tape.provenance.retrieved_at,
                 time_origin_utc=tape.provenance.time_origin_utc,
                 gust_enabled=tape.gust.enabled,
-                frozen_tape_path=str(cache) if cache.exists() else None,
+                frozen_tape_available=cache.exists(),
             )
         )
     return ConditionsListResponse(conditions=tuple(out))
@@ -630,7 +443,7 @@ async def list_scenario_documents(request: Request) -> ScenarioListResponse:
             out.append(
                 ScenarioSummary(
                     scenario_id=scenario_id,
-                    unavailable_reason=f"scenario document is invalid: {exc}",
+                    unavailable_reason=scrub_local_paths(f"scenario document is invalid: {exc}"),
                 )
             )
             continue
@@ -674,13 +487,4 @@ async def list_scenario_documents(request: Request) -> ScenarioListResponse:
     return ScenarioListResponse(scenarios=tuple(out))
 
 
-__all__ = [
-    "CATALOGUE_NOTICE",
-    "CentrelineResponse",
-    "ConditionsListResponse",
-    "ScenarioListResponse",
-    "TrackDetailResponse",
-    "TrackListResponse",
-    "catalogue_paths",
-    "router",
-]
+__all__ = ["MAX_CENTRELINE_POINTS", "catalogue_paths", "router"]

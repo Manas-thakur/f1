@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from afterlap_contracts import ApiError, ApiErrorResponse, ErrorCode
 
 from .db import LifecycleError
+from .redaction import scrub_local_paths
 from .runtime.port import RuntimeUnavailable
 
 if TYPE_CHECKING:
@@ -54,6 +55,16 @@ def error_response(error: ApiError) -> JSONResponse:
     )
 
 
+def safe_message(text: str) -> str:
+    """A refusal reason with the deployment's filesystem layout taken out.
+
+    Applied here rather than at each raise site: the loaders phrase a missing
+    artefact with the absolute path they tried, and every one of those reasons
+    reaches a client through one of these handlers.
+    """
+    return scrub_local_paths(text)
+
+
 def request_id_of(request: Request) -> str:
     return getattr(request.state, "request_id", "unknown")
 
@@ -64,7 +75,8 @@ def _details(payload: dict[str, Any]) -> dict[str, Any]:
     for key, value in payload.items():
         if any(token in key.lower() for token in ("password", "token", "secret", "credential")):
             continue
-        safe[key] = value if isinstance(value, (str, int, float, bool, type(None))) else str(value)
+        resolved = value if isinstance(value, (str, int, float, bool, type(None))) else str(value)
+        safe[key] = scrub_local_paths(resolved) if isinstance(resolved, str) else resolved
     return safe
 
 
@@ -78,7 +90,7 @@ def install_error_handlers(app: FastAPI) -> None:
             extra={"request_id": request_id_of(request), "code": exc.code.value, "path": request.url.path},
         )
         return error_response(
-            ApiError.of(exc.code, exc.message, request_id_of(request), **_details(exc.details))
+            ApiError.of(exc.code, safe_message(exc.message), request_id_of(request), **_details(exc.details))
         )
 
     @app.exception_handler(CapabilityUnavailable)
@@ -86,7 +98,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return error_response(
             ApiError.of(
                 ErrorCode.CAPABILITY_UNAVAILABLE,
-                exc.detail,
+                safe_message(exc.detail),
                 request_id_of(request),
                 capability=exc.capability,
             )
@@ -97,7 +109,7 @@ def install_error_handlers(app: FastAPI) -> None:
         return error_response(
             ApiError.of(
                 ErrorCode.CAPABILITY_UNAVAILABLE,
-                exc.detail,
+                safe_message(exc.detail),
                 request_id_of(request),
                 capability="session_runtime",
                 session_id=exc.session_id,
@@ -130,7 +142,7 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
     async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = ErrorCode.NOT_FOUND if exc.status_code == 404 else ErrorCode.VALIDATION_FAILED
-        return error_response(ApiError.of(code, str(exc.detail), request_id_of(request)))
+        return error_response(ApiError.of(code, safe_message(str(exc.detail)), request_id_of(request)))
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
@@ -152,4 +164,5 @@ __all__ = [
     "error_response",
     "install_error_handlers",
     "request_id_of",
+    "safe_message",
 ]

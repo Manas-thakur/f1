@@ -69,8 +69,10 @@ from .observation_source import (
 from .publisher import DeduplicatingConsumer, OutboxPublisher, PublisherFault, PublishReport
 from .recorder import RecordOutcome, SessionRecorder
 from .runtime import (
+    MAX_DECISION_OBSERVATION_AGE_S,
     SYNTHETIC_GAP_THRESHOLD,
     UNRESOLVED_GAP_THRESHOLD,
+    DecisionHealth,
     EligibilityPolicy,
     IngestionReport,
     InProcessSessionRuntime,
@@ -85,6 +87,7 @@ from .spool import BoundedSpool, SpoolEntry, SpoolFull
 
 __all__ = [
     "BASELINE_IDENTITY",
+    "MAX_DECISION_OBSERVATION_AGE_S",
     "MINIMUM_READINESS",
     "REAL_CIRCUIT_LABEL",
     "RIVAL_ENERGY_QUANTILE_NOTE",
@@ -95,6 +98,7 @@ __all__ = [
     "BoundedSpool",
     "CircuitIdentity",
     "CircuitRefusal",
+    "DecisionHealth",
     "DeduplicatingConsumer",
     "DegradationFinding",
     "DegradationInputs",

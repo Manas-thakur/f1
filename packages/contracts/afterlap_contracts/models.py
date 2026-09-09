@@ -229,6 +229,37 @@ class ModelManifest(VersionedContract):
     training_code_revision: str | None = None
     library_versions: dict[str, str] = Field(default_factory=dict)
     supported_scenario_families: tuple[str, ...] = ()
+    ruleset_hash: str | None = Field(
+        default=None,
+        description=(
+            "Content hash of the rule pack this bundle was trained against. `rule_family` names "
+            "the pack; this pins its contents, because a pack whose limits moved is a different "
+            "environment under the same id."
+        ),
+    )
+    supported_track_ids: tuple[str, ...] = Field(
+        default=(),
+        description=(
+            "Circuits inside this bundle's training split. Empty means the split is undeclared, "
+            "which is not a claim of coverage: a session on a compiled real circuit refuses a "
+            "bundle that does not name it."
+        ),
+    )
+    track_package_hashes: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Per-circuit compiled package hash the bundle trained against. Recompiled geometry "
+            "under the same circuit id is different dynamics, so a hash that disagrees disables "
+            "the learned contribution even when the id matches."
+        ),
+    )
+    supported_conditions_ids: tuple[str, ...] = Field(
+        default=(),
+        description=(
+            "Conditions tapes inside the training split. Empty means none was used, so a session "
+            "running under a tape is outside the regime this bundle was evaluated in."
+        ),
+    )
     support_thresholds: SupportThresholds | None = None
     approval_status: ApprovalStatus = ApprovalStatus.UNEVALUATED
     benchmark_report_hash: str | None = None
