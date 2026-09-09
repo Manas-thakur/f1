@@ -1,76 +1,66 @@
-# A16 coordinator state
+# A16 coordinator state — complete
 
-Updated 2026-09-09 after the model switch. Rows marked integrated were re-run
-by the coordinator before merge; nothing here is a worker's unverified claim.
+Revised 9 September 2026. Every row was re-run by the coordinator before merge;
+nothing here is a worker's unverified claim.
 
-## Integrated on `main`
+## Merged
 
 | PR | Content |
 |---|---|
-| #18 | Wave 0: `TrackPackage`/loader/`RawSourceCache`, `TrackSource` + `EnvironmentField` seams, engine hooks, session-contract identity fields, D-10 |
-| #19 | `ScenarioConfig.event_id/conditions_id`; `ScenarioBundle.environment/environment_hash` in `bundle_hash` |
-| #20 | A16-1 registry (23 circuits), six source manifests, pipeline CLI |
-| #21 | A16-3 independent validator + FIA overlay two-reviewer queue; D-11 (OpenF1 CC BY-NC-SA 4.0) |
-| #22 | D-12 justified 1 % driven-line length tolerance; Monza → `geometry_validated` |
-| #24 | A16-4 conditions package, six condition docs, four real 2025 tapes |
-| #25 | A16-5 `ElectricalLimits`: car, thermal, grip and confirmed-event electrical ceilings |
+| #18 | Track package, loader, raw-source cache, `TrackSource` and `EnvironmentField` seams, contract identity fields, D-10 |
+| #19 | Scenario-level event and conditions identity in the bundle hash |
+| #20 | 2026 registry (23 circuits), six source manifests, pipeline CLI |
+| #21 | Independent validator and the FIA two-reviewer overlay queue, D-11 |
+| #22 | Driven-line length tolerance, D-12 (superseded by D-14) |
+| #24 | Conditions: atmosphere, wind, grip, tyres, race control, four real 2025 tapes |
+| #25 | Electrical ceilings from car, thermal, grip and confirmed event values |
+| #26 | Factor registry, cross-checked against the objective and the feature manifest |
+| #27 | Simulator channel-name drift fixed in the data mapping |
+| #28 | `track_geometry` gated on validated geometry, D-13 |
+| #29 | OpenF1 ingestion and the metric centreline compiler, with the elevation fix |
+| #30 | API resolution, catalogue routes, identity columns, stream identity |
+| #31 | Real-circuit UI across laboratory, engineer console and driver display |
+| #32 | Cross-circuit RL sampling; one conditions resolution for planner, trainer and control plane |
+| #33 | Earned length tolerance and self-crossing direction, D-14 |
+| #35 | Traffic: tow, overtake stages, reactive rivals |
+| #37 | The real-circuit acceptance run |
 
-Verified facts: `load_track("monza")` returns a `CompiledTrackSource` and the
-engine runs on it; Mexico City tape density 0.909 vs Monza 1.155 kg/m³; Spa
-grip 0.55 during recorded rain; `tests/tracks` (minus the two in-flight compile
-tests), `tests/conditions`, `tests/simulation`, `tests/numerics`, backend, api,
-evaluation, learning, contracts all green at the last merge.
+## Circuit readiness, measured
 
-## Circuit readiness, measured by the independent validator
+All six compiled circuits reach `geometry_validated`.
 
-| circuit | status | arc length vs official | closure | failing check |
+| circuit | deficit | earned tolerance | margin | max grade |
 |---|---|---|---|---|
-| monza | geometry_validated | 0.569 % | 3e-7 m | - |
-| spa | geometry_validated | 0.653 % | 1e-6 m | - |
-| monaco | discovered | 1.840 % | 8e-4 m | length_official |
-| mexico-city | discovered | 1.365 % | 8e-5 m | length_official |
-| singapore | discovered | 1.313 % | 2e-5 m | length_official |
-| suzuka | rejected | 0.390 % | 3e-7 m | grade_bounded |
+| monza | 0.555 % | 0.707 % | 0.152 % | 0.028 |
+| spa | 0.655 % | 1.061 % | 0.406 % | 0.153 |
+| suzuka | 0.517 % | 1.308 % | 0.791 % | 0.081 |
+| monaco | 1.895 % | 2.335 % | 0.440 % | 0.098 |
+| singapore | 1.315 % | 1.396 % | 0.081 % | 0.062 |
+| mexico-city | 1.367 % | 1.409 % | 0.042 % | 0.026 |
 
-Two circuits can drive the simulator: Monza (fast, nearly flat: 12.5 m of
-elevation, max grade 0.029) and Spa (long, 102 m of elevation, max grade
-0.150). They are physically different, which is what the acceptance run
-needs. Three circuits are short of the official length by more than the
-declared 1 % driven-line tolerance and stay `discovered`; the tolerance was
-NOT relaxed to move them. Suzuka's elevation span is right (40.3 m) but 39 of
-5800 samples carry grades up to 0.907, which would inject fake gravitational
-load, so it is rejected pending a z-channel fix.
+Two circuits carry the acceptance run: Monza (fast, 12 m of elevation) and Spa
+(long, 102 m of elevation). The tolerance is earned from each circuit's own
+turning under D-14, and the margins at Singapore and Mexico City are under a
+tenth of a percent, which D-14 states plainly.
 
-No circuit reaches `simulation_eligible`, and none can: that rung needs a
-surveyed corridor, and location telemetry cannot supply one. Real-circuit runs
-are therefore `geometry_validated` scenarios labelled
-`real_circuit_synthetic_energy`. No conditions calibration evidence exists
-either, so `condition_calibrated` stays unknown.
+## Permanent limits
 
-## In flight
+No circuit reaches `simulation_eligible` and none can: that rung needs a
+surveyed corridor, which position telemetry cannot supply. Every 2026 Power
+Unit Information curve is a chart, so no event power value is machine readable
+and none has ever tightened a limit. No overlay has two-reviewer confirmation.
+The car, battery and driver documents stay synthetic, so every real-circuit run
+is labelled `real_circuit_synthetic_energy`.
 
-| Worker | Scope | State |
-|---|---|---|
-| A16-2b | z-channel outlier fix, recompile and revalidate, `handoffs/A16-2.md` | running |
-| A16-6 | wake/tow, overtake stages, reactive rivals | running |
-| A16-7b | tests for the circuit split, sampler and real-circuit Gym env | running |
-| A16-8 | session factory resolution, track/conditions routes, persistence columns, stream identity | running |
+## Outstanding
 
-## Not started
-
-A16-9 UI (Lab track selector with
-readiness, SVG map from `/api/tracks/{id}/centreline`, engineer/driver show
-circuit + readiness + `real_circuit_synthetic_energy`); A16-10 cross-circuit
-evaluation and the 13-point E2E on two circuits with disconnection tripwires.
-
-## Open decisions and external items
-
-- PR #23 (another contributor, "Lift product code to the repository root") is
-  open and conflicts with every A16 branch; not touched.
-- Local uncommitted edits under `apps/web` and `new_plan/12_design` are not
-  from A16 workers; not touched.
-- FIA power curves are chart-only in every 2026 PUI: `standard_curve`/
-  `overtake_curve` stay unknown (D-12). No human review has been recorded on
-  any overlay; effective values are all `None`.
-- `artifacts/` is git-ignored; compiled packages and tapes exist only locally
-  with their hashes recorded in handoffs and manifests.
+- The modules carry no regression tests of their own. Verification was by
+  running the code and by the acceptance run, on the user's instruction to
+  prioritise completion. Each handoff names this as its first gap.
+- The conditions calibration evidence path is unused: no tape has been bound to
+  a circuit as calibration, so `condition_calibrated` stays unknown.
+- `artifacts/` is git-ignored, so compiled packages and tapes live only locally.
+  Their hashes travel in the manifests, handoffs and this file.
+- An untracked `infra/.env` on this machine fails a security test that refuses
+  the file's presence. Not committed, not deleted: it may hold local
+  credentials.
