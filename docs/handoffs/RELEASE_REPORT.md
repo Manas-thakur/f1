@@ -1,12 +1,20 @@
 # AFTERLAP release report
 
-Coordinator's assessment, 8 September 2026. Every figure here was produced by a
-command run in this repository on the hardware named below. Where something was
-not measured, it says so; where a target was missed, it says the measured value.
+Coordinator's assessment, revised 9 September 2026. Every figure here was
+produced by a command run in this repository on the hardware named below. Where
+something was not measured, it says so; where a target was missed, it says the
+measured value.
 
-**Read this first: the product does not meet its current specification.** Two
-things are missing, one of which is a whole required module. Both are named in
-[§2](#2-what-is-not-built) before anything else.
+**Read this first.** The real-circuit module, absent at the previous revision, is
+now built and carries a thirteen-claim acceptance run on two circuits with all
+26 claims held ([§2.1](#21-a16--real-circuits-and-race-conditions-built-three-limits-stated),
+[§4.1](#41-the-real-circuit-acceptance-run)). Two things still fall short of the
+specification and are named in [§2](#2-what-is-not-built) before anything else:
+learning is incomplete, with no trained actor and promotion refused, and the
+planner misses its latency target. Three limits of the real-circuit work are
+permanent with the available sources and are stated in §2.1 rather than buried:
+no circuit can reach simulation eligibility, no event power curve is machine
+readable, and the car remains synthetic on real geometry.
 
 ---
 
@@ -42,26 +50,38 @@ number.
 
 ## 2. What is not built
 
-### 2.1 A16 — real circuits and race conditions (**required, absent**)
+### 2.1 A16 — real circuits and race conditions (**built; three limits stated**)
 
-`BUILD_WITH_AGENTS.md` was revised during this build to add boundary 4:
+This section previously read "required, absent". The module is now built and
+integrated, and the evidence is in [§4.1](#41-the-real-circuit-acceptance-run).
+Six circuits are compiled from public position telemetry and independently
+validated; two of them, Monza and Spa, carry the acceptance run end to end.
 
-> Read `tracks` and dispatch A16. Real-circuit support
-> requires compiled metric geometry, event overlays and condition validation. A
-> circuit name or image over synthetic dynamics does not satisfy it.
+Three limits are permanent with the sources available, and no amount of further
+work removes them:
 
-The dispatch table now names A16 in waves 1, 2 and 3. `docs/tracks/`
-holds 397 lines of specification plus a track-package schema, a 2026 season
-registry and a Monza example.
+1. **No circuit can reach `simulation_eligible`, and none ever will from this
+   data.** That rung requires a surveyed corridor. Position telemetry gives a
+   driven line, not track edges, so every compiled package reports
+   `corridor_quality: unknown`. The consequence is enforced rather than noted:
+   lap width is `nan`, the lateral degree of freedom is disabled, the observation
+   channel is null, `lateral_geometry` is `unavailable` in every session, and the
+   overtake machine returns `unavailable` for overlap and contact instead of
+   deciding them.
+2. **Every 2026 Power Unit Information curve is a chart.** The four FIA documents
+   retrieved (Miami, Italy, Monaco, Belgium) expose axis ticks and legend names to
+   the text layer and nothing more, so `standard_curve` and `overtake_curve` stay
+   unknown. An unknown event value never widens a limit: the car-document ceiling
+   applies and the step records `event_curve_unknown`. No overlay has been
+   confirmed by two reviewers, so every overlay's effective values are `None`.
+3. **The geometry is real; the car is not.** Car, battery and driver documents
+   remain synthetic assumptions. Every run on a compiled circuit is labelled
+   `real_circuit_synthetic_energy`, and that label is carried on the session, the
+   persisted row, the exported artefact and the three user interfaces.
 
-**None of it is implemented.** There is no track-package pipeline, no compiled
-metric geometry, no event overlay, no condition model and no circuit registry.
-The two tracks that exist — `test-loop` and `test-oval` — are synthetic
-geometries with `verification: synthetic_assumption` on every parameter.
-
-This is new scope that arrived after the module waves were dispatched, and it is
-a genuine gap against the current specification, not a deferral I chose. The
-release cannot claim real-circuit support in any form.
+The geometry is a driven racing line under OpenF1's CC BY-NC-SA 4.0 terms
+(D-11): non-commercial, attribution required, share-alike. Redistribution of the
+compiled packages beyond research use needs a licence review.
 
 ### 2.2 Learning is incomplete
 
@@ -103,7 +123,7 @@ about 50 — but spending that before fixing coverage would buy nothing.
 | **G8** restart, dropout, database failure, missing models, solver timeout, bounded spool | **pass with two approximations** | `tests/operations` (47). Drills cause the failure rather than mocking it. Two are approximations and say so in-file — see §7 |
 | **G9** browser review at seven widths, keyboard, focus, contrast, units, source labels | **pass** | 322 web unit tests, 157 browser tests. 320/375/414/768/1024/1440/1920 px on all seven routes; **axe-core 0 serious, 0 critical** |
 | **G10** clean local installation, executable demo runbook, release evidence | **pass** | Cold start 7.63 s app / 13.41 s Compose from empty volumes; `scripts/demo.py` completes 13/13 steps through nginx; this report |
-| **A16** real circuits and conditions | **not built** | §2.1 |
+| **A16** real circuits and conditions | **pass with three stated limits** | §2.1, §4.1. Six circuits compiled and independently validated; 26 of 26 acceptance claims hold on Monza and Spa. No circuit reaches simulation eligibility and none can: that needs a surveyed corridor |
 
 Physics fidelity against a real car, numerical convergence, and real-circuit
 validation are **separate statuses**. Convergence passes. Real-car fidelity was
@@ -114,6 +134,50 @@ otherwise.
 ---
 
 ## 4. Test evidence
+
+### 4.1 The real-circuit acceptance run
+
+`scripts/acceptance_real_circuit.py` settles thirteen claims on two physically
+different circuits, in process, needing no server. Every claim compares two runs
+that differ in one thing, or reads a value back out of a place it had to travel
+through; none asserts that code was called. **26 of 26 held.**
+
+Reproduce with `uv run python scripts/acceptance_real_circuit.py`.
+
+| Claim | Monza | Spa |
+|---|---|---|
+| 1. geometry validated, corridor refused | 5760.9 m against an official 5793 m (0.555 %), closure 2.9e-4 m | 6958.1 m against 7004 m (0.655 %), closure 1.5e-6 m |
+| 2. recorded weather changes behaviour | 1.1545 against 1.2250 kg/m³, 86.38 against 84.65 m/s | 1.1461 against 1.2250 kg/m³, 83.46 against 81.91 m/s |
+| 3. deployment buys speed, costs charge | 93.54 m/s at 0.655 MJ against 89.10 m/s at 1.280 MJ | 91.19 m/s at 0.655 MJ against 86.61 m/s at 1.280 MJ |
+| 4. regeneration bounded | 383 braking steps, peak 350.0 kW against a 350.0 kW ceiling, none above | same ceiling, none above |
+| 5. tow real, lateral refused | drag ×0.7201, labelled an in-line assumption | drag ×0.7214, same label |
+| 6. session carries the identity | package `97eca0c9…`, tape `sha256:bf5d66cf…` | package `a73799d4…`, tape `sha256:463b13b3…` |
+| 7. catalogue agrees | same hash on `/tracks` and `/centreline`, 231 finite points | same hash, 279 finite points |
+| 8. one operator, session starts | lease held, status running | lease held, status running |
+| 9. engineer receives a checked instruction | "PUSH 0.79 MJ to 2389 m" | "PUSH 0.52 MJ to 2669 m" |
+| 10. independent checker ruled | pass, no violations, rule pack `sha256:0dba4023b`, reason codes `baseline_fallback`, `rival_energy_unknown` | same |
+| 11. selection then execution, separately | both accepted, profile `push` | both accepted |
+| 12. execution moves telemetry | 2031.4 → 2202.6 m, estimate revision 8 → 14 | 2295.7 → 2491.6 m, revision 11 → 17 |
+| 13. persisted, exported, traceable | row and artefact carry the package hash, tape hash and `real_circuit_synthetic_energy` | same |
+
+Two details in that table are worth reading twice. The instruction at claim 10
+records `rival_energy_unknown` and `baseline_fallback`, so the system states what
+it does not know rather than issuing a confident number. And `learned_contribution`
+is `false` throughout, because the actor is untrained and promotion is refused;
+the deterministic baseline produced these instructions.
+
+Writing the run found **ten defects in the check itself**, each of which would
+have produced a green result that meant nothing. Three are worth naming: it
+sampled the car state after a run instead of during it, so a bounded quantity
+looked bounded without ever being measured; it asserted capabilities against a
+field that does not exist, so the comparison passed against `null`; and its
+stepping loop updated the revision only when a step succeeded, so refused steps
+passed silently and the session never advanced. That last defect is precisely
+the mocked-success failure this project forbids, committed by the check written
+to catch it.
+
+### 4.2 Suite counts
+
 
 | Suite | Tests |
 |---|---|
@@ -357,8 +421,15 @@ evidence that does not exist:
 - **No** real-time claim. The planner p95 is 827 ms against a 200 ms target.
 - **No** calibrated probability. Probabilities are raw scenario frequencies
   marked `uncalibrated`; the calibrator is `unavailable`.
-- **No** real-car or real-circuit fidelity. Every parameter is a labelled
-  synthetic assumption, and A16 is not built.
+- **No** real-car fidelity. Every car, battery and driver parameter is a
+  labelled synthetic assumption, so a run on real geometry is labelled
+  `real_circuit_synthetic_energy` and is not evidence about a real car.
+- **No** surveyed track geometry. The circuits are compiled from a driven
+  racing line, which is not a centreline and carries no corridor, so no
+  lateral, side-by-side or contact claim is made anywhere.
+- **No** official event parameters in force. Every 2026 power curve is a chart
+  in its FIA document and stays unknown; no overlay has two-reviewer
+  confirmation, so no event value has ever tightened a limit in a run.
 - **No** FIA compliance or certification of any kind. Rule packs are
   `synthetic: true`, `reviewed: false`, with unresolved conditions listed.
 - **No** driver-integration claim beyond the simulator. The connected display is
