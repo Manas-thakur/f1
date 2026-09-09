@@ -221,6 +221,7 @@ def client(tmp_path: Path, catalogue_paths: Paths):
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as test_client:

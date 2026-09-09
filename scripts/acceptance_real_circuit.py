@@ -337,13 +337,14 @@ def api_claims(circuit: str, ledger: Ledger, measured: dict[str, Any], root: Pat
     """Claims 6 to 13: the decision chain, the operator, the driver, the record."""
     from fastapi.testclient import TestClient
 
-    from afterlap_api.db import create_all
     from afterlap_api.deps import Settings
     from afterlap_api.main import create_app
+    from afterlap_infrastructure.persistence import create_all
 
     settings = Settings(
         database_url=f"sqlite+pysqlite:///{(root / f'{circuit}.sqlite3').as_posix()}",
         artifact_root=root,
+        session_runtime_backend="in_process",
     )
     app = create_app(settings)
     with TestClient(app) as client:
@@ -564,8 +565,8 @@ def api_claims(circuit: str, ledger: Ledger, measured: dict[str, Any], root: Pat
         )
 
         ledger.claim(13, "the run is persisted and exportable with its circuit identity")
-        from afterlap_api.db import transaction
-        from afterlap_api.db.models import Session as SessionRow
+        from afterlap_infrastructure.persistence import transaction
+        from afterlap_infrastructure.persistence.models import Session as SessionRow
 
         with transaction(app.state.database.factory) as db:
             row_db = db.get(SessionRow, session_id)

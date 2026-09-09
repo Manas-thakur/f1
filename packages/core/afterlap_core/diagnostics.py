@@ -11,15 +11,12 @@ import importlib
 import os
 import platform
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from afterlap_contracts import CapabilityState
 
 from .paths import Paths
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 @dataclass(frozen=True, slots=True)
@@ -229,6 +226,29 @@ def check_learning_stack() -> CheckResult:
     )
 
 
+DatabaseProbe = Callable[[str], None]
+
+_database_probe: DatabaseProbe | None = None
+
+
+def register_database_probe(probe: DatabaseProbe | None) -> DatabaseProbe | None:
+    """Install the adapter that measures real database connectivity.
+
+    The domain core owns no persistence driver, so it cannot open a connection
+    itself. The infrastructure layer registers its adapter at import time; a
+    core-only install leaves this unset and :func:`check_database` reports the
+    backend as unprobed instead of inventing a verdict.
+
+    A probe takes the configured URL, returns ``None`` when the backend
+    answered, and raises otherwise. Returns the probe registered before this
+    call so a caller can restore it.
+    """
+    global _database_probe
+    previous = _database_probe
+    _database_probe = probe
+    return previous
+
+
 def check_database(url: str | None = None) -> CheckResult:
     """Report the configured persistence backend without printing credentials."""
     configured = url or os.environ.get("AFTERLAP_DATABASE_URL", "")
@@ -239,13 +259,15 @@ def check_database(url: str | None = None) -> CheckResult:
             "no AFTERLAP_DATABASE_URL configured; the runtime will use its local SQLite store",
         )
     scheme = configured.split("://", 1)[0]
+    probe = _database_probe
+    if probe is None:
+        return CheckResult(
+            "database",
+            CapabilityState.DEGRADED,
+            f"{scheme} backend was not probed; no database adapter is registered",
+        )
     try:
-        from sqlalchemy import create_engine, text
-
-        engine = create_engine(configured, pool_pre_ping=True)
-        with engine.connect() as connection:
-            connection.execute(text("select 1"))
-        engine.dispose()
+        probe(configured)
     except Exception as exc:
         return CheckResult(
             "database",
@@ -293,6 +315,7 @@ def redact(text: str) -> str:
 __all__ = [
     "DEFAULT_CHECKS",
     "CheckResult",
+    "DatabaseProbe",
     "DoctorReport",
     "check_acados",
     "check_contracts",
@@ -304,5 +327,6 @@ __all__ = [
     "check_storage",
     "check_torch",
     "redact",
+    "register_database_probe",
     "run_doctor",
 ]

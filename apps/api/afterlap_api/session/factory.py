@@ -340,6 +340,66 @@ class SessionFactory:
         would carry a different id from the commands that produced them, and
         one session's history would silently split in two.
         """
+        artefacts, config = self._resolve(payload)
+        manifest = build_manifest(
+            artefacts,
+            mode=payload.mode,
+            seed=payload.seed,
+            label=payload.label,
+            session_id=session_id,
+            observation_rate_hz=config.observation_rate_hz,
+        )
+        return manifest, self.create_from_manifest(payload, manifest, resolved=(artefacts, config))
+
+    def prepare(self, payload: CreateSessionRequest, *, session_id: str | None = None) -> SessionManifest:
+        """Validate inputs and freeze identity without constructing dynamics."""
+        artefacts, config = self._resolve(payload)
+        return build_manifest(
+            artefacts,
+            mode=payload.mode,
+            seed=payload.seed,
+            label=payload.label,
+            session_id=session_id,
+            observation_rate_hz=config.observation_rate_hz,
+        )
+
+    def create_from_manifest(
+        self,
+        payload: CreateSessionRequest,
+        manifest: SessionManifest,
+        *,
+        resolved: tuple[ResolvedArtefacts, RuntimeConfig] | None = None,
+    ) -> InProcessSessionRuntime:
+        """Construct the in-process adapter for an already frozen identity."""
+        artefacts, config = resolved or self._resolve(payload)
+        expected = build_manifest(
+            artefacts,
+            mode=payload.mode,
+            seed=payload.seed,
+            label=payload.label,
+            session_id=manifest.id,
+            observation_rate_hz=config.observation_rate_hz,
+        )
+        comparable = expected.model_copy(update={"created_at": manifest.created_at})
+        if comparable.content_hash() != manifest.content_hash():
+            raise SessionValidationError("session artefacts changed after the manifest was frozen")
+        recorder: SessionRecorder | None = None
+        if self._recorder_factory is not None:
+            recorder = self._recorder_factory(manifest.id)
+        runtime = InProcessSessionRuntime(
+            bundle=artefacts.bundle,
+            pack=artefacts.pack,
+            planner=self._planner,
+            config=config,
+            recorder=recorder,
+            model_bundle=artefacts.model,
+            objective_version=artefacts.objective_id,
+            expected_feature_hash=ENERGY_V1.content_hash(),
+        )
+        runtime.initialise(manifest, artefacts.bundle.scenario.id, payload.seed)
+        return runtime
+
+    def _resolve(self, payload: CreateSessionRequest) -> tuple[ResolvedArtefacts, RuntimeConfig]:
         artefacts = resolve_artefacts(
             scenario_id=payload.scenario_id,
             ruleset_id=payload.ruleset_id,
@@ -353,32 +413,8 @@ class SessionFactory:
             seed=payload.seed,
         )
         validate_combination(artefacts, payload.mode)
-
         config = self._config or default_runtime_config(artefacts.bundle)
-        manifest = build_manifest(
-            artefacts,
-            mode=payload.mode,
-            seed=payload.seed,
-            label=payload.label,
-            session_id=session_id,
-            observation_rate_hz=config.observation_rate_hz,
-        )
-        recorder: SessionRecorder | None = None
-        if self._recorder_factory is not None:
-            recorder = self._recorder_factory(manifest.id)
-
-        runtime = InProcessSessionRuntime(
-            bundle=artefacts.bundle,
-            pack=artefacts.pack,
-            planner=self._planner,
-            config=config,
-            recorder=recorder,
-            model_bundle=artefacts.model,
-            objective_version=artefacts.objective_id,
-            expected_feature_hash=ENERGY_V1.content_hash(),
-        )
-        runtime.initialise(manifest, artefacts.bundle.scenario.id, payload.seed)
-        return manifest, runtime
+        return artefacts, config
 
 
 def _objective_hash(objective_id: str, paths: Paths | None) -> str:

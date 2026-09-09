@@ -1,0 +1,17 @@
+[project]
+name = "afterlap-application"
+version = "0.1.0"
+description = "AFTERLAP application ports and process runtime transport"
+requires-python = "==3.12.*"
+dependencies = ["afterlap-contracts"]
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "afterlap_application"
+module-root = ""
+
+[tool.uv.sources]
+afterlap-contracts = { workspace = true }

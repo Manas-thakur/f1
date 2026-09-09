@@ -126,6 +126,7 @@ def test_the_application_lifespan_stops_its_background_task_and_disposes_the_eng
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -168,6 +169,7 @@ def test_a_full_run_and_shutdown_leaves_only_complete_artefacts(tmp_path: Path):
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:

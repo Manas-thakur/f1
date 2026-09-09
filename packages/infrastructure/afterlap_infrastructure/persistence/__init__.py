@@ -1,8 +1,22 @@
-"""Compatibility imports for shared persistence repositories."""
+"""Public persistence adapter surface."""
 
 from __future__ import annotations
 
-from afterlap_infrastructure.persistence.repository import (
+from .engine import (
+    DEFAULT_SQLITE_NAME,
+    SQLITE_BUSY_TIMEOUT_MS,
+    command_transaction,
+    create_all,
+    create_db_engine,
+    create_session_factory,
+    default_database_url,
+    drop_all,
+    ensure_schema,
+    sqlite_path,
+    transaction,
+)
+from .models import Base
+from .repository import (
     CommandOutcome,
     LifecycleError,
     acquire_lease,
@@ -22,6 +36,9 @@ from afterlap_infrastructure.persistence.repository import (
 )
 
 __all__ = [
+    "DEFAULT_SQLITE_NAME",
+    "SQLITE_BUSY_TIMEOUT_MS",
+    "Base",
     "CommandOutcome",
     "LifecycleError",
     "acquire_lease",
@@ -29,6 +46,13 @@ __all__ = [
     "apply_operator_action",
     "body_hash_of",
     "claim_experiment_job",
+    "command_transaction",
+    "create_all",
+    "create_db_engine",
+    "create_session_factory",
+    "default_database_url",
+    "drop_all",
+    "ensure_schema",
     "expire_due",
     "invalidate_outstanding",
     "mark_published",
@@ -36,6 +60,8 @@ __all__ = [
     "next_sequence",
     "record_execution",
     "require_lease",
+    "sqlite_path",
     "store_decision",
+    "transaction",
     "unpublished_outbox",
 ]

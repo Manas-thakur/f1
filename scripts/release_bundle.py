@@ -68,6 +68,8 @@ SOURCE_TREES: tuple[str, ...] = (
     "packages/contracts/afterlap_contracts",
     "packages/contracts/generated",
     "packages/core/afterlap_core",
+    "packages/application/afterlap_application",
+    "packages/infrastructure/afterlap_infrastructure",
     "apps/api/afterlap_api",
     "apps/web/src",
     "workers",
@@ -91,6 +93,8 @@ SOURCE_FILES: tuple[str, ...] = (
     "apps/web/index.html",
     "packages/contracts/pyproject.toml",
     "packages/core/pyproject.toml",
+    "packages/application/pyproject.toml",
+    "packages/infrastructure/pyproject.toml",
 )
 
 EXCLUDED_DIR_NAMES = {
@@ -191,8 +195,8 @@ def schema(staging: Path) -> Section:
     from sqlalchemy.dialects import postgresql, sqlite
     from sqlalchemy.schema import CreateTable
 
-    from afterlap_api.db.models import Base
     from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION
+    from afterlap_infrastructure.persistence.models import Base
 
     out = staging / "schema"
     out.mkdir(parents=True, exist_ok=True)

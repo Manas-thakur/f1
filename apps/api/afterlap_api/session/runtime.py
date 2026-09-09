@@ -403,6 +403,16 @@ class InProcessSessionRuntime:
             self._last_tick = self._tick(executions=())
             return self._last_tick
 
+    def current_tick(self) -> RuntimeTick:
+        """The latest observable state, without advancing anything.
+
+        An out-of-process owner has to answer this to hand its first tick back
+        across the boundary after ``initialise``; without it the control plane
+        would start a session with an empty estimate it never actually had.
+        """
+        with self._lock:
+            return self._last_tick or self._tick(executions=())
+
     def advance(self, duration_s: float) -> RuntimeTick:
         with self._lock:
             self._require_running()

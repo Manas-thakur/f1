@@ -1,8 +1,8 @@
 """Process entry points.
 
 ``session_worker`` owns one session's dynamics; ``batch_worker`` claims bounded
-experiment jobs. Neither contains lifecycle rules: they are launchers around
-:mod:`afterlap_api.session` and the coordinator's persistence layer.
+experiment jobs. Neither contains lifecycle rules: they are thin composition
+roots over :mod:`afterlap_application` and :mod:`afterlap_infrastructure`.
 """
 
 from __future__ import annotations

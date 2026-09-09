@@ -192,6 +192,7 @@ def client(tmp_path):
     settings = Settings(
         database_url=f"sqlite+pysqlite:///{(tmp_path / 'routes.sqlite3').as_posix()}",
         artifact_root=tmp_path,
+        session_runtime_backend="in_process",
     )
     app: FastAPI = create_app(settings)
     app.include_router(experiments_routes.router, prefix=API_PREFIX, tags=["experiments"])

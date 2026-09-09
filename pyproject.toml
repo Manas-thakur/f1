@@ -1,19 +1,7 @@
-[project]
-name = "afterlap"
-version = "0.1.0"
-description = "AFTERLAP - electrical energy and overtake decision support (synthetic, simulator-only)"
-requires-python = "==3.12.*"
-dependencies = [
-    "afterlap-contracts",
-    "afterlap-core",
-    "afterlap-api",
-]
-
-[project.optional-dependencies]
-learning = ["torch>=2.4,<3", "gymnasium>=1.0,<2", "stable-baselines3>=2.4,<3", "scikit-learn>=1.5,<2", "tensorboard>=2.17"]
-solver = ["casadi>=3.6,<4"]
-
 [dependency-groups]
+runtime = ["afterlap-api[postgres]"]
+solver = ["afterlap-core[solver]"]
+learning = ["afterlap-core[learning]"]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
@@ -25,12 +13,23 @@ dev = [
     "types-pyyaml>=6.0",
 ]
 
+[tool.uv]
+default-groups = ["runtime", "dev"]
+
 [tool.uv.workspace]
-members = ["packages/contracts", "packages/core", "apps/api"]
+members = [
+    "packages/application",
+    "packages/contracts",
+    "packages/core",
+    "packages/infrastructure",
+    "apps/api",
+]
 
 [tool.uv.sources]
+afterlap-application = { workspace = true }
 afterlap-contracts = { workspace = true }
 afterlap-core = { workspace = true }
+afterlap-infrastructure = { workspace = true }
 afterlap-api = { workspace = true }
 
 [tool.pytest.ini_options]
@@ -158,7 +157,14 @@ ignore = [
 preview = false
 
 [tool.ruff.lint.isort]
-known-first-party = ["afterlap_contracts", "afterlap_core", "afterlap_api", "afterlap_ops"]
+known-first-party = [
+    "afterlap_application",
+    "afterlap_contracts",
+    "afterlap_core",
+    "afterlap_infrastructure",
+    "afterlap_api",
+    "afterlap_ops",
+]
 force-single-line = false
 combine-as-imports = true
 
@@ -185,7 +191,7 @@ python_version = "3.12"
 files = ["packages", "apps/api", "scripts", "tests", "docs/tools/validate_package.py"]
 exclude = ["packages/contracts/generated", "apps/web", "docs/deck", "docs/tools/complete_package.py", "docs/tools/revise_design.py", "workers/", ".venv/"]
 explicit_package_bases = true
-mypy_path = "packages/contracts:packages/core:apps/api:scripts"
+mypy_path = "packages/application:packages/contracts:packages/core:packages/infrastructure:apps/api:scripts"
 namespace_packages = true
 pretty = true
 show_error_codes = true
@@ -227,16 +233,12 @@ module = [
     "skl2onnx.*",
     "pypdf",
     "pypdf.*",
-    "prometheus_client",
-    "prometheus_client.*",
     "pyarrow",
     "pyarrow.*",
     "scipy",
     "scipy.*",
     "torch",
     "torch.*",
-    "acados_template",
-    "acados_template.*",
     "afterlap_core.runner",
 ]
 ignore_missing_imports = true
@@ -295,10 +297,3 @@ disable_error_code = [
     "no-untyped-call",
     "index",
 ]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-bypass-selection = true

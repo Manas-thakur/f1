@@ -14,6 +14,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated
 
+import anyio.to_thread
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session as OrmSession
@@ -68,7 +69,7 @@ from ..db.models import (
 from ..db.repository import append_event, expire_due, next_sequence, require_lease
 from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId, require_simulation_mode
 from ..errors import CapabilityUnavailable
-from ..runtime.port import RuntimeTick
+from ..runtime.port import RuntimeTick, RuntimeUnavailable
 from ..runtime.registry import RuntimeRegistry
 
 if TYPE_CHECKING:
@@ -279,7 +280,7 @@ async def create_session(
             "the session factory is not attached; scenario and rule packs are unavailable",
         )
 
-    manifest, runtime = factory.create(payload)
+    manifest, runtime = await anyio.to_thread.run_sync(lambda: factory.create(payload))
     db.add(
         Manifest(
             hash=manifest.content_hash(),
@@ -422,18 +423,18 @@ async def run_command(
 
     if kind == "start":
         status_after = "running"
-        runtime.resume()
+        await anyio.to_thread.run_sync(runtime.resume)
     elif kind == "pause":
         status_after = "paused"
-        runtime.pause()
+        await anyio.to_thread.run_sync(runtime.pause)
     elif kind == "resume":
         status_after = "running"
-        runtime.resume()
+        await anyio.to_thread.run_sync(runtime.resume)
     elif kind == "stop":
         status_after = "stopped"
-        runtime.stop()
+        await anyio.to_thread.run_sync(runtime.stop)
     elif kind == "step":
-        tick = runtime.advance(payload.step_duration_s or 1.0)
+        tick = await anyio.to_thread.run_sync(runtime.advance, payload.step_duration_s or 1.0)
         _remember_state(request, session_id, tick)
 
     values: dict[str, object] = {
@@ -481,7 +482,10 @@ def _observe_decision_metrics(request: Request, session_id: str, tick: RuntimeTi
     registry = _registry_optional(request)
     if registry is None or not registry.has(session_id):
         return
-    persistence = getattr(registry.get(session_id), "persistence", None)
+    try:
+        persistence = getattr(registry.get(session_id), "persistence", None)
+    except RuntimeUnavailable:
+        return
     if persistence is not None:
         metrics.spool_depth = persistence.spooled
 
@@ -523,7 +527,7 @@ async def act_on_recommendation(
         and _registry_optional(request) is not None
     ):
         runtime = _registry(request).get(session_id)
-        runtime.mark_communicated(recommendation_id, row.session_time_s)
+        await anyio.to_thread.run_sync(runtime.mark_communicated, recommendation_id, row.session_time_s)
 
     return RecommendationActionResponse(
         recommendation=outcome.recommendation,
@@ -560,8 +564,11 @@ async def driver_action(
     require_lease(db, session_id, payload.operator_id, row.session_time_s)
 
     runtime = _registry(request).get(session_id)
-    execution = runtime.apply_driver_action(
-        payload.profile_id, payload.observed_at_s, payload.recommendation_id
+    execution = await anyio.to_thread.run_sync(
+        runtime.apply_driver_action,
+        payload.profile_id,
+        payload.observed_at_s,
+        payload.recommendation_id,
     )
 
     updated: Recommendation | None = None
@@ -582,7 +589,7 @@ async def create_snapshot(
 ) -> CreateSnapshotResponse:
     row = _session_row(db, session_id)
     runtime = _registry(request).get(session_id)
-    snapshot_hash, complete_state = runtime.snapshot(payload.label)
+    snapshot_hash, complete_state = await anyio.to_thread.run_sync(runtime.snapshot, payload.label)
 
     store = request.app.state.artifact_store
     store.put_json(complete_state)

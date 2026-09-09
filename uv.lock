@@ -4,11 +4,27 @@ requires-python = "==3.12.*"
 
 [manifest]
 members = [
-    "afterlap",
     "afterlap-api",
+    "afterlap-application",
     "afterlap-contracts",
     "afterlap-core",
+    "afterlap-infrastructure",
 ]
+
+[manifest.dependency-groups]
+dev = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "hypothesis", specifier = ">=6.112" },
+    { name = "mypy", specifier = ">=1.13" },
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "pytest-asyncio", specifier = ">=0.24" },
+    { name = "pytest-cov", specifier = ">=5.0" },
+    { name = "ruff", specifier = ">=0.7" },
+    { name = "types-pyyaml", specifier = ">=6.0" },
+]
+learning = [{ name = "afterlap-core", extras = ["learning"], editable = "packages/core" }]
+runtime = [{ name = "afterlap-api", extras = ["postgres"], editable = "apps/api" }]
+solver = [{ name = "afterlap-core", extras = ["solver"], editable = "packages/core" }]
 
 [[package]]
 name = "absl-py"
@@ -20,78 +36,21 @@ wheels = [
 ]
 
 [[package]]
-name = "afterlap"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "afterlap-api" },
-    { name = "afterlap-contracts" },
-    { name = "afterlap-core" },
-]
-
-[package.optional-dependencies]
-learning = [
-    { name = "gymnasium" },
-    { name = "scikit-learn" },
-    { name = "stable-baselines3" },
-    { name = "tensorboard" },
-    { name = "torch" },
-]
-solver = [
-    { name = "casadi" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "httpx" },
-    { name = "hypothesis" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-    { name = "types-pyyaml" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "afterlap-api", editable = "apps/api" },
-    { name = "afterlap-contracts", editable = "packages/contracts" },
-    { name = "afterlap-core", editable = "packages/core" },
-    { name = "casadi", marker = "extra == 'solver'", specifier = ">=3.6,<4" },
-    { name = "gymnasium", marker = "extra == 'learning'", specifier = ">=1.0,<2" },
-    { name = "scikit-learn", marker = "extra == 'learning'", specifier = ">=1.5,<2" },
-    { name = "stable-baselines3", marker = "extra == 'learning'", specifier = ">=2.4,<3" },
-    { name = "tensorboard", marker = "extra == 'learning'", specifier = ">=2.17" },
-    { name = "torch", marker = "extra == 'learning'", specifier = ">=2.4,<3" },
-]
-provides-extras = ["learning", "solver"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "httpx", specifier = ">=0.27" },
-    { name = "hypothesis", specifier = ">=6.112" },
-    { name = "mypy", specifier = ">=1.13" },
-    { name = "pytest", specifier = ">=8.3" },
-    { name = "pytest-asyncio", specifier = ">=0.24" },
-    { name = "pytest-cov", specifier = ">=5.0" },
-    { name = "ruff", specifier = ">=0.7" },
-    { name = "types-pyyaml", specifier = ">=6.0" },
-]
-
-[[package]]
 name = "afterlap-api"
 version = "0.1.0"
 source = { editable = "apps/api" }
 dependencies = [
+    { name = "afterlap-application" },
     { name = "afterlap-contracts" },
     { name = "afterlap-core" },
+    { name = "afterlap-infrastructure" },
     { name = "alembic" },
+    { name = "anyio" },
     { name = "fastapi" },
-    { name = "prometheus-client" },
+    { name = "numpy" },
     { name = "sqlalchemy" },
+    { name = "starlette" },
     { name = "uvicorn", extra = ["standard"] },
-    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -101,17 +60,31 @@ postgres = [
 
 [package.metadata]
 requires-dist = [
+    { name = "afterlap-application", editable = "packages/application" },
     { name = "afterlap-contracts", editable = "packages/contracts" },
     { name = "afterlap-core", editable = "packages/core" },
+    { name = "afterlap-infrastructure", editable = "packages/infrastructure" },
     { name = "alembic", specifier = ">=1.13" },
+    { name = "anyio", specifier = ">=4.0" },
     { name = "fastapi", specifier = ">=0.115,<1" },
-    { name = "prometheus-client", specifier = ">=0.21" },
+    { name = "numpy", specifier = ">=2.0,<3" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "sqlalchemy", specifier = ">=2.0,<3" },
+    { name = "starlette", specifier = ">=0.40" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
-    { name = "websockets", specifier = ">=13.0" },
 ]
 provides-extras = ["postgres"]
+
+[[package]]
+name = "afterlap-application"
+version = "0.1.0"
+source = { editable = "packages/application" }
+dependencies = [
+    { name = "afterlap-contracts" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "afterlap-contracts", editable = "packages/contracts" }]
 
 [[package]]
 name = "afterlap-contracts"
@@ -142,15 +115,53 @@ dependencies = [
     { name = "typer" },
 ]
 
+[package.optional-dependencies]
+learning = [
+    { name = "gymnasium" },
+    { name = "scikit-learn" },
+    { name = "stable-baselines3" },
+    { name = "tensorboard" },
+    { name = "torch" },
+]
+solver = [
+    { name = "casadi" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "afterlap-contracts", editable = "packages/contracts" },
+    { name = "casadi", marker = "extra == 'solver'", specifier = ">=3.6,<4" },
+    { name = "gymnasium", marker = "extra == 'learning'", specifier = ">=1.0,<2" },
     { name = "numpy", specifier = ">=2.0,<3" },
     { name = "pyarrow", specifier = ">=17.0" },
     { name = "pypdf", specifier = ">=5.0,<7" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "scikit-learn", marker = "extra == 'learning'", specifier = ">=1.5,<2" },
     { name = "scipy", specifier = ">=1.14,<2" },
+    { name = "stable-baselines3", marker = "extra == 'learning'", specifier = ">=2.4,<3" },
+    { name = "tensorboard", marker = "extra == 'learning'", specifier = ">=2.17" },
+    { name = "torch", marker = "extra == 'learning'", specifier = ">=2.4,<3" },
     { name = "typer", specifier = ">=0.12" },
+]
+provides-extras = ["solver", "learning"]
+
+[[package]]
+name = "afterlap-infrastructure"
+version = "0.1.0"
+source = { editable = "packages/infrastructure" }
+dependencies = [
+    { name = "afterlap-contracts" },
+    { name = "afterlap-core" },
+    { name = "alembic" },
+    { name = "sqlalchemy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "afterlap-contracts", editable = "packages/contracts" },
+    { name = "afterlap-core", editable = "packages/core" },
+    { name = "alembic", specifier = ">=1.13" },
+    { name = "sqlalchemy", specifier = ">=2.0,<3" },
 ]
 
 [[package]]
@@ -984,15 +995,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f9/e2/3e91f31a7d2b083fe6ef3fa267035b518369d9511ffab804f839851d2779/pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3", size = 69412, upload-time = "2025-05-15T12:30:07.975Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/54/20/4d324d65cc6d9205fabedc306948156824eb9f0ee1633355a8f7ec5c66bf/pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746", size = 20538, upload-time = "2025-05-15T12:30:06.134Z" },
-]
-
-[[package]]
-name = "prometheus-client"
-version = "0.26.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/52/73/f1334c29c2af4cd9dba6c7817e61b611bd0215e2eb5565c6064a4de18802/prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b", size = 92910, upload-time = "2026-07-24T19:36:41.893Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/a3/b69efbf4143b5b9859b977770bbbabcc2796b702fa69dc40271e45cd5a56/prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6", size = 64494, upload-time = "2026-07-24T19:36:40.854Z" },
 ]
 
 [[package]]

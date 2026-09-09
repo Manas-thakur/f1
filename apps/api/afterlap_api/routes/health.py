@@ -160,18 +160,23 @@ def _session_health(registry: RuntimeRegistry | None) -> tuple[list[str], list[s
 def _decision_health(runtime: object) -> dict[str, Any] | None:
     """Ask a runtime whether it can decide, tolerating one that cannot say.
 
-    ``decision_health`` is beyond ``SessionRuntimePort``; an out-of-process
-    proxy may not implement it. An absent answer is reported as no information
-    rather than as health, so this route never invents a verdict it did not
-    measure.
+    ``decision_health`` is beyond ``SessionRuntimePort``; an adapter may not
+    implement it. An absent answer is reported as no information rather than as
+    health, so this route never invents a verdict it did not measure.
+
+    A probe that fails is reported as an obstruction, never raised. Readiness
+    has to answer with a health document even when one session's owner has
+    died, or a single dead child would replace every other session's state with
+    an error body.
     """
     probe = getattr(runtime, "decision_health", None)
     if probe is None:
         return None
     try:
         health = probe()
-    except SessionRuntimeError:
-        return {"lifecycle": "running", "obstructions": ("decision health could not be measured",)}
+    except (SessionRuntimeError, RuntimeUnavailable) as exc:
+        detail = getattr(exc, "detail", None) or "decision health could not be measured"
+        return {"lifecycle": "running", "obstructions": (detail,)}
     return {
         "lifecycle": health.lifecycle,
         "obstructions": tuple(health.obstructions),

@@ -31,10 +31,10 @@ claims about the newest release of each project.
 | alembic | 1.19.2 |
 | psycopg | 3.3.5 |
 | pyarrow | 25.0.1 |
-| prometheus-client | 0.26.0 |
+| pypdf | 6.18.0 |
 | typer | 0.27.2 |
 | pyyaml | 6.0.3 |
-| websockets | 17.1 |
+| websockets | 17.1 (transitive, via `uvicorn[standard]`) |
 | tensorboard | 2.21.0 |
 | pytest | 9.1.1 |
 | hypothesis | 6.167.1 |
@@ -96,11 +96,20 @@ bun run test:e2e
 ```
 
 `--all-extras` is required: `torch`, `stable-baselines3`, `gymnasium`,
-`scikit-learn` and `casadi` are declared as the `learning` and `solver` extras so
-a contracts-only consumer can install a light dependency set.
+`scikit-learn` and `casadi` are declared as the `learning` and `solver` extras of
+`afterlap-core`, so a contracts-only consumer can install a light dependency set.
+The repository root is a non-published uv workspace coordinator with no
+`[project]` of its own; the same two sets are also reachable as the root
+dependency groups `learning` and `solver`, which is what CI installs
+(`uv sync --frozen --all-packages --group solver`).
 
 ## Notes
 
+- Workspace members are `packages/contracts`, `packages/core`,
+  `packages/application`, `packages/infrastructure` and `apps/api`. Each builds
+  with a pinned `uv_build` backend; every one is pure Python. Adding a package
+  directory means adding it to `[tool.uv.workspace] members`, to
+  `[tool.uv.sources]`, and to the manifest layer of `infra/api.Dockerfile`.
 - Workspace members install in editable mode. After adding a new package
   directory, run `uv sync ... --reinstall-package <name>` once so the built
   wheel is refreshed.

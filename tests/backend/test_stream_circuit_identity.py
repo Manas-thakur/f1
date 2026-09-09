@@ -149,6 +149,7 @@ def streaming(tmp_path: Path):  # type: ignore[no-untyped-def]
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:

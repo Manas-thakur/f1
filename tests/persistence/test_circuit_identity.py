@@ -157,6 +157,7 @@ def _open(tmp_path: Path):  # type: ignore[no-untyped-def]
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     paths = _paths(tmp_path)
@@ -341,6 +342,7 @@ def test_the_identity_columns_are_migrated_not_only_declared(tmp_path: Path):
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'migrated.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app):

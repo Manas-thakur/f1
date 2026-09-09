@@ -29,7 +29,13 @@ from pathlib import Path
 def _ensure_workspace_on_path() -> None:
     """Allow `python scripts/doctor.py` from a checkout without an install."""
     root = Path(__file__).resolve().parents[1]
-    for candidate in (root / "packages" / "core", root / "packages" / "contracts", root / "apps" / "api"):
+    for candidate in (
+        root / "packages" / "core",
+        root / "packages" / "contracts",
+        root / "packages" / "infrastructure",
+        root / "packages" / "application",
+        root / "apps" / "api",
+    ):
         if candidate.is_dir() and str(candidate) not in sys.path:
             sys.path.insert(0, str(candidate))
 
