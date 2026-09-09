@@ -182,6 +182,13 @@ def test_a_named_circuit_with_no_recorded_package_hash_is_refused():
     assert any("records no compiled package hash" in m for m in decision.mismatches)
 
 
+def test_an_undeclared_ruleset_hash_is_unknown_not_permission():
+    """An older bundle cannot inherit compatibility with the current limits."""
+    decision = _decide(_approved(ruleset_hash=None))
+    assert decision.enabled is False
+    assert any("declares no rule pack content hash" in mismatch for mismatch in decision.mismatches)
+
+
 def test_no_bundle_at_all_is_the_baseline_path_and_not_a_degradation():
     """The common case. Running without a learned bundle is not a fault."""
     decision = _decide(None, expected_track_id=None, expected_track_package_hash=None)

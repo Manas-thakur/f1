@@ -463,8 +463,15 @@ def _ruleset_mismatches(bundle: ModelManifest, expected_ruleset_hash: str | None
     ``rule_family`` identifies the pack; a pack whose energy window or
     detection lines moved keeps its id and is a different environment.
     """
-    if expected_ruleset_hash is None or bundle.ruleset_hash is None:
+    if expected_ruleset_hash is None:
         return []
+    if bundle.ruleset_hash is None:
+        return [
+            (
+                f"bundle {bundle.id} declares no rule pack content hash, so the limits it trained "
+                "against cannot be identified"
+            )
+        ]
     if bundle.ruleset_hash != expected_ruleset_hash:
         return [
             (

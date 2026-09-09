@@ -14,6 +14,7 @@ status into existence.
 from __future__ import annotations
 
 import json
+import threading
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -82,6 +83,29 @@ def test_a_real_worker_loop_writes_a_heartbeat_reporting_what_it_did(tmp_path: P
     assert status.status == "live", status.detail
     assert status.age_s is not None and status.age_s < 30.0
     assert batch_worker_main._healthcheck() == 0
+
+
+def test_a_running_job_refreshes_its_heartbeat_until_it_finishes():
+    """A healthy long job must remain live past more than one heartbeat interval."""
+    import batch_worker_main
+
+    observed = threading.Event()
+    writes = 0
+
+    def write() -> None:
+        nonlocal writes
+        writes += 1
+        if writes >= 3:
+            observed.set()
+
+    with batch_worker_main.repeating_heartbeat(write, interval_s=0.01):
+        assert observed.wait(timeout=1.0), "the running heartbeat stopped after the initial write"
+
+    completed_writes = writes
+    assert completed_writes >= 3
+    observed.clear()
+    assert not observed.wait(timeout=0.03)
+    assert writes == completed_writes
 
 
 def test_a_heartbeat_that_stops_advancing_is_stale_not_idle(tmp_path: Path):

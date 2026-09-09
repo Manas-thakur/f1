@@ -43,6 +43,17 @@ bun run build
 
 CI runs the same gates. There is no local-only check.
 
+## Windows, Linux and macOS
+
+Run repository commands through `uv run` and `bun run`; do not call `.venv/bin/python` or
+`.venv/Scripts/python.exe` from shared scripts or instructions. The commands above are identical in
+PowerShell, bash and zsh. Paths stored in contracts and API payloads use `/` as the portable separator,
+while filesystem access goes through `pathlib.Path`.
+
+GitHub Actions runs the complete suite on Linux and a portability gate on Windows and macOS. Docker
+Desktop with Linux containers is the canonical numerical runtime on Windows; native Windows remains
+supported for development, contracts, API, web and lightweight simulation tests.
+
 ## Docs
 
 Start at [docs/README.md](docs/README.md). Preview design mockups with:

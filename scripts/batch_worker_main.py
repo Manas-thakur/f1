@@ -44,7 +44,11 @@ import argparse
 import logging
 import signal
 import sys
+import threading
 import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +80,31 @@ CONTROLLER_REGISTRY: dict[str, str] = {
     "legal_greedy_attacker": "A13 reference: myopic spender, filtered through the rules",
 }
 """Treatment ids this worker can resolve to a merged controller."""
+
+RUNNING_HEARTBEAT_INTERVAL_S = 5.0
+
+
+@contextmanager
+def repeating_heartbeat(
+    write: Callable[[], None], *, interval_s: float = RUNNING_HEARTBEAT_INTERVAL_S
+) -> Iterator[None]:
+    """Keep a long-running job live in the container health probe."""
+    if interval_s <= 0.0:
+        raise ValueError("heartbeat interval must be positive")
+    stopped = threading.Event()
+
+    def repeat() -> None:
+        while not stopped.wait(interval_s):
+            write()
+
+    write()
+    thread = threading.Thread(target=repeat, name="afterlap-batch-heartbeat", daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stopped.set()
+        thread.join(timeout=interval_s + 1.0)
 
 
 def _rule_pack_id_for(db: Any, ruleset_hash: str) -> str:
@@ -329,8 +358,10 @@ def main(argv: list[str] | None = None) -> int:
 
             job_id, manifest_hash = claimed
             logger.info("claimed experiment job %s (manifest %s)", job_id, manifest_hash)
-            beat("running", detail=f"manifest {manifest_hash}", job_id=job_id)
-            outcome = worker.run(job_id, manifest_hash, runner)
+            with repeating_heartbeat(
+                partial(beat, "running", detail=f"manifest {manifest_hash}", job_id=job_id)
+            ):
+                outcome = worker.run(job_id, manifest_hash, runner)
             completed += 1
             logger.info(
                 "job %s finished: status=%s partial=%s units=%s failure=%s",

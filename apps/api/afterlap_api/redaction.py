@@ -15,6 +15,7 @@ untouched: they are the evidence the catalogue exists to carry.
 from __future__ import annotations
 
 import re
+from os import fspath
 from pathlib import Path
 
 ARTEFACT_ROOTS = ("artifacts", "configs")
@@ -22,7 +23,13 @@ ARTEFACT_ROOTS = ("artifacts", "configs")
 
 ELIDED = "<local path>"
 
-_ABSOLUTE_PATH = re.compile(r"(?<![\w:/])/[^\s'\"<>,;)]*(?:/[^\s'\"<>,;)]*)+")
+_ABSOLUTE_PATH = re.compile(
+    r"(?:"
+    r"(?<![\w:/\\])[A-Za-z]:[\\/][^\s'\"<>,;)]*"
+    r"|(?<![\w:/\\])\\\\[^\s'\"<>,;)]*[\\/][^\s'\"<>,;)]*"
+    r"|(?<![\w:/])/[^\s'\"<>,;)]*(?:/[^\s'\"<>,;)]*)+"
+    r")"
+)
 _TRAILING = ".:;,)]}'\""
 
 
@@ -33,7 +40,7 @@ def artefact_relative(path: str | Path) -> str | None:
     enough for an operator to find the file in the deployment they administer,
     and nothing about where that deployment happens to be installed.
     """
-    parts = Path(path).parts
+    parts = tuple(part for part in fspath(path).replace("\\", "/").split("/") if part)
     for root in ARTEFACT_ROOTS:
         if root in parts:
             return "/".join(parts[parts.index(root) :])
