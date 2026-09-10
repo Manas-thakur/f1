@@ -29,6 +29,7 @@ from afterlap_contracts import (
     OperatorAction,
     OperatorEvent,
     Recommendation,
+    RecommendationStatus,
     RuntimeCapabilities,
     SessionManifest,
     SessionMode,
@@ -64,7 +65,9 @@ from ..db.models import (
     Decision,
     ExecutionEventRow,
     Manifest,
+    OperatorCommand,
     Session,
+    SessionEvent,
     SnapshotRow,
 )
 from ..db.repository import append_event, expire_due, next_sequence, require_lease
@@ -642,8 +645,55 @@ async def get_decision(decision_id: str, db: DbSession) -> DecisionEvidenceRespo
     return DecisionEvidenceResponse(
         recommendation=Recommendation.model_validate(decision.payload),
         estimate_revision=int(decision.estimate_payload["revision"]),
+        operator_events=_operator_events(db, decision),
         execution_events=tuple(ExecutionEvent.model_validate(e.payload) for e in executions),
     )
+
+
+def _operator_events(db: OrmSession, decision: Decision) -> tuple[OperatorEvent, ...]:
+    """The human actions taken on one decision, in server sequence order.
+
+    ``apply_operator_action`` stores each action twice on purpose: the audited
+    ``operator_action`` session event carries what was done and why, and the
+    ``operator_command`` row carries the idempotency key and the revision the
+    operator believed they were acting on. The evidence record needs both, so
+    they are joined here rather than one of them being dropped. A decision
+    nobody has acted on returns an empty tuple, which is what the console
+    renders as an empty timeline.
+    """
+    rows = db.execute(
+        select(SessionEvent, OperatorCommand)
+        .join(OperatorCommand, OperatorCommand.resulting_event_id == SessionEvent.id)
+        .where(
+            SessionEvent.session_id == decision.session_id,
+            SessionEvent.event_type == "operator_action",
+        )
+        .order_by(SessionEvent.sequence)
+    ).all()
+
+    events: list[OperatorEvent] = []
+    for event, command in rows:
+        payload = event.payload or {}
+        if payload.get("recommendation_id") != decision.id:
+            continue
+        resulting = payload.get("resulting_status")
+        events.append(
+            OperatorEvent(
+                schema_version=SCHEMA_VERSION,
+                id=event.id,
+                session_id=event.session_id,
+                idempotency_key=command.idempotency_key,
+                recommendation_id=decision.id,
+                expected_revision=command.expected_revision,
+                operator_id=payload.get("operator_id") or command.operator_id,
+                action=OperatorAction(payload["action"]),
+                reason=payload.get("reason"),
+                session_time_s=event.session_time_s,
+                sequence=event.sequence,
+                resulting_status=None if resulting is None else RecommendationStatus(resulting),
+            )
+        )
+    return tuple(events)
 
 
 def _durable_sequence(app: Any, session_id: str) -> int | None:
