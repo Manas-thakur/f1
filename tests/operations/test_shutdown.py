@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from typing import TYPE_CHECKING
 
 import pytest
@@ -48,6 +49,23 @@ def _pending(store: LocalStore) -> list[tuple[str, int, str]]:
         ]
 
 
+async def _after_the_first_pass(store: LocalStore, *, timeout_s: float = 30.0) -> list[tuple[str, int, str]]:
+    """What is still unpublished once the publisher's first poll has finished.
+
+    The drain does its database work in a worker thread, so a contended
+    SQLite writer never stalls the event loop. One tick of the loop is
+    therefore no longer enough for the first pass to complete, and waiting for
+    the backlog to clear is what "the first pass ran" now means. A pass that
+    never clears it still fails, on the same assertion, at the deadline.
+    """
+    deadline = time.monotonic() + timeout_s
+    pending = _pending(store)
+    while pending and time.monotonic() < deadline:
+        await asyncio.sleep(0.01)
+        pending = _pending(store)
+    return pending
+
+
 def _running_session(store: LocalStore, tmp_path: Path):  # type: ignore[no-untyped-def]
     session = start_session(store.factory, spool_root=tmp_path / "spool")
     session.advance_until(actionable)
@@ -63,8 +81,9 @@ def test_graceful_shutdown_flushes_the_outbox(store: LocalStore, tmp_path: Path)
         await hub.subscribe(session.session_id, 0)
         publisher = OutboxPublisher(store.factory, hub)
         publisher.start(interval_s=NEVER_POLLS_S)
-        await asyncio.sleep(0)
-        assert _pending(store) == [], "the publisher's first pass did not clear the backlog"
+        assert await _after_the_first_pass(store) == [], (
+            "the publisher's first pass did not clear the backlog"
+        )
 
         session.advance(1.0)
         committed = _pending(store)
@@ -97,8 +116,7 @@ def test_a_further_drain_after_shutdown_is_a_no_op(store: LocalStore, tmp_path: 
         assert resync is False
         publisher = OutboxPublisher(store.factory, hub)
         publisher.start(interval_s=NEVER_POLLS_S)
-        await asyncio.sleep(0)
-        assert _pending(store) == []
+        assert await _after_the_first_pass(store) == []
 
         session.advance(1.0)
         committed = len(_pending(store))

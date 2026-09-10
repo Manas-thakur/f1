@@ -34,6 +34,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+import anyio.to_thread
+
 from afterlap_contracts import StreamEnvelope, StreamEventType
 
 from ..db.engine import transaction
@@ -41,6 +43,8 @@ from ..db.repository import mark_published_batch, unpublished_outbox
 from ..stream import StreamHub, envelope_from_outbox
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 logger = logging.getLogger("afterlap.session.publisher")
@@ -128,13 +132,17 @@ class OutboxPublisher:
         writes would be spooled behind a poll loop. Nothing here holds a
         transaction across an await.
 
+        Both database steps run in a worker thread. They are synchronous, and
+        a contended SQLite writer waits out its busy timeout inside them; on
+        the event loop that wait would stall every open stream, and a client
+        would receive its heartbeat before the resync it was already owed.
+
         Publishing before marking keeps delivery at-least-once: a crash in
         between replays the row, which the stream's sequence de-duplication
         already handles. The reverse order would lose it.
         """
         report = PublishReport()
-        with transaction(self._factory) as db:
-            pending = [_PendingRow.of(row) for row in unpublished_outbox(db, limit=self._batch_size)]
+        pending = await anyio.to_thread.run_sync(self._read_pending)
 
         delivered: list[str] = []
         for row in pending:
@@ -164,9 +172,18 @@ class OutboxPublisher:
             report = report + PublishReport(published=1, repaired=1 if repaired else 0)
 
         if delivered:
-            with transaction(self._factory) as db:
-                mark_published_batch(db, delivered)
+            await anyio.to_thread.run_sync(self._mark_delivered, delivered)
         return report
+
+    def _read_pending(self) -> list[_PendingRow]:
+        """One short read transaction, detached from the ORM session it used."""
+        with transaction(self._factory) as db:
+            return [_PendingRow.of(row) for row in unpublished_outbox(db, limit=self._batch_size)]
+
+    def _mark_delivered(self, delivered: Sequence[str]) -> None:
+        """One short write-first transaction over the rows that actually went out."""
+        with transaction(self._factory) as db:
+            mark_published_batch(db, delivered)
 
     async def run(self, *, interval_s: float = 0.05, stop: asyncio.Event | None = None) -> None:
         """Background drain loop."""
