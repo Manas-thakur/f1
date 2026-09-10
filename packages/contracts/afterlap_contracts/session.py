@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import Field, model_validator
 
 from .base import Contract, VersionedContract
-from .enums import CapabilityState, SessionMode
+from .enums import CapabilityState, SessionMode, TrackReadiness
 from .estimate import StateEstimate
 from .lifecycle import ControlLease
 from .planning import Recommendation
@@ -39,10 +39,7 @@ class SessionManifest(VersionedContract):
     event_id: str | None = None
     track_package_hash: str | None = None
     event_package_hash: str | None = None
-    track_readiness: str | None = Field(
-        default=None,
-        pattern=r"^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
-    )
+    track_readiness: TrackReadiness | None = None
     geometry_provenance: str | None = None
     conditions_id: str | None = None
     conditions_hash: str | None = None

@@ -26,11 +26,12 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from .base import SCHEMA_VERSION
+from .enums import TrackReadiness
 
 REAL_CIRCUIT_LABEL = "real_circuit_synthetic_energy"
 """D-10: genuine geometry, synthetic energy. Never a claim of measured fidelity."""
 
-MINIMUM_READINESS_TO_DRIVE = "geometry_validated"
+MINIMUM_READINESS_TO_DRIVE = TrackReadiness.GEOMETRY_VALIDATED
 """The lowest rung of the readiness ladder that may drive the simulator."""
 
 
@@ -54,10 +55,8 @@ class CataloguePayload(BaseModel):
     )
 
 
-READINESS_PATTERN = (
-    r"^(discovered|geometry_validated|event_rules_validated|condition_calibrated|"
-    r"simulation_eligible|rejected)$"
-)
+READINESS_PATTERN = "^(" + "|".join(rung.value for rung in TrackReadiness) + ")$"
+"""The ladder as a regular expression, derived so it cannot drift from the enum."""
 
 CATALOGUE_NOTICE = (
     "Compiled circuit geometry only. Car, battery and driver parameters are synthetic documents, so "
@@ -113,7 +112,7 @@ class TrackSummary(CataloguePayload):
     track_id: str
     display_name: str
     country: str | None = None
-    registry_readiness: str | None = None
+    registry_readiness: TrackReadiness | None = None
     official_length_m: float | None = None
     official_length_verified: bool = False
     official_length_source_url: str | None = None
@@ -122,7 +121,7 @@ class TrackSummary(CataloguePayload):
 
     package_present: bool = False
     package_hash: str | None = None
-    readiness: str | None = None
+    readiness: TrackReadiness | None = None
     geometry_provenance: str | None = None
     corridor_quality: str | None = None
     lateral_geometry_surveyed: bool | None = None
@@ -144,7 +143,7 @@ class TrackListResponse(CataloguePayload):
     schema_version: str = SCHEMA_VERSION
     season: int | None = None
     snapshot_date: str | None = None
-    minimum_readiness_to_drive: str = MINIMUM_READINESS_TO_DRIVE
+    minimum_readiness_to_drive: TrackReadiness = MINIMUM_READINESS_TO_DRIVE
     notice: str = CATALOGUE_NOTICE
     tracks: tuple[TrackSummary, ...] = ()
 
@@ -152,7 +151,7 @@ class TrackListResponse(CataloguePayload):
 class ValidationSummary(CataloguePayload):
     """The independent validator's verdict, as recorded in the package."""
 
-    status: str
+    status: TrackReadiness
     closure_error_m: float | None = None
     length_error_fraction: float | None = None
     official_length_m: float | None = None
@@ -189,7 +188,7 @@ class CentrelineResponse(CataloguePayload):
     track_id: str
     package_hash: str
     arrays_sha256: str | None = None
-    readiness: str
+    readiness: TrackReadiness
     geometry_provenance: str
     corridor_quality: str
     length_m: float
@@ -262,7 +261,7 @@ class ScenarioSummary(CataloguePayload):
     duration_s: float | None = None
     seed: int | None = None
     real_circuit: bool = False
-    track_readiness: str | None = None
+    track_readiness: TrackReadiness | None = None
     track_package_hash: str | None = None
     run_label: str | None = None
     unavailable_reason: str | None = None

@@ -567,6 +567,23 @@
       "title": "BenchmarkReport",
       "type": "object"
     },
+    "CancelExperimentRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "CancelExperimentRequest",
+      "type": "object"
+    },
     "CandidatePlan": {
       "$defs": {
         "ActionCode": {
@@ -1417,6 +1434,21 @@
       "type": "object"
     },
     "CentrelineResponse": {
+      "$defs": {
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        }
+      },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "description": "Downsampled geometry, with the hashes that pin the arrays it came from.",
@@ -1471,8 +1503,7 @@
           "type": "integer"
         },
         "readiness": {
-          "title": "Readiness",
-          "type": "string"
+          "$ref": "#/$defs/TrackReadiness"
         },
         "s_m": {
           "default": [],
@@ -2329,6 +2360,181 @@
         "evaluation_horizon_s"
       ],
       "title": "CreateExperimentRequest",
+      "type": "object"
+    },
+    "CreateExperimentResponse": {
+      "$defs": {
+        "ExperimentJob": {
+          "additionalProperties": false,
+          "description": "Trackable batch job. Partial results are labelled, never aggregated silently.",
+          "properties": {
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "failure": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Failure"
+            },
+            "finished_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Finished At"
+            },
+            "id": {
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "manifest_hash": {
+              "minLength": 1,
+              "title": "Manifest Hash",
+              "type": "string"
+            },
+            "partial_results": {
+              "default": false,
+              "title": "Partial Results",
+              "type": "boolean"
+            },
+            "progress": {
+              "default": 0.0,
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Progress",
+              "type": "number"
+            },
+            "report_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Report Hash"
+            },
+            "schema_version": {
+              "const": "1.0",
+              "title": "Schema Version",
+              "type": "string"
+            },
+            "started_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Started At"
+            },
+            "status": {
+              "$ref": "#/$defs/JobStatus"
+            }
+          },
+          "required": [
+            "schema_version",
+            "id",
+            "manifest_hash",
+            "status",
+            "created_at"
+          ],
+          "title": "ExperimentJob",
+          "type": "object"
+        },
+        "JobStatus": {
+          "enum": [
+            "queued",
+            "running",
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "title": "JobStatus",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "job": {
+          "$ref": "#/$defs/ExperimentJob"
+        }
+      },
+      "required": [
+        "job"
+      ],
+      "title": "CreateExperimentResponse",
+      "type": "object"
+    },
+    "CreateExportRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "end_session_time_s": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "End Session Time S"
+        },
+        "format": {
+          "pattern": "^(json|csv|parquet)$",
+          "title": "Format",
+          "type": "string"
+        },
+        "session_id": {
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "start_session_time_s": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Start Session Time S"
+        }
+      },
+      "required": [
+        "session_id",
+        "format"
+      ],
+      "title": "CreateExportRequest",
       "type": "object"
     },
     "CreateSessionRequest": {
@@ -4364,15 +4570,13 @@
             "track_readiness": {
               "anyOf": [
                 {
-                  "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Track Readiness"
+              "default": null
             }
           },
           "required": [
@@ -4653,6 +4857,19 @@
           "title": "StateEstimate",
           "type": "object"
         },
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        },
         "Trigger": {
           "additionalProperties": false,
           "description": "When the driver should begin, expressed in checkpoints not wall-clock text.",
@@ -4728,6 +4945,95 @@
         "snapshot"
       ],
       "title": "CreateSessionResponse",
+      "type": "object"
+    },
+    "CreateSnapshotRequest": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        }
+      },
+      "title": "CreateSnapshotRequest",
+      "type": "object"
+    },
+    "CreateSnapshotResponse": {
+      "$defs": {
+        "SnapshotReference": {
+          "additionalProperties": false,
+          "description": "Handle to a complete simulator state capture.",
+          "properties": {
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Label"
+            },
+            "session_id": {
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            },
+            "session_time_s": {
+              "minimum": 0.0,
+              "title": "Session Time S",
+              "type": "number"
+            },
+            "snapshot_hash": {
+              "minLength": 1,
+              "title": "Snapshot Hash",
+              "type": "string"
+            },
+            "snapshot_id": {
+              "minLength": 1,
+              "title": "Snapshot Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "snapshot_id",
+            "session_id",
+            "snapshot_hash",
+            "session_time_s",
+            "created_at"
+          ],
+          "title": "SnapshotReference",
+          "type": "object"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "properties": {
+        "snapshot": {
+          "$ref": "#/$defs/SnapshotReference"
+        }
+      },
+      "required": [
+        "snapshot"
+      ],
+      "title": "CreateSnapshotResponse",
       "type": "object"
     },
     "DecisionEvidenceResponse": {
@@ -7485,6 +7791,30 @@
         "corner_count"
       ],
       "title": "FeatureSummary",
+      "type": "object"
+    },
+    "HealthResponse": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "Liveness proves the loop runs. Readiness proves capabilities exist.",
+      "properties": {
+        "detail": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Detail",
+          "type": "object"
+        },
+        "status": {
+          "pattern": "^(live|ready|not_ready)$",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "HealthResponse",
       "type": "object"
     },
     "LifecycleTransition": {
@@ -12811,14 +13141,13 @@
             "track_readiness": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Track Readiness"
+              "default": null
             },
             "unavailable_reason": {
               "anyOf": [
@@ -12838,6 +13167,19 @@
           ],
           "title": "ScenarioSummary",
           "type": "object"
+        },
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -12866,6 +13208,21 @@
       "type": "object"
     },
     "ScenarioSummary": {
+      "$defs": {
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        }
+      },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "description": "One scenario document and the circuit it actually resolves to.\n\nEvery field but ``scenario_id`` is nullable: a document that fails to parse\nis still listed, with ``unavailable_reason`` and nulls, because omitting it\nwould look identical to it not existing. A null is \"not known from this\ndocument\", never a zero standing in for one.",
@@ -13034,14 +13391,13 @@
         "track_readiness": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/TrackReadiness"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Track Readiness"
+          "default": null
         },
         "unavailable_reason": {
           "anyOf": [
@@ -13419,6 +13775,19 @@
           ],
           "title": "SourceCapability",
           "type": "object"
+        },
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
         }
       },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13607,15 +13976,13 @@
         "track_readiness": {
           "anyOf": [
             {
-              "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
-              "type": "string"
+              "$ref": "#/$defs/TrackReadiness"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Track Readiness"
+          "default": null
         }
       },
       "required": [
@@ -15557,15 +15924,13 @@
             "track_readiness": {
               "anyOf": [
                 {
-                  "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Track Readiness"
+              "default": null
             }
           },
           "required": [
@@ -15730,6 +16095,19 @@
           ],
           "title": "StateEstimate",
           "type": "object"
+        },
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
         },
         "Trigger": {
           "additionalProperties": false,
@@ -19178,15 +19556,13 @@
             "track_readiness": {
               "anyOf": [
                 {
-                  "pattern": "^(discovered|geometry_validated|event_rules_validated|condition_calibrated|simulation_eligible|rejected)$",
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Track Readiness"
+              "default": null
             }
           },
           "required": [
@@ -19691,6 +20067,19 @@
           ],
           "title": "TelemetryViewPayload",
           "type": "object"
+        },
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
         },
         "Trigger": {
           "additionalProperties": false,
@@ -20223,6 +20612,19 @@
           "title": "SourceSummary",
           "type": "object"
         },
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        },
         "TrackSummary": {
           "additionalProperties": false,
           "description": "Registry identity joined with whatever the compiled package proves.",
@@ -20432,26 +20834,24 @@
             "readiness": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Readiness"
+              "default": null
             },
             "registry_readiness": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Registry Readiness"
+              "default": null
             },
             "sample_spacing_m": {
               "anyOf": [
@@ -20575,8 +20975,7 @@
               "title": "Report Path"
             },
             "status": {
-              "title": "Status",
-              "type": "string"
+              "$ref": "#/$defs/TrackReadiness"
             }
           },
           "required": [
@@ -20649,6 +21048,19 @@
     },
     "TrackListResponse": {
       "$defs": {
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        },
         "TrackSummary": {
           "additionalProperties": false,
           "description": "Registry identity joined with whatever the compiled package proves.",
@@ -20858,26 +21270,24 @@
             "readiness": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Readiness"
+              "default": null
             },
             "registry_readiness": {
               "anyOf": [
                 {
-                  "type": "string"
+                  "$ref": "#/$defs/TrackReadiness"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "default": null,
-              "title": "Registry Readiness"
+              "default": null
             },
             "sample_spacing_m": {
               "anyOf": [
@@ -20937,9 +21347,8 @@
       "additionalProperties": false,
       "properties": {
         "minimum_readiness_to_drive": {
-          "default": "geometry_validated",
-          "title": "Minimum Readiness To Drive",
-          "type": "string"
+          "$ref": "#/$defs/TrackReadiness",
+          "default": "geometry_validated"
         },
         "notice": {
           "default": "Compiled circuit geometry only. Car, battery and driver parameters are synthetic documents, so a session on any circuit here is labelled real_circuit_synthetic_energy.",
@@ -20988,6 +21397,21 @@
       "type": "object"
     },
     "TrackSummary": {
+      "$defs": {
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        }
+      },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "description": "Registry identity joined with whatever the compiled package proves.",
@@ -21197,26 +21621,24 @@
         "readiness": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/TrackReadiness"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Readiness"
+          "default": null
         },
         "registry_readiness": {
           "anyOf": [
             {
-              "type": "string"
+              "$ref": "#/$defs/TrackReadiness"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Registry Readiness"
+          "default": null
         },
         "sample_spacing_m": {
           "anyOf": [
@@ -21272,6 +21694,21 @@
       "type": "object"
     },
     "ValidationSummary": {
+      "$defs": {
+        "TrackReadiness": {
+          "description": "Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).\n\nEach rung is derived from evidence by the independent validator; a rung is\nnever set by hand and ``rejected`` sits below every other rung.\n\nThis deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``\nrather than importing it: contracts is the innermost layer and depends on\nno domain package. ``tests/contracts/test_readiness_enum.py`` fails if the\ntwo ladders ever diverge, so the duplication cannot drift silently.",
+          "enum": [
+            "discovered",
+            "geometry_validated",
+            "event_rules_validated",
+            "condition_calibrated",
+            "simulation_eligible",
+            "rejected"
+          ],
+          "title": "TrackReadiness",
+          "type": "string"
+        }
+      },
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "additionalProperties": false,
       "description": "The independent validator's verdict, as recorded in the package.",
@@ -21341,8 +21778,7 @@
           "title": "Report Path"
         },
         "status": {
-          "title": "Status",
-          "type": "string"
+          "$ref": "#/$defs/TrackReadiness"
         }
       },
       "required": [
@@ -21358,6 +21794,7 @@
     "ApiError",
     "ApiErrorResponse",
     "BenchmarkReport",
+    "CancelExperimentRequest",
     "CandidatePlan",
     "CentrelineResponse",
     "ConditionsListResponse",
@@ -21365,8 +21802,12 @@
     "ConstraintResult",
     "ControlLease",
     "CreateExperimentRequest",
+    "CreateExperimentResponse",
+    "CreateExportRequest",
     "CreateSessionRequest",
     "CreateSessionResponse",
+    "CreateSnapshotRequest",
+    "CreateSnapshotResponse",
     "DecisionEvidenceResponse",
     "DriverActionRequest",
     "DriverActionResponse",
@@ -21378,6 +21819,7 @@
     "ExportJobResponse",
     "FeatureManifest",
     "FeatureSummary",
+    "HealthResponse",
     "LifecycleTransition",
     "ModelListResponse",
     "ModelManifest",
