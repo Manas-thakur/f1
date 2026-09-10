@@ -2,13 +2,13 @@
 
 ## Packaging
 
-Use a separate Compose project under `implementation/infra/`: API, session worker, batch worker and PostgreSQL, with task-owned persistent data directories. Package local static UI assets; runtime planning works without internet. Pin Python/Node packages and model artefacts. Root scaffolding and lockfiles are coordinator-owned. Training may use GPU; inference/optimisation performance is measured on the actual runtime hardware.
+Use Compose under `infra/`: Next.js web, Python runtime (`python -m afterlap_api.cli serve`), batch worker and PostgreSQL, with task-owned persistent data directories. Next.js is the public origin for pages, `/api/v1` and SSE. Runtime planning works without internet. Pin Python/Node packages and model artefacts. Root scaffolding and lockfiles are coordinator-owned. Training may use GPU; inference/optimisation performance is measured on the actual runtime hardware.
 
 Default development binds `127.0.0.1`; do not expose a public unauthenticated session server. An authorised team installation adds TLS, operator authentication, roles and private network policy. Keep secrets outside version control and source manifests. Archive exports to a configured directory and reject path traversal. Separate simulation truth, operational observations and user-visible report permissions.
 
 ## Metrics
 
-Ingestion age, clock uncertainty, queue depth, last sensor age by channel, estimator residuals/coverage, planner duration/candidates/rejections, rule-context unknowns, recommendation expiry/churn, operator-to-execution delay, WebSocket resyncs, disk/spool usage, database latency, failed jobs and model/version mismatch. Report planner time separately from end-to-end observation age. Structured logs carry session/decision/request IDs; do not include credentials.
+Ingestion age, clock uncertainty, queue depth, last sensor age by channel, estimator residuals/coverage, planner duration/candidates/rejections, rule-context unknowns, recommendation expiry/churn, operator-to-execution delay, stream resyncs, disk/spool usage, database latency, failed jobs and model/version mismatch. Report planner time separately from end-to-end observation age. Structured logs carry session/decision/request IDs; do not include credentials.
 
 ## Health
 

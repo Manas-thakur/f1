@@ -29,12 +29,12 @@ Allowed canonical write paths:
 Read-only interface contracts and revision:
 Provided dependency fixtures:
 Acceptance commands and observable cases:
-Forbidden edits: shared schemas, locks, migrations, router, other modules.
+Forbidden edits: shared schemas, locks, migrations, Next.js routes, other modules.
 Handoff: docs/handoffs/<ID>.md
 Exit: module review-ready after checks; never full-product complete.
 ```
 
-Only the coordinator edits shared contracts, manifests, migrations and router. Workers propose shared changes in their handoff area. Use disjoint paths in a shared checkout. If isolated checkouts are supported, keep them within the authorized implementation boundary and integrate serially; do not alter a parent repository just to create worktrees.
+Only the coordinator edits shared contracts, manifests, migrations and Next.js routes. Workers propose shared changes in their handoff area. Use disjoint paths in a shared checkout. If isolated checkouts are supported, keep them within the authorized implementation boundary and integrate serially; do not alter a parent repository just to create worktrees.
 
 Wait for results, inspect the actual diffs and rerun relevant checks. Worker summaries are not verification. Reproduce failures and assign bounded corrections; never weaken invariant tests to accept output. Persist progress before context limits and resume from the ledger without restarting completed work.
 
@@ -50,7 +50,7 @@ Implement migrations, typed fixture factories, provenance/capability enums, sche
 |---|---|---|
 | 1 | A02 ingestion, A03 simulator, A04 rules, A12 shell/primitives, A16 track registry/schema | Timestamp tests; convergence and energy ledger; independent rule boundaries; accessible shell; versioned circuit manifests. |
 | 1b | A09 engineer, A10 lab/replay, A11 driver | Routes against typed fixtures with explicit pending/stale/unavailable states. Dispatch as capacity frees. |
-| 2 | A05 estimation, A06 baseline planner, A08 API, A13 evaluation, A16 geometry compiler | Observed simulator → estimate → checked plan → actual stream; validated metric geometry with derived curvature, grade and boundaries. |
+| 2 | A05 estimation, A06 baseline planner, A08 Python CLI/runtime, A13 evaluation, A16 geometry compiler | Observed simulator → estimate → checked plan → actual stream; validated metric geometry with derived curvature, grade and boundaries. |
 | 2b | A14 operations, A07 feature/environment contracts | Packaged failure recovery; Gym environment and information isolation. |
 | 3 | A07 training/value, A09/A10/A11 integration, A13 experiments, A16 event/condition integration | Frozen candidate, real lifecycle and branching, held-out circuit and combined-condition results. |
 | 4 | A15 presentation, coordinator and A13 independent review | Reproducible release with evidence-linked claims. |

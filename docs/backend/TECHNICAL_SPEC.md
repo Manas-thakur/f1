@@ -2,7 +2,7 @@
 
 ## Deliverable
 
-Implement `apps/api/`, `workers/session_runtime/` and reviewed persistence migrations. FastAPI exposes the contract routes; a single owner processes each session's state transitions. A process pool handles bounded optimisation jobs; batch training/evaluation runs separately. Use a bounded IPC queue and explicit cancellation/deadlines.
+Implement `apps/api/`, `workers/` and reviewed persistence migrations. Next.js exposes the contract routes by spawning `python -m afterlap_api.cli`. FastAPI remains the loopback session runtime. A single owner processes each session's state transitions. A process pool handles bounded optimisation jobs; batch training/evaluation runs separately. Use a bounded IPC queue and explicit cancellation/deadlines.
 
 ## Database model
 
@@ -16,7 +16,7 @@ Proposed -> selected -> communicated -> executing -> completed. Proposed may be 
 
 ## Stream and frontend
 
-One WebSocket envelope and ordered sequence across views. Reconnect gives a bounded delta replay or a snapshot. UI telemetry can coalesce; decisions and quality events cannot disappear. Capture the version the client acknowledged so a stale UI cannot operate an old recommendation. HTTP success requires an accepted state transition, not merely queue insertion; long-running jobs return 202 and a trackable status.
+One SSE envelope and ordered sequence across views. Reconnect gives a bounded delta replay or a snapshot. UI telemetry can coalesce; decisions and quality events cannot disappear. Capture the version the client acknowledged so a stale UI cannot operate an old recommendation. HTTP success requires an accepted state transition, not merely queue insertion; long-running jobs return 202 and a trackable status.
 
 ## Security and reliability
 

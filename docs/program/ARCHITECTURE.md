@@ -58,23 +58,9 @@ Start with 100 Hz simulated dynamics; perform convergence tests at 50/100/200 Hz
 
 Missing required own-car energy -> analysis-only mode, no precise energy directive. Unknown opponent energy -> wider scenarios, not a made-up point value. Missing event rules -> unsupported eligibility/curve state. Solver timeout -> revalidated prior plan or withdrawn tactical advice. Database failure -> bounded local spool and visible persistence warning. Spool full -> halt new operational recommendations to preserve auditability. Training/model mismatch -> disable learned contribution and explicitly identify the validated baseline path.
 
-## Future code layout
+## Code layout
 
-```text
-implementation/
-  apps/api/                 # backend routes and dependencies
-  apps/web/                 # React routes and UI components
-  packages/contracts/      # schemas and generated clients
-  packages/core/           # data, simulation, rules, estimation, planning, learning
-  workers/                 # session and batch process entrypoints
-  configs/                 # tracks, cars, event packs, benchmark manifests
-  tests/                   # contract and cross-module acceptance
-  infra/                   # compose, health checks, local packaging
-  handoffs/                # agent outputs and contract proposals
-```
-
-The directories above are a specification, not existing production code.
-
+Canonical paths are in [TECH_STACK.md](TECH_STACK.md). Next.js lives in `apps/web`. Python control-plane CLI and session runtime live in `apps/api`. Domain code lives in `packages/core`. Contracts live in `packages/contracts`.
 
 ## Implementation refinements
 

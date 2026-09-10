@@ -1,6 +1,8 @@
 # Control plane and stream contract
 
-Base `/api/v1`. All mutable routes require an operator identity, session control lease and `Idempotency-Key`; replay/live-team capabilities are checked server-side. Return typed errors with `code`, `message`, `retryable`, `request_id`, `details`. Never expose exception traces to the UI.
+Base `/api/v1`. Next.js is the public HTTP origin. Route handlers spawn `python -m afterlap_api.cli request` and `python -m afterlap_api.cli stream`. FastAPI remains the loopback session runtime; it is not the public server. Envelope JSON is unchanged.
+
+All mutable routes require an operator identity, session control lease and `Idempotency-Key`; replay/live-team capabilities are checked server-side. Return typed errors with `code`, `message`, `retryable`, `request_id`, `details`. Never expose exception traces to the UI.
 
 | Method and route | Input | Response / semantics |
 |---|---|---|

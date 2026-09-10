@@ -46,7 +46,7 @@ apps/web/src/
 configs/ infra/ tests/ artifacts/ docs/handoffs/
 ```
 
-Older briefs' `packages/core/<module>/` names are logical scopes. Their canonical importable path is `packages/core/afterlap_core/<module>/`. A01 includes this mapping in assignments. Do not create both trees. A01 owns locks, migrations, schemas and shared router; workers own isolated features and tests.
+Older briefs' `packages/core/<module>/` names are logical scopes. Their canonical importable path is `packages/core/afterlap_core/<module>/`. A01 includes this mapping in assignments. Do not create both trees. A01 owns locks, migrations, schemas and shared Next.js routes; workers own isolated features and tests.
 
 ## Process model
 
