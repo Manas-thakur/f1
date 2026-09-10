@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { REPORT_BUNDLE, experimentJob } from '../engineer/testFixtures';
+import { REPORT_BUNDLE, experimentJob } from '@/test/testFixtures';
 import {
   apiError,
   labClientFor,
@@ -9,7 +9,7 @@ import {
   renderRoute,
   type FetchStub,
   type RouteHandler,
-} from '../engineer/testUtils';
+} from '@/test/testUtils';
 import { ExperimentReport } from './ExperimentReport';
 import { parseReportBundle, unmeasuredRows } from './reportTypes';
 
@@ -71,10 +71,26 @@ describe('absent evidence reads as absent', () => {
     expect(screen.getAllByText('cancelled').length).toBeGreaterThan(0);
   });
 
+  it('says the report route is unimplemented, with the code and request id', async () => {
+    const stub = makeFetch(
+      handlers(() => apiError('not_found', 'no report route', 404, 'req-r')),
+    );
+    renderReport(stub);
+
+    const reason = await screen.findByText(
+      /GET \/api\/v1\/experiments\/\{experiment_id\}\/report is not implemented/,
+    );
+    expect(reason).toHaveTextContent('not_found');
+    expect(reason).toHaveTextContent('req-r');
+  });
+
   it('renders a malformed body as unavailable rather than a blank panel', async () => {
     const stub = makeFetch(handlers(() => ({ body: { nonsense: true } })));
     renderReport(stub);
     expect(await screen.findByText(/missing artefact: benchmark report body/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/is not a benchmark report bundle this view can read/),
+    ).toBeInTheDocument();
   });
 });
 

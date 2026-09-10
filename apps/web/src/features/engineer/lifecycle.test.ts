@@ -9,7 +9,7 @@ import {
   qualitySummary,
   recommendation,
   ruleContext,
-} from './testFixtures';
+} from '@/test/testFixtures';
 
 function input(overrides: Partial<ConsoleStatusInput> = {}): ConsoleStatusInput {
   return {

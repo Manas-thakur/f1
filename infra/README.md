@@ -33,7 +33,7 @@ stops the stack; `down -v` also discards the four named volumes.
 Verify the loop without a browser:
 
 ```
-./.venv/Scripts/python.exe scripts/demo.py --base-url http://127.0.0.1:8080
+uv run python scripts/demo.py --base-url http://127.0.0.1:8080
 ```
 
 ## Files

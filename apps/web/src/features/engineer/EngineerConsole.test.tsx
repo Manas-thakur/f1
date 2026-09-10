@@ -6,7 +6,7 @@ import { useSessionStore } from '@/state/sessionStore';
 import { SESSION_SNAPSHOT } from '@/test/contractFixtures';
 import { foreignEnvelope, recommendationEnvelope, telemetryEnvelope } from '@/test/envelopes';
 import { EngineerConsole } from './EngineerConsole';
-import type { FakeSocket } from './testUtils';
+import type { FakeSocket } from '@/test/testUtils';
 import {
   apiClientFor,
   apiError,
@@ -14,9 +14,9 @@ import {
   makeFetch,
   noSocket,
   renderRoute,
-  socketFactory,
+  sourceFactory,
   type FetchStub,
-} from './testUtils';
+} from '@/test/testUtils';
 
 const SESSION_ID = SESSION_SNAPSHOT.session_id;
 const PATH = `/sessions/${SESSION_ID}/engineer`;
@@ -64,12 +64,12 @@ function baseHandlers(
   ];
 }
 
-function renderConsole(stub: FetchStub, sourceFactory = noSocket()) {
+function renderConsole(stub: FetchStub, factory = noSocket()) {
   const client = apiClientFor(stub);
   return renderRoute(
     <EngineerConsole
       client={client}
-      runtimeOptions={{ client, sourceFactory }}
+      runtimeOptions={{ client, sourceFactory: factory }}
     />,
     { path: PATH, route: ROUTE },
   );
@@ -210,7 +210,7 @@ describe('stream handling', () => {
   it('ignores an envelope for another session and applies one for this session', async () => {
     const sockets: FakeSocket[] = [];
     const stub = makeFetch(baseHandlers());
-    renderConsole(stub, socketFactory(sockets));
+    renderConsole(stub, sourceFactory(sockets));
 
     await waitFor(() => expect(sockets.length).toBe(1));
     const socket = sockets[0] as FakeSocket;
@@ -233,7 +233,7 @@ describe('stream handling', () => {
   it('asks for a resync when the sequence jumps', async () => {
     const sockets: FakeSocket[] = [];
     const stub = makeFetch(baseHandlers());
-    renderConsole(stub, socketFactory(sockets));
+    renderConsole(stub, sourceFactory(sockets));
 
     await waitFor(() => expect(sockets.length).toBe(1));
     const socket = sockets[0] as FakeSocket;

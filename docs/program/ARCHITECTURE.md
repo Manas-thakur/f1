@@ -30,7 +30,7 @@ flowchart TD
 
 Use a modular monolith, a session-runtime worker and separate batch workers. Next.js is the public HTTP control plane. Python work is invoked through `python -m afterlap_api.cli`. Python domain modules contain no HTTP dependency. The runtime owns an in-memory session state and serialises state mutations. IPC carries typed messages; the database is not polled on every physics tick. Batch simulation/training cannot consume the runtime's reserved CPU cores or overwrite its loaded artefacts.
 
-React/TypeScript renders all web surfaces. Charts consume downsampled views with source timestamps. PostgreSQL stores sessions, decisions, operator events and manifests; partitioned Parquet stores high-volume telemetry and experiment trajectories; DuckDB is used for offline interrogation. CasADi formulates smooth dynamics; acados solves continuous subproblems; a bounded tactical enumerator handles discrete intentions and legal profiles. SAC and a separate ordinary-return value estimator are trained in PyTorch.
+React/TypeScript renders all web surfaces. Charts consume downsampled views with source timestamps. PostgreSQL stores sessions, decisions, operator events and manifests; partitioned Parquet stores high-volume telemetry and experiment trajectories. CasADi formulates smooth dynamics and IPOPT solves the continuous subproblems; a bounded tactical enumerator handles discrete intentions and legal profiles. SAC and a separate ordinary-return value estimator are trained in PyTorch.
 
 ## One session lifecycle
 
@@ -60,8 +60,8 @@ Missing required own-car energy -> analysis-only mode, no precise energy directi
 
 ## Code layout
 
-Canonical paths are in [TECH_STACK.md](TECH_STACK.md). Next.js lives in `apps/web`. Python control-plane CLI and session runtime live in `apps/api`. Domain code lives in `packages/core`. Contracts live in `packages/contracts`.
+Canonical paths are in [TECH_STACK.md](TECH_STACK.md). Next.js lives in `apps/web`. Python control-plane CLI and loopback runtime live in `apps/api`. Session ports live in `packages/application`. Persistence lives in `packages/infrastructure`. Domain code lives in `packages/core`. Contracts live in `packages/contracts`.
 
 ## Implementation refinements
 
-The [selected stack](TECH_STACK.md) defines canonical packages, dependencies and deployment. The [learning implementation guide](../learning/README.md) fixes actor cadence at one second and uses the separate ordinary-return ensemble to rerank feasible finalists outside acados. Safety invalidation remains event-driven.
+The [selected stack](TECH_STACK.md) defines canonical packages, dependencies and deployment. The [learning implementation guide](../learning/README.md) fixes actor cadence at one second and uses the separate ordinary-return ensemble to rerank feasible finalists outside the continuous solver. Safety invalidation remains event-driven.

@@ -5,8 +5,8 @@ import type {
   TelemetrySeries,
 } from '@contracts';
 
-import { fromTelemetrySeries, type ChartSeries, type EventMarker } from '@/components';
-import { telemetryKey } from '@/state/streamReducer';
+import { fromTelemetrySeries, type ChartSeries, type EventMarker } from './types';
+import { telemetryKey } from '@/state';
 
 export interface Domain {
   readonly min: number;

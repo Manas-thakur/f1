@@ -91,6 +91,11 @@ export type Density = 'comfortable' | 'compact';
 export type MotionPreference = 'system' | 'reduce';
 export type CursorAxis = 'progress_m' | 'session_time_s';
 
+export const ALIGNMENT_LABEL: Record<CursorAxis, string> = {
+  progress_m: 'common progress (metres travelled)',
+  session_time_s: 'common elapsed time (seconds since the snapshot)',
+};
+
 export interface InspectorState {
   readonly open: boolean;
   readonly kind: 'decision' | 'evidence' | 'channel' | 'rule' | null;

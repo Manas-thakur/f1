@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from .port import (
     RuntimeCommand,
+    RuntimeHealth,
+    RuntimePersistence,
     RuntimeResult,
     RuntimeTick,
     RuntimeUnavailable,
@@ -13,6 +15,8 @@ from .registry import RuntimeRegistry
 
 __all__ = [
     "RuntimeCommand",
+    "RuntimeHealth",
+    "RuntimePersistence",
     "RuntimeRegistry",
     "RuntimeResult",
     "RuntimeTick",

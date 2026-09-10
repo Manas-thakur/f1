@@ -377,14 +377,24 @@ def check_model_compatibility(
     expected_reward_revision: str | None,
     baseline_identity: str,
     scenario_family: str | None = None,
+    expected_ruleset_hash: str | None = None,
+    expected_track_id: str | None = None,
+    expected_track_package_hash: str | None = None,
+    expected_conditions_id: str | None = None,
 ) -> ModelDecision:
     """Training/model mismatch -> disable learned scoring, name the baseline.
 
     A missing bundle is not a mismatch; it is simply the baseline path, and the
     result says so without raising a degradation row. A bundle that *is* present
-    but disagrees with the session's feature manifest, rule family, reward
-    revision or scenario support is a mismatch and the learned contribution is
-    switched off — never silently trusted, never silently replaced.
+    but disagrees with the session's feature manifest, rule family, ruleset
+    contents, reward revision, scenario support, circuit split or conditions
+    regime is a mismatch and the learned contribution is switched off: never
+    silently trusted, never silently replaced.
+
+    Every check fails closed, and an undeclared field is treated as *unknown*
+    rather than as permission. A bundle that names no circuit is refused on a
+    compiled real circuit: "we did not record which circuits this was trained
+    on" is not evidence that it was trained on this one.
     """
     if requested_model_hash is None and bundle is None:
         return ModelDecision(
@@ -431,13 +441,111 @@ def check_model_compatibility(
             f"scenario family {scenario_family!r} is outside the bundle's declared support "
             f"{list(bundle.supported_scenario_families)}"
         )
+    mismatches.extend(_ruleset_mismatches(bundle, expected_ruleset_hash))
+    mismatches.extend(_circuit_mismatches(bundle, expected_track_id, expected_track_package_hash))
+    mismatches.extend(_environment_mismatches(bundle, expected_conditions_id))
+
     if mismatches:
         return _model_mismatch(baseline_identity, tuple(mismatches))
     return ModelDecision(
         enabled=True,
         baseline_identity=baseline_identity,
-        detail=f"bundle {bundle.id} matches the session's feature, rule and reward manifests",
+        detail=(
+            f"bundle {bundle.id} matches the session's feature, rule, reward, circuit and "
+            "conditions manifests"
+        ),
     )
+
+
+def _ruleset_mismatches(bundle: ModelManifest, expected_ruleset_hash: str | None) -> list[str]:
+    """The pack's *contents*, not only its name.
+
+    ``rule_family`` identifies the pack; a pack whose energy window or
+    detection lines moved keeps its id and is a different environment.
+    """
+    if expected_ruleset_hash is None:
+        return []
+    if bundle.ruleset_hash is None:
+        return [
+            (
+                f"bundle {bundle.id} declares no rule pack content hash, so the limits it trained "
+                "against cannot be identified"
+            )
+        ]
+    if bundle.ruleset_hash != expected_ruleset_hash:
+        return [
+            (
+                f"rule pack contents {bundle.ruleset_hash[:19]} != session {expected_ruleset_hash[:19]}; "
+                "the pack kept its id but its limits moved"
+            )
+        ]
+    return []
+
+
+def _circuit_mismatches(
+    bundle: ModelManifest,
+    expected_track_id: str | None,
+    expected_track_package_hash: str | None,
+) -> list[str]:
+    """Circuit split and compiled-geometry identity.
+
+    The package hash is the sharper of the two: the same circuit id recompiled
+    from different telemetry is different geometry, so a bundle trained on the
+    earlier package is outside its regime on the later one.
+    """
+    if expected_track_package_hash is None:
+        return []
+
+    if not bundle.supported_track_ids:
+        return [
+            (
+                f"bundle {bundle.id} declares no circuit split, and this session runs on the "
+                f"compiled circuit {expected_track_id!r}; an undeclared split is unknown "
+                "coverage, not coverage"
+            )
+        ]
+    if expected_track_id is not None and expected_track_id not in bundle.supported_track_ids:
+        return [
+            f"circuit {expected_track_id!r} is outside the bundle's split {list(bundle.supported_track_ids)}"
+        ]
+
+    trained_on = bundle.track_package_hashes.get(expected_track_id or "")
+    if trained_on is None:
+        return [
+            (
+                f"bundle {bundle.id} names circuit {expected_track_id!r} but records no compiled "
+                "package hash for it, so the geometry it trained on cannot be identified"
+            )
+        ]
+    if trained_on != expected_track_package_hash:
+        return [
+            (
+                f"circuit {expected_track_id!r} package {expected_track_package_hash[:19]} != the "
+                f"{trained_on[:19]} the bundle trained on; recompiled geometry is different dynamics"
+            )
+        ]
+    return []
+
+
+def _environment_mismatches(bundle: ModelManifest, expected_conditions_id: str | None) -> list[str]:
+    """A conditions tape the bundle was never evaluated under."""
+    if expected_conditions_id is None:
+        return []
+    if not bundle.supported_conditions_ids:
+        return [
+            (
+                f"the session runs under conditions {expected_conditions_id!r} and bundle "
+                f"{bundle.id} declares no conditions support, so this is outside its evaluated regime"
+            )
+        ]
+    if expected_conditions_id not in bundle.supported_conditions_ids:
+        return [
+            (
+                f"conditions {expected_conditions_id!r} is outside the bundle's declared regime "
+                f"{list(bundle.supported_conditions_ids)}"
+            )
+        ]
+    return []
 
 
 def _model_mismatch(baseline_identity: str, mismatches: tuple[str, ...]) -> ModelDecision:

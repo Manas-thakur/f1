@@ -379,6 +379,13 @@
   border: 1px dashed var(--rule);
   border-radius: var(--radius);
   background: var(--sunken);
+  min-width: 0;
+}
+
+.empty > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .emptyArtefact {

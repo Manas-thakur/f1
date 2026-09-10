@@ -15,8 +15,8 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT } from '@/contracts/units';
-import { labClient, type LabClient } from './controlPlane';
-import styles from '../engineer/workspace.module.css';
+import { labClient, type LabClient } from '@/api/controlPlane';
+import styles from '@/styles/workspace.module.css';
 
 
 export interface SubmittedExperiment {

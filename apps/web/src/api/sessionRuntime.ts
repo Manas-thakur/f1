@@ -8,16 +8,12 @@ import { SessionStream, type StreamStoreBridge } from '@/api/stream';
 import { useSessionStore } from '@/state/sessionStore';
 
 export interface SessionRuntimeOptions {
-  
   readonly client?: ApiClient;
-  
   readonly sourceFactory?: (url: string) => EventSource;
-  
   readonly connect?: boolean;
 }
 
 export interface SessionRuntime {
-  
   readonly refresh: () => Promise<void>;
   readonly snapshotError: ApiError | null;
   readonly loading: boolean;
@@ -42,7 +38,6 @@ export function useSessionRuntime(
 ): SessionRuntime {
   const [loading, setLoading] = useState(sessionId !== undefined);
   const [snapshotError, setSnapshotError] = useState<ApiError | null>(null);
-
 
   const clientRef = useRef<ApiClient>(options.client ?? apiClient);
   clientRef.current = options.client ?? apiClient;

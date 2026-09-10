@@ -14,6 +14,8 @@ import numpy as np
 import pytest
 import yaml
 
+pytest.importorskip("scipy")
+
 from afterlap_core.tracks import CorridorQuality, Direction, GeometryProvenance, ReadinessStatus
 from afterlap_core.tracks.compile import (
     LOCAL_CRS,

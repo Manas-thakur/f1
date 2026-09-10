@@ -1,6 +1,8 @@
 import { useParams } from 'next/navigation';
 import type { CoverageEntry, RuleReference } from '@contracts';
 
+import { routeParam } from '@/shell/params';
+
 import { guidanceFor, toApiError } from '@/api/errors';
 import { useRuleset } from '@/api/queries';
 import {
@@ -13,8 +15,7 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
-import { routeParam } from '@/shell/params';
-import styles from '../engineer/workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 function coverageTone(status: CoverageEntry['status']) {
   if (status === 'implemented_and_tested') {return 'verified' as const;}

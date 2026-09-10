@@ -22,6 +22,7 @@ from workers.session_worker import (
     run_command_loop,
 )
 
+from afterlap_api.composition import RUNTIME_BUILDER
 from afterlap_api.db import LifecycleError
 from afterlap_api.db.engine import command_transaction
 from afterlap_api.db.models import Decision, ExportJob
@@ -330,6 +331,7 @@ def test_the_worker_loop_refuses_stale_and_expired_commands(db_factory):
         scenario_id=SCENARIO_ID,
         ruleset_id="synthetic-pack-v1",
         seed=42,
+        runtime_builder=RUNTIME_BUILDER,
     )
     commands, results, thread = _drive(config)
     try:
@@ -377,6 +379,7 @@ def test_the_worker_queue_is_bounded_and_refuses_rather_than_buffering(db_factor
             scenario_id=SCENARIO_ID,
             ruleset_id="synthetic-pack-v1",
             seed=42,
+            runtime_builder=RUNTIME_BUILDER,
         ),
         queue_size=1,
     )
@@ -401,6 +404,7 @@ def test_a_spawned_worker_process_serves_and_restarts(db_factory):
         scenario_id=SCENARIO_ID,
         ruleset_id="synthetic-pack-v1",
         seed=42,
+        runtime_builder=RUNTIME_BUILDER,
     )
     handle = SessionWorkerHandle(config, queue_size=4)
     handle.start()

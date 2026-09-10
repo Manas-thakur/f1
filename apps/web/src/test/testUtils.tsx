@@ -3,9 +3,9 @@ import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
 
 import { ApiClient } from '@/api/client';
+import { LabClient } from '@/api/controlPlane';
 import { Providers } from '@/shell/Providers';
-import { LabClient } from '../lab/controlPlane';
-import { paramsFromRoute, setTestPath, testNav } from '@/test/navigation';
+import { setTestPath } from '@/test/navigation';
 
 export interface RecordedRequest {
   readonly url: string;
@@ -17,7 +17,6 @@ export interface RecordedRequest {
 export interface FetchStub {
   readonly fetchImpl: typeof fetch;
   readonly requests: RecordedRequest[];
-  
   matching: (fragment: string) => readonly RecordedRequest[];
 }
 
@@ -44,7 +43,6 @@ export function apiError(
     body: { error: { code, message, retryable: false, request_id: requestId } },
   };
 }
-
 
 export function hrefOf(input: RequestInfo | URL): string {
   if (typeof input === 'string') {
@@ -107,13 +105,11 @@ export function labClientFor(stub: FetchStub): LabClient {
   return new LabClient({ fetchImpl: stub.fetchImpl });
 }
 
-
 export function noSocket(): (url: string) => EventSource {
-  return (url) => socketFactory()(url);
+  return (url) => sourceFactory()(url);
 }
 
-
-export function socketFactory(collect?: FakeSocket[]): (url: string) => EventSource {
+export function sourceFactory(collect?: FakeSocket[]): (url: string) => EventSource {
   return (url: string) => {
     const socket = new FakeSocket(url);
     collect?.push(socket);
@@ -126,11 +122,11 @@ export function socketFactory(collect?: FakeSocket[]): (url: string) => EventSou
   };
 }
 
-
 export class FakeSocket {
   onopen: ((event: Event) => void) | null = null;
-  onmessage: ((event: MessageEvent<string>) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
+  onclose: ((event: Event) => void) | null = null;
   closed = false;
   readonly url: string;
 
@@ -142,12 +138,8 @@ export class FakeSocket {
     this.closed = true;
   }
 
-  send(): void {}
-
   emit(raw: unknown): void {
-    this.onmessage?.({
-      data: typeof raw === 'string' ? raw : JSON.stringify(raw),
-    } as MessageEvent<string>);
+    this.onmessage?.({ data: typeof raw === 'string' ? raw : JSON.stringify(raw) } as MessageEvent);
   }
 }
 
@@ -157,16 +149,9 @@ export interface RenderOptions {
 }
 
 export function renderRoute(element: ReactElement, options: RenderOptions): RenderResult {
-  testNav.pathname = options.path;
-  testNav.params = paramsFromRoute(options.route, options.path);
+  setTestPath(options.path);
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
-    <Providers queryClient={queryClient}>
-      {element}
-    </Providers>,
-  );
+  return render(<Providers queryClient={queryClient}>{element}</Providers>);
 }
-
-export { setTestPath };

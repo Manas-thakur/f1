@@ -278,3 +278,30 @@ def test_an_operator_action_no_longer_produces_an_outbox_row(db_factory):
 def test_every_lossless_event_type_is_marked_lossless_on_the_envelope(event_type):
     assert event_type is not StreamEventType.TELEMETRY_VIEW
     assert event_type is not StreamEventType.HEARTBEAT
+
+
+def test_a_cursor_ahead_of_the_stream_receives_resync_required():
+    """A client claiming a sequence the session never emitted is not up to date.
+
+    Treating it as current returns an empty replay and then only heartbeats, so
+    the client waits forever for a backlog the server has already decided it
+    does not owe. That is the silent gap `resync_required` exists to prevent,
+    and it is indistinguishable from a healthy idle stream from the outside.
+    """
+    hub = StreamHub(buffer_size=16, client_queue=32)
+
+    async def scenario():  # type: ignore[no-untyped-def]
+        for sequence in range(1, 4):
+            await hub.publish(_telemetry(sequence))
+        ahead, resync_ahead = await hub.subscribe(SESSION, 9999)
+        current, resync_current = await hub.subscribe(SESSION, 3)
+        return resync_ahead, _drain(ahead), resync_current, _drain(current)
+
+    resync_ahead, delivered, resync_current, current_frames = asyncio.run(scenario())
+
+    assert resync_ahead is True, "a cursor past the newest sequence was accepted as current"
+    assert len(delivered) == 1
+    assert delivered[0].event_type is StreamEventType.RESYNC_REQUIRED
+
+    assert resync_current is False, "a cursor exactly at the newest sequence is genuinely current"
+    assert current_frames == []

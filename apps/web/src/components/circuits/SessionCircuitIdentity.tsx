@@ -1,7 +1,7 @@
 import type { RuntimeCapabilities, SessionManifest } from '@contracts';
 
-import { Notice, Panel, StatusBadge } from '@/components';
-import { isReadinessRung, type ReadinessRung } from '@/api/trackCatalogue';
+import { Notice, Panel } from '../Panel';
+import { StatusBadge } from '../StatusBadge';
 import {
   CORRIDOR_DERIVED_FIELDS,
   CORRIDOR_UNKNOWN_REASON,
@@ -13,8 +13,8 @@ import {
   provenanceText,
   readinessTone,
   shortHash,
-} from './readiness';
-import styles from './circuits.module.css';
+} from '@/contracts/readiness';
+import styles from '@/styles/circuits.module.css';
 
 export interface SessionCircuitIdentityProps {
   readonly manifest: SessionManifest | null | undefined;
@@ -50,10 +50,6 @@ export function isRealCircuitSession(manifest: SessionManifest | null | undefine
   );
 }
 
-function reportedRung(reported: string | null | undefined): ReadinessRung | null {
-  return typeof reported === 'string' && isReadinessRung(reported) ? reported : null;
-}
-
 function Item({ term, value }: { readonly term: string; readonly value: string | null }) {
   return (
     <span>
@@ -86,7 +82,7 @@ export function SessionCircuitStrip({ manifest }: SessionCircuitIdentityProps) {
         <span className={styles.identityKey}>readiness</span>
         <StatusBadge
           label="Readiness rung"
-          tone={readinessTone(reportedRung(track.track_readiness))}
+          tone={readinessTone(track.track_readiness ?? null)}
         >
           {track.track_readiness ?? 'unavailable'}
         </StatusBadge>

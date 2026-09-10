@@ -11,13 +11,14 @@ chance to clean up: there is no sentinel, no `stop`, no flush.
 Everything asserted afterwards is therefore recovery from a snapshot produced
 by a process that no longer exists.
 
-One thing is approximated and it is worth stating plainly: the spawned worker
-builds its runtime through `SessionFactory()` with **no recorder**
-(`workers/session_worker._build_runtime`), so an out-of-process session
-persists nothing at all. Part 2 below therefore persists the dead worker's
-own recommendation — rebuilt from its snapshot, byte for byte — through a real
-`SessionRecorder`, standing in for the recorder the worker does not have. That
-gap is a real defect and it is recorded in `handoffs/A14.md`, not hidden here.
+The drill runs the worker in the shape that used to be its defect: a
+`WorkerConfig` with no `database_url`, which records nothing. That is now an
+explicit choice rather than the only behaviour available, and
+`test_an_out_of_process_session_persists_its_own_decisions` drives a second
+worker configured with a store and reads its rows back from the database. So
+part 3 below still rebuilds the dead worker's advice through a real
+`SessionRecorder` to have something to invalidate, and that is a property of
+this particular unconfigured worker rather than of the worker protocol.
 """
 
 from __future__ import annotations
@@ -32,13 +33,21 @@ from workers.session_worker import (
     WorkerUnavailable,
 )
 
+from afterlap_api.composition import RUNTIME_BUILDER
 from afterlap_api.session import InProcessSessionRuntime, SessionRecorder
 from afterlap_api.session.runtime import SNAPSHOT_SCHEMA
 from afterlap_contracts import Recommendation, RecommendationStatus
 from afterlap_core.rules import load_rule_pack
 from afterlap_core.simulation import load_bundle
 
-from .conftest import RULE_PACK_ID, SCENARIO_ID, SEED, open_store, start_session
+from .conftest import (
+    RULE_PACK_ID,
+    SCENARIO_ID,
+    SEED,
+    _persist_session_row,
+    open_store,
+    start_session,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -60,6 +69,7 @@ def killed_worker(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
         scenario_id=SCENARIO_ID,
         ruleset_id=RULE_PACK_ID,
         seed=SEED,
+        runtime_builder=RUNTIME_BUILDER,
     )
     handle = SessionWorkerHandle(config)
     handle.start()
@@ -128,10 +138,9 @@ def test_a_terminated_session_worker_is_visibly_unavailable(killed_worker: dict[
 
     snapshot = killed_worker["snapshot"]
     assert snapshot["schema"] == SNAPSHOT_SCHEMA
-    assert snapshot["session_id"].startswith("ses-"), snapshot["session_id"]
-    assert snapshot["session_id"] != config.session_id, (
-        "the worker now propagates WorkerConfig.session_id into the runtime; if that was fixed "
-        "deliberately, tighten this assertion to equality"
+    assert snapshot["session_id"] == config.session_id, (
+        "the worker's runtime owns a different session id from the one commands route by, so its "
+        "durable records would be unreachable from the commands that produced them"
     )
     assert snapshot["session_time_s"] > 26.0, snapshot["session_time_s"]
     offset = snapshot["event_offset"]
@@ -272,3 +281,93 @@ def test_recovery_invalidates_expiring_advice_restores_state_and_never_replays(
 
     _, again = replacement.snapshot("after recovery")
     assert acknowledged in again["acknowledged_driver_inputs"]
+
+
+def test_an_out_of_process_session_persists_its_own_decisions(tmp_path: Path):
+    """A configured worker writes its own audit trail, in its own process.
+
+    Nothing here is stood in for. A second operating-system process is spawned
+    with a `database_url` and an `artifact_root`, driven to an actionable
+    instruction, and stopped; the rows are then read back from the SQLite file
+    the *child* wrote. Before this, `SessionFactory()` in the child had no
+    recorder, so everything an out-of-process session decided died with it.
+    """
+    from sqlalchemy import select
+
+    from afterlap_api.db.engine import create_db_engine, create_session_factory, transaction
+    from afterlap_api.db.models import Decision, Session as SessionRow
+
+    store = open_store(tmp_path / "db", "worker.sqlite3")
+    database = store.path
+    config = WorkerConfig(
+        session_id="ops-worker-durable",
+        scenario_id=SCENARIO_ID,
+        ruleset_id=RULE_PACK_ID,
+        seed=SEED,
+        runtime_builder=RUNTIME_BUILDER,
+        database_url=f"sqlite+pysqlite:///{database.as_posix()}",
+        artifact_root=str(tmp_path / "artifacts-root"),
+    )
+    _persist_session_row(store.factory, _manifest_for(config))
+
+    handle = SessionWorkerHandle(config)
+    assert handle.records_durably is True
+    handle.start()
+    try:
+
+        def request(kind: str, **payload: Any) -> Any:
+            result = handle.request(
+                WorkerCommand.now(kind, config.session_id, timeout_s=COMMAND_TIMEOUT_S, **payload),  # type: ignore[arg-type]
+                timeout_s=COMMAND_TIMEOUT_S,
+            )
+            assert result.ok, f"{kind} failed in the worker: {result.detail}"
+            return result
+
+        request("initialise")
+        published: list[str] = []
+        for _ in range(MAX_OBSERVES):
+            tick = request("observe", duration_s=1.0).payload
+            if tick["recommendation_id"] is not None:
+                published.append(tick["recommendation_id"])
+            if tick["constraint_status"] == "pass" and tick["action_code"] != "withdraw_advice":
+                break
+        assert published, "the worker published no advice to record"
+    finally:
+        handle.stop()
+
+    assert database.is_file(), "the child process wrote no database at all"
+    engine = create_db_engine(config.database_url)
+    with transaction(create_session_factory(engine)) as db:
+        rows = list(db.execute(select(Decision.id, Decision.session_id)).all())
+        sessions = list(db.execute(select(SessionRow.id)).scalars())
+    engine.dispose()
+
+    recorded = {row[0] for row in rows}
+    print(f"\nthe child recorded {len(recorded)} decision(s) for session(s) {sessions}")
+    assert recorded, "an out-of-process session recorded no decisions"
+    assert recorded >= set(published[:1]), (
+        f"the worker's published advice {published[:1]} is not in its own store {sorted(recorded)}"
+    )
+    assert {row[1] for row in rows} == {config.session_id}, (
+        "the child's records carry a different session id from the one commands route by"
+    )
+
+
+def _manifest_for(config: WorkerConfig) -> Any:
+    """The session row the control plane registers before spawning a worker.
+
+    Lifecycle rows stay the control plane's to create: a decision has a foreign
+    key onto its session, so a worker recording into a session nobody
+    registered would be writing an orphan.
+    """
+    from afterlap_api.session.factory import build_manifest, resolve_artefacts
+    from afterlap_contracts import SessionMode
+
+    artefacts = resolve_artefacts(scenario_id=config.scenario_id, ruleset_id=config.ruleset_id)
+    return build_manifest(
+        artefacts,
+        mode=SessionMode.SIMULATION,
+        seed=config.seed,
+        label=config.label,
+        session_id=config.session_id,
+    )

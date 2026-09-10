@@ -18,7 +18,7 @@ import {
   formatScalar,
 } from '@/contracts/units';
 import { RIVAL_ENERGY_QUANTILE_NOTE, describeInterval, intervalKindLine } from './intervals';
-import styles from './workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 export interface BattleViewProps {
   readonly estimate: StateEstimate | null;

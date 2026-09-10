@@ -132,7 +132,13 @@ class CancelExperimentRequest(Contract):
 class ExperimentStatusResponse(Contract):
     job: ExperimentJob
     status: JobStatus
-    report_path: str | None = None
+    report_path: str | None = Field(
+        default=None,
+        description=(
+            "Where the report sits inside the deployment's artefact tree, relative to it "
+            "(artifacts/reports/<id>.json). Never an absolute path."
+        ),
+    )
 
 
 class ModelListResponse(Contract):
@@ -153,7 +159,14 @@ class CreateExportRequest(Contract):
 class ExportJobResponse(Contract):
     export_id: str = Field(min_length=1)
     status: JobStatus
-    path: str | None = None
+    path: str | None = Field(
+        default=None,
+        description=(
+            "Where the export sits inside the deployment's artefact tree, relative to it "
+            "(artifacts/exports/<id>.<format>). Never an absolute path: that describes the "
+            "machine rather than the artefact."
+        ),
+    )
     hashes: dict[str, str] = Field(default_factory=dict)
     synthetic: bool = True
     created_at: datetime

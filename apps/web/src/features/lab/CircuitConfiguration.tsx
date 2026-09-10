@@ -1,4 +1,3 @@
-import { EmptyState, Notice, Panel, StatusBadge } from '@/components';
 import {
   catalogueFailureText,
   trackCatalogueClient,
@@ -9,17 +8,24 @@ import {
   useTrackCatalogue,
   useTrackCentreline,
 } from '@/api/trackQueries';
-import { CircuitMap } from '../tracks/CircuitMap';
-import { CircuitSelector } from '../tracks/CircuitSelector';
-import { ConditionsSelector } from '../tracks/ConditionsSelector';
+import {
+  CircuitMap,
+  CircuitSelector,
+  ConditionsSelector,
+  EmptyState,
+  Notice,
+  Panel,
+  StatusBadge,
+} from '@/components';
 import {
   REAL_CIRCUIT_SYNTHETIC_ENERGY,
   SYNTHETIC_ENERGY_EXPLANATION,
+  readinessView,
   selectability,
   validatorNotes,
-} from '../tracks/readiness';
+} from '@/contracts/readiness';
 import { useCircuitSelection } from './circuitSelection';
-import styles from '../tracks/circuits.module.css';
+import styles from '@/styles/circuits.module.css';
 
 export interface CircuitConfigurationProps {
   readonly client?: TrackCatalogueClient;
@@ -42,6 +48,7 @@ export function CircuitConfiguration({
   const conditions = conditionsQuery.data?.conditions ?? [];
   const selected = tracks.find((track) => track.track_id === trackId) ?? null;
   const selectedIsOffered = selected !== null && selectability(selected).selectable;
+  const selectedReadiness = selected === null ? null : readinessView(selected).reported;
 
   return (
     <Panel
@@ -105,7 +112,7 @@ export function CircuitConfiguration({
       {selected === null || validatorNotes(selected).length === 0 ? null : (
         <details data-testid="circuit-validator-evidence">
           <summary>
-            Validator evidence for {selected.display_name ?? selected.track_id} (
+            Validator evidence for {selected.display_name} (
             {validatorNotes(selected).length} recorded checks)
           </summary>
           <ul className={styles.withdrawnList}>
@@ -149,7 +156,7 @@ export function CircuitConfiguration({
         <CircuitMap
           centreline={centrelineQuery.data}
           displayName={selected?.display_name ?? null}
-          readiness={selected?.readiness ?? null}
+          readiness={selectedReadiness}
         />
       )}
 

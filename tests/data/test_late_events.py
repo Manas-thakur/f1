@@ -23,6 +23,17 @@ from .conftest import SESSION_ID, observation, simulator_config
 
 CUTOFF_S = 12.2
 
+try:
+    import pyarrow as pa  # noqa: F401
+
+    HAS_PARQUET = True
+except ImportError:
+    HAS_PARQUET = False
+
+requires_parquet = pytest.mark.skipif(
+    not HAS_PARQUET, reason="reads or writes parquet chunks, which needs pyarrow"
+)
+
 
 def _pipeline_with_history(sink: MemorySink | None = None) -> IngestionPipeline:
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=0.1), sink=sink)
@@ -66,6 +77,7 @@ def test_a_late_event_is_archived_but_excluded_from_the_finalised_decision_state
     assert pipeline.stats().excluded_from_finalised == 1
 
 
+@requires_parquet
 def test_the_late_event_reaches_the_archive_on_disk(tmp_path):
     sink = MemorySink()
     pipeline = _pipeline_with_history(sink)

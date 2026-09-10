@@ -12,7 +12,7 @@ import {
 import { formatAge } from '@/contracts/units';
 import type { ConsoleStatus } from './lifecycle';
 import type { RecommendationActions } from './useRecommendationActions';
-import styles from './workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 export interface RecommendationPanelProps {
   readonly recommendation: Recommendation | null;

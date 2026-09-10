@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Install
-        run: uv sync --frozen --all-packages --extra solver
+        run: uv sync --frozen --all-packages --group data --group solver --group track-ingestion
       - name: Format
         run: uv run ruff format --check .
       - name: Lint
@@ -57,5 +57,32 @@ jobs:
         run: bun run test
       - name: Build
         run: bun run build
+      - name: Install Playwright browser
+        run: bunx playwright install chromium
       - name: Playwright
-        run: bun run e2e:install && bun run test:e2e
+        run: bun run test:e2e
+
+  portability:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.14"
+      - name: Install Python
+        run: uv sync --frozen --all-packages
+      - name: Cross-platform Python contracts
+        run: uv run pytest tests/operations/test_platform_portability.py tests/operations/test_model_regime.py tests/operations/test_worker_heartbeat.py tests/operations/test_session_process_runtime.py
+      - name: Install web
+        run: bun install --frozen-lockfile
+      - name: Cross-platform web types
+        run: bun run typecheck

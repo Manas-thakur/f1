@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import { apiClient, type ApiClient } from '@/api/client';
 import { guidanceFor } from '@/api/errors';
 import { queryKeys } from '@/api/queries';
+import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
+import { OPERATOR_IDENTITY_NOTE } from '@/shell/operator';
 import { routeParam } from '@/shell/params';
 import {
   ChartFrame,
@@ -12,7 +14,12 @@ import {
   Panel,
   ProvenanceLabel,
   QualityIndicator,
+  SessionCircuitPanel,
+  SessionCircuitStrip,
   StatusBadge,
+  compact,
+  decisionMarkers,
+  seriesFor,
 } from '@/components';
 import { formatAge } from '@/contracts/units';
 import { useSessionStore } from '@/state/sessionStore';
@@ -22,10 +29,6 @@ import {
   selectQualitySummary,
   selectTimeSensitiveDisabledReason,
 } from '@/state/selectors';
-import {
-  SessionCircuitPanel,
-  SessionCircuitStrip,
-} from '../tracks/SessionCircuitIdentity';
 import { BattleView } from './BattleView';
 import { DecisionHistory } from './DecisionHistory';
 import { EnergyTimeline } from './EnergyTimeline';
@@ -33,11 +36,9 @@ import { EvidenceInspector } from './EvidenceInspector';
 import { RecommendationPanel } from './RecommendationPanel';
 import { deriveConsoleStatus } from './lifecycle';
 import { useDecision } from './decisionQuery';
-import { OPERATOR_IDENTITY_NOTE, useNarrowViewport } from './operator';
-import { compact, decisionMarkers, seriesFor } from './series';
-import { useSessionRuntime, type SessionRuntimeOptions } from './sessionRuntime';
+import { useNarrowViewport } from './viewport';
 import { useRecommendationActions } from './useRecommendationActions';
-import styles from './workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 const EVIDENCE_BUTTON_ID = 'engineer-open-evidence';
 const DECISION_STEPS = ['Observe', 'Review', 'Select', 'Communicate', 'Verify'] as const;

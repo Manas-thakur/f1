@@ -12,8 +12,8 @@ import {
   renderRoute,
   type FetchStub,
   type RouteHandler,
-} from '../engineer/testUtils';
-import { CANDIDATE_MODEL, RULE_MANIFEST, experimentJob } from '../engineer/testFixtures';
+} from '@/test/testUtils';
+import { CANDIDATE_MODEL, RULE_MANIFEST, experimentJob } from '@/test/testFixtures';
 import { SimulationLab } from './SimulationLab';
 import { pacingIntervalMs } from './RunControl';
 

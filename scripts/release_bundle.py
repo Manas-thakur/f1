@@ -12,7 +12,7 @@
     fixtures from benchmark evidence.
 
     python scripts/release_bundle.py --out artifacts/release/afterlap-0.1.0
-    python scripts/release_bundle.py --out ... --test-report report.txt --web-dist apps/web/.next/standalone
+    python scripts/release_bundle.py --out ... --test-report report.txt --web-dist apps/web/dist
     python scripts/release_bundle.py --verify artifacts/release/afterlap-0.1.0
 
 Three decisions in here are deliberate and would otherwise look like
@@ -68,6 +68,8 @@ SOURCE_TREES: tuple[str, ...] = (
     "packages/contracts/afterlap_contracts",
     "packages/contracts/generated",
     "packages/core/afterlap_core",
+    "packages/application/afterlap_application",
+    "packages/infrastructure/afterlap_infrastructure",
     "apps/api/afterlap_api",
     "apps/web/src",
     "workers",
@@ -86,10 +88,13 @@ SOURCE_FILES: tuple[str, ...] = (
     "apps/api/alembic.ini",
     "apps/api/pyproject.toml",
     "apps/web/package.json",
-    "apps/web/next.config.ts",
+    "apps/web/vite.config.ts",
     "apps/web/tsconfig.json",
+    "apps/web/index.html",
     "packages/contracts/pyproject.toml",
     "packages/core/pyproject.toml",
+    "packages/application/pyproject.toml",
+    "packages/infrastructure/pyproject.toml",
 )
 
 EXCLUDED_DIR_NAMES = {
@@ -101,7 +106,6 @@ EXCLUDED_DIR_NAMES = {
     "node_modules",
     ".venv",
     "dist",
-    ".next",
     "test-results",
 }
 
@@ -191,8 +195,8 @@ def schema(staging: Path) -> Section:
     from sqlalchemy.dialects import postgresql, sqlite
     from sqlalchemy.schema import CreateTable
 
-    from afterlap_api.db.models import Base
     from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION
+    from afterlap_infrastructure.persistence.models import Base
 
     out = staging / "schema"
     out.mkdir(parents=True, exist_ok=True)
@@ -281,16 +285,11 @@ def migrations(root: Path, staging: Path) -> Section:
 
 
 def frontend(root: Path, staging: Path, dist: Path | None) -> Section:
-    """Built Next.js standalone output, or an honest statement that it was not built."""
-    candidate = dist or (root / "apps" / "web" / ".next" / "standalone")
+    """Built web assets, or an honest statement that they were not built."""
+    candidate = dist or (root / "apps" / "web" / "dist")
+    index = candidate / "index.html"
     build_command = "bun install --frozen-lockfile && bun run build"
-    entry_candidates = (
-        candidate / "apps" / "web" / "server.js",
-        candidate / "server.js",
-        candidate / "index.html",
-    )
-    entry = next((path for path in entry_candidates if path.is_file()), None)
-    if entry is None:
+    if not index.is_file():
         return Section(
             "frontend_assets",
             "unavailable",
@@ -307,13 +306,13 @@ def frontend(root: Path, staging: Path, dist: Path | None) -> Section:
         detail=f"{len(files)} file(s) copied from {candidate}",
         data={
             "source": str(candidate),
-            "entry": str(entry.relative_to(candidate)).replace("\\", "/"),
+            "entry": "web/index.html",
             "file_count": len(files),
             "total_bytes": sum(p.stat().st_size for p in files),
             "build_command": build_command,
             "note": (
-                "Served by the Next.js process. Public HTTP is same-origin /api/v1; "
-                "Python work goes through python -m afterlap_api.cli."
+                "Served by nginx in infra/docker-compose.yml, which proxies /api and /ws on the "
+                "same origin. No API host is compiled into the bundle."
             ),
         },
     )
@@ -659,11 +658,11 @@ cd source
 uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor        # must report contracts, numerics, storage available
 
-AFTERLAP_ENV=development uv run python -m afterlap_api.cli serve \\
+AFTERLAP_ENV=development uv run python -m uvicorn afterlap_api.main:app \\
     --host 127.0.0.1 --port 8000
 
 # second terminal
-bun run --filter @afterlap/web dev
+cd apps/web && bun install --frozen-lockfile && bunx vite --port 5200
 ```
 
 The API creates its schema on startup, so no separate migration step is needed

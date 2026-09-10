@@ -5,15 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { useSessionStore } from '@/state/sessionStore';
 import { SESSION_SNAPSHOT } from '@/test/contractFixtures';
 import { telemetryEnvelope } from '@/test/envelopes';
-import type {
-  FakeSocket} from '../engineer/testUtils';
+import type { FakeSocket } from '@/test/testUtils';
 import {
   apiClientFor,
   makeFetch,
   renderRoute,
-  socketFactory,
+  sourceFactory,
   type FetchStub,
-} from '../engineer/testUtils';
+} from '@/test/testUtils';
 import { ReplayView } from './ReplayView';
 
 const SESSION_ID = SESSION_SNAPSHOT.session_id;
@@ -27,7 +26,7 @@ function handlers(snapshot: unknown = SESSION_SNAPSHOT): Parameters<typeof makeF
 function renderReplay(stub: FetchStub, sockets: FakeSocket[] = []) {
   const client = apiClientFor(stub);
   return renderRoute(
-    <ReplayView runtimeOptions={{ client, sourceFactory: socketFactory(sockets) }} />,
+    <ReplayView runtimeOptions={{ client, sourceFactory: sourceFactory(sockets) }} />,
     { path: PATH, route: ROUTE },
   );
 }

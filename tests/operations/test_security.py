@@ -118,6 +118,7 @@ def test_a_real_export_writes_only_inside_the_storage_root(tmp_path: Path):
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -140,9 +141,13 @@ def test_a_real_export_writes_only_inside_the_storage_root(tmp_path: Path):
             headers={"Idempotency-Key": "security-export"},
         )
         assert export.status_code == 201, export.text
-        written = Path(export.json()["path"])
+        reported = export.json()["path"]
+        assert not Path(reported).is_absolute(), (
+            f"the export response names an absolute server path ({reported})"
+        )
+        written = tmp_path / reported
         assert written.is_file()
-        assert written.is_relative_to((tmp_path / "artifacts" / "exports").resolve()), written
+        assert written.resolve().is_relative_to((tmp_path / "artifacts" / "exports").resolve()), written
 
     strays = [p for p in tmp_path.iterdir() if p.is_file() and p.suffix in {".json", ".csv"}]
     assert strays == [], f"the export wrote outside the artefact tree: {strays}"
@@ -158,6 +163,7 @@ def test_a_non_simulation_session_refuses_a_simulator_driver_action(tmp_path: Pa
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / f'api-{mode.value}.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -249,6 +255,7 @@ def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -290,7 +297,7 @@ def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
             headers={"Idempotency-Key": "credential-export"},
         )
         assert export.status_code == 201, export.text
-        body = Path(export.json()["path"]).read_text(encoding="utf-8")
+        body = (tmp_path / export.json()["path"]).read_text(encoding="utf-8")
         assert SECRET not in body, "the export file contains the database credential"
         assert "afterlap-db.invalid" not in body, "the export names the private source host"
 

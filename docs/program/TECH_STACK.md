@@ -15,28 +15,29 @@ This is the implementation decision, not a list of alternatives. All production 
 | Charts | uPlot; SVG track view | Linked numeric traces and circuit position. Provide accessible numeric summaries. |
 | API | Next.js Route Handlers invoking `python -m afterlap_api.cli` | Public HTTP/SSE control plane. Python owns session runtime, numerics and persistence. |
 | Contracts | Pydantic → JSON Schema/OpenAPI → openapi-typescript; Ajv | One schema authority, generated types and runtime event validation. |
-| Numerics | NumPy, SciPy, float64 physics | Dynamics, filters, likelihoods and reference checks. |
-| Planner | CasADi, acados | Symbolic dynamics and compiled continuous optimal-control subproblems. Discrete tactics stay in the outer enumerator. |
+| Numerics | NumPy, float64 physics | Dynamics, filters, likelihoods and reference checks. SciPy is needed only for track ingestion and ships in the `track-ingestion` group. |
+| Planner | CasADi, IPOPT | Symbolic dynamics and continuous optimal-control subproblems. Discrete tactics stay in the outer enumerator. acados is not built on this platform; see `infra/README.md` D-02. |
 | ML/RL | PyTorch 2, Gymnasium, Stable-Baselines3 SAC | Continuous policy training and separate ordinary-return estimator. |
-| Calibration | scikit-learn | Calibration/regression diagnostics and frozen calibrators. |
 | Database | PostgreSQL 17, SQLAlchemy 2, Alembic, psycopg 3 | Transactional events, commands, leases, outbox and manifests. |
-| Trajectories | PyArrow Parquet, DuckDB | Columnar recordings and offline interrogation. |
+| Trajectories | PyArrow Parquet | Columnar recordings, installed by the `data` dependency group. |
 | Model artifacts | Local content-addressed filesystem | Weights/reports keyed by SHA-256; database holds references. |
 | Tests | pytest, Hypothesis, Vitest, Testing Library, Playwright, axe-core | Numerical invariants, contracts, component state and connected browser workflows. |
 | Static checks | Ruff, mypy, ESLint, TypeScript compiler | Authored-code quality and type correctness. |
 | Packaging | Compose, Linux numerical image, Next.js | Reproducible local product with same-origin API/SSE routing. |
-| Diagnostics | JSON logging, Prometheus client, TensorBoard | Correlated operational metrics and offline training traces; no cloud account required. |
+| Diagnostics | JSON logging, TensorBoard | Correlated operational metrics and offline training traces; no cloud account required. `/metrics` serves JSON, not the Prometheus text format. |
 
 ## Canonical source paths
 
-Use uv members `packages/contracts`, `packages/core`, `apps/api`, each with a pyproject. Root owns dev tools and workspace configuration. Use direct Python package layout:
+Use uv members `packages/contracts`, `packages/core`, `packages/application`, `packages/infrastructure` and `apps/api`, each with a pyproject. Root owns dev tools and workspace configuration. Use direct Python package layout:
 
 ```text
 packages/contracts/afterlap_contracts/   # authoritative Pydantic models
 packages/contracts/generated/           # JSON schemas and TypeScript output
 packages/core/afterlap_core/
   data/ simulation/ rules/ estimation/ planning/ learning/
-apps/api/afterlap_api/                   # CLI, session runtime and persistence adapters
+packages/application/afterlap_application/  # session runtime ports and process spawn
+packages/infrastructure/afterlap_infrastructure/  # persistence adapters
+apps/api/afterlap_api/                   # CLI, loopback FastAPI, composition
 workers/                                # thin process launchers importing packages
 apps/web/src/
   app/                                  # Next.js layouts, pages and route handlers

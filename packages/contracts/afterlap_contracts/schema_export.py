@@ -12,6 +12,20 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .base import SCHEMA_VERSION
+from .catalogue import (
+    CentrelineResponse,
+    ConditionsListResponse,
+    ConditionsSummary,
+    EventOverlaySummary,
+    FeatureSummary,
+    ScenarioListResponse,
+    ScenarioSummary,
+    SourceSummary,
+    TrackDetailResponse,
+    TrackListResponse,
+    TrackSummary,
+    ValidationSummary,
+)
 from .errors import ApiError, ApiErrorResponse
 from .estimate import StateEstimate
 from .events import StreamEnvelope
@@ -34,14 +48,20 @@ from .planning import CandidatePlan, PlanningResult, Recommendation
 from .requests import (
     AcquireLeaseRequest,
     AcquireLeaseResponse,
+    CancelExperimentRequest,
     CreateExperimentRequest,
+    CreateExperimentResponse,
+    CreateExportRequest,
     CreateSessionRequest,
     CreateSessionResponse,
+    CreateSnapshotRequest,
+    CreateSnapshotResponse,
     DecisionEvidenceResponse,
     DriverActionRequest,
     DriverActionResponse,
     ExperimentStatusResponse,
     ExportJobResponse,
+    HealthResponse,
     ModelListResponse,
     RecommendationActionRequest,
     RecommendationActionResponse,
@@ -98,12 +118,30 @@ EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     RecommendationActionResponse,
     DriverActionRequest,
     DriverActionResponse,
+    CreateSnapshotRequest,
+    CreateSnapshotResponse,
     CreateExperimentRequest,
+    CreateExperimentResponse,
+    CancelExperimentRequest,
     ExperimentStatusResponse,
     ModelListResponse,
     RulesetResponse,
+    CreateExportRequest,
     ExportJobResponse,
+    HealthResponse,
     DecisionEvidenceResponse,
+    SourceSummary,
+    EventOverlaySummary,
+    TrackSummary,
+    ValidationSummary,
+    FeatureSummary,
+    TrackListResponse,
+    TrackDetailResponse,
+    CentrelineResponse,
+    ConditionsSummary,
+    ConditionsListResponse,
+    ScenarioSummary,
+    ScenarioListResponse,
 )
 
 

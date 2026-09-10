@@ -178,6 +178,26 @@ class ApprovalStatus(StrEnum):
     APPROVED = "approved"
 
 
+class TrackReadiness(StrEnum):
+    """Readiness ladder of a physical circuit (TRACK_REGISTRY_2026.md).
+
+    Each rung is derived from evidence by the independent validator; a rung is
+    never set by hand and ``rejected`` sits below every other rung.
+
+    This deliberately restates ``afterlap_core.tracks.package.ReadinessStatus``
+    rather than importing it: contracts is the innermost layer and depends on
+    no domain package. ``tests/contracts/test_readiness_enum.py`` fails if the
+    two ladders ever diverge, so the duplication cannot drift silently.
+    """
+
+    DISCOVERED = "discovered"
+    GEOMETRY_VALIDATED = "geometry_validated"
+    EVENT_RULES_VALIDATED = "event_rules_validated"
+    CONDITION_CALIBRATED = "condition_calibrated"
+    SIMULATION_ELIGIBLE = "simulation_eligible"
+    REJECTED = "rejected"
+
+
 class CalibrationStatus(StrEnum):
     """Whether a probability has been calibrated against held-out outcomes."""
 
@@ -282,4 +302,5 @@ __all__ = [
     "SessionCommandKind",
     "SessionMode",
     "StreamEventType",
+    "TrackReadiness",
 ]

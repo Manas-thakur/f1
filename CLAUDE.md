@@ -20,6 +20,7 @@ uv sync --frozen --all-packages
 uv run python -m afterlap_core.cli doctor
 uv run python -m afterlap_api.cli serve
 bun run --filter @afterlap/web dev
+
 uv run pytest tests/contracts tests/numerics
 bun run typecheck
 bun run test

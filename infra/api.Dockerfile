@@ -43,6 +43,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock .python-version ./
 COPY packages/contracts/pyproject.toml packages/contracts/
 COPY packages/core/pyproject.toml packages/core/
+COPY packages/application/pyproject.toml packages/application/
+COPY packages/infrastructure/pyproject.toml packages/infrastructure/
 COPY apps/api/pyproject.toml apps/api/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --all-packages --all-extras --no-extra learning \

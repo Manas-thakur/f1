@@ -6,7 +6,7 @@ import { apiClient, type ApiClient } from '@/api/client';
 import { commandKeys, runCommand } from '@/api/commands';
 import { guidanceFor } from '@/api/errors';
 import { useSessionStore } from '@/state/sessionStore';
-import { CONSOLE_OPERATOR_ID } from './operator';
+import { CONSOLE_OPERATOR_ID } from '@/shell/operator';
 
 export interface ActionOutcome {
   readonly action: OperatorAction;

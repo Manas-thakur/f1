@@ -11,7 +11,7 @@ import os
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from fastapi import Depends, Header, Request
 from sqlalchemy.orm import Session as OrmSession
@@ -30,7 +30,15 @@ DEV_OPERATOR = "engineer-dev"
 
 @dataclass(slots=True)
 class Settings:
-    """Runtime configuration. No default production secret exists."""
+    """Runtime configuration. No default production secret exists.
+
+    ``session_runtime_backend`` defaults to ``"process"`` because that is what
+    a deployment runs: physics, estimation, planning and the solver belong in
+    the session's own process, not on the event loop. ``"in_process"`` selects
+    :class:`~afterlap_api.session.runtime.InProcessSessionRuntime`, which is a
+    development and test adapter — it is faster to drive and lets a test reach
+    the runtime object directly, and it is never the default.
+    """
 
     database_url: str = field(default_factory=default_database_url)
     host: str = "127.0.0.1"
@@ -39,15 +47,26 @@ class Settings:
     artifact_root: Path | None = None
     lease_ttl_s: float = 120.0
     stream_buffer: int = 512
+    session_runtime_backend: Literal["process", "in_process"] = "process"
+    session_queue_size: int = 32
+    session_command_timeout_s: float = 30.0
 
     @classmethod
     def from_environment(cls) -> Settings:
         development = os.environ.get("AFTERLAP_ENV", "development") == "development"
+        artifact_root = os.environ.get("AFTERLAP_ARTIFACT_ROOT")
+        backend = os.environ.get("AFTERLAP_SESSION_RUNTIME", "process")
+        if backend not in ("process", "in_process"):
+            raise ValueError("AFTERLAP_SESSION_RUNTIME must be 'process' or 'in_process'")
         return cls(
             database_url=default_database_url(),
             host=os.environ.get("AFTERLAP_HOST", "127.0.0.1"),
             port=int(os.environ.get("AFTERLAP_PORT", "8000")),
             development_mode=development,
+            artifact_root=None if artifact_root is None else Path(artifact_root),
+            session_runtime_backend=backend,
+            session_queue_size=int(os.environ.get("AFTERLAP_SESSION_QUEUE_SIZE", "32")),
+            session_command_timeout_s=float(os.environ.get("AFTERLAP_SESSION_COMMAND_TIMEOUT_S", "30")),
         )
 
     def bootstrap_operator(self) -> str:

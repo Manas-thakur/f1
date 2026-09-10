@@ -27,7 +27,13 @@ from pathlib import Path
 
 def _ensure_workspace_on_path() -> None:
     root = Path(__file__).resolve().parents[1]
-    for candidate in (root / "apps" / "api", root / "packages" / "core", root / "packages" / "contracts"):
+    for candidate in (
+        root / "apps" / "api",
+        root / "packages" / "core",
+        root / "packages" / "contracts",
+        root / "packages" / "infrastructure",
+        root / "packages" / "application",
+    ):
         if candidate.is_dir() and str(candidate) not in sys.path:
             sys.path.insert(0, str(candidate))
 
@@ -37,8 +43,8 @@ def _wait_for_database(url: str, timeout_s: float) -> float:
     from sqlalchemy import text
     from sqlalchemy.exc import SQLAlchemyError
 
-    from afterlap_api.db.engine import create_db_engine
     from afterlap_core.diagnostics import redact
+    from afterlap_infrastructure.persistence.engine import create_db_engine
 
     started = time.monotonic()
     deadline = started + timeout_s
@@ -80,15 +86,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        from afterlap_api.db.engine import create_db_engine, default_database_url
+        from afterlap_infrastructure.persistence.engine import create_db_engine, default_database_url
     except ModuleNotFoundError:
         _ensure_workspace_on_path()
-        from afterlap_api.db.engine import create_db_engine, default_database_url
+        from afterlap_infrastructure.persistence.engine import create_db_engine, default_database_url
 
     from sqlalchemy import inspect, text
 
-    from afterlap_api.db.engine import ensure_schema
     from afterlap_core.diagnostics import redact
+    from afterlap_infrastructure.persistence.engine import ensure_schema
 
     url = args.url or default_database_url()
     if args.wait_for_database > 0.0:

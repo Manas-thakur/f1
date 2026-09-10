@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { RULE_MANIFEST } from '../engineer/testFixtures';
-import { apiError, makeFetch, renderRoute, type FetchStub } from '../engineer/testUtils';
+import { RULE_MANIFEST } from '@/test/testFixtures';
+import { apiError, makeFetch, renderRoute, type FetchStub } from '@/test/testUtils';
 import { RulesetView } from './RulesetView';
 
 const PATH = '/rulesets/synthetic-pack-v1';

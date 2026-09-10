@@ -47,6 +47,7 @@ def _settings(root: Path) -> Settings:
     return Settings(
         database_url=f"sqlite+pysqlite:///{(root / 'afterlap.sqlite3').as_posix()}",
         artifact_root=root,
+        session_runtime_backend="in_process",
     )
 
 

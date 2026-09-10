@@ -8,12 +8,14 @@ adds is a stable *operational* entry point:
 * it works without an installed console script, so the compose image and a
   bare checkout invoke the same command;
 * it forwards ``--json`` and ``--strict`` untouched;
-* it exits non-zero when a required capability is unavailable, which is what
-  makes it usable as a container start gate.
+* it exits non-zero when a capability has *failed*, which is what makes it
+  usable as a container start gate. An optional external or native capability
+  that is simply not installed is reported as absent and does not fail the
+  gate; only `--strict` treats absence as a failure.
 
     python scripts/doctor.py
     python scripts/doctor.py --json
-    python scripts/doctor.py --strict      # also non-zero on a degraded capability
+    python scripts/doctor.py --strict      # also non-zero on absent or degraded
 
 `doctor` prints no secrets: `check_database` reports only the URL scheme and
 `afterlap_core.diagnostics.redact` strips any userinfo before anything is
@@ -29,7 +31,13 @@ from pathlib import Path
 def _ensure_workspace_on_path() -> None:
     """Allow `python scripts/doctor.py` from a checkout without an install."""
     root = Path(__file__).resolve().parents[1]
-    for candidate in (root / "packages" / "core", root / "packages" / "contracts", root / "apps" / "api"):
+    for candidate in (
+        root / "packages" / "core",
+        root / "packages" / "contracts",
+        root / "packages" / "infrastructure",
+        root / "packages" / "application",
+        root / "apps" / "api",
+    ):
         if candidate.is_dir() and str(candidate) not in sys.path:
             sys.path.insert(0, str(candidate))
 

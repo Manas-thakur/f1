@@ -25,6 +25,18 @@ from afterlap_core.data import (
 from .conftest import SESSION_ID, observation, public_config, simulator_config
 
 MAPPING_REVISION = "sim-observation-map-1"
+
+try:
+    import pyarrow as pa  # noqa: F401
+
+    HAS_PARQUET = True
+except ImportError:
+    HAS_PARQUET = False
+
+requires_parquet = pytest.mark.skipif(
+    not HAS_PARQUET, reason="reads or writes parquet chunks, which needs pyarrow"
+)
+
 SETTINGS = settings(
     max_examples=40,
     deadline=None,
@@ -61,6 +73,7 @@ def _normalise(records) -> list:
     return sink.normalised
 
 
+@requires_parquet
 @SETTINGS
 @given(records=event_streams())
 def test_recording_then_replaying_reproduces_the_same_normalised_sequence(records):

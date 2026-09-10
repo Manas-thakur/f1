@@ -192,6 +192,7 @@ def client(tmp_path):
     settings = Settings(
         database_url=f"sqlite+pysqlite:///{(tmp_path / 'routes.sqlite3').as_posix()}",
         artifact_root=tmp_path,
+        session_runtime_backend="in_process",
     )
     app: FastAPI = create_app(settings)
     app.include_router(experiments_routes.router, prefix=API_PREFIX, tags=["experiments"])
@@ -328,7 +329,11 @@ def test_an_export_writes_inside_the_storage_root_and_redacts_credentials(client
     assert body["synthetic"] is True
     assert body["hashes"]["content"].startswith("sha256:")
 
-    written = Path(body["path"])
+    assert not Path(body["path"]).is_absolute(), (
+        f"the export response names an absolute server path ({body['path']}); a route must "
+        "describe the artefact, not the machine it happens to sit on"
+    )
+    written = tmp_path / body["path"]
     exports_root = (tmp_path / "artifacts" / "exports").resolve()
     assert written.resolve().is_relative_to(exports_root), "the export escaped the storage root"
     document = json.loads(written.read_text(encoding="utf-8"))

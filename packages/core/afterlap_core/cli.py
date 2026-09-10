@@ -15,7 +15,7 @@ import typer
 
 from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION, CapabilityState
 
-from .diagnostics import run_doctor
+from .diagnostics import CapabilityKind, run_doctor
 from .paths import Paths
 
 app = typer.Typer(
@@ -30,14 +30,22 @@ app = typer.Typer(
 def doctor(
     json_output: Annotated[bool, typer.Option("--json", help="Emit machine-readable results.")] = False,
     strict: Annotated[
-        bool, typer.Option("--strict", help="Exit non-zero when any capability is degraded.")
+        bool,
+        typer.Option("--strict", help="Exit non-zero when any capability is absent or degraded."),
     ] = False,
 ) -> None:
     """Check manifests, artefact storage and numerical solver availability.
 
-    Prints no secrets. Exits non-zero when a required capability is missing.
+    Prints no secrets. Exits 1 on a genuine failure: a capability that is
+    installed and answers wrongly, or a probe that errored. An optional
+    capability nobody installed is printed and does not fail the gate, so a
+    default install passes. ``--strict`` additionally exits 2 when anything is
+    absent or degraded.
     """
     report = run_doctor(Paths.default())
+    absent = report.absent
+    failed = report.failed
+    degraded = [c for c in report.degraded if c.kind is not CapabilityKind.ABSENT]
 
     if json_output:
         typer.echo(
@@ -49,6 +57,7 @@ def doctor(
                         {
                             "name": c.name,
                             "state": c.state.value,
+                            "kind": c.kind.value,
                             "detail": c.detail,
                             "version": c.version,
                         }
@@ -60,15 +69,18 @@ def doctor(
         )
     else:
         typer.echo(report.render())
-        if report.unavailable:
+        if failed:
             typer.echo("")
-            typer.echo(f"unavailable capabilities: {', '.join(c.name for c in report.unavailable)}")
-        if report.degraded:
-            typer.echo(f"degraded capabilities: {', '.join(c.name for c in report.degraded)}")
+            typer.echo(f"failed capabilities: {', '.join(c.name for c in failed)}")
+        if absent:
+            typer.echo("")
+            typer.echo("absent optional capabilities (not a failure): " + ", ".join(c.name for c in absent))
+        if degraded:
+            typer.echo(f"degraded capabilities: {', '.join(c.name for c in degraded)}")
 
-    if report.unavailable:
+    if failed:
         raise typer.Exit(code=1)
-    if strict and report.degraded:
+    if strict and (absent or report.degraded):
         raise typer.Exit(code=2)
 
 

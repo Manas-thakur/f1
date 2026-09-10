@@ -141,12 +141,17 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-    # The image's healthcheck probes the API's readiness endpoint. This service
-    # runs no HTTP server, so it is disabled rather than left to fail: a
-    # container reporting unhealthy for a reason nobody intends is worse than
-    # one reporting nothing.
+    # The image's healthcheck probes the API's readiness endpoint, which this
+    # service does not serve. It probes its own heartbeat instead: the worker
+    # writes one per poll into the shared artefact root, so a wedged worker is
+    # distinguishable from an idle one. `start_period` covers the first poll
+    # after the database wait.
     healthcheck:
-      disable: true
+      test: ["CMD", "python", "/app/scripts/batch_worker_main.py", "--healthcheck"]
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     deploy:
       resources:
         limits:

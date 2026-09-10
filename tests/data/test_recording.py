@@ -24,6 +24,17 @@ from .conftest import SESSION_ID, observation, simulator_config
 
 MAPPING_REVISION = SIMULATOR_MAPPING_REVISION
 
+try:
+    import pyarrow as pa  # noqa: F401
+
+    HAS_PARQUET = True
+except ImportError:
+    HAS_PARQUET = False
+
+requires_parquet = pytest.mark.skipif(
+    not HAS_PARQUET, reason="reads or writes parquet chunks, which needs pyarrow"
+)
+
 SECRETS = {
     "api_token": "tok_live_9f3ab7c21e",
     "cookie": "session=abcdef123456; Path=/",
@@ -62,6 +73,7 @@ def _recorded(tmp_path, count: int = 12, chunk_duration_s: float = 0.2):
     return sink, recorder
 
 
+@requires_parquet
 def test_chunk_hashes_verify(tmp_path):
     _sink, recorder = _recorded(tmp_path)
     published = recorder.flush()
@@ -76,6 +88,7 @@ def test_chunk_hashes_verify(tmp_path):
         assert chunk.end_session_time_s >= chunk.start_session_time_s
 
 
+@requires_parquet
 def test_a_corrupted_chunk_fails_verification(tmp_path):
     _, recorder = _recorded(tmp_path)
     recorder.flush()
@@ -87,6 +100,7 @@ def test_a_corrupted_chunk_fails_verification(tmp_path):
     assert "does not match manifest" in failures[0]
 
 
+@requires_parquet
 def test_a_reader_sees_only_completed_chunks(tmp_path):
     _, recorder = _recorded(tmp_path)
     pending = recorder.stage()
@@ -107,6 +121,7 @@ def test_a_reader_sees_only_completed_chunks(tmp_path):
         assert not chunk.staging_path.exists()
 
 
+@requires_parquet
 def test_raw_and_canonical_records_are_kept_separately_with_their_mapping_revision(tmp_path):
     sink, recorder = _recorded(tmp_path)
     recorder.flush()
@@ -127,6 +142,7 @@ def test_raw_and_canonical_records_are_kept_separately_with_their_mapping_revisi
     assert "speed_mps" in fields and "battery_energy_j" in fields
 
 
+@requires_parquet
 def test_chunks_are_partitioned_by_car_family_and_time(tmp_path):
     _, recorder = _recorded(tmp_path, count=12, chunk_duration_s=0.2)
     recorder.flush()
@@ -140,6 +156,7 @@ def test_chunks_are_partitioned_by_car_family_and_time(tmp_path):
     assert len(chunk_indices) > 1
 
 
+@requires_parquet
 def test_a_missing_value_survives_recording_as_null_not_zero(tmp_path):
     sink = MemorySink()
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=0.0), sink=sink)
@@ -156,6 +173,7 @@ def test_a_missing_value_survives_recording_as_null_not_zero(tmp_path):
     assert rows[0]["reason"]
 
 
+@requires_parquet
 def test_acquisition_manifest_records_source_url_license_and_terms_review(tmp_path):
     _, recorder = _recorded(tmp_path)
     recorder.flush()
@@ -181,6 +199,7 @@ def test_acquisition_manifest_records_source_url_license_and_terms_review(tmp_pa
     assert source["synthetic"] is True
 
 
+@requires_parquet
 def test_credentials_in_a_source_config_never_appear_in_a_manifest(tmp_path):
     _, recorder = _recorded(tmp_path)
     recorder.flush()
@@ -239,6 +258,7 @@ def test_redaction_walks_nested_structures():
     assert redacted["sources"][0]["name"] == "team"
 
 
+@requires_parquet
 def test_manifest_is_replaced_atomically_and_never_left_partial(tmp_path):
     _, recorder = _recorded(tmp_path)
     recorder.flush()

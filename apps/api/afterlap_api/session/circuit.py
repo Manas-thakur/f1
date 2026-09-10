@@ -29,7 +29,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from afterlap_contracts import ErrorCode
+from afterlap_contracts import MINIMUM_READINESS_TO_DRIVE, REAL_CIRCUIT_LABEL, ErrorCode
 from afterlap_core.conditions import ConditionsTape, ConditionsUnavailable, environment_for, load_conditions
 from afterlap_core.config import list_configs
 from afterlap_core.paths import Paths, sha256_json
@@ -52,11 +52,13 @@ from afterlap_core.tracks.registry import load_registry
 
 from ..db import LifecycleError
 
-REAL_CIRCUIT_LABEL = "real_circuit_synthetic_energy"
-"""D-10: genuine geometry, synthetic energy. Never a claim of measured fidelity."""
+MINIMUM_READINESS = ReadinessStatus(MINIMUM_READINESS_TO_DRIVE)
+"""``load_track`` refuses anything below this rung; so does this module, first, with a reason.
 
-MINIMUM_READINESS = ReadinessStatus.GEOMETRY_VALIDATED
-"""``load_track`` refuses anything below this rung; so does this module, first, with a reason."""
+Derived from the contract constant rather than restated, so the rung the
+catalogue advertises as ``minimum_readiness_to_drive`` and the rung a session
+is actually refused below cannot drift apart.
+"""
 
 SYNTHETIC_SKETCH_GEOMETRY_NOTE = (
     "Track geometry is a synthetic sketch, not a compiled real circuit: curvature, grade and "

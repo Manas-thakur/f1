@@ -58,6 +58,7 @@ from ..db.models import (
     TelemetryChunk,
 )
 from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+from ..redaction import artefact_relative
 from ..session.circuit import REAL_CIRCUIT_LABEL
 
 if TYPE_CHECKING:
@@ -342,7 +343,7 @@ async def create_export(
     return ExportJobResponse(
         export_id=export_id,
         status=JobStatus.COMPLETED,
-        path=str(written),
+        path=artefact_relative(written),
         hashes=dict(record.hashes or {}),
         synthetic=bool(row.synthetic),
         created_at=record.created_at or datetime.now(UTC),
@@ -378,7 +379,7 @@ async def get_export(export_id: str, db: DbSession) -> ExportJobResponse:
     return ExportJobResponse(
         export_id=record.id,
         status=JobStatus(record.status),
-        path=record.path,
+        path=None if record.path is None else artefact_relative(record.path),
         hashes=dict(record.hashes or {}),
         synthetic=record.synthetic,
         created_at=record.created_at or datetime.now(UTC),
