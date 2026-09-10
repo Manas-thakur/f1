@@ -632,9 +632,9 @@ export async function mockFeatureApi(page: Page, options: MockOptions = {}): Pro
         readonly url: string;
         readonly withCredentials = false;
         readyState = 0;
-        onopen: ((this: EventSource, ev: Event) => unknown) | null = null;
-        onmessage: ((this: EventSource, ev: MessageEvent) => unknown) | null = null;
-        onerror: ((this: EventSource, ev: Event) => unknown) | null = null;
+        onopen: ((ev: Event) => unknown) | null = null;
+        onmessage: ((ev: MessageEvent) => unknown) | null = null;
+        onerror: ((ev: Event) => unknown) | null = null;
         constructor(url: string) {
           this.url = url;
           queueMicrotask(() => {
@@ -642,15 +642,12 @@ export async function mockFeatureApi(page: Page, options: MockOptions = {}): Pro
               return;
             }
             this.readyState = HeldEventSource.OPEN;
-            this.onopen?.call(this as unknown as EventSource, new Event('open'));
+            this.onopen?.(new Event('open'));
             for (const payload of payloads) {
               if (this.readyState !== HeldEventSource.OPEN) {
                 return;
               }
-              this.onmessage?.call(
-                this as unknown as EventSource,
-                new MessageEvent('message', { data: payload }),
-              );
+              this.onmessage?.(new MessageEvent('message', { data: payload }));
             }
           });
         }
