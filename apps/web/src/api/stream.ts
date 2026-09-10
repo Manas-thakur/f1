@@ -42,6 +42,8 @@ export class SessionStream {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private resyncInFlight = false;
 
+  private lastResyncSequence: number | null = null;
+
   private readonly sessionId: string;
   private readonly store: StreamStoreBridge;
   private readonly client: ApiClient;
@@ -60,6 +62,7 @@ export class SessionStream {
 
   connect(): void {
     this.closedByUs = false;
+    this.lastResyncSequence = null;
     this.openSocket();
   }
 
@@ -116,7 +119,7 @@ export class SessionStream {
     }
   }
 
-  
+
   async resync(): Promise<void> {
     if (this.resyncInFlight) {
       return;
@@ -128,6 +131,9 @@ export class SessionStream {
       this.store.applyRestSnapshot(snapshot);
 
 
+      const stalled = this.lastResyncSequence === snapshot.last_sequence;
+      this.lastResyncSequence = snapshot.last_sequence;
+
       if (this.socket !== null) {
         const socket = this.socket;
         this.socket = null;
@@ -135,7 +141,11 @@ export class SessionStream {
         socket.close();
       }
       if (!this.closedByUs) {
-        this.openSocket();
+        if (stalled) {
+          this.reconnectTimer = setTimeout(() => this.openSocket(), this.reconnectDelayMs);
+        } else {
+          this.openSocket();
+        }
       }
     } catch {
       this.store.setConnection('reconnecting');

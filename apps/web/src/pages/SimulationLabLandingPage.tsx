@@ -156,7 +156,7 @@ export function SimulationLabLandingPage() {
       <section className={styles.webSection} aria-labelledby="open-lab">
         <div className={`${styles.webContainer} ${styles.ctaRow}`}>
           <h2 id="open-lab">Open the lab</h2>
-          <Link to="/sessions">Choose a session to branch from</Link>
+          <Link to="/lab">Configure a scenario in the laboratory</Link>
         </div>
       </section>
     </>

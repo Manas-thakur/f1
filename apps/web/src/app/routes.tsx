@@ -27,6 +27,8 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route path="sessions" element={<SessionsPage />} />
 
+        <Route path="lab" element={<SimulationLab />} />
+
         <Route path="sessions/:sessionId/engineer" element={<EngineerConsole />} />
 
         <Route path="sessions/:sessionId/lab" element={<SimulationLab />} />

@@ -42,6 +42,18 @@ describe('every state the specification names is reachable', () => {
     expect(status.detail).toContain('sequence gap');
   });
 
+  it('connecting: a reconnect does not claim it is still waiting for the first snapshot', () => {
+    const first = deriveConsoleStatus(
+      input({ connection: 'connecting', hasSnapshot: false, recommendation: null, estimate: null }),
+    );
+    expect(first.detail).toContain('first snapshot');
+
+    const again = deriveConsoleStatus(input({ connection: 'reconnecting' }));
+    expect(again.headline).toBe('connecting');
+    expect(again.detail).not.toContain('first snapshot');
+    expect(again.detail).toContain('reconnecting');
+  });
+
   it('healthy: sources valid and a live proposal', () => {
     expect(deriveConsoleStatus(input()).headline).toBe('healthy');
   });

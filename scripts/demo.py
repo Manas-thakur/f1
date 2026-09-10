@@ -6,12 +6,12 @@ browser. This file performs it against a **live API** and prints what it
 actually observed at every step. It is the demonstration; a screenshot is not.
 
     # terminal 1
-    AFTERLAP_ENV=development ./.venv/Scripts/python.exe -m uvicorn \
+    AFTERLAP_ENV=development uv run python -m uvicorn \
         afterlap_api.main:app --host 127.0.0.1 --port 8000
     # terminal 2
-    ./.venv/Scripts/python.exe scripts/demo.py
+    uv run python scripts/demo.py
 
-    ./.venv/Scripts/python.exe scripts/demo.py --base-url http://127.0.0.1:8080 --json report.json
+    uv run python scripts/demo.py --base-url http://127.0.0.1:8080 --json report.json
 
 Exit code 0 means every step below genuinely happened. Any step that does not
 happen raises :class:`DemoFailure` and the script exits 1 with the observation

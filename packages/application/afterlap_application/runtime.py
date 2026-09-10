@@ -171,7 +171,9 @@ class RuntimeRegistry:
         if self._factory is None:
             raise RuntimeUnavailable(
                 session_id,
-                "no session runtime is attached; start the session before requesting live state",
+                "no session runtime is attached to this process; a runtime is created when the "
+                "session is created and is not restored after the control plane restarts, so this "
+                "session can be read but not driven. Create a new session to run one.",
             )
         runtime = self._factory(session_id)
         self._runtimes[session_id] = runtime

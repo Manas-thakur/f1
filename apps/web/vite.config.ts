@@ -8,7 +8,7 @@ const contractsDir = fileURLToPath(new URL('../../packages/contracts/generated',
 const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 
-const API_ORIGIN = 'http://127.0.0.1:8000';
+const API_ORIGIN = process.env['AFTERLAP_API_ORIGIN'] ?? 'http://127.0.0.1:8000';
 
 export default defineConfig({
   plugins: [react()],
