@@ -167,6 +167,60 @@ def _release(handle: SessionWorkerHandle) -> None:
     handle.stop()
 
 
+class _BlockingHandle:
+    def __init__(self, session_id: str) -> None:
+        self.session_id = session_id
+        self.calls = 0
+        self.revision = 0
+        self.first_entered = threading.Event()
+        self.release_first = threading.Event()
+        self.guard = threading.Lock()
+
+    def request(self, command: WorkerCommand, *, timeout_s: float) -> WorkerResult:
+        with self.guard:
+            self.calls += 1
+            call = self.calls
+        if call == 1:
+            self.first_entered.set()
+            assert self.release_first.wait(timeout_s)
+        with self.guard:
+            assert command.expected_revision == self.revision
+            self.revision += 1
+            revision = self.revision
+        return WorkerResult(
+            command_id=command.command_id,
+            session_id=self.session_id,
+            revision=revision,
+            ok=True,
+            payload={"session_time_s": float(revision)},
+        )
+
+
+def test_process_proxy_serializes_concurrent_requests_and_cached_state() -> None:
+    runtime = ProcessSessionRuntime(_config("ops-process-concurrent"), command_timeout_s=5.0)
+    runtime._handle.stop()
+    handle = _BlockingHandle(runtime.config.session_id)
+    runtime._handle = handle  # type: ignore[assignment]
+    results: list[RuntimeTick] = []
+
+    first = threading.Thread(target=lambda: results.append(runtime.advance(1.0)))
+    second = threading.Thread(target=lambda: results.append(runtime.advance(1.0)))
+    first.start()
+    assert handle.first_entered.wait(1.0)
+    second.start()
+    time.sleep(0.1)
+    assert handle.calls == 1
+    handle.release_first.set()
+    first.join(2.0)
+    second.join(2.0)
+
+    assert not first.is_alive() and not second.is_alive()
+    assert handle.calls == 2
+    assert sorted(tick.revision for tick in results) == [1, 2]
+    assert runtime.revision == 2
+    assert runtime.current_tick().revision == 2
+
+
 class _LoopHarness:
     """`run_command_loop` served in this process over plain `queue.Queue` objects.
 

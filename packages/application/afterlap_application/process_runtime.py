@@ -34,6 +34,7 @@ import importlib
 import logging
 import multiprocessing as mp
 import queue as queue_module
+import threading
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -451,6 +452,7 @@ class SessionWorkerHandle:
         self._results: Any = self._context.Queue(maxsize=queue_size)
         self._process: Any = None
         self._closed = False
+        self._request_lock = threading.Lock()
 
     def start(self) -> None:
         if self.alive:
@@ -510,26 +512,27 @@ class SessionWorkerHandle:
         self, command: WorkerCommand, *, timeout_s: float = DEFAULT_COMMAND_TIMEOUT_S
     ) -> WorkerResult:
         """Send one command and return *its* result, never another command's."""
-        self.send(command)
-        deadline = time.monotonic() + timeout_s
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0.0:
-                raise WorkerUnavailable(f"no correlated result within {timeout_s} s")
-            result = self.receive(remaining)
-            if result.session_id != self.config.session_id:
-                raise WorkerUnavailable(
-                    f"the session worker answered for session {result.session_id!r}, "
-                    f"but this worker owns {self.config.session_id!r}"
+        with self._request_lock:
+            self.send(command)
+            deadline = time.monotonic() + timeout_s
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0.0:
+                    raise WorkerUnavailable(f"no correlated result within {timeout_s} s")
+                result = self.receive(remaining)
+                if result.session_id != self.config.session_id:
+                    raise WorkerUnavailable(
+                        f"the session worker answered for session {result.session_id!r}, "
+                        f"but this worker owns {self.config.session_id!r}"
+                    )
+                if result.command_id == command.command_id:
+                    return result
+                logger.warning(
+                    "session worker %s produced a result for %s while %s was outstanding; discarding it",
+                    self.config.session_id,
+                    result.command_id,
+                    command.command_id,
                 )
-            if result.command_id == command.command_id:
-                return result
-            logger.warning(
-                "session worker %s produced a result for %s while %s was outstanding; discarding it",
-                self.config.session_id,
-                result.command_id,
-                command.command_id,
-            )
 
     def stop(self, *, timeout_s: float = 10.0) -> None:
         """Ask the child to finish, then join it, then close both queues."""
@@ -602,6 +605,7 @@ class ProcessSessionRuntime:
     ) -> None:
         self.config = config
         self._handle = SessionWorkerHandle(config, queue_size=queue_size)
+        self._lock = threading.RLock()
         self._timeout_s = command_timeout_s
         self._revision = 0
         self._session_time_s = 0.0
@@ -637,71 +641,84 @@ class ProcessSessionRuntime:
         return self._session_time_s
 
     def initialise(self, manifest: SessionManifest, scenario_id: str, seed: int) -> RuntimeTick:
-        if manifest.id != self.config.session_id or scenario_id != self.config.scenario_id:
-            raise RuntimeUnavailable(manifest.id, "runtime configuration does not match the session manifest")
-        if seed != self.config.seed:
-            raise RuntimeUnavailable(manifest.id, "runtime seed does not match the session manifest")
-        self._handle.start()
-        return self._tick(self._request("initialise", expected_revision=ANY_REVISION))
+        with self._lock:
+            if manifest.id != self.config.session_id or scenario_id != self.config.scenario_id:
+                raise RuntimeUnavailable(
+                    manifest.id, "runtime configuration does not match the session manifest"
+                )
+            if seed != self.config.seed:
+                raise RuntimeUnavailable(manifest.id, "runtime seed does not match the session manifest")
+            self._handle.start()
+            return self._tick(self._request("initialise", expected_revision=ANY_REVISION))
 
     def current_tick(self) -> RuntimeTick:
-        return self._last_tick
+        with self._lock:
+            return self._last_tick
 
     def advance(self, duration_s: float) -> RuntimeTick:
-        if duration_s <= 0.0:
-            raise ValueError("advance needs a positive duration")
-        return self._tick(self._request("observe", duration_s=duration_s))
+        with self._lock:
+            if duration_s <= 0.0:
+                raise ValueError("advance needs a positive duration")
+            return self._tick(self._request("observe", duration_s=duration_s))
 
     def decide_now(self) -> RuntimeTick:
-        return self._tick(self._request("plan"))
+        with self._lock:
+            return self._tick(self._request("plan"))
 
     def pause(self) -> None:
-        self._request("pause")
-        self._paused = True
+        with self._lock:
+            self._request("pause")
+            self._paused = True
 
     def resume(self) -> None:
-        self._request("resume")
-        self._paused = False
+        with self._lock:
+            self._request("resume")
+            self._paused = False
 
     def queue_driver_input(
         self, profile_id: DeploymentProfile, *, recommendation_id: str | None = None
     ) -> QueuedInput:
         """Accept an input now; the child applies it after the reaction delay."""
-        result = self._request(
-            "apply_simulator_input",
-            profile_id=profile_id.value,
-            recommendation_id=recommendation_id,
-        )
-        return QueuedInput(
-            id=str(result.payload["queued_input_id"]),
-            apply_at_s=float(result.payload["apply_at_s"]),
-            delay_s=float(result.payload["reaction_delay_s"]),
-        )
+        with self._lock:
+            result = self._request(
+                "apply_simulator_input",
+                profile_id=profile_id.value,
+                recommendation_id=recommendation_id,
+            )
+            return QueuedInput(
+                id=str(result.payload["queued_input_id"]),
+                apply_at_s=float(result.payload["apply_at_s"]),
+                delay_s=float(result.payload["reaction_delay_s"]),
+            )
 
     def apply_driver_action(
         self, profile_id: DeploymentProfile, observed_at_s: float, recommendation_id: str | None
     ) -> ExecutionEvent:
-        result = self._request(
-            "apply_simulator_input",
-            profile_id=profile_id.value,
-            observed_at_s=observed_at_s,
-            recommendation_id=recommendation_id,
-        )
-        return ExecutionEvent.model_validate(result.payload["execution"])
+        with self._lock:
+            result = self._request(
+                "apply_simulator_input",
+                profile_id=profile_id.value,
+                observed_at_s=observed_at_s,
+                recommendation_id=recommendation_id,
+            )
+            return ExecutionEvent.model_validate(result.payload["execution"])
 
     def mark_communicated(self, recommendation_id: str, at_s: float | None = None) -> float:
-        result = self._request("mark_communicated", recommendation_id=recommendation_id, at_s=at_s)
-        return float(result.payload["communicated_at_s"])
+        with self._lock:
+            result = self._request("mark_communicated", recommendation_id=recommendation_id, at_s=at_s)
+            return float(result.payload["communicated_at_s"])
 
     def snapshot(self, label: str | None = None) -> tuple[str, dict[str, Any]]:
-        result = self._request("snapshot", label=label, include_payload=True)
-        payload = result.payload.get("payload")
-        if not isinstance(payload, dict):
-            raise RuntimeUnavailable(self.config.session_id, "the runtime returned no snapshot payload")
-        return str(result.payload["snapshot_hash"]), payload
+        with self._lock:
+            result = self._request("snapshot", label=label, include_payload=True)
+            payload = result.payload.get("payload")
+            if not isinstance(payload, dict):
+                raise RuntimeUnavailable(self.config.session_id, "the runtime returned no snapshot payload")
+            return str(result.payload["snapshot_hash"]), payload
 
     def restore(self, payload: dict[str, Any]) -> RuntimeTick:
-        return self._tick(self._request("restore", snapshot=payload))
+        with self._lock:
+            return self._tick(self._request("restore", snapshot=payload))
 
     def decision_health(self) -> RuntimeHealth:
         """A measured verdict, or an explicit unreachable one. Never raises.
@@ -765,11 +782,12 @@ class ProcessSessionRuntime:
 
     def stop(self) -> None:
         """Stop the session, join the child and close both queues. Idempotent."""
-        if self.alive:
-            with contextlib.suppress(RuntimeUnavailable):
-                self._request("stop", expected_revision=ANY_REVISION)
-        self._handle.stop()
-        self._stopped = True
+        with self._lock:
+            if self.alive:
+                with contextlib.suppress(RuntimeUnavailable):
+                    self._request("stop", expected_revision=ANY_REVISION)
+            self._handle.stop()
+            self._stopped = True
 
     def _request(
         self,
@@ -778,28 +796,29 @@ class ProcessSessionRuntime:
         expected_revision: int | None = None,
         **payload: Any,
     ) -> WorkerResult:
-        expected = self._revision if expected_revision is None else expected_revision
-        command = WorkerCommand.now(
-            kind,
-            self.config.session_id,
-            expected_revision=expected,
-            timeout_s=self._timeout_s,
-            **payload,
-        )
-        try:
-            result = self._handle.request(command, timeout_s=self._timeout_s)
-        except (WorkerBusy, WorkerUnavailable) as exc:
-            raise RuntimeUnavailable(self.config.session_id, str(exc)) from exc
-        if result.stale:
-            raise RuntimeUnavailable(self.config.session_id, result.detail or "stale runtime result")
-        if not result.ok:
-            raise RuntimeUnavailable(
-                self.config.session_id, result.detail or "session runtime command failed"
+        with self._lock:
+            expected = self._revision if expected_revision is None else expected_revision
+            command = WorkerCommand.now(
+                kind,
+                self.config.session_id,
+                expected_revision=expected,
+                timeout_s=self._timeout_s,
+                **payload,
             )
-        self._revision = result.revision
-        if "session_time_s" in result.payload:
-            self._session_time_s = float(result.payload["session_time_s"])
-        return result
+            try:
+                result = self._handle.request(command, timeout_s=self._timeout_s)
+            except (WorkerBusy, WorkerUnavailable) as exc:
+                raise RuntimeUnavailable(self.config.session_id, str(exc)) from exc
+            if result.stale:
+                raise RuntimeUnavailable(self.config.session_id, result.detail or "stale runtime result")
+            if not result.ok:
+                raise RuntimeUnavailable(
+                    self.config.session_id, result.detail or "session runtime command failed"
+                )
+            self._revision = result.revision
+            if "session_time_s" in result.payload:
+                self._session_time_s = float(result.payload["session_time_s"])
+            return result
 
     def _tick(self, result: WorkerResult) -> RuntimeTick:
         payload = result.payload
