@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { useSessionStore } from '../state/sessionStore';
 import { SESSION_SNAPSHOT } from '../test/contractFixtures';
-import { estimateEnvelope, heartbeatEnvelope, snapshotEnvelope } from '../test/envelopes';
+import {
+  estimateEnvelope,
+  heartbeatEnvelope,
+  resyncEnvelope,
+  snapshotEnvelope,
+} from '../test/envelopes';
 import { ApiClient } from './client';
 import { SessionStream, STREAM_BASE_PATH, streamUrl } from './stream';
 
@@ -143,6 +148,37 @@ describe('SessionStream', () => {
 
     expect(useSessionStore.getState().stream.resyncRequired).toBe(false);
     expect(getSnapshot).not.toHaveBeenCalled();
+    stream.close();
+  });
+
+  it('waits before reconnecting when a resync cannot advance the cursor', async () => {
+    const { client, getSnapshot } = snapshotClient();
+    FakeSocket.instances = [];
+    const stream = new SessionStream({
+      sessionId: SESSION_SNAPSHOT.session_id,
+      store: bridge(),
+      client,
+      sourceFactory: (url) => new FakeSocket(url) as unknown as EventSource,
+      reconnectDelayMs: 60_000,
+    });
+    stream.connect();
+
+    const first = FakeSocket.instances[0] as FakeSocket;
+    first.deliver(snapshotEnvelope());
+    first.deliver(resyncEnvelope(100));
+
+    await vi.waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(FakeSocket.instances.length).toBe(2));
+
+    const second = FakeSocket.instances[1] as FakeSocket;
+    second.deliver(resyncEnvelope(100));
+    await vi.waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(2));
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(FakeSocket.instances.length).toBe(2);
+    expect(getSnapshot).toHaveBeenCalledTimes(2);
+
     stream.close();
   });
 

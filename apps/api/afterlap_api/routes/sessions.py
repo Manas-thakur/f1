@@ -12,11 +12,12 @@ import contextlib
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
 import anyio.to_thread
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 
 from afterlap_contracts import (
@@ -28,6 +29,7 @@ from afterlap_contracts import (
     OperatorAction,
     OperatorEvent,
     Recommendation,
+    RecommendationStatus,
     RuntimeCapabilities,
     SessionManifest,
     SessionMode,
@@ -63,7 +65,10 @@ from ..db.models import (
     Decision,
     ExecutionEventRow,
     Manifest,
+    OperatorCommand,
+    RuleManifestRow,
     Session,
+    SessionEvent,
     SnapshotRow,
 )
 from ..db.repository import append_event, expire_due, next_sequence, require_lease
@@ -265,6 +270,38 @@ def _build_snapshot(request: Request, db: OrmSession, row: Session) -> SessionSn
     )
 
 
+def _pin_rule_manifest(request: Request, db: OrmSession, ruleset_id: str, ruleset_hash: str) -> None:
+    """Store the rule pack this session was checked against, once, by hash.
+
+    ``backend/TECHNICAL_SPEC.md`` keeps rule manifests in the store so a
+    decision's evidence resolves to the document that was actually in force,
+    not to whatever the file says later. Nothing wrote the table, so the pack a
+    session pinned could only ever be re-read from disk.
+
+    The document is stored only when it still hashes to what the session
+    pinned. A mismatch means the file moved under the run, and re-reading it
+    would file the wrong pack under the right hash; the store is left empty
+    and the read route says the pack is not loaded.
+    """
+    from .catalog import catalogue_paths
+    from .rulesets import pack_on_disk
+
+    if db.get(RuleManifestRow, ruleset_hash) is not None:
+        return
+    pack = pack_on_disk(ruleset_id, catalogue_paths(request))
+    if pack is None or pack.ruleset_hash != ruleset_hash:
+        return
+    db.add(
+        RuleManifestRow(
+            hash=ruleset_hash,
+            ruleset_id=pack.manifest.ruleset_id,
+            season_revision=pack.manifest.season_revision,
+            synthetic=pack.manifest.synthetic,
+            payload=pack.manifest.model_dump(mode="json"),
+        )
+    )
+
+
 @router.post("/sessions", response_model=CreateSessionResponse, status_code=201)
 async def create_session(
     request: Request,
@@ -289,6 +326,7 @@ async def create_session(
             payload=manifest.model_dump(mode="json"),
         )
     )
+    _pin_rule_manifest(request, db, payload.ruleset_id, manifest.ruleset_hash)
     row = Session(
         id=manifest.id,
         mode=manifest.mode.value,
@@ -405,6 +443,15 @@ async def run_command(
     db: CommandDbSession,
     idempotency_key: IdempotencyKey,
 ) -> SessionCommandResponse:
+    """Start, pause, resume, stop or step a session.
+
+    ``Session.last_sequence`` is the stream sequence allocator, claimed by
+    :func:`append_event` for every envelope a client can receive. A command is
+    not itself a stream envelope, so it must not claim one: a number handed out
+    here and never published leaves a permanent hole in the delta sequence, and
+    the browser reducer answers a hole by demanding a resync it can never
+    satisfy. The revision advances; the sequence belongs to the events.
+    """
     row = _session_row(db, session_id)
     require_lease(db, session_id, payload.operator_id, row.session_time_s)
 
@@ -439,7 +486,6 @@ async def run_command(
 
     values: dict[str, object] = {
         "revision": Session.revision + 1,
-        "last_sequence": Session.last_sequence + 1,
         "status": status_after,
     }
     if kind == "step" and tick is not None:
@@ -633,17 +679,91 @@ async def get_decision(decision_id: str, db: DbSession) -> DecisionEvidenceRespo
     return DecisionEvidenceResponse(
         recommendation=Recommendation.model_validate(decision.payload),
         estimate_revision=int(decision.estimate_payload["revision"]),
+        operator_events=_operator_events(db, decision),
         execution_events=tuple(ExecutionEvent.model_validate(e.payload) for e in executions),
     )
 
 
+def _operator_events(db: OrmSession, decision: Decision) -> tuple[OperatorEvent, ...]:
+    """The human actions taken on one decision, in server sequence order.
+
+    ``apply_operator_action`` stores each action twice on purpose: the audited
+    ``operator_action`` session event carries what was done and why, and the
+    ``operator_command`` row carries the idempotency key and the revision the
+    operator believed they were acting on. The evidence record needs both, so
+    they are joined here rather than one of them being dropped. A decision
+    nobody has acted on returns an empty tuple, which is what the console
+    renders as an empty timeline.
+    """
+    rows = db.execute(
+        select(SessionEvent, OperatorCommand)
+        .join(OperatorCommand, OperatorCommand.resulting_event_id == SessionEvent.id)
+        .where(
+            SessionEvent.session_id == decision.session_id,
+            SessionEvent.event_type == "operator_action",
+        )
+        .order_by(SessionEvent.sequence)
+    ).all()
+
+    events: list[OperatorEvent] = []
+    for event, command in rows:
+        payload = event.payload or {}
+        if payload.get("recommendation_id") != decision.id:
+            continue
+        resulting = payload.get("resulting_status")
+        events.append(
+            OperatorEvent(
+                schema_version=SCHEMA_VERSION,
+                id=event.id,
+                session_id=event.session_id,
+                idempotency_key=command.idempotency_key,
+                recommendation_id=decision.id,
+                expected_revision=command.expected_revision,
+                operator_id=payload.get("operator_id") or command.operator_id,
+                action=OperatorAction(payload["action"]),
+                reason=payload.get("reason"),
+                session_time_s=event.session_time_s,
+                sequence=event.sequence,
+                resulting_status=None if resulting is None else RecommendationStatus(resulting),
+            )
+        )
+    return tuple(events)
+
+
+def _durable_sequence(app: Any, session_id: str) -> int | None:
+    """The store's cursor for a session, or ``None`` when it cannot be read.
+
+    Called from a worker thread: the stream route must not block the event
+    loop on the database, and a store that cannot answer has to degrade to the
+    conservative subscription rather than refuse the connection.
+    """
+    database = getattr(app.state, "database", None)
+    factory = getattr(database, "factory", None)
+    if factory is None:
+        return None
+    try:
+        with factory() as db:
+            row = db.get(Session, session_id)
+            return None if row is None else int(row.last_sequence)
+    except SQLAlchemyError:
+        return None
+
+
 @router.websocket("/sessions/{session_id}/stream")
 async def stream(websocket: WebSocket, session_id: str, after_sequence: int = 0) -> None:
-    """Resume from ``after_sequence``; a cursor outside the buffer resyncs."""
+    """Resume from ``after_sequence``; a cursor outside the buffer resyncs.
+
+    The store's cursor travels with the subscription. A process that has
+    published nothing for this session yet — the state after every restart —
+    has no retained window to judge the request against, and the durable
+    sequence is the only thing that can tell a client that is current from one
+    that is behind or claiming events that were never issued.
+    """
     hub: StreamHub = websocket.app.state.hub
     await websocket.accept()
 
-    subscriber, _ = await hub.subscribe(session_id, after_sequence)
+    known = await anyio.to_thread.run_sync(_durable_sequence, websocket.app, session_id)
+    subscriber, _ = await hub.subscribe(session_id, after_sequence, known_sequence=known)
     started = time.monotonic()
 
     async def _pump() -> None:

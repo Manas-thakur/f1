@@ -1,4 +1,6 @@
 
+export const CURRENT_RULESET = 'current';
+
 export interface ModuleLink {
   readonly to: string;
   readonly label: string;
@@ -12,7 +14,10 @@ export interface ModuleGroup {
   readonly links: readonly ModuleLink[];
 }
 
-export function moduleGroups(sessionId: string | null): readonly ModuleGroup[] {
+export function moduleGroups(
+  sessionId: string | null,
+  rulesetHash: string | null = null,
+): readonly ModuleGroup[] {
   const sessionBase = sessionId === null ? null : `/sessions/${sessionId}`;
   return [
     {
@@ -20,7 +25,7 @@ export function moduleGroups(sessionId: string | null): readonly ModuleGroup[] {
       links: [
         { to: '/sessions', label: 'Sessions' },
         ...(sessionBase === null
-          ? []
+          ? [{ to: '/lab', label: 'Simulation lab' }]
           : [
               { to: `${sessionBase}/engineer`, label: 'Engineer console' },
               { to: `${sessionBase}/lab`, label: 'Simulation lab' },
@@ -33,7 +38,7 @@ export function moduleGroups(sessionId: string | null): readonly ModuleGroup[] {
       label: 'Evidence',
       links: [
         { to: '/models', label: 'Models' },
-        { to: '/rulesets/current', label: 'Rules' },
+        { to: `/rulesets/${rulesetHash ?? CURRENT_RULESET}`, label: 'Rules' },
       ],
     },
     {

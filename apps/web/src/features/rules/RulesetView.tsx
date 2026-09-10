@@ -15,6 +15,8 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
+import { CURRENT_RULESET } from '@/shell/modules';
+import { useSessionStore } from '@/state/sessionStore';
 import styles from '@/styles/workspace.module.css';
 
 function coverageTone(status: CoverageEntry['status']) {
@@ -86,7 +88,10 @@ const COVERAGE_COLUMNS: readonly Column<CoverageEntry>[] = [
 
 export function RulesetView() {
   const rulesetId = routeParam(useParams().rulesetId);
-  const query = useRuleset(rulesetId);
+  const sessionRulesetHash = useSessionStore((s) => s.server.manifest?.ruleset_hash ?? null);
+  const wantsCurrent = rulesetId === CURRENT_RULESET;
+  const resolvedId = wantsCurrent ? (sessionRulesetHash ?? undefined) : rulesetId;
+  const query = useRuleset(resolvedId);
   const manifest = query.data?.manifest ?? null;
   const error =
     query.error === null || query.error === undefined
@@ -115,7 +120,7 @@ export function RulesetView() {
           </p>
         </div>
         <div className={styles.headActions}>
-          <StatusBadge label="Pack id">{rulesetId ?? 'none'}</StatusBadge>
+          <StatusBadge label="Pack id">{resolvedId ?? rulesetId ?? 'none'}</StatusBadge>
           <StatusBadge
             label="Review state"
             tone={manifest?.reviewed === true ? 'verified' : 'attention'}
@@ -136,7 +141,13 @@ export function RulesetView() {
 
       {manifest === null ? (
         <Panel id="ruleset" title="Rule pack">
-          {query.isPending ? (
+          {wantsCurrent && resolvedId === undefined ? (
+            <EmptyState
+              artefact="session rule pack"
+              heading="No session is loaded, so there is no current pack"
+              reason="This view shows the pack the open session pinned. Open a session first; a pack can also be read directly by its id or by the hash a decision names."
+            />
+          ) : query.isPending ? (
             <p aria-busy="true">Reading the rule pack manifest…</p>
           ) : (
             <EmptyState

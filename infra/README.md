@@ -154,14 +154,37 @@ consistent with SQLite's `synchronous=FULL` fsync-per-commit on NTFS — several
 commits happen per step (decision, outbox, session row) — but that attribution
 was **not** isolated further and should not be quoted as a measured cause.
 
-Two consequences worth acting on:
+One observation worth keeping from that run: it produced the **same snapshot
+hash** on both platforms
+(`sha256:eab94853b460759caf76c31cff1411a4687f1075ccf3a29ec4e2c8a52efdfd43`), so
+the simulation is bit-reproducible across Windows and Linux for this scenario
+and seed. That is one observation, not a determinism proof.
 
-1. **Do not benchmark anything on the native Windows/SQLite path.** Numbers
-   from it are dominated by commit latency and say nothing about the product.
-2. The same run produced the **same snapshot hash** on both platforms
-   (`sha256:eab94853b460759caf76c31cff1411a4687f1075ccf3a29ec4e2c8a52efdfd43`),
-   so the simulation is bit-reproducible across Windows and Linux for this
-   scenario and seed. That is one observation, not a determinism proof.
+### The native column above no longer reproduces
+
+Re-measured on 10 September 2026 on the same machine, on branch
+`codex/browser-runtime-audit`, native Windows with the default SQLite store and
+`AFTERLAP_SESSION_RUNTIME=process`:
+
+| Measurement | Recorded above | Re-measured |
+|---|---|---|
+| Demo runbook, 13 steps | 159.44 s | **4.28 s** and 4.17 s (two runs) |
+| `step` command p50 | 5 905 ms | **61.7 ms** (min 56.7, p95 69.5, max 91.1, n=30) |
+
+Two things follow, and one does not.
+
+1. The 77× native-versus-container gap the table drew its conclusions from is
+   gone, so **"do not benchmark anything on the native path" is withdrawn**.
+   The native `step` p50 is now within the spread of the container figure
+   recorded above. Both are latency of the whole command path, not of physics.
+2. The compose column was **not** re-measured here, so this table no longer
+   compares two contemporaneous runs. Treat the container figures as belonging
+   to the build that produced them.
+
+What does *not* follow is an explanation. The plausible cause is the
+out-of-process session runtime that `fa841e6` made the default, which moves
+physics and the store writes off the request path — but that was not isolated,
+and neither figure was attributed to a cause here.
 
 ## Compose acceptance
 
@@ -185,32 +208,30 @@ session, not just healthy containers."* Verified, in this order:
 
 ## Known limitations of this packaging
 
-1. **The `batch` service's healthcheck is disabled.** It inherits the API
-   image, whose healthcheck probes `/api/v1/health/ready`; the batch worker
-   serves no HTTP. Disabling is better than a container permanently unhealthy
-   for a reason nobody intends, but it means compose cannot tell you the batch
-   worker has wedged. A real check would read its lease heartbeat.
-2. **`deploy.resources.limits.cpus` on `batch` is a ceiling, not a
+1. **`deploy.resources.limits.cpus` on `batch` is a ceiling, not a
    reservation.** `ARCHITECTURE.md` asks that batch work "cannot consume the
    runtime's reserved CPU cores". A ceiling on the batch service is not the
    same as a reservation for the runtime: under contention the API still
    competes. Doing this properly needs `cpuset` pinning, which depends on the
    host's core count and is therefore not something this file can choose.
-3. **No TLS, no authentication, no roles.** `AFTERLAP_ENV=production` disables
+2. **No TLS, no authentication, no roles.** `AFTERLAP_ENV=production` disables
    the development bootstrap operator, which in this release means nobody can
    operate a session at all — the refusal is deliberate, and it is why the only
    supported mode is `development` on loopback.
-4. **The API healthcheck uses `/health/ready`**, which currently reflects only
+3. **The API healthcheck uses `/health/ready`**, which currently reflects only
    process-level capabilities and not whether any session can actually decide
    (defect A14-4 in `handoffs/A14-integration-patch.md`). If that patch lands,
    revisit this healthcheck: a paused session would otherwise make the
    container unhealthy.
-5. **`api.Dockerfile` runs the session runtime in the API process.** A08 §9.5:
-   the out-of-process proxy is not written. The `batch` service is genuinely
-   separate; the session runtime is not.
-6. **Not verified on a clean machine.** Both images built and ran here, but no
+4. **A session runtime is never restored after a restart.** One is created with
+   the session and lives in the process that created it; no route re-attaches
+   one. So `docker compose restart api`, or any redeploy, leaves every existing
+   session readable and undrivable — commands answer 503 `capability_unavailable`
+   and the operator has to create a new session. `backend/TECHNICAL_SPEC.md`
+   asks for restoration "from a consistent snapshot/log offset"; that is unbuilt.
+5. **Not verified on a clean machine.** Both images built and ran here, but no
    pull-and-run from a registry on a second host has been attempted, and the
    `uv` and `bun` layers need network access at build time.
-7. **`docker compose down -v` deletes the audit trail.** There is no backup
+6. **`docker compose down -v` deletes the audit trail.** There is no backup
    step in this packaging, and `ROLLBACK.md` in the release bundle assumes the
    database survives. A `pg_dump` sidecar is unbuilt.

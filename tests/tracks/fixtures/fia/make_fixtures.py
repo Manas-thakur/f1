@@ -7,7 +7,7 @@ stream) that ``pypdf`` extracts line by line.
 
 Run from ``the repository root``::
 
-    .venv/Scripts/python.exe tests/tracks/fixtures/fia/make_fixtures.py
+    uv run python tests/tracks/fixtures/fia/make_fixtures.py
 """
 
 from __future__ import annotations

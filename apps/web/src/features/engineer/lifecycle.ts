@@ -256,8 +256,11 @@ function detailFor(
     case 'disconnected':
       return 'No session stream is open. Nothing below is being updated.';
     case 'connecting':
-      return input.resyncRequired
-        ? 'A sequence gap was detected. Deltas are paused until a fresh snapshot arrives.'
+      if (input.resyncRequired) {
+        return 'A sequence gap was detected. Deltas are paused until a fresh snapshot arrives.';
+      }
+      return input.hasSnapshot
+        ? 'The stream dropped and is reconnecting. What is shown is the last state the server sent.'
         : 'Waiting for the first snapshot from the control plane.';
     case 'stale':
       return (

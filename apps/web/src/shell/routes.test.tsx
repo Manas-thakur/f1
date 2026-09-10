@@ -20,6 +20,7 @@ import { SessionsPage } from '../views/SessionsPage';
 import { SettingsPage } from '../views/SettingsPage';
 import { SimulationLabLandingPage } from '../views/SimulationLabLandingPage';
 import { SYNTHETIC_DATA_NOTICE } from '../fixtures/notices';
+import { useSessionStore } from '../state/sessionStore';
 import { SESSION_SNAPSHOT } from '../test/contractFixtures';
 import { setTestPath } from '../test/navigation';
 
@@ -148,6 +149,7 @@ describe('every route renders exactly one h1 and the required landmarks', () => 
     ['/', /Decide where electrical energy changes the race/],
     ['/simulation-lab', /Reproducible experiments/],
     ['/sessions', 'Sessions'],
+    ['/lab', 'Simulation lab'],
     ['/settings', 'Settings'],
     ['/sessions/s1/engineer', 'Engineer console'],
     ['/sessions/s1/lab', 'Simulation lab'],
@@ -218,6 +220,34 @@ describe('sessions route', () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sessions: [], next_cursor: null })));
     renderAt('/sessions');
     expect(await screen.findByText(/missing artefact: session manifest/)).toBeInTheDocument();
+  });
+
+  it('points the rail at the pack the open session pinned', async () => {
+    renderAt(`/sessions/${SESSION_SNAPSHOT.session_id}/engineer`);
+    await screen.findByRole('heading', { name: 'Decision' });
+
+    const rules = screen.getByRole('link', { name: 'Rules' });
+    expect(rules).toHaveAttribute(
+      'href',
+      `/rulesets/${SESSION_SNAPSHOT.manifest.ruleset_hash}`,
+    );
+  });
+
+  it('says which pack "current" means when no session is open', async () => {
+    useSessionStore.getState().reset();
+    renderAt('/rulesets/current');
+
+    expect(
+      await screen.findByText(/No session is loaded, so there is no current pack/),
+    ).toBeInTheDocument();
+  });
+
+  it('sends an operator with no sessions somewhere that can create one', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sessions: [], next_cursor: null })));
+    renderAt('/sessions');
+
+    const link = await screen.findByRole('link', { name: /simulation laboratory/i });
+    expect(link).toHaveAttribute('href', '/lab');
   });
 
   it('shows a typed error with its guidance and request id', async () => {

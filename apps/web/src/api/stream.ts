@@ -22,7 +22,6 @@ export interface SessionStreamOptions {
   readonly basePath?: string;
 }
 
-
 export const STREAM_BASE_PATH = '/api/v1';
 
 export function streamUrl(sessionId: string, afterSequence: number, basePath: string): string {
@@ -37,6 +36,7 @@ export class SessionStream {
   private closedByUs = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private resyncInFlight = false;
+  private lastResyncSequence: number | null = null;
 
   private readonly sessionId: string;
   private readonly store: StreamStoreBridge;
@@ -56,6 +56,7 @@ export class SessionStream {
 
   connect(): void {
     this.closedByUs = false;
+    this.lastResyncSequence = null;
     this.openSource();
   }
 
@@ -95,7 +96,6 @@ export class SessionStream {
     };
   }
 
-  
   handleFrame(raw: unknown): void {
     const result = validateEnvelope(typeof raw === 'string' ? raw : String(raw));
     if (!result.ok) {
@@ -108,7 +108,6 @@ export class SessionStream {
     }
   }
 
-  
   async resync(): Promise<void> {
     if (this.resyncInFlight) {
       return;
@@ -119,6 +118,9 @@ export class SessionStream {
       const snapshot = await this.client.getSnapshot(this.sessionId);
       this.store.applyRestSnapshot(snapshot);
 
+      const stalled = this.lastResyncSequence === snapshot.last_sequence;
+      this.lastResyncSequence = snapshot.last_sequence;
+
       if (this.source !== null) {
         const source = this.source;
         this.source = null;
@@ -126,7 +128,11 @@ export class SessionStream {
         source.close();
       }
       if (!this.closedByUs) {
-        this.openSource();
+        if (stalled) {
+          this.reconnectTimer = setTimeout(() => this.openSource(), this.reconnectDelayMs);
+        } else {
+          this.openSource();
+        }
       }
     } catch {
       this.store.setConnection('reconnecting');

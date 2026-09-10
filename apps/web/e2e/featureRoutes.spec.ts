@@ -7,6 +7,7 @@ import { measureOverflow } from './overflow';
 const WIDTHS = [320, 375, 414, 768, 1024, 1440, 1920] as const;
 
 const ROUTES = [
+  '/lab',
   `/sessions/${SESSION_ID}/engineer`,
   `/sessions/${SESSION_ID}/lab`,
   `/sessions/${SESSION_ID}/replay`,

@@ -68,18 +68,35 @@ class SessionChannel:
     def replay_from(self, after_sequence: int) -> list[StreamEnvelope]:
         return [e for e in self.buffer if e.sequence > after_sequence]
 
-    def can_replay(self, after_sequence: int) -> bool:
+    def can_replay(self, after_sequence: int, known_sequence: int | None = None) -> bool:
         """True when the retained window still covers the client's cursor.
 
-        A cursor *ahead* of the newest sequence is not "up to date": the client
-        claims to have seen events this session never emitted, so the server
-        cannot prove what continuing from it would skip. Answering ``True``
-        there hands back an empty replay and then nothing but heartbeats, which
-        is the silent gap a resync exists to prevent. Equal to the newest
-        sequence is genuinely current and replays nothing.
+        A cursor *ahead* of the newest retained sequence is not "up to date":
+        the client claims to have seen events this channel never emitted, so
+        the server cannot prove what continuing from it would skip. Answering
+        ``True`` there hands back an empty replay and then nothing but
+        heartbeats, which is the silent gap a resync exists to prevent. Equal
+        to the newest sequence is genuinely current and replays nothing.
+
+        An *empty* buffer holds no evidence either way, so the retained window
+        cannot answer the question at all. That is the state of every session
+        after a control-plane restart, and refusing on principle there is a
+        loop rather than a repair: the client refetches the snapshot, comes
+        back with the same cursor and is refused again for the same reason.
+        ``known_sequence`` — the durable cursor the store holds for this
+        session — is the authority instead. Equal to it is current and safe to
+        continue from. Below it means real events this process no longer holds,
+        and above it means a cursor for events that were never issued; both
+        have to resync, and both converge because the snapshot that follows
+        carries exactly ``known_sequence``.
+
+        Without an authority (``None``) only a fresh client is accepted, which
+        is the conservative reading and what a caller with no store gets.
         """
         if not self.buffer:
-            return after_sequence == 0
+            if known_sequence is None:
+                return after_sequence == 0
+            return after_sequence == known_sequence
         if after_sequence > self.latest_sequence:
             return False
         return after_sequence >= self.earliest_sequence - 1
@@ -104,8 +121,19 @@ class StreamHub:
             self._channels[session_id] = channel
         return channel
 
-    async def subscribe(self, session_id: str, after_sequence: int = 0) -> tuple[Subscriber, bool]:
-        """Attach a client. Returns the subscriber and whether it must resync."""
+    async def subscribe(
+        self,
+        session_id: str,
+        after_sequence: int = 0,
+        *,
+        known_sequence: int | None = None,
+    ) -> tuple[Subscriber, bool]:
+        """Attach a client. Returns the subscriber and whether it must resync.
+
+        ``known_sequence`` is the durable cursor the store holds for the
+        session. It is what lets a process with an empty buffer tell a client
+        that is simply current from one that is behind or impossibly ahead.
+        """
         async with self._lock:
             channel = self.channel(session_id)
             subscriber = Subscriber(
@@ -115,10 +143,12 @@ class StreamHub:
             )
             channel.subscribers.append(subscriber)
 
-            if not channel.can_replay(after_sequence):
+            if not channel.can_replay(after_sequence, known_sequence):
                 subscriber.needs_resync = True
                 await subscriber.queue.put(
-                    self._resync_envelope(session_id, channel, "cursor older than the retained buffer")
+                    self._resync_envelope(
+                        session_id, channel, _refusal_reason(channel, after_sequence, known_sequence)
+                    )
                 )
                 return subscriber, True
 
@@ -200,6 +230,19 @@ class StreamHub:
 
     def close_session(self, session_id: str) -> None:
         self._channels.pop(session_id, None)
+
+
+def _refusal_reason(channel: SessionChannel, after_sequence: int, known_sequence: int | None) -> str:
+    """Say which side of the known head the refused cursor fell on.
+
+    Both answers are a resync; telling them apart is what lets an operator see
+    a client resuming from a cursor the session never issued rather than one
+    that simply fell out of the retained window.
+    """
+    head = channel.latest_sequence if channel.buffer else (known_sequence or 0)
+    if after_sequence > head:
+        return "cursor ahead of the published stream"
+    return "cursor older than the retained buffer"
 
 
 def _drain_one(queue: asyncio.Queue[Any]) -> None:

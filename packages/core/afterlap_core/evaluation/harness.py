@@ -799,7 +799,7 @@ def run_benchmark(
         unavailable_controllers=unavailable,
         failed_runs=tuple(failures),
         rerun_command=rerun_command
-        or (f"./.venv/Scripts/python.exe -m afterlap_core.cli benchmark --manifest {manifest.id}"),
+        or (f"uv run python -m afterlap_core.cli benchmark --manifest {manifest.id}"),
     )
 
 

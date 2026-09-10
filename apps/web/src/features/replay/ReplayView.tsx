@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
 import { routeParam } from '@/shell/params';
 import {
+  Button,
   ChartFrame,
   EmptyState,
   Field,
@@ -146,7 +147,12 @@ export function ReplayView({ runtimeOptions }: ReplayViewProps) {
             hint="Seeking restores the preceding snapshot server-side and consumes events forward."
             state="disabled"
           >
-            <button type="button">Restore snapshot</button>
+            <Button
+              disabled
+              disabledReason="The control plane exposes no seek or snapshot-restore command, so this control cannot be offered."
+            >
+              Restore snapshot
+            </Button>
           </Field>
         </div>
 

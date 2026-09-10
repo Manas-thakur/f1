@@ -84,7 +84,8 @@ function SessionStrip() {
 
 function ModuleRail() {
   const sessionId = routeParam(useParams().sessionId) ?? null;
-  const groups = moduleGroups(sessionId);
+  const rulesetHash = useSessionStore((s) => s.server.manifest?.ruleset_hash ?? null);
+  const groups = moduleGroups(sessionId, rulesetHash);
   return (
     <header className={styles.rail}>
       <Link href="/" className={styles.brand ?? ''}>

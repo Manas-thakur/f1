@@ -109,9 +109,9 @@ export function SessionsPage() {
           emptyArtefact="session manifest"
           emptyAction={
             <p>
-              A session is created by the control plane from a scenario, a ruleset and a seed.{' '}
-              <Link href="/simulation-lab">The simulation lab page</Link> describes that workflow.
-              No session can be created from this screen.
+              A session is created by the control plane from a scenario, a ruleset and a seed.
+              Configure one in <Link href="/lab">the simulation laboratory</Link>; it cannot be
+              created from this screen.
             </p>
           }
           footer={

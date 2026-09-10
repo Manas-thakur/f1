@@ -312,7 +312,16 @@ def apply_operator_action(
     current_ruleset_hash: str,
     reason: str | None = None,
 ) -> CommandOutcome:
-    """The atomic selection sequence. Every guard is checked inside one transaction."""
+    """The atomic selection sequence. Every guard is checked inside one transaction.
+
+    The recorded ``operator_action`` event shares the sequence of the lifecycle
+    transition it caused rather than claiming its own. They are one ordered
+    moment — the operator acted and the recommendation moved — and the event is
+    deliberately not published, so a sequence of its own would be a number no
+    stream client can ever receive. A hole in the published sequence is not
+    cosmetic: the browser reducer answers one by pausing deltas and demanding a
+    resync, which the next snapshot cannot satisfy either.
+    """
     existing = db.execute(
         select(OperatorCommand).where(
             OperatorCommand.session_id == session_id,
@@ -419,6 +428,7 @@ def apply_operator_action(
             "resulting_status": updated.status.value,
         },
         publish=False,
+        sequence=session_row.last_sequence,
     )
 
     session_row.revision += 1
