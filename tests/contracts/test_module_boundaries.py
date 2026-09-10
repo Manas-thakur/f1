@@ -142,11 +142,7 @@ def files_under(root: Path, suffix: str) -> tuple[Path, ...]:
             and here / name != GENERATED_CONTRACTS
         )
         found.extend(
-            sorted(
-                here / name
-                for name in filenames
-                if name.endswith(suffix) and not name.startswith("._")
-            )
+            sorted(here / name for name in filenames if name.endswith(suffix) and not name.startswith("._"))
         )
     return tuple(found)
 
