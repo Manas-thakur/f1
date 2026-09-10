@@ -71,15 +71,25 @@ class SessionChannel:
     def can_replay(self, after_sequence: int) -> bool:
         """True when the retained window still covers the client's cursor.
 
-        A cursor *ahead* of the newest sequence is not "up to date": the client
-        claims to have seen events this session never emitted, so the server
-        cannot prove what continuing from it would skip. Answering ``True``
-        there hands back an empty replay and then nothing but heartbeats, which
-        is the silent gap a resync exists to prevent. Equal to the newest
-        sequence is genuinely current and replays nothing.
+        A cursor *ahead* of the newest retained sequence is not "up to date":
+        the client claims to have seen events this channel never emitted, so
+        the server cannot prove what continuing from it would skip. Answering
+        ``True`` there hands back an empty replay and then nothing but
+        heartbeats, which is the silent gap a resync exists to prevent. Equal
+        to the newest sequence is genuinely current and replays nothing.
+
+        An *empty* buffer is the one case where that reasoning does not apply.
+        This process has published nothing for the session — it has just
+        started, or the session was created before the last restart — so it
+        holds no evidence that the cursor skipped anything and none that it did
+        not. Demanding a resync there is a loop rather than a repair: the
+        client refetches the snapshot, comes back with the same cursor, and is
+        refused again for the same reason. The next envelope this channel
+        publishes carries the sequence after the store's, so a genuinely stale
+        cursor still surfaces as a gap the client can act on.
         """
         if not self.buffer:
-            return after_sequence == 0
+            return True
         if after_sequence > self.latest_sequence:
             return False
         return after_sequence >= self.earliest_sequence - 1

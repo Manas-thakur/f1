@@ -405,6 +405,15 @@ async def run_command(
     db: CommandDbSession,
     idempotency_key: IdempotencyKey,
 ) -> SessionCommandResponse:
+    """Start, pause, resume, stop or step a session.
+
+    ``Session.last_sequence`` is the stream sequence allocator, claimed by
+    :func:`append_event` for every envelope a client can receive. A command is
+    not itself a stream envelope, so it must not claim one: a number handed out
+    here and never published leaves a permanent hole in the delta sequence, and
+    the browser reducer answers a hole by demanding a resync it can never
+    satisfy. The revision advances; the sequence belongs to the events.
+    """
     row = _session_row(db, session_id)
     require_lease(db, session_id, payload.operator_id, row.session_time_s)
 
@@ -439,7 +448,6 @@ async def run_command(
 
     values: dict[str, object] = {
         "revision": Session.revision + 1,
-        "last_sequence": Session.last_sequence + 1,
         "status": status_after,
     }
     if kind == "step" and tick is not None:
