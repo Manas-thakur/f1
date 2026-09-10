@@ -31,7 +31,7 @@ stops the stack; `down -v` also discards the four named volumes.
 Verify the loop without a browser:
 
 ```
-./.venv/Scripts/python.exe scripts/demo.py --base-url http://127.0.0.1:8080
+uv run python scripts/demo.py --base-url http://127.0.0.1:8080
 ```
 
 ## Files
@@ -186,32 +186,30 @@ session, not just healthy containers."* Verified, in this order:
 
 ## Known limitations of this packaging
 
-1. **The `batch` service's healthcheck is disabled.** It inherits the API
-   image, whose healthcheck probes `/api/v1/health/ready`; the batch worker
-   serves no HTTP. Disabling is better than a container permanently unhealthy
-   for a reason nobody intends, but it means compose cannot tell you the batch
-   worker has wedged. A real check would read its lease heartbeat.
-2. **`deploy.resources.limits.cpus` on `batch` is a ceiling, not a
+1. **`deploy.resources.limits.cpus` on `batch` is a ceiling, not a
    reservation.** `ARCHITECTURE.md` asks that batch work "cannot consume the
    runtime's reserved CPU cores". A ceiling on the batch service is not the
    same as a reservation for the runtime: under contention the API still
    competes. Doing this properly needs `cpuset` pinning, which depends on the
    host's core count and is therefore not something this file can choose.
-3. **No TLS, no authentication, no roles.** `AFTERLAP_ENV=production` disables
+2. **No TLS, no authentication, no roles.** `AFTERLAP_ENV=production` disables
    the development bootstrap operator, which in this release means nobody can
    operate a session at all — the refusal is deliberate, and it is why the only
    supported mode is `development` on loopback.
-4. **The API healthcheck uses `/health/ready`**, which currently reflects only
+3. **The API healthcheck uses `/health/ready`**, which currently reflects only
    process-level capabilities and not whether any session can actually decide
    (defect A14-4 in `handoffs/A14-integration-patch.md`). If that patch lands,
    revisit this healthcheck: a paused session would otherwise make the
    container unhealthy.
-5. **`api.Dockerfile` runs the session runtime in the API process.** A08 §9.5:
-   the out-of-process proxy is not written. The `batch` service is genuinely
-   separate; the session runtime is not.
-6. **Not verified on a clean machine.** Both images built and ran here, but no
+4. **A session runtime is never restored after a restart.** One is created with
+   the session and lives in the process that created it; no route re-attaches
+   one. So `docker compose restart api`, or any redeploy, leaves every existing
+   session readable and undrivable — commands answer 503 `capability_unavailable`
+   and the operator has to create a new session. `backend/TECHNICAL_SPEC.md`
+   asks for restoration "from a consistent snapshot/log offset"; that is unbuilt.
+5. **Not verified on a clean machine.** Both images built and ran here, but no
    pull-and-run from a registry on a second host has been attempted, and the
    `uv` and `bun` layers need network access at build time.
-7. **`docker compose down -v` deletes the audit trail.** There is no backup
+6. **`docker compose down -v` deletes the audit trail.** There is no backup
    step in this packaging, and `ROLLBACK.md` in the release bundle assumes the
    database survives. A `pg_dump` sidecar is unbuilt.

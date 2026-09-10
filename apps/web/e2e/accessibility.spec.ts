@@ -188,6 +188,9 @@ test.describe('the sessions empty state', () => {
     await mockEmptyApi(page);
     await page.goto('/sessions');
     await expect(page.getByText('missing artefact: session manifest')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'The simulation lab page' })).toBeVisible();
+
+    const link = page.getByRole('link', { name: 'the simulation laboratory' });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute('href', '/lab');
   });
 });
