@@ -13,6 +13,7 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
+import { CURRENT_RULESET } from '@/app/modules';
 import { useSessionStore } from '@/state/sessionStore';
 import styles from '@/styles/workspace.module.css';
 
@@ -82,8 +83,6 @@ const COVERAGE_COLUMNS: readonly Column<CoverageEntry>[] = [
   { id: 'note', header: 'Note', cell: (row) => row.note ?? 'none' },
 ];
 
-
-export const CURRENT_RULESET = 'current';
 
 export function RulesetView() {
   const { rulesetId } = useParams();

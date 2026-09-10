@@ -162,6 +162,17 @@ describe('sessions route', () => {
     expect(await screen.findByText(/missing artefact: session manifest/)).toBeInTheDocument();
   });
 
+  it('points the rail at the pack the open session pinned', async () => {
+    renderAt(`/sessions/${SESSION_SNAPSHOT.session_id}/engineer`);
+    await screen.findByRole('heading', { name: 'Decision' });
+
+    const rules = screen.getByRole('link', { name: 'Rules' });
+    expect(rules).toHaveAttribute(
+      'href',
+      `/rulesets/${SESSION_SNAPSHOT.manifest.ruleset_hash}`,
+    );
+  });
+
   it('says which pack "current" means when no session is open', async () => {
     useSessionStore.getState().reset();
     renderAt('/rulesets/current');
