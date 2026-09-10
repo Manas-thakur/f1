@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Install
-        run: uv sync --frozen --all-packages --group solver
+        run: uv sync --frozen --all-packages --group data --group solver --group track-ingestion
       - name: Format
         run: uv run ruff format --check .
       - name: Lint

@@ -6,20 +6,18 @@ requires-python = "==3.12.*"
 dependencies = [
     "afterlap-contracts",
     "numpy>=2.0,<3",
-    "scipy>=1.14,<2",
-    "pyarrow>=17.0",
-    "pypdf>=5.0,<7",
     "pyyaml>=6.0",
     "typer>=0.12",
 ]
 
 [project.optional-dependencies]
+data = ["pyarrow>=17.0"]
 solver = ["casadi>=3.6,<4"]
+track-ingestion = ["scipy>=1.14,<2", "pypdf>=5.0,<7"]
 learning = [
     "torch>=2.4,<3",
     "gymnasium>=1.0,<2",
     "stable-baselines3>=2.4,<3",
-    "scikit-learn>=1.5,<2",
     "tensorboard>=2.17",
 ]
 

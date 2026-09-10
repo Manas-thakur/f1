@@ -1,6 +1,8 @@
 [dependency-groups]
 runtime = ["afterlap-api[postgres]"]
+data = ["afterlap-core[data]"]
 solver = ["afterlap-core[solver]"]
+track-ingestion = ["afterlap-core[track-ingestion]"]
 learning = ["afterlap-core[learning]"]
 dev = [
     "pytest>=8.3",
