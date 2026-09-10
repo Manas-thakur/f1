@@ -49,6 +49,33 @@ describe('Button implements every declared state', () => {
     });
   }
 
+  it('describes each disabled button with its own reason, not the first one on the page', () => {
+    render(
+      <>
+        <Button disabled disabledReason="Only a proposed recommendation can be selected.">
+          Select
+        </Button>
+        <Button disabled disabledReason="There is nothing to reject.">
+          Reject
+        </Button>
+      </>,
+    );
+
+    const [select, reject] = screen.getAllByRole('button');
+    const selectNote = select?.getAttribute('aria-describedby');
+    const rejectNote = reject?.getAttribute('aria-describedby');
+
+    expect(selectNote).toBeTruthy();
+    expect(rejectNote).toBeTruthy();
+    expect(selectNote).not.toBe(rejectNote);
+    expect(document.getElementById(selectNote as string)).toHaveTextContent(
+      'Only a proposed recommendation can be selected.',
+    );
+    expect(document.getElementById(rejectNote as string)).toHaveTextContent(
+      'There is nothing to reject.',
+    );
+  });
+
   it('is reachable and operable from the keyboard', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();

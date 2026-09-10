@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { forwardRef, useId, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 import styles from './primitives.module.css';
 
@@ -36,6 +36,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
+  const generatedId = useId();
+  const noteId = `${rest.id ?? generatedId}-note`;
+
   const pending = state === 'pending';
   const disabled = state === 'disabled' || pending || rest.disabled === true;
 
@@ -63,7 +66,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         data-variant={variant}
         disabled={disabled}
         aria-busy={pending || undefined}
-        aria-describedby={note ? `${rest.id ?? 'button'}-note` : rest['aria-describedby']}
+        aria-describedby={note ? noteId : rest['aria-describedby']}
       >
         {pending ? (
           <>
@@ -76,7 +79,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       </button>
       {note ? (
         <span
-          id={`${rest.id ?? 'button'}-note`}
+          id={noteId}
           className={styles.buttonNote}
           data-tone={note.tone}
         >
