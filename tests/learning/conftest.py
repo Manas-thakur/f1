@@ -288,3 +288,31 @@ def uniform_policy(seed: int = 0):
 def zero_policy(_observation: np.ndarray) -> np.ndarray:
     """A named frozen controller: the midpoint of every decoded range."""
     return np.zeros(2, dtype=np.float32)
+
+
+def sb3_actor_state(hidden=(32, 32), observation_size: int = 192, action_size: int = 2, seed: int = 0):
+    """A real Stable-Baselines3 SAC actor state dict, at a small width.
+
+    Unlike :func:`constant_actor_state` this is the genuine key layout the
+    library produces, so the reconstruction path in
+    ``afterlap_core.learning.policy`` is exercised against real keys rather
+    than against a shape a test invented. The weights are random and are never
+    a trained actor.
+    """
+    import torch
+    from gymnasium import spaces
+    from stable_baselines3.common.torch_layers import FlattenExtractor
+    from stable_baselines3.sac.policies import Actor
+
+    observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(observation_size,), dtype=np.float32)
+    action_space = spaces.Box(low=-1.0, high=1.0, shape=(action_size,), dtype=np.float32)
+    torch.manual_seed(seed)
+    actor = Actor(
+        observation_space=observation_space,
+        action_space=action_space,
+        net_arch=list(hidden),
+        features_extractor=FlattenExtractor(observation_space),
+        features_dim=observation_size,
+    )
+    actor.set_training_mode(False)
+    return actor, {key: value.detach().clone() for key, value in actor.state_dict().items()}
