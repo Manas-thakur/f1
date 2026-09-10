@@ -1,12 +1,11 @@
-
 import { QueryClient } from '@tanstack/react-query';
 import { render, type RenderResult } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { MemoryRouter, Route, Routes } from 'react-router';
 
 import { ApiClient } from '@/api/client';
-import { Providers } from '@/app/Providers';
+import { Providers } from '@/shell/Providers';
 import { LabClient } from '../lab/controlPlane';
+import { paramsFromRoute, setTestPath, testNav } from '@/test/navigation';
 
 export interface RecordedRequest {
   readonly url: string;
@@ -109,30 +108,29 @@ export function labClientFor(stub: FetchStub): LabClient {
 }
 
 
-export function noSocket(): (url: string) => WebSocket {
+export function noSocket(): (url: string) => EventSource {
   return (url) => socketFactory()(url);
 }
 
 
-export function socketFactory(collect?: FakeSocket[]): (url: string) => WebSocket {
+export function socketFactory(collect?: FakeSocket[]): (url: string) => EventSource {
   return (url: string) => {
     const socket = new FakeSocket(url);
     collect?.push(socket);
     setTimeout(() => {
       if (!socket.closed) {
-        socket.onopen?.({});
+        socket.onopen?.({} as Event);
       }
     }, 0);
-    return socket as unknown as WebSocket;
+    return socket as unknown as EventSource;
   };
 }
 
 
 export class FakeSocket {
-  onopen: ((event: unknown) => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: ((event: unknown) => void) | null = null;
-  onclose: ((event: unknown) => void) | null = null;
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent<string>) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
   closed = false;
   readonly url: string;
 
@@ -147,7 +145,9 @@ export class FakeSocket {
   send(): void {}
 
   emit(raw: unknown): void {
-    this.onmessage?.({ data: typeof raw === 'string' ? raw : JSON.stringify(raw) } as MessageEvent);
+    this.onmessage?.({
+      data: typeof raw === 'string' ? raw : JSON.stringify(raw),
+    } as MessageEvent<string>);
   }
 }
 
@@ -157,16 +157,16 @@ export interface RenderOptions {
 }
 
 export function renderRoute(element: ReactElement, options: RenderOptions): RenderResult {
+  testNav.pathname = options.path;
+  testNav.params = paramsFromRoute(options.route, options.path);
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
-    <MemoryRouter initialEntries={[options.path]}>
-      <Providers withRouter={false} queryClient={queryClient}>
-        <Routes>
-          <Route path={options.route} element={element} />
-        </Routes>
-      </Providers>
-    </MemoryRouter>,
+    <Providers queryClient={queryClient}>
+      {element}
+    </Providers>,
   );
 }
+
+export { setTestPath };

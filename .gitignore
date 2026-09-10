@@ -13,6 +13,7 @@ htmlcov/
 
 node_modules/
 dist/
+.next/
 .vite/
 *.tsbuildinfo
 playwright-report/

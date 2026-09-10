@@ -11,7 +11,7 @@ export interface SessionRuntimeOptions {
   
   readonly client?: ApiClient;
   
-  readonly socketFactory?: (url: string) => WebSocket;
+  readonly sourceFactory?: (url: string) => EventSource;
   
   readonly connect?: boolean;
 }
@@ -46,8 +46,8 @@ export function useSessionRuntime(
 
   const clientRef = useRef<ApiClient>(options.client ?? apiClient);
   clientRef.current = options.client ?? apiClient;
-  const socketFactoryRef = useRef<SessionRuntimeOptions['socketFactory']>(options.socketFactory);
-  socketFactoryRef.current = options.socketFactory;
+  const sourceFactoryRef = useRef<SessionRuntimeOptions['sourceFactory']>(options.sourceFactory);
+  sourceFactoryRef.current = options.sourceFactory;
 
   const connect = options.connect ?? true;
 
@@ -81,12 +81,12 @@ export function useSessionRuntime(
       if (cancelled || !connect) {
         return;
       }
-      const factory = socketFactoryRef.current;
+      const factory = sourceFactoryRef.current;
       stream = new SessionStream({
         sessionId,
         store: storeBridge(),
         client: clientRef.current,
-        ...(factory === undefined ? {} : { socketFactory: factory }),
+        ...(factory === undefined ? {} : { sourceFactory: factory }),
       });
       stream.connect();
     })();

@@ -14,19 +14,50 @@ COPY packages/contracts/generated/ packages/contracts/generated/
 COPY apps/web/ apps/web/
 RUN bun run --filter @afterlap/web build
 
-FROM nginx:1.29.4-alpine AS serve
+FROM python:3.12.14-slim-bookworm AS serve
 
-RUN rm -f /etc/nginx/conf.d/default.conf
-COPY infra/nginx.conf /etc/nginx/conf.d/afterlap.conf
+COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=ghcr.io/astral-sh/uv:0.12.10 /uv /uvx /usr/local/bin/
 
-COPY --from=build /src/apps/web/dist/ /usr/share/nginx/html/
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON=/usr/local/bin/python3.12 \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    AFTERLAP_RUNTIME_URL=http://runtime:8000 \
+    AFTERLAP_AUTOSTART_RUNTIME=0 \
+    PORT=8080 \
+    HOSTNAME=0.0.0.0
 
-RUN touch /var/run/nginx.pid \
- && chown -R 101:101 /var/run/nginx.pid /var/cache/nginx /usr/share/nginx/html
+WORKDIR /app
 
-USER 101:101
+COPY pyproject.toml uv.lock .python-version ./
+COPY packages/contracts/pyproject.toml packages/contracts/
+COPY packages/core/pyproject.toml packages/core/
+COPY apps/api/pyproject.toml apps/api/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --all-packages --all-extras --no-extra learning \
+            --no-dev --no-install-workspace
+
+COPY packages/ ./packages/
+COPY apps/api/ ./apps/api/
+COPY workers/ ./workers/
+COPY configs/ ./configs/
+COPY scripts/ ./scripts/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --all-packages --all-extras --no-extra learning --no-dev
+
+COPY --from=build /src/apps/web/.next/standalone ./
+COPY --from=build /src/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /src/apps/web/public ./apps/web/public
+
+ENV PATH="/app/.venv/bin:${PATH}" \
+    PYTHONPATH=/app
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=10s --timeout=4s --start-period=10s --retries=5 \
-    CMD ["/bin/sh", "-c", "wget --spider -q http://127.0.0.1:8080/healthz || exit 1"]
+HEALTHCHECK --interval=10s --timeout=4s --start-period=20s --retries=5 \
+    CMD ["python", "-c", "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/', timeout=4).status == 200 else 1)"]
+
+CMD ["node", "apps/web/server.js"]

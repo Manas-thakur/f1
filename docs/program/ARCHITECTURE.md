@@ -28,7 +28,7 @@ flowchart TD
 
 ## Processes and ownership
 
-Use a modular monolith API, a session-runtime worker and separate batch workers. FastAPI is the control plane. Python domain modules contain no HTTP dependency. The runtime owns an in-memory session state and serialises state mutations. IPC carries typed messages; the database is not polled on every physics tick. Batch simulation/training cannot consume the runtime's reserved CPU cores or overwrite its loaded artefacts.
+Use a modular monolith, a session-runtime worker and separate batch workers. Next.js is the public HTTP control plane. Python work is invoked through `python -m afterlap_api.cli`. Python domain modules contain no HTTP dependency. The runtime owns an in-memory session state and serialises state mutations. IPC carries typed messages; the database is not polled on every physics tick. Batch simulation/training cannot consume the runtime's reserved CPU cores or overwrite its loaded artefacts.
 
 React/TypeScript renders all web surfaces. Charts consume downsampled views with source timestamps. PostgreSQL stores sessions, decisions, operator events and manifests; partitioned Parquet stores high-volume telemetry and experiment trajectories; DuckDB is used for offline interrogation. CasADi formulates smooth dynamics; acados solves continuous subproblems; a bounded tactical enumerator handles discrete intentions and legal profiles. SAC and a separate ordinary-return value estimator are trained in PyTorch.
 

@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 
 import { ChartFrame, EmptyState, Field, Notice, Panel, StatusBadge } from '@/components';
 import { CHANNELS } from '@/contracts/channels';
 import { selectCursor } from '@/state/selectors';
 import { useSessionStore } from '@/state/sessionStore';
 import type { CursorAxis } from '@/state/types';
+import { routeParam } from '@/shell/params';
 import { ALIGNMENT_LABEL } from '../lab/BranchCompare';
 import { compact, decisionMarkers, domainOf, seriesFor } from '../engineer/series';
 import { useSessionRuntime, type SessionRuntimeOptions } from '../engineer/sessionRuntime';
@@ -24,7 +25,7 @@ const PANELS: readonly { title: string; channels: readonly string[] }[] = [
 
 
 export function ReplayView({ runtimeOptions }: ReplayViewProps) {
-  const { sessionId } = useParams();
+  const sessionId = routeParam(useParams().sessionId);
   const runtime = useSessionRuntime(sessionId, runtimeOptions ?? {});
 
   const telemetry = useSessionStore((s) => s.server.telemetry);

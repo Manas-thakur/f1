@@ -21,11 +21,11 @@ Base `/api/v1`. All mutable routes require an operator identity, session control
 | POST /exports | session_id, format, selected_range | local export job, hashes and provenance |
 | GET /health/live and /health/ready | none | process liveness / dependency readiness |
 
-## WebSocket
+## Stream
 
-`/api/v1/sessions/{id}/stream?after_sequence=N` uses authenticated same-origin session access. Messages: `snapshot`, `telemetry_view`, `estimate_updated`, `recommendation_updated`, `execution_observed`, `rule_context_changed`, `quality_changed`, `experiment_progress`, `heartbeat`, `resync_required`. Envelope fields: schema_version, session_id, sequence, event_type, session_time_s, payload.
+`GET /api/v1/sessions/{id}/stream?after_sequence=N` is a same-origin SSE stream. Next.js spawns `python -m afterlap_api.cli stream`. Messages: `snapshot`, `telemetry_view`, `estimate_updated`, `recommendation_updated`, `execution_observed`, `rule_context_changed`, `quality_changed`, `experiment_progress`, `heartbeat`, `resync_required`. Envelope fields: schema_version, session_id, sequence, event_type, session_time_s, payload.
 
-Client must not apply a delta to the wrong snapshot revision. Server retains a bounded reconnect buffer; older cursors trigger `resync_required`. High-rate telemetry views may be coalesced with explicit sequence-range metadata; decision/quality/operator events are lossless. Slow clients receive a snapshot rather than an unbounded queue. A heartbeat proves a connection exists, not that telemetry is fresh.
+Each SSE `data:` line is one JSON envelope. Client must not apply a delta to the wrong snapshot revision. Server retains a bounded reconnect buffer; older cursors trigger `resync_required`. High-rate telemetry views may be coalesced with explicit sequence-range metadata; decision/quality/operator events are lossless. Slow clients receive a snapshot rather than an unbounded queue. A heartbeat proves a connection exists, not that telemetry is fresh.
 
 ## Concurrency and errors
 

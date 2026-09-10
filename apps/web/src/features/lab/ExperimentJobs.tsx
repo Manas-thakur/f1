@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import type { ApiError, ExperimentStatusResponse } from '@contracts';
-import { Link } from 'react-router';
+import Link from 'next/link';
 
 import { newIdempotencyKey } from '@/api/client';
 import { guidanceFor, toApiError } from '@/api/errors';
@@ -79,7 +79,7 @@ export function ExperimentJobs({ client = labClient, submitted }: ExperimentJobs
       header: 'Job',
       cell: (row) => (
         <>
-          <Link to={`/experiments/${row.job.id}/report`}>{row.job.id}</Link>
+          <Link href={`/experiments/${row.job.id}/report`}>{row.job.id}</Link>
           <br />
           <span className={styles.hashText}>manifest {row.job.manifest_hash}</span>
         </>

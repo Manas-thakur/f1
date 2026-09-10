@@ -4,8 +4,8 @@ Product code lives at the repository root. Specifications live under `docs/` and
 
 ## Layout
 
-- Python 3.12 via `uv` at the repository root. Run `uv run ...`.
-- Bun 1.3 for `apps/web` only.
+- Python 3.12 via `uv` at the repository root. Run `uv run ...`. Control-plane work is `python -m afterlap_api.cli`.
+- Next.js (Bun 1.3) in `apps/web`: pages and `/api/v1` route handlers that invoke the Python CLI.
 - Docs: `docs/program`, `docs/contracts`, module specs, `docs/design`, `docs/deck`, `docs/handoffs`.
 - Handoffs: `docs/handoffs/<agent-id>.md`.
 

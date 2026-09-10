@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 import type { ApiError, DeploymentProfile } from '@contracts';
 
 import { apiClient, type ApiClient } from '@/api/client';
 import { commandKeys, runCommand } from '@/api/commands';
 import { guidanceFor } from '@/api/errors';
+import { routeParam } from '@/shell/params';
 import { Button, Notice } from '@/components';
 import { formatAge, formatChannelValue } from '@/contracts/units';
 import { selectQualitySummary } from '@/state/selectors';
@@ -60,7 +61,7 @@ export function DriverDisplay({
   client = apiClient,
   watchdogMs = DEFAULT_WATCHDOG_MS,
 }: DriverDisplayProps) {
-  const { sessionId } = useParams();
+  const sessionId = routeParam(useParams().sessionId);
   useSessionRuntime(sessionId, runtimeOptions ?? {});
 
   const manifest = useSessionStore((s) => s.server.manifest);

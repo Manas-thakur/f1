@@ -8,16 +8,17 @@
 # Design rules this file implements, each from a specification line rather than
 # from convenience:
 #
-#   * db, api, web and batch services *plus a migration job* (TECH_STACK.md,
+#   * db, runtime, web and batch services *plus a migration job* (TECH_STACK.md,
 #     "Storage and local deployment"). The migration job is a separate
-#     one-shot service, not a shell step inside the API entrypoint, so a failed
-#     upgrade stops the stack instead of leaving the API answering 500s. The
-#     API still calls `ensure_schema` on startup — that is deliberate belt and
-#     braces after D-07 defect 1, and Alembic's `upgrade head` is idempotent.
+#     one-shot service, not a shell step inside the runtime entrypoint, so a
+#     failed upgrade stops the stack instead of leaving the API answering 500s.
+#     The runtime still calls `ensure_schema` on startup, and Alembic's
+#     `upgrade head` is idempotent.
 #   * separate named volumes for the database, trajectories and models. They
 #     carry explicit `name:` keys so they are owned by this task and are not
 #     silently shared with another compose project on the same machine.
-#   * nginx serves the built assets and proxies /api and /ws on one origin.
+#   * Next.js is the public HTTP origin. It serves pages and /api/v1, and it
+#     invokes python -m afterlap_api.cli against the loopback runtime.
 #   * every host publish binds 127.0.0.1. Nothing here is reachable off the
 #     machine, and there is no authentication to bypass yet.
 #   * **no default production secret.** `AFTERLAP_DB_PASSWORD` has no default:
@@ -94,19 +95,18 @@ services:
     # non-zero exit has to stop the stack rather than loop.
     restart: "no"
 
-  api:
+  runtime:
     build:
       context: ..
       dockerfile: infra/api.Dockerfile
     image: afterlap/api:local
+    command: ["python", "-m", "afterlap_api.cli", "serve", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       <<: *python-env
       AFTERLAP_HOST: 0.0.0.0
       AFTERLAP_PORT: "8000"
     volumes: *artifact-volumes
     ports:
-      # Loopback, and off 8000 so a native `uvicorn` dev server can run
-      # alongside the container without a port fight.
       - "127.0.0.1:${AFTERLAP_API_PORT:-8010}:8000"
     depends_on:
       db:
@@ -158,10 +158,13 @@ services:
       context: ..
       dockerfile: infra/web.Dockerfile
     image: afterlap/web:local
+    environment:
+      AFTERLAP_RUNTIME_URL: http://runtime:8000
+      AFTERLAP_AUTOSTART_RUNTIME: "0"
     ports:
       - "127.0.0.1:${AFTERLAP_WEB_PORT:-8080}:8080"
     depends_on:
-      api:
+      runtime:
         condition: service_started
     restart: unless-stopped
 

@@ -64,12 +64,12 @@ function baseHandlers(
   ];
 }
 
-function renderConsole(stub: FetchStub, socketFactory = noSocket()) {
+function renderConsole(stub: FetchStub, sourceFactory = noSocket()) {
   const client = apiClientFor(stub);
   return renderRoute(
     <EngineerConsole
       client={client}
-      runtimeOptions={{ client, socketFactory }}
+      runtimeOptions={{ client, sourceFactory }}
     />,
     { path: PATH, route: ROUTE },
   );
@@ -122,7 +122,7 @@ describe('selection', () => {
 
     const client = apiClientFor({ ...stub, fetchImpl: slowFetch });
     renderRoute(
-      <EngineerConsole client={client} runtimeOptions={{ client, socketFactory: noSocket() }} />,
+      <EngineerConsole client={client} runtimeOptions={{ client, sourceFactory: noSocket() }} />,
       { path: PATH, route: ROUTE },
     );
 
@@ -154,7 +154,7 @@ describe('selection', () => {
     }) as typeof fetch;
 
     const client = apiClientFor({ ...stub, fetchImpl: slowFetch });
-    renderRoute(<EngineerConsole client={client} runtimeOptions={{ client, socketFactory: noSocket() }} />, {
+    renderRoute(<EngineerConsole client={client} runtimeOptions={{ client, sourceFactory: noSocket() }} />, {
       path: PATH,
       route: ROUTE,
     });

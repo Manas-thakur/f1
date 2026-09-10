@@ -1,7 +1,7 @@
 [project]
 name = "afterlap-api"
 version = "0.1.0"
-description = "AFTERLAP FastAPI control plane"
+description = "AFTERLAP Python control-plane CLI and session runtime"
 requires-python = "==3.12.*"
 dependencies = [
     "afterlap-contracts",
@@ -12,7 +12,11 @@ dependencies = [
     "alembic>=1.13",
     "websockets>=13.0",
     "prometheus-client>=0.21",
+    "typer>=0.12",
 ]
+
+[project.scripts]
+afterlap-api = "afterlap_api.cli:main"
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.2"]

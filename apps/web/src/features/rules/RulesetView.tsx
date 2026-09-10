@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 import type { CoverageEntry, RuleReference } from '@contracts';
 
 import { guidanceFor, toApiError } from '@/api/errors';
@@ -13,6 +13,7 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
+import { routeParam } from '@/shell/params';
 import styles from '../engineer/workspace.module.css';
 
 function coverageTone(status: CoverageEntry['status']) {
@@ -83,7 +84,7 @@ const COVERAGE_COLUMNS: readonly Column<CoverageEntry>[] = [
 
 
 export function RulesetView() {
-  const { rulesetId } = useParams();
+  const rulesetId = routeParam(useParams().rulesetId);
   const query = useRuleset(rulesetId);
   const manifest = query.data?.manifest ?? null;
   const error =

@@ -27,7 +27,7 @@ function handlers(snapshot: unknown = SESSION_SNAPSHOT): Parameters<typeof makeF
 function renderReplay(stub: FetchStub, sockets: FakeSocket[] = []) {
   const client = apiClientFor(stub);
   return renderRoute(
-    <ReplayView runtimeOptions={{ client, socketFactory: socketFactory(sockets) }} />,
+    <ReplayView runtimeOptions={{ client, sourceFactory: socketFactory(sockets) }} />,
     { path: PATH, route: ROUTE },
   );
 }

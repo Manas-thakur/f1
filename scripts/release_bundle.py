@@ -12,7 +12,7 @@
     fixtures from benchmark evidence.
 
     python scripts/release_bundle.py --out artifacts/release/afterlap-0.1.0
-    python scripts/release_bundle.py --out ... --test-report report.txt --web-dist apps/web/dist
+    python scripts/release_bundle.py --out ... --test-report report.txt --web-dist apps/web/.next/standalone
     python scripts/release_bundle.py --verify artifacts/release/afterlap-0.1.0
 
 Three decisions in here are deliberate and would otherwise look like
@@ -86,9 +86,8 @@ SOURCE_FILES: tuple[str, ...] = (
     "apps/api/alembic.ini",
     "apps/api/pyproject.toml",
     "apps/web/package.json",
-    "apps/web/vite.config.ts",
+    "apps/web/next.config.ts",
     "apps/web/tsconfig.json",
-    "apps/web/index.html",
     "packages/contracts/pyproject.toml",
     "packages/core/pyproject.toml",
 )
@@ -102,6 +101,7 @@ EXCLUDED_DIR_NAMES = {
     "node_modules",
     ".venv",
     "dist",
+    ".next",
     "test-results",
 }
 
@@ -281,11 +281,16 @@ def migrations(root: Path, staging: Path) -> Section:
 
 
 def frontend(root: Path, staging: Path, dist: Path | None) -> Section:
-    """Built web assets, or an honest statement that they were not built."""
-    candidate = dist or (root / "apps" / "web" / "dist")
-    index = candidate / "index.html"
+    """Built Next.js standalone output, or an honest statement that it was not built."""
+    candidate = dist or (root / "apps" / "web" / ".next" / "standalone")
     build_command = "bun install --frozen-lockfile && bun run build"
-    if not index.is_file():
+    entry_candidates = (
+        candidate / "apps" / "web" / "server.js",
+        candidate / "server.js",
+        candidate / "index.html",
+    )
+    entry = next((path for path in entry_candidates if path.is_file()), None)
+    if entry is None:
         return Section(
             "frontend_assets",
             "unavailable",
@@ -302,13 +307,13 @@ def frontend(root: Path, staging: Path, dist: Path | None) -> Section:
         detail=f"{len(files)} file(s) copied from {candidate}",
         data={
             "source": str(candidate),
-            "entry": "web/index.html",
+            "entry": str(entry.relative_to(candidate)).replace("\\", "/"),
             "file_count": len(files),
             "total_bytes": sum(p.stat().st_size for p in files),
             "build_command": build_command,
             "note": (
-                "Served by nginx in infra/docker-compose.yml, which proxies /api and /ws on the "
-                "same origin. No API host is compiled into the bundle."
+                "Served by the Next.js process. Public HTTP is same-origin /api/v1; "
+                "Python work goes through python -m afterlap_api.cli."
             ),
         },
     )
@@ -654,11 +659,11 @@ cd source
 uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor        # must report contracts, numerics, storage available
 
-AFTERLAP_ENV=development uv run python -m uvicorn afterlap_api.main:app \\
+AFTERLAP_ENV=development uv run python -m afterlap_api.cli serve \\
     --host 127.0.0.1 --port 8000
 
 # second terminal
-cd apps/web && bun install --frozen-lockfile && bunx vite --port 5200
+bun run --filter @afterlap/web dev
 ```
 
 The API creates its schema on startup, so no separate migration step is needed

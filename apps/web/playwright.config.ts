@@ -26,11 +26,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `bunx vite preview --port ${PORT} --strictPort`,
+    command: `bun run build && bunx next start --hostname 127.0.0.1 --port ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: process.env['CI'] !== 'true',
-    timeout: 120_000,
+    timeout: 180_000,
     stdout: 'ignore',
     stderr: 'pipe',
+    env: {
+      ...process.env,
+      AFTERLAP_AUTOSTART_RUNTIME: '0',
+    },
   },
 });

@@ -87,4 +87,4 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready'
 
 # 0.0.0.0 *inside* the container only. The host-side publish in
 # docker-compose.yml binds 127.0.0.1, so nothing is reachable off the machine.
-CMD ["python", "-m", "uvicorn", "afterlap_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "afterlap_api.cli", "serve", "--host", "0.0.0.0", "--port", "8000"]

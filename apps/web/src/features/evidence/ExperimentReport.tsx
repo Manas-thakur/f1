@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 
 import { guidanceFor, toApiError } from '@/api/errors';
 import { useExperiment } from '@/api/queries';
@@ -13,6 +13,7 @@ import {
 } from '@/components';
 import { UNAVAILABLE_TEXT } from '@/contracts/units';
 import { labClient, type LabClient } from '../lab/controlPlane';
+import { routeParam } from '@/shell/params';
 import styles from '../engineer/workspace.module.css';
 import {
   isUnmeasured,
@@ -100,12 +101,12 @@ const COVERAGE_COLUMNS: readonly Column<MatrixCoverageRow>[] = [
 
 
 export function ExperimentReport({ client = labClient }: ExperimentReportProps) {
-  const { experimentId } = useParams();
+  const experimentId = routeParam(useParams().experimentId);
   const jobQuery = useExperiment(experimentId);
 
   const reportQuery = useQuery({
     queryKey: ['experiments', experimentId ?? 'none', 'report'],
-    queryFn: ({ signal }) => client.getExperimentReport(experimentId as string, { signal }),
+    queryFn: ({ signal }) => client.getExperimentReport(experimentId ?? '', { signal }),
     enabled: experimentId !== undefined,
     retry: false,
   });

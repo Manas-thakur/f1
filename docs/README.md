@@ -24,7 +24,7 @@ Working product name: **AFTERLAP**. Prepared 8 September 2026. The product helps
 | Folder | Responsibility |
 |---|---|
 | [program](program/ARCHITECTURE.md) | Product boundaries, architecture, decisions, integration order |
-| [contracts](contracts/DOMAIN_MODEL.md) | Shared data types, wire schema, events, REST/WebSocket contracts |
+| [contracts](contracts/DOMAIN_MODEL.md) | Shared data types, wire schema, events, REST/SSE contracts |
 | [data](data/TECHNICAL_SPEC.md) | Ingestion, clocks, source provenance, recording and replay |
 | [simulation](simulation/TECHNICAL_SPEC.md) | Physics, battery, track, opponents, deterministic branching |
 | [rules](rules/TECHNICAL_SPEC.md) | Versioned regulations and independent plan validation |

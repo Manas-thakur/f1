@@ -1,4 +1,3 @@
-
 import type { SessionSnapshot, StreamEnvelope } from '@contracts';
 
 import { apiClient, type ApiClient } from './client';
@@ -18,10 +17,8 @@ export interface SessionStreamOptions {
   readonly sessionId: string;
   readonly store: StreamStoreBridge;
   readonly client?: ApiClient;
-  
-  readonly socketFactory?: (url: string) => WebSocket;
+  readonly sourceFactory?: (url: string) => EventSource;
   readonly reconnectDelayMs?: number;
-  
   readonly basePath?: string;
 }
 
@@ -31,13 +28,12 @@ export const STREAM_BASE_PATH = '/api/v1';
 export function streamUrl(sessionId: string, afterSequence: number, basePath: string): string {
   const origin = globalThis.location?.origin ?? 'http://localhost';
   const url = new URL(`${basePath}/sessions/${encodeURIComponent(sessionId)}/stream`, origin);
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
   url.searchParams.set('after_sequence', String(afterSequence));
   return url.toString();
 }
 
 export class SessionStream {
-  private socket: WebSocket | null = null;
+  private source: EventSource | null = null;
   private closedByUs = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private resyncInFlight = false;
@@ -45,7 +41,7 @@ export class SessionStream {
   private readonly sessionId: string;
   private readonly store: StreamStoreBridge;
   private readonly client: ApiClient;
-  private readonly socketFactory: (url: string) => WebSocket;
+  private readonly sourceFactory: (url: string) => EventSource;
   private readonly reconnectDelayMs: number;
   private readonly basePath: string;
 
@@ -53,14 +49,14 @@ export class SessionStream {
     this.sessionId = options.sessionId;
     this.store = options.store;
     this.client = options.client ?? apiClient;
-    this.socketFactory = options.socketFactory ?? ((url) => new WebSocket(url));
+    this.sourceFactory = options.sourceFactory ?? ((url) => new EventSource(url));
     this.reconnectDelayMs = options.reconnectDelayMs ?? 2_000;
     this.basePath = options.basePath ?? STREAM_BASE_PATH;
   }
 
   connect(): void {
     this.closedByUs = false;
-    this.openSocket();
+    this.openSource();
   }
 
   close(): void {
@@ -69,37 +65,33 @@ export class SessionStream {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    this.socket?.close();
-    this.socket = null;
+    this.source?.close();
+    this.source = null;
     this.store.setConnection('closed');
   }
 
-  private openSocket(): void {
+  private openSource(): void {
     const after = this.store.getLastSequence();
     const url = streamUrl(this.sessionId, after, this.basePath);
     this.store.setConnection('connecting');
-    const socket = this.socketFactory(url);
-    this.socket = socket;
+    const source = this.sourceFactory(url);
+    this.source = source;
 
-    socket.onopen = () => {
+    source.onopen = () => {
       this.store.setConnection('open');
     };
-    socket.onmessage = (event: MessageEvent) => {
+    source.onmessage = (event: MessageEvent<string>) => {
       this.handleFrame(event.data);
     };
-    socket.onerror = () => {
-
-
-      this.store.setConnection('reconnecting');
-    };
-    socket.onclose = () => {
-      this.socket = null;
+    source.onerror = () => {
+      source.close();
+      this.source = null;
       if (this.closedByUs) {
         this.store.setConnection('closed');
         return;
       }
       this.store.setConnection('reconnecting');
-      this.reconnectTimer = setTimeout(() => this.openSocket(), this.reconnectDelayMs);
+      this.reconnectTimer = setTimeout(() => this.openSource(), this.reconnectDelayMs);
     };
   }
 
@@ -127,15 +119,14 @@ export class SessionStream {
       const snapshot = await this.client.getSnapshot(this.sessionId);
       this.store.applyRestSnapshot(snapshot);
 
-
-      if (this.socket !== null) {
-        const socket = this.socket;
-        this.socket = null;
-        socket.onclose = null;
-        socket.close();
+      if (this.source !== null) {
+        const source = this.source;
+        this.source = null;
+        source.onerror = null;
+        source.close();
       }
       if (!this.closedByUs) {
-        this.openSocket();
+        this.openSource();
       }
     } catch {
       this.store.setConnection('reconnecting');

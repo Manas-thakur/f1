@@ -9,10 +9,12 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      ".next/**",
       "node_modules/**",
       "playwright-report/**",
       "test-results/**",
       "eslint.config.js",
+      "next-env.d.ts",
       "**/._*",
     ],
   },

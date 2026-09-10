@@ -51,7 +51,7 @@ function makeStream(client: ApiClient) {
     sessionId: SESSION_SNAPSHOT.session_id,
     store: bridge(),
     client,
-    socketFactory: (url) => new FakeSocket(url) as unknown as WebSocket,
+    sourceFactory: (url) => new FakeSocket(url) as unknown as EventSource,
     reconnectDelayMs: 1,
   });
 }
@@ -71,11 +71,11 @@ describe('streamUrl', () => {
     expect(STREAM_BASE_PATH).toBe('/api/v1');
   });
 
-  it('resumes from the last applied sequence on a ws origin', () => {
+  it('resumes from the last applied sequence on the same origin', () => {
     const url = streamUrl('abc def', 128, STREAM_BASE_PATH);
     expect(url).toContain('/api/v1/sessions/abc%20def/stream');
     expect(url).toContain('after_sequence=128');
-    expect(url.startsWith('ws://') || url.startsWith('wss://')).toBe(true);
+    expect(url.startsWith('http://') || url.startsWith('https://')).toBe(true);
   });
 
   it('still honours an explicit base path, so a deployment can move it', () => {

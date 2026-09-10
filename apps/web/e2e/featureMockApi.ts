@@ -620,11 +620,17 @@ export async function mockFeatureApi(page: Page, options: MockOptions = {}): Pro
   );
 
   const frames = options.frames ?? [telemetryFrame(LAST_SEQUENCE + 1)];
-  await page.routeWebSocket(/\/api\/v1\/sessions\/.*\/stream/, (ws) => {
-    for (const frame of frames) {
-      ws.send(frame);
-    }
-    ws.onMessage(() => {});
+  await page.route(/\/api\/v1\/sessions\/.*\/stream/, async (route) => {
+    const body = frames.map((frame) => `data: ${frame}\n\n`).join('');
+    await route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive',
+      },
+      body,
+    });
   });
 
   return log;

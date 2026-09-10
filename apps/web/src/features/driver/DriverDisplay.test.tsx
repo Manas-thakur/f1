@@ -50,7 +50,7 @@ function renderDriver(stub: FetchStub, watchdogMs = 60_000) {
     <DriverDisplay
       client={client}
       watchdogMs={watchdogMs}
-      runtimeOptions={{ client, socketFactory: noSocket() }}
+      runtimeOptions={{ client, sourceFactory: noSocket() }}
     />,
     { path: PATH, route: ROUTE },
   );

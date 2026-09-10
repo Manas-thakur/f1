@@ -1,11 +1,13 @@
 # Local packaging
 
-Compose project for the whole product: PostgreSQL 17, a migration job, the API,
-the batch worker, and nginx serving the built web assets while proxying `/api`
-and `/ws` on the same origin.
+Compose project for the whole product: PostgreSQL 17, a migration job, the
+Python runtime, the batch worker, and Next.js as the public HTTP origin for
+pages, `/api/v1` and SSE.
 
 Everything here was **built and run** on the machine named below. Where a claim
-is not measured, it says so.
+is not measured, it says so. Timing and image-digest figures further down were
+taken against the earlier nginx packaging and have not been re-measured on
+Next.js.
 
 ## Quick start
 
@@ -18,10 +20,10 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --wait
 
 | Surface | Address |
 |---|---|
-| Engineer console (nginx) | http://127.0.0.1:8080 |
-| API (direct, for debugging) | http://127.0.0.1:8010 |
-| API through nginx (same origin) | http://127.0.0.1:8080/api/v1 |
-| Session stream | ws://127.0.0.1:8080/api/v1/sessions/{id}/stream |
+| Engineer console (Next.js) | http://127.0.0.1:8080 |
+| Python runtime (direct, for debugging) | http://127.0.0.1:8010 |
+| API through Next.js (same origin) | http://127.0.0.1:8080/api/v1 |
+| Session stream | http://127.0.0.1:8080/api/v1/sessions/{id}/stream |
 | PostgreSQL | 127.0.0.1:5433 |
 
 All four bind `127.0.0.1`. There is no authentication in this release, so
@@ -38,10 +40,9 @@ Verify the loop without a browser:
 
 | File | What it is |
 |---|---|
-| `docker-compose.yml` | db, migrate, api, batch, web; four named volumes; loopback publishes |
-| `api.Dockerfile` | Linux numerical image. Serves the API, the migration job and the batch worker |
-| `web.Dockerfile` | bun build stage, then nginx serving the output |
-| `nginx.conf` | Static assets plus `/api` and `/ws` on one origin, with WebSocket upgrade |
+| `docker-compose.yml` | db, migrate, runtime, batch, web; four named volumes; loopback publishes |
+| `api.Dockerfile` | Linux numerical image. Serves the Python runtime, the migration job and the batch worker |
+| `web.Dockerfile` | bun Next.js build, then Node plus the Python CLI client |
 | `*.Dockerfile.dockerignore` | Per-Dockerfile ignore files (BuildKit reads these first) |
 | `.env.example` | Copy to `.env`. `AFTERLAP_DB_PASSWORD` has **no default** |
 | `dependency-baseline.md` | A01's frozen versions and the G0 solver spike |
@@ -167,17 +168,15 @@ Two consequences worth acting on:
 `TECH_STACK.md`: *"Compose acceptance requires a working closed-loop synthetic
 session, not just healthy containers."* Verified, in this order:
 
-1. `up -d --wait` — db, api, batch and web all healthy; `migrate` exited 0
+1. `up -d --wait` — db, runtime, batch and web all healthy; `migrate` exited 0
    having reported `alembic head: c04e287ba46c` and 19 tables on PostgreSQL.
 2. `scripts/demo.py --base-url http://127.0.0.1:8080` — 13/13 steps, exit 0:
    a session reached an actionable instruction at t = 26 s, was selected,
    marked communicated, executed by the simulated driver at t = 26.35 s with
    `match_status=matched`, snapshotted, branched and exported.
-3. The WebSocket upgraded **through nginx** (`ws://127.0.0.1:8080/api/v1/
-   sessions/{id}/stream` reached state `OPEN` and delivered
-   `resync_required` then heartbeats). This is the production analogue of
-   coordinator decision D-07 defect 3, where the dev proxy carried `ws: true`
-   only on the unused `/ws` rule.
+3. Historical: the previous nginx packaging upgraded a WebSocket at
+   `ws://127.0.0.1:8080/api/v1/sessions/{id}/stream`. Public transport is now
+   SSE from Next.js. That path has not been re-measured in this file.
 4. The `batch` service claimed the queued experiment and completed it:
    `job exp-449864f00c3444b0 finished: status=completed partial=False
    units=['legal_fixed_schedule', 'legal_greedy_attacker']`, with a report at

@@ -7,13 +7,13 @@ This is the implementation decision, not a list of alternatives. All production 
 | Layer | Choice | Purpose |
 |---|---|---|
 | Python | CPython 3.12, uv workspace | One scientific runtime and frozen dependency graph. |
-| Web tooling | Bun 1.3 | Build tooling only; no second application backend. |
-| Interface | React 19, strict TypeScript, Vite, React Router | Client-rendered operational routes and static product pages with deep links. |
+| Web tooling | Bun 1.3 | Install and run the Next.js app. |
+| Interface | React 19, strict TypeScript, Next.js App Router | Operational routes, static product pages, and `/api/v1` on one origin. |
 | Server state | TanStack Query | REST snapshots, mutation status and cache invalidation. |
 | Live view state | Zustand | Bounded telemetry buffers, cursor, selected channels and connection sequence. |
 | Styling | CSS Modules, semantic HTML; Radix Dialog/Popover | Custom instruments with accessible complex controls. No imported dashboard theme. |
 | Charts | uPlot; SVG track view | Linked numeric traces and circuit position. Provide accessible numeric summaries. |
-| API | FastAPI, Pydantic 2, Uvicorn | Typed HTTP/WebSocket control plane. |
+| API | Next.js Route Handlers invoking `python -m afterlap_api.cli` | Public HTTP/SSE control plane. Python owns session runtime, numerics and persistence. |
 | Contracts | Pydantic → JSON Schema/OpenAPI → openapi-typescript; Ajv | One schema authority, generated types and runtime event validation. |
 | Numerics | NumPy, SciPy, float64 physics | Dynamics, filters, likelihoods and reference checks. |
 | Planner | CasADi, acados | Symbolic dynamics and compiled continuous optimal-control subproblems. Discrete tactics stay in the outer enumerator. |
@@ -24,7 +24,7 @@ This is the implementation decision, not a list of alternatives. All production 
 | Model artifacts | Local content-addressed filesystem | Weights/reports keyed by SHA-256; database holds references. |
 | Tests | pytest, Hypothesis, Vitest, Testing Library, Playwright, axe-core | Numerical invariants, contracts, component state and connected browser workflows. |
 | Static checks | Ruff, mypy, ESLint, TypeScript compiler | Authored-code quality and type correctness. |
-| Packaging | Docker Compose, Linux numerical image, nginx | Reproducible local product with same-origin API/WebSocket routing. |
+| Packaging | Compose, Linux numerical image, Next.js | Reproducible local product with same-origin API/SSE routing. |
 | Diagnostics | JSON logging, Prometheus client, TensorBoard | Correlated operational metrics and offline training traces; no cloud account required. |
 
 ## Canonical source paths
@@ -36,12 +36,13 @@ packages/contracts/afterlap_contracts/   # authoritative Pydantic models
 packages/contracts/generated/           # JSON schemas and TypeScript output
 packages/core/afterlap_core/
   data/ simulation/ rules/ estimation/ planning/ learning/
-apps/api/afterlap_api/                   # routes and persistence adapters
+apps/api/afterlap_api/                   # CLI, session runtime and persistence adapters
 workers/                                # thin process launchers importing packages
 apps/web/src/
-  app/                                  # shell/router/providers
-  features/                             # owned feature routes
-  components/ state/ api/ styles/
+  app/                                  # Next.js layouts, pages and route handlers
+  views/                                # route-level screens imported by app/
+  features/                             # owned feature views
+  components/ state/ api/ styles/ shell/
 configs/ infra/ tests/ artifacts/ docs/handoffs/
 ```
 
@@ -49,7 +50,7 @@ Older briefs' `packages/core/<module>/` names are logical scopes. Their canonica
 
 ## Process model
 
-Start with one API process supervising one session process per active operational simulation, using multiprocessing spawn and bounded typed queues. Commands carry ID, session revision, deadline and immutable payload; results repeat the correlation fields. No physics or solver work inside the asyncio event loop. Use only project-created processes; expose no network pickle endpoint.
+Start with one Next.js process as the public HTTP server and one Python runtime process supervising one session process per active operational simulation, using multiprocessing spawn and bounded typed queues. Next.js invokes Python through `python -m afterlap_api.cli request` and `python -m afterlap_api.cli stream`. Commands carry ID, session revision, deadline and immutable payload; results repeat the correlation fields. No physics or solver work inside the Next.js process. Use only project-created processes; expose no network pickle endpoint.
 
 The session process serialises observed state and driver inputs. It accepts a solver result only while its state/rule revisions remain current. The API atomically checks operator authority and appends committed lifecycle events plus transactional outbox records. Delivery is at least once; consumers deduplicate sequence/event ID. The database owns durable operator actions; the session worker owns current dynamics. Reconcile the last applied sequence after restart. Test crash-after-commit-before-delivery explicitly.
 
@@ -63,13 +64,13 @@ On Windows, use Docker Desktop's Linux backend for the canonical numerical runti
 
 ## Frontend data handling
 
-REST loads metadata and snapshots. WebSocket events resume from last sequence; a gap triggers a fresh snapshot. Ajv validates envelopes before state updates. Keep a bounded visible telemetry window; decimate numeric traces while preserving extrema and event annotations. Exact inspection uses original samples. Do not push every telemetry sample through the REST query cache.
+REST loads metadata and snapshots. SSE events resume from last sequence; a gap triggers a fresh snapshot. Ajv validates envelopes before state updates. Keep a bounded visible telemetry window; decimate numeric traces while preserving extrema and event annotations. Exact inspection uses original samples. Do not push every telemetry sample through the REST query cache.
 
 One shared replay cursor identifies either distance or session time; changing alignment is explicit. Channel registry defines name, unit, colour, scale and provenance. Commands carry expected revision and idempotency key. Pending submission disables duplicates. A conflict refreshes evidence; it does not silently retry a stale decision. Do not optimistically mark execution as observed.
 
 ## Storage and local deployment
 
-Compose supplies db, api, web and batch services plus a migration job. API supervises session processes. nginx serves built web assets and proxies `/api` and `/ws` on the same origin. Development Vite uses matching proxies. Separate volumes store database, trajectories and models. Private source credentials never enter exports.
+Compose supplies db, runtime, web and batch services plus a migration job. The Python runtime supervises session processes. Next.js is the public HTTP origin for pages, `/api/v1` and SSE. Separate volumes store database, trajectories and models. Private source credentials never enter exports.
 
 Use role-scoped session credentials and a single operator lease. Development bootstrap works only in local development mode; no default production secret. Debug truth is a separate restricted endpoint. Driver communication works only in simulator mode. Load only locally produced, hash-verified approved model bundles; do not accept arbitrary pickle uploads.
 
@@ -83,6 +84,8 @@ A01 implements these command contracts:
 uv sync --frozen --all-packages
 bun install --frozen-lockfile
 uv run python -m afterlap_core.cli doctor
+uv run python -m afterlap_api.cli serve
+bun run --filter @afterlap/web dev
 uv run pytest tests/contracts tests/numerics
 bun run typecheck
 bun run test
@@ -94,4 +97,4 @@ Doctor checks manifests, writable artifact storage and numerical solver availabi
 
 ## Official references
 
-[uv workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/), [Vite setup](https://vite.dev/guide/), [React state](https://react.dev/learn/managing-state), [FastAPI WebSockets](https://fastapi.tiangolo.com/advanced/websockets/), [Pydantic schema](https://docs.pydantic.dev/latest/concepts/json_schema/), [acados installation](https://docs.acados.org/installation/index.html). Reviewed 8 September 2026. The choices above are project architecture decisions, not claims of a tested installation.
+[uv workspaces](https://docs.astral.sh/uv/concepts/projects/workspaces/), [Next.js App Router](https://nextjs.org/docs/app), [React state](https://react.dev/learn/managing-state), [Pydantic schema](https://docs.pydantic.dev/latest/concepts/json_schema/), [acados installation](https://docs.acados.org/installation/index.html). Reviewed 10 September 2026. The choices above are project architecture decisions, not claims of a tested installation.
