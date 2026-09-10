@@ -8,12 +8,14 @@ adds is a stable *operational* entry point:
 * it works without an installed console script, so the compose image and a
   bare checkout invoke the same command;
 * it forwards ``--json`` and ``--strict`` untouched;
-* it exits non-zero when a required capability is unavailable, which is what
-  makes it usable as a container start gate.
+* it exits non-zero when a capability has *failed*, which is what makes it
+  usable as a container start gate. An optional external or native capability
+  that is simply not installed is reported as absent and does not fail the
+  gate; only `--strict` treats absence as a failure.
 
     python scripts/doctor.py
     python scripts/doctor.py --json
-    python scripts/doctor.py --strict      # also non-zero on a degraded capability
+    python scripts/doctor.py --strict      # also non-zero on absent or degraded
 
 `doctor` prints no secrets: `check_database` reports only the URL scheme and
 `afterlap_core.diagnostics.redact` strips any userinfo before anything is

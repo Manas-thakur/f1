@@ -23,12 +23,11 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from types import ModuleType
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
-
-import pyarrow as pa
-import pyarrow.parquet as pq
 
 from afterlap_contracts import (
     SCHEMA_VERSION,
@@ -43,6 +42,12 @@ from afterlap_core.paths import atomic_write_bytes, sha256_bytes
 
 from .mapping import SECRET_NAME_PATTERN
 from .pipeline import NormalisedRecord
+
+if TYPE_CHECKING:
+    import pyarrow as pa
+
+    CANONICAL_SCHEMA: pa.Schema
+    RAW_SCHEMA: pa.Schema
 
 REDACTED = "[redacted]"
 RAW_FAMILY = "raw"
@@ -143,42 +148,74 @@ def utc_now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
 
-CANONICAL_SCHEMA = pa.schema(
-    [
-        pa.field("schema_version", pa.string()),
-        pa.field("event_id", pa.string()),
-        pa.field("session_id", pa.string()),
-        pa.field("car_id", pa.string()),
-        pa.field("sequence", pa.int64()),
-        pa.field("source_time_s", pa.float64()),
-        pa.field("received_time_s", pa.float64()),
-        pa.field("session_time_s", pa.float64()),
-        pa.field("channel", pa.string()),
-        pa.field("value", pa.float64()),
-        pa.field("unit", pa.string()),
-        pa.field("provenance", pa.string()),
-        pa.field("quality", pa.string()),
-        pa.field("source_id", pa.string()),
-        pa.field("mapping_revision", pa.string()),
-        pa.field("raw_packet_id", pa.string()),
-        pa.field("vendor_field", pa.string()),
-        pa.field("labels", pa.list_(pa.string())),
-        pa.field("reason", pa.string()),
-        pa.field("finalised_before_s", pa.float64()),
-    ]
-)
+class ParquetUnavailable(RuntimeError):
+    """The Parquet backend this module records through is not installed."""
 
-RAW_SCHEMA = pa.schema(
-    [
-        pa.field("packet_id", pa.string()),
-        pa.field("source_id", pa.string()),
-        pa.field("car_id", pa.string()),
-        pa.field("received_time_s", pa.float64()),
-        pa.field("session_time_s", pa.float64()),
-        pa.field("mapping_revision", pa.string()),
-        pa.field("fields_json", pa.string()),
-    ]
-)
+
+def _pyarrow() -> tuple[ModuleType, ModuleType]:
+    """Import the Parquet backend now, or name the missing capability plainly.
+
+    ``pyarrow`` is optional: an install without it still runs every in-memory
+    path, so the recorder reports an explicit unavailable result rather than
+    making the whole module -- and everything that imports it -- unimportable.
+    """
+    try:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+    except ImportError as exc:
+        raise ParquetUnavailable(
+            "parquet telemetry recording is unavailable: pyarrow is not importable "
+            f"({exc}); install the optional data dependency group, for example "
+            "'uv sync --group data'"
+        ) from exc
+    return pa, pq
+
+
+@lru_cache(maxsize=1)
+def canonical_schema() -> pa.Schema:
+    """Arrow schema for canonical normalised records, built on first use."""
+    arrow, _ = _pyarrow()
+    return arrow.schema(
+        [
+            arrow.field("schema_version", arrow.string()),
+            arrow.field("event_id", arrow.string()),
+            arrow.field("session_id", arrow.string()),
+            arrow.field("car_id", arrow.string()),
+            arrow.field("sequence", arrow.int64()),
+            arrow.field("source_time_s", arrow.float64()),
+            arrow.field("received_time_s", arrow.float64()),
+            arrow.field("session_time_s", arrow.float64()),
+            arrow.field("channel", arrow.string()),
+            arrow.field("value", arrow.float64()),
+            arrow.field("unit", arrow.string()),
+            arrow.field("provenance", arrow.string()),
+            arrow.field("quality", arrow.string()),
+            arrow.field("source_id", arrow.string()),
+            arrow.field("mapping_revision", arrow.string()),
+            arrow.field("raw_packet_id", arrow.string()),
+            arrow.field("vendor_field", arrow.string()),
+            arrow.field("labels", arrow.list_(arrow.string())),
+            arrow.field("reason", arrow.string()),
+            arrow.field("finalised_before_s", arrow.float64()),
+        ]
+    )
+
+
+@lru_cache(maxsize=1)
+def raw_schema() -> pa.Schema:
+    """Arrow schema for immutable raw vendor packets, built on first use."""
+    arrow, _ = _pyarrow()
+    return arrow.schema(
+        [
+            arrow.field("packet_id", arrow.string()),
+            arrow.field("source_id", arrow.string()),
+            arrow.field("car_id", arrow.string()),
+            arrow.field("received_time_s", arrow.float64()),
+            arrow.field("session_time_s", arrow.float64()),
+            arrow.field("mapping_revision", arrow.string()),
+            arrow.field("fields_json", arrow.string()),
+        ]
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,8 +318,8 @@ class TelemetryRecorder:
     def stage(self) -> tuple[PendingChunk, ...]:
         """Write buffered rows to staging files. Nothing becomes visible yet."""
         pending: list[PendingChunk] = []
-        pending.extend(self._stage_store(self._canonical, "canonical", CANONICAL_SCHEMA))
-        pending.extend(self._stage_store(self._raw, RAW_FAMILY, RAW_SCHEMA))
+        pending.extend(self._stage_store(self._canonical, "canonical", canonical_schema()))
+        pending.extend(self._stage_store(self._raw, RAW_FAMILY, raw_schema()))
         self._canonical.clear()
         self._raw.clear()
         return tuple(pending)
@@ -293,14 +330,15 @@ class TelemetryRecorder:
         kind: str,
         schema: pa.Schema,
     ) -> list[PendingChunk]:
+        arrow, parquet = _pyarrow()
         pending: list[PendingChunk] = []
         for key in sorted(store):
             bucket = store[key]
             if not bucket.rows:
                 continue
-            table = pa.Table.from_pylist(bucket.rows, schema=schema)
-            sink = pa.BufferOutputStream()
-            pq.write_table(table, sink, compression="snappy")
+            table = arrow.Table.from_pylist(bucket.rows, schema=schema)
+            sink = arrow.BufferOutputStream()
+            parquet.write_table(table, sink, compression="snappy")
             payload = sink.getvalue().to_pybytes()
             digest = sha256_bytes(payload)
             relative = (
@@ -428,7 +466,8 @@ class ChunkReader:
             path = self.session_root / chunk.path
             if not path.exists():
                 raise FileNotFoundError(f"manifest lists {chunk.path} but it is not on disk")
-            rows.extend(pq.read_table(path).to_pylist())
+            _, parquet = _pyarrow()
+            rows.extend(parquet.read_table(path).to_pylist())
         return rows
 
     def read_canonical_rows(self) -> list[dict[str, Any]]:
@@ -486,6 +525,19 @@ def _record_from_row(row: Mapping[str, Any]) -> NormalisedRecord:
     )
 
 
+def __getattr__(name: str) -> Any:
+    """Resolve the schema constants on first access (PEP 562).
+
+    ``CANONICAL_SCHEMA`` and ``RAW_SCHEMA`` stay importable names, but nothing
+    is built -- and pyarrow is not needed -- until one of them is read.
+    """
+    if name == "CANONICAL_SCHEMA":
+        return canonical_schema()
+    if name == "RAW_SCHEMA":
+        return raw_schema()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     "ACQUISITION_NAME",
     "CANONICAL_SCHEMA",
@@ -495,8 +547,11 @@ __all__ = [
     "REDACTED",
     "AcquisitionRecord",
     "ChunkReader",
+    "ParquetUnavailable",
     "PendingChunk",
     "TelemetryRecorder",
+    "canonical_schema",
+    "raw_schema",
     "redact_mapping",
     "redact_text",
     "redact_url",
