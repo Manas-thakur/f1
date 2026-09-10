@@ -620,6 +620,57 @@ export async function mockFeatureApi(page: Page, options: MockOptions = {}): Pro
   );
 
   const frames = options.frames ?? [telemetryFrame(LAST_SEQUENCE + 1)];
+  await page.addInitScript(
+    ({ payloads }: { readonly payloads: readonly string[] }) => {
+      class HeldEventSource {
+        static readonly CONNECTING = 0;
+        static readonly OPEN = 1;
+        static readonly CLOSED = 2;
+        readonly CONNECTING = 0;
+        readonly OPEN = 1;
+        readonly CLOSED = 2;
+        readonly url: string;
+        readonly withCredentials = false;
+        readyState = 0;
+        onopen: ((this: EventSource, ev: Event) => unknown) | null = null;
+        onmessage: ((this: EventSource, ev: MessageEvent) => unknown) | null = null;
+        onerror: ((this: EventSource, ev: Event) => unknown) | null = null;
+        constructor(url: string) {
+          this.url = url;
+          queueMicrotask(() => {
+            if (this.readyState === HeldEventSource.CLOSED) {
+              return;
+            }
+            this.readyState = HeldEventSource.OPEN;
+            this.onopen?.call(this as unknown as EventSource, new Event('open'));
+            for (const payload of payloads) {
+              if (this.readyState !== HeldEventSource.OPEN) {
+                return;
+              }
+              this.onmessage?.call(
+                this as unknown as EventSource,
+                new MessageEvent('message', { data: payload }),
+              );
+            }
+          });
+        }
+        close(): void {
+          this.readyState = HeldEventSource.CLOSED;
+        }
+        addEventListener(): void {}
+        removeEventListener(): void {}
+        dispatchEvent(): boolean {
+          return false;
+        }
+      }
+      Object.defineProperty(globalThis, 'EventSource', {
+        configurable: true,
+        writable: true,
+        value: HeldEventSource,
+      });
+    },
+    { payloads: [...frames] },
+  );
   await page.route(/\/api\/v1\/sessions\/.*\/stream/, async (route) => {
     const body = frames.map((frame) => `data: ${frame}\n\n`).join('');
     await route.fulfill({
