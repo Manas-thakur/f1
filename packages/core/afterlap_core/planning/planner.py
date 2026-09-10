@@ -526,6 +526,7 @@ def plan(
                 incomplete_count=evidence.incomplete_count,
                 calibration_notes=evidence.calibration_notes,
                 calibrator_id=evidence.calibrator_id,
+                belief_clamps=evidence.belief_clamps,
                 outcome_ranges=outcome_ranges(outcomes),
             )
             reasons.extend(learned.reason_codes)
