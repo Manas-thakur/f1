@@ -12,11 +12,12 @@ import contextlib
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
 import anyio.to_thread
 from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, update
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 
 from afterlap_contracts import (
@@ -645,13 +646,40 @@ async def get_decision(decision_id: str, db: DbSession) -> DecisionEvidenceRespo
     )
 
 
+def _durable_sequence(app: Any, session_id: str) -> int | None:
+    """The store's cursor for a session, or ``None`` when it cannot be read.
+
+    Called from a worker thread: the stream route must not block the event
+    loop on the database, and a store that cannot answer has to degrade to the
+    conservative subscription rather than refuse the connection.
+    """
+    database = getattr(app.state, "database", None)
+    factory = getattr(database, "factory", None)
+    if factory is None:
+        return None
+    try:
+        with factory() as db:
+            row = db.get(Session, session_id)
+            return None if row is None else int(row.last_sequence)
+    except SQLAlchemyError:
+        return None
+
+
 @router.websocket("/sessions/{session_id}/stream")
 async def stream(websocket: WebSocket, session_id: str, after_sequence: int = 0) -> None:
-    """Resume from ``after_sequence``; a cursor outside the buffer resyncs."""
+    """Resume from ``after_sequence``; a cursor outside the buffer resyncs.
+
+    The store's cursor travels with the subscription. A process that has
+    published nothing for this session yet — the state after every restart —
+    has no retained window to judge the request against, and the durable
+    sequence is the only thing that can tell a client that is current from one
+    that is behind or claiming events that were never issued.
+    """
     hub: StreamHub = websocket.app.state.hub
     await websocket.accept()
 
-    subscriber, _ = await hub.subscribe(session_id, after_sequence)
+    known = await anyio.to_thread.run_sync(_durable_sequence, websocket.app, session_id)
+    subscriber, _ = await hub.subscribe(session_id, after_sequence, known_sequence=known)
     started = time.monotonic()
 
     async def _pump() -> None:
