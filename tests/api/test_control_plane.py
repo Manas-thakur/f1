@@ -173,7 +173,19 @@ def test_a_session_without_a_runtime_reports_unavailable(client):
         headers={"Idempotency-Key": "snap-1"},
     )
     assert response.status_code == 503
-    assert response.json()["error"]["code"] == "capability_unavailable"
+    error = response.json()["error"]
+    assert error["code"] == "capability_unavailable"
+
+    message = error["message"]
+    assert "start the session" not in message, (
+        "the refusal advised an action that hits the same guard: start, pause, resume, step and "
+        "stop all resolve a runtime first, so a session whose runtime is gone cannot be started. "
+        f"message: {message}"
+    )
+    assert "restart" in message, (
+        "a detached runtime is what a control-plane restart leaves behind, and the operator has no "
+        f"way to tell that from the message: {message}"
+    )
 
 
 @pytest.mark.parametrize("mode", [SessionMode.REPLAY, SessionMode.LIVE_TEAM])
