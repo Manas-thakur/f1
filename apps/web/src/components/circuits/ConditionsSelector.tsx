@@ -1,10 +1,11 @@
-import { StatusBadge } from '@/components';
-import type { ConditionsCatalogueEntry } from '@/api/trackCatalogue';
-import { shortHash } from './readiness';
-import styles from './circuits.module.css';
+import type { ConditionsSummary } from '@contracts';
+
+import { StatusBadge } from '../StatusBadge';
+import { shortHash } from '@/contracts/readiness';
+import styles from '@/styles/circuits.module.css';
 
 export interface ConditionsSelectorProps {
-  readonly conditions: readonly ConditionsCatalogueEntry[];
+  readonly conditions: readonly ConditionsSummary[];
   readonly selectedConditionsId: string | null;
   readonly onSelect: (conditionsId: string) => void;
   readonly name?: string;
@@ -44,6 +45,11 @@ export function ConditionsSelector({
         {conditions.map((tape) => {
           const hash = shortHash(tape.content_hash);
           const reasonId = `conditions-${tape.conditions_id}-reason`;
+          const rainfallMinutes = tape.rainfall_minutes ?? null;
+          const sampleCount = tape.sample_count ?? null;
+          const durationS = tape.duration_s ?? null;
+          const altitudeM = tape.altitude_m ?? null;
+          const permission = tape.permission ?? null;
           return (
             <li
               key={tape.conditions_id}
@@ -86,32 +92,32 @@ export function ConditionsSelector({
                   </dd>
                   <dt>Rainfall</dt>
                   <dd>
-                    {tape.rainfall_minutes === null ? (
+                    {rainfallMinutes === null ? (
                       <span className={styles.unavailable}>
                         unavailable — the source carried no rainfall flag
                       </span>
                     ) : (
-                      `${tape.rainfall_minutes.toFixed(1)} minutes with the rainfall flag set`
+                      `${rainfallMinutes.toFixed(1)} minutes with the rainfall flag set`
                     )}
                   </dd>
                   <dt>Samples</dt>
                   <dd>
-                    {tape.sample_count === null ? (
+                    {sampleCount === null ? (
                       <span className={styles.unavailable}>unavailable</span>
                     ) : (
-                      `${tape.sample_count} over ${
-                        tape.duration_s === null
+                      `${sampleCount} over ${
+                        durationS === null
                           ? 'an unreported duration'
-                          : `${(tape.duration_s / 60).toFixed(0)} minutes`
+                          : `${(durationS / 60).toFixed(0)} minutes`
                       }`
                     )}
                   </dd>
                   <dt>Altitude</dt>
                   <dd>
-                    {tape.altitude_m === null ? (
+                    {altitudeM === null ? (
                       <span className={styles.unavailable}>unavailable</span>
                     ) : (
-                      `${tape.altitude_m.toFixed(0)} m (${tape.altitude_source ?? 'source not reported'})`
+                      `${altitudeM.toFixed(0)} m (${tape.altitude_source ?? 'source not reported'})`
                     )}
                   </dd>
                   <dt>Description</dt>
@@ -128,8 +134,8 @@ export function ConditionsSelector({
                   </p>
                 )}
 
-                {tape.permission === null ? null : (
-                  <p className={styles.attribution}>{tape.permission}</p>
+                {permission === null ? null : (
+                  <p className={styles.attribution}>{permission}</p>
                 )}
               </div>
             </li>

@@ -75,6 +75,23 @@ export default tseslint.config(
     },
   },
   {
+    files: ["src/features/**"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "../*/*", "../*/**", "@/features/*", "@/features/**"],
+              message:
+                "A feature may not import from another feature. Move the shared module to src/api, src/components, src/contracts, src/state, src/styles or src/test and import it through its @/ alias.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.{test,spec}.{ts,tsx}", "e2e/**/*.ts", "src/test/**/*.ts", "src/test/**/*.tsx"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",

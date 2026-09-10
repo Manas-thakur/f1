@@ -1,8 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { CANDIDATE_MODEL, UNSUPPORTED_APPROVED_MODEL } from '../engineer/testFixtures';
-import { makeFetch, renderRoute, type FetchStub } from '../engineer/testUtils';
+import { CANDIDATE_MODEL, UNSUPPORTED_APPROVED_MODEL } from '@/test/testFixtures';
+import { makeFetch, renderRoute, type FetchStub } from '@/test/testUtils';
 import { ModelsView, approvalIsSupported } from './ModelsView';
 
 function renderModels(stub: FetchStub) {

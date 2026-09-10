@@ -36,3 +36,26 @@ export {
   type DecimateResult,
 } from './charts/decimate';
 export { summariseChart, summariseSeries, type SeriesSummary } from './charts/summary';
+export {
+  compact,
+  decisionMarkers,
+  domainOf,
+  energyFloorSeries,
+  projectedEnergySeries,
+  seriesFor,
+  type Domain,
+} from './charts/series';
+
+export { CircuitMap, type CircuitMapProps } from './circuits/CircuitMap';
+export { CircuitSelector, type CircuitSelectorProps } from './circuits/CircuitSelector';
+export {
+  ConditionsSelector,
+  type ConditionsSelectorProps,
+} from './circuits/ConditionsSelector';
+export {
+  DriverCircuitContext,
+  SessionCircuitPanel,
+  SessionCircuitStrip,
+  isRealCircuitSession,
+  type SessionCircuitIdentityProps,
+} from './circuits/SessionCircuitIdentity';

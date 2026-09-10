@@ -9,7 +9,7 @@ import {
   projectedEnergySeries,
   seriesFor,
 } from './series';
-import { RECOMMENDATION_FIXTURE, RULES, energySeries, recommendation, ruleContext } from './testFixtures';
+import { RECOMMENDATION_FIXTURE, RULES, energySeries, recommendation, ruleContext } from '@/test/testFixtures';
 
 const telemetry: Readonly<Record<string, TelemetrySeries>> = {
   'battery_energy_j@car-01': energySeries(),

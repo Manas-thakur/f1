@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router';
+import type { ApiError } from '@contracts';
 
 import { guidanceFor, toApiError } from '@/api/errors';
 import { useExperiment } from '@/api/queries';
@@ -12,8 +13,8 @@ import {
   type Column,
 } from '@/components';
 import { UNAVAILABLE_TEXT } from '@/contracts/units';
-import { labClient, type LabClient } from '../lab/controlPlane';
-import styles from '../engineer/workspace.module.css';
+import { labClient, type LabClient } from '@/api/controlPlane';
+import styles from '@/styles/workspace.module.css';
 import {
   isUnmeasured,
   parseReportBundle,
@@ -23,6 +24,24 @@ import {
 
 export interface ExperimentReportProps {
   readonly client?: LabClient;
+}
+
+const REPORT_ROUTE = 'GET /api/v1/experiments/{experiment_id}/report';
+
+const REPORT_ROUTE_ABSENT =
+  'The status route returns a server-side file path, and no route serves the report JSON.';
+
+function reportUnavailableReason(error: ApiError | null, requested: boolean): string {
+  if (!requested) {
+    return `No experiment id is in the address, so ${REPORT_ROUTE} was never called and no report body was asked for.`;
+  }
+  if (error === null) {
+    return `${REPORT_ROUTE} answered, but the body is not a benchmark report bundle this view can read. Nothing is substituted for it.`;
+  }
+  if (error.code === 'not_found') {
+    return `${REPORT_ROUTE} is not implemented by this control plane: it answered ${error.code} — ${error.message} (request ${error.request_id}). ${REPORT_ROUTE_ABSENT}`;
+  }
+  return `${REPORT_ROUTE} failed: ${error.message} (${error.code}, request ${error.request_id}). ${REPORT_ROUTE_ABSENT}`;
 }
 
 const MATRIX_COLUMNS: readonly Column<ComparisonMatrixRow>[] = [
@@ -124,6 +143,7 @@ export function ExperimentReport({ client = labClient }: ExperimentReportProps) 
     reportQuery.error === null || reportQuery.error === undefined
       ? null
       : toApiError(reportQuery.error, 'report body unavailable');
+  const reportPending = experimentId !== undefined && reportQuery.isPending;
 
   const matrix = bundle?.detail.comparison_matrix ?? [];
   const coverage = bundle?.detail.matrix_coverage ?? [];
@@ -192,16 +212,19 @@ export function ExperimentReport({ client = labClient }: ExperimentReportProps) 
         )}
       </Panel>
 
-      {bundle === null ? (
+      {reportPending ? (
+        <Panel id="report" title="Benchmark report">
+          <p aria-busy="true" className="afterlap-small afterlap-muted" data-testid="report-pending">
+            Reading <span className="afterlap-mono">{REPORT_ROUTE}</span>… nothing is drawn until
+            it answers.
+          </p>
+        </Panel>
+      ) : bundle === null ? (
         <Panel id="report" title="Benchmark report">
           <EmptyState
             artefact="benchmark report body"
             heading="The report body is not available to this browser"
-            reason={
-              reportError === null
-                ? 'The control plane has not returned a report body for this job.'
-                : `${reportError.message} The status route returns a server-side file path, and no route serves the report JSON.`
-            }
+            reason={reportUnavailableReason(reportError, experimentId !== undefined)}
             action={
               <p className="afterlap-small afterlap-muted">
                 This is an integration action, not a missing measurement: add a read route that

@@ -16,7 +16,7 @@ import {
   RULE_CONTEXT,
   SESSION_SNAPSHOT,
   STATE_ESTIMATE,
-} from '@/test/contractFixtures';
+} from './contractFixtures';
 import type { QualitySummary } from '@/state/types';
 
 export const SNAPSHOT: SessionSnapshot = SESSION_SNAPSHOT;

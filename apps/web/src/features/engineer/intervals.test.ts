@@ -9,7 +9,7 @@ import {
   describeInterval,
   intervalKindLine,
 } from './intervals';
-import { rivalWithQuantile } from './testFixtures';
+import { rivalWithQuantile } from '@/test/testFixtures';
 
 describe('a quantile interval is described as a model quantile', () => {
   it('names the kind and the nominal label for the shipped rival belief', () => {

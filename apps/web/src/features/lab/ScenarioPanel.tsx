@@ -12,9 +12,9 @@ import {
 } from '@/api/trackCatalogue';
 import { useScenarioCatalogue } from '@/api/trackQueries';
 import { Button, Field, Notice, Panel, StatusBadge } from '@/components';
-import { shortHash } from '../tracks/readiness';
+import { shortHash } from '@/contracts/readiness';
 import { useCircuitSelection } from './circuitSelection';
-import { labClient, type LabClient } from './controlPlane';
+import { labClient, type LabClient } from '@/api/controlPlane';
 import {
   EMPTY_DRAFT,
   SHIPPED_RULESET_IDS,
@@ -22,7 +22,7 @@ import {
   validateScenario,
   type ScenarioDraft,
 } from './scenario';
-import styles from '../engineer/workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 export interface ScenarioPanelProps {
   readonly client?: LabClient;

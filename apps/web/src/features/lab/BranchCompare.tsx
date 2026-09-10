@@ -13,11 +13,11 @@ import {
   StatusBadge,
   type Column,
 } from '@/components';
+import { labClient, type LabClient } from '@/api/controlPlane';
 import { useSessionStore } from '@/state/sessionStore';
-import type { CursorAxis } from '@/state/types';
-import { labClient, type LabClient } from './controlPlane';
+import { ALIGNMENT_LABEL } from '@/state/types';
 import type { SubmittedExperiment } from './ExperimentJobs';
-import styles from '../engineer/workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 export interface BranchCompareProps {
   readonly sessionId: string;
@@ -31,11 +31,6 @@ export interface BranchCompareProps {
     submission: SubmittedExperiment,
   ) => void;
 }
-
-export const ALIGNMENT_LABEL: Record<CursorAxis, string> = {
-  progress_m: 'common progress (metres travelled)',
-  session_time_s: 'common elapsed time (seconds since the snapshot)',
-};
 
 interface BranchRow {
   readonly treatmentId: string;

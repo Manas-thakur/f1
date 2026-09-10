@@ -1,57 +1,20 @@
 
 import type {
+  CancelExperimentRequest,
   CreateExperimentRequest,
+  CreateExperimentResponse,
+  CreateExportRequest,
+  CreateSessionRequest,
   CreateSessionResponse,
-  ExperimentJob,
+  CreateSnapshotRequest,
+  CreateSnapshotResponse,
   ExperimentStatusResponse,
   ExportJobResponse,
   JobStatus,
-  SessionMode,
-  SnapshotReference,
 } from '@contracts';
 
 import { API_BASE, type RequestOptions } from '@/api/client';
 import { ApiRequestError, isApiErrorResponse, toApiError } from '@/api/errors';
-
-
-export interface CreateSnapshotRequestBody {
-  readonly label?: string | null;
-}
-
-
-export interface CreateSnapshotResponseBody {
-  readonly snapshot: SnapshotReference;
-}
-
-
-export interface CreateExperimentResponseBody {
-  readonly job: ExperimentJob;
-}
-
-
-export interface CancelExperimentRequestBody {
-  readonly reason: string;
-}
-
-
-export interface CreateExportRequestBody {
-  readonly session_id: string;
-  readonly format: 'json' | 'csv' | 'parquet';
-  readonly start_session_time_s?: number | null;
-  readonly end_session_time_s?: number | null;
-}
-
-export interface CreateSessionRequestBody {
-  readonly mode: SessionMode;
-  readonly scenario_id: string;
-  readonly ruleset_id: string;
-  readonly seed: number;
-  readonly model_bundle_id?: string | null;
-  readonly label?: string | null;
-  readonly track_id?: string | null;
-  readonly event_id?: string | null;
-  readonly conditions_id?: string | null;
-}
 
 type FetchLike = typeof fetch;
 
@@ -106,7 +69,7 @@ export class LabClient {
     return (await response.json()) as T;
   }
 
-  createSession(body: CreateSessionRequestBody, options: RequestOptions) {
+  createSession(body: CreateSessionRequest, options: RequestOptions) {
     return this.request<CreateSessionResponse>(
       '/sessions',
       { method: 'POST', body: JSON.stringify(body) },
@@ -114,8 +77,8 @@ export class LabClient {
     );
   }
 
-  createSnapshot(sessionId: string, body: CreateSnapshotRequestBody, options: RequestOptions) {
-    return this.request<CreateSnapshotResponseBody>(
+  createSnapshot(sessionId: string, body: CreateSnapshotRequest, options: RequestOptions) {
+    return this.request<CreateSnapshotResponse>(
       `/sessions/${encodeURIComponent(sessionId)}/snapshots`,
       { method: 'POST', body: JSON.stringify(body) },
       options,
@@ -123,7 +86,7 @@ export class LabClient {
   }
 
   createExperiment(body: CreateExperimentRequest, options: RequestOptions) {
-    return this.request<CreateExperimentResponseBody>(
+    return this.request<CreateExperimentResponse>(
       '/experiments',
       { method: 'POST', body: JSON.stringify(body) },
       options,
@@ -147,7 +110,7 @@ export class LabClient {
 
   cancelExperiment(
     experimentId: string,
-    body: CancelExperimentRequestBody,
+    body: CancelExperimentRequest,
     options: RequestOptions,
   ) {
     return this.request<ExperimentStatusResponse>(
@@ -157,7 +120,7 @@ export class LabClient {
     );
   }
 
-  createExport(body: CreateExportRequestBody, options: RequestOptions) {
+  createExport(body: CreateExportRequest, options: RequestOptions) {
     return this.request<ExportJobResponse>(
       '/exports',
       { method: 'POST', body: JSON.stringify(body) },
