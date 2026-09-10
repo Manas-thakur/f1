@@ -107,7 +107,7 @@ maps onto an extra of `afterlap-core` (or of `afterlap-api`):
 | `solver` | casadi | the continuous optimal-control solver |
 | `track-ingestion` | scipy, pypdf | centreline compilation and FIA overlay parsing |
 | `learning` | torch, gymnasium, stable-baselines3, tensorboard | SAC training and the value estimator |
-| `dev` | pytest, ruff, mypy, hypothesis, httpx | the toolchain |
+| `dev` | pytest, ruff, mypy, hypothesis | the toolchain |
 
 `default-groups = ["runtime", "dev"]`, so a plain `uv sync` installs a working
 control plane and nothing heavier. Every group is genuinely optional: the

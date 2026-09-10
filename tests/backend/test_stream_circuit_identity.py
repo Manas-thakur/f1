@@ -24,8 +24,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-from afterlap_api.client import TestClient
 
+from afterlap_api.client import TestClient
 from afterlap_api.db import create_all, transaction
 from afterlap_api.db.models import Session as SessionRow
 from afterlap_api.deps import Settings
