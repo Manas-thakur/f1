@@ -12,6 +12,10 @@ Module map
 ``value``        the ordinary continuation-return ensemble
 ``serving``      the frozen bundle, its hashes and the loader that refuses
 ``promotion``    ``promote_bundle``, whose default answer is no
+``architecture``  layer tables and trainable-parameter counts, read off the modules
+``policy``       the frozen actor, rebuilt from bundle weights and made runnable
+``packaging``    a verified checkpoint becomes a loadable bundle with a real card
+``jobs``         the operator entry points behind the coordinator CLI
 ``checkpoints``  atomic checkpointing and resume
 ``callbacks``    training metrics and the non-finite-loss guard
 ``train_sac``    SB3 SAC training, resume and the throughput benchmark
@@ -38,6 +42,15 @@ from .actions import (
     compute_bounds,
     decode_action,
 )
+from .architecture import (
+    ArchitectureReport,
+    LayerSpec,
+    NetworkArchitecture,
+    describe_ensemble,
+    describe_module,
+    describe_sac,
+    parameter_totals,
+)
 from .config import (
     EnvConfig,
     SacConfig,
@@ -55,10 +68,12 @@ from .features import (
     LookaheadSample,
     encode,
 )
+from .policy import ActorPolicy, PolicyLoadError, load_actor
 from .promotion import (
     FrozenPromotionPolicy,
     PromotionDecision,
     RefusalCode,
+    decide_from_paths,
     load_promotion_policy,
     promote_bundle,
 )
@@ -96,6 +111,8 @@ __all__ = [
     "DEFAULT_BASELINE_IDENTITY",
     "REWARD_REVISION",
     "ActionBounds",
+    "ActorPolicy",
+    "ArchitectureReport",
     "BoundsStatus",
     "BundleRejection",
     "ContinuationEnsemble",
@@ -109,8 +126,11 @@ __all__ = [
     "FitReport",
     "FrozenPromotionPolicy",
     "HistorySummary",
+    "LayerSpec",
     "LoadedBundle",
     "LookaheadSample",
+    "NetworkArchitecture",
+    "PolicyLoadError",
     "PromotionDecision",
     "RefusalCode",
     "RejectionReason",
@@ -123,10 +143,15 @@ __all__ = [
     "ValueMember",
     "action_space",
     "compute_bounds",
+    "decide_from_paths",
     "decode_action",
+    "describe_ensemble",
+    "describe_module",
+    "describe_sac",
     "discounted_returns",
     "encode",
     "fit_ensemble",
+    "load_actor",
     "load_bundle",
     "load_env_config",
     "load_promotion_policy",
@@ -134,6 +159,7 @@ __all__ = [
     "load_sac_config",
     "load_value_config",
     "objective_content_hash",
+    "parameter_totals",
     "potential",
     "promote_bundle",
     "step_reward",

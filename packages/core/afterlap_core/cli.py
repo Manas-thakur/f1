@@ -26,6 +26,16 @@ app = typer.Typer(
 )
 
 
+def _emit(payload: dict[str, object], output: Path | None) -> None:
+    """Print the record, and write it beside the run when a path was given."""
+    text = json.dumps(payload, indent=2, sort_keys=True, default=str)
+    typer.echo(text)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text + "\n", encoding="utf-8")
+        typer.echo(f"wrote {output}")
+
+
 @app.command()
 def doctor(
     json_output: Annotated[bool, typer.Option("--json", help="Emit machine-readable results.")] = False,
@@ -132,68 +142,169 @@ def simulate(
     """Run a headless closed-loop simulation and report the energy ledger."""
     from .runner import run_headless
 
-    result = run_headless(scenario_id=scenario, seed=seed, duration_s=duration_s, dt_s=dt_s)
-    payload = result.summary()
-    typer.echo(json.dumps(payload, indent=2))
-    if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        typer.echo(f"wrote {output}")
+    summary = run_headless(scenario_id=scenario, seed=seed, duration_s=duration_s, dt_s=dt_s).summary()
+    _emit(summary, output)
 
 
 @app.command()
 def train(
-    manifest: Annotated[Path | None, typer.Option(help="Training manifest YAML.")] = None,
-    resume: Annotated[Path | None, typer.Option(help="Checkpoint to resume from.")] = None,
-    total_steps: Annotated[int | None, typer.Option(help="Override the manifest step target.")] = None,
+    sac_config: Annotated[str, typer.Option(help="SAC configuration id, or a path to one.")] = "sac-v1",
+    env_config: Annotated[str, typer.Option(help="Environment configuration id, or a path.")] = "env-v1",
+    seed: Annotated[int, typer.Option(help="Training seed.")] = 11,
+    total_steps: Annotated[int | None, typer.Option(help="Override the configured step target.")] = None,
+    scenario: Annotated[str | None, typer.Option(help="Restrict training to one scenario id.")] = None,
+    n_envs: Annotated[int | None, typer.Option(help="Vectorised environment count.")] = None,
+    checkpoint_every: Annotated[int | None, typer.Option(help="Checkpoint interval in steps.")] = None,
+    smoke: Annotated[bool, typer.Option(help="Run the labelled smoke job, not a trained model.")] = False,
+    *,
+    resume: Annotated[Path | None, typer.Option(help="Checkpoint directory to resume from.")] = None,
+    evaluation_episodes: Annotated[
+        int, typer.Option(help="Deterministic evaluation episodes to run after training.")
+    ] = 0,
+    package: Annotated[bool, typer.Option(help="Package the final checkpoint into a bundle.")] = False,
+    rule_family: Annotated[str, typer.Option(help="Rule family the bundle declares.")] = "synthetic-pack-v1",
+    output: Annotated[Path | None, typer.Option(help="Write the job record here.")] = None,
 ) -> None:
-    """Train the SAC energy-strategy candidate."""
-    from .learning.train_sac import run_training
+    """Train the SAC energy-strategy candidate.
 
-    if manifest is None and resume is None:
-        typer.echo("provide --manifest or --resume", err=True)
-        raise typer.Exit(code=2)
-    outcome = run_training(manifest=manifest, resume=resume, total_steps_override=total_steps)
-    typer.echo(json.dumps(outcome, indent=2, default=str))
+    A smoke run is labelled a smoke run everywhere it appears. Packaging writes
+    an ``unevaluated`` bundle; it is not a promotion and cannot become one here.
+    """
+    from .learning.jobs import run_training
+
+    payload = run_training(
+        sac_config_id=sac_config,
+        env_config_id=env_config,
+        seed=seed,
+        total_steps=total_steps,
+        scenario_id=scenario,
+        n_envs=n_envs,
+        checkpoint_every=checkpoint_every,
+        smoke=smoke,
+        resume_from=resume,
+        evaluation_episodes=evaluation_episodes,
+        package=package,
+        rule_family=rule_family,
+    )
+    _emit(payload, output)
+    if payload["result"]["status"] != "completed":
+        raise typer.Exit(code=1)
+
+
+@app.command("package-model")
+def package_model(
+    checkpoint: Annotated[Path, typer.Option(help="Checkpoint directory to package.")],
+    env_config: Annotated[str, typer.Option(help="Environment configuration id, or a path.")] = "env-v1",
+    rule_family: Annotated[str, typer.Option(help="Rule family the bundle declares.")] = "synthetic-pack-v1",
+    bundle_directory: Annotated[Path | None, typer.Option(help="Write the bundle here.")] = None,
+    bundle_id: Annotated[str | None, typer.Option(help="Override the generated bundle id.")] = None,
+    output: Annotated[Path | None, typer.Option(help="Write the job record here.")] = None,
+) -> None:
+    """Package a verified checkpoint into a frozen, loadable bundle."""
+    from .learning.jobs import run_packaging
+    from .learning.packaging import PackagingError
+
+    try:
+        payload = run_packaging(
+            checkpoint,
+            rule_family=rule_family,
+            env_config_id=env_config,
+            bundle_directory=bundle_directory,
+            bundle_id=bundle_id,
+        )
+    except PackagingError as exc:
+        typer.echo(json.dumps({"job": "package", "status": "refused", "detail": str(exc)}, indent=2))
+        raise typer.Exit(code=1) from exc
+    _emit(payload, output)
+
+
+@app.command()
+def throughput(
+    env_config: Annotated[str, typer.Option(help="Environment configuration id, or a path.")] = "env-v1",
+    transitions: Annotated[int, typer.Option(help="Transitions to measure.")] = 1000,
+    scenario: Annotated[str | None, typer.Option(help="Restrict to one scenario id.")] = None,
+    seed: Annotated[int, typer.Option(help="Sampling seed.")] = 11,
+    output: Annotated[Path | None, typer.Option(help="Write the measurement here.")] = None,
+) -> None:
+    """Measure environment throughput before choosing a training budget."""
+    from .learning.jobs import run_throughput_benchmark
+
+    _emit(
+        run_throughput_benchmark(
+            env_config_id=env_config, transitions=transitions, scenario_id=scenario, seed=seed
+        ),
+        output,
+    )
 
 
 @app.command()
 def evaluate(
-    candidate: Annotated[str, typer.Option(help="Model bundle id, or 'baseline'.")] = "baseline",
-    benchmark: Annotated[Path | None, typer.Option(help="Benchmark manifest YAML.")] = None,
+    candidate: Annotated[str, typer.Option(help="Candidate name, or 'baseline'.")] = "baseline",
+    benchmark: Annotated[str, typer.Option(help="Benchmark manifest id, or a path.")] = "commissioning-smoke",
+    reference: Annotated[str, typer.Option(help="Paired reference controller.")] = "legal_fixed_schedule",
+    report_id: Annotated[str | None, typer.Option(help="Override the report id.")] = None,
+    bootstrap_iterations: Annotated[int, typer.Option(help="Paired bootstrap iterations.")] = 2000,
     output: Annotated[Path | None, typer.Option(help="Write the report here.")] = None,
 ) -> None:
-    """Run a held-out benchmark and write a machine-readable report."""
-    from .evaluation.harness import run_benchmark
+    """Run a benchmark and write a machine-readable report.
 
-    report = run_benchmark(candidate=candidate, benchmark_path=benchmark, output=output)
-    typer.echo(json.dumps(report, indent=2, default=str))
+    Comparison-matrix rows that are not merged are passed to the harness as
+    explicit unavailable controllers, so the report renders them as unmeasured
+    instead of omitting them.
+    """
+    from .evaluation.jobs import run_evaluation
+
+    payload = run_evaluation(
+        candidate=candidate,
+        benchmark_id=benchmark,
+        reference=reference,
+        report_id=report_id,
+        bootstrap_iterations=bootstrap_iterations,
+        output=output,
+    )
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    if payload["status"] != "completed":
+        raise typer.Exit(code=2)
 
 
 @app.command()
 def ablate(
-    candidate: Annotated[str, typer.Option(help="Model bundle id.")],
+    candidate: Annotated[str, typer.Option(help="Candidate name.")],
     disable: Annotated[str, typer.Option(help="policy | terminal | none")] = "none",
-    benchmark: Annotated[Path | None, typer.Option(help="Benchmark manifest YAML.")] = None,
+    benchmark: Annotated[str, typer.Option(help="Benchmark manifest id, or a path.")] = "commissioning-smoke",
 ) -> None:
     """Run one ablation of the learned system against the same scenarios."""
-    from .evaluation.harness import run_ablation
+    from .evaluation.jobs import run_ablation_job
 
-    report = run_ablation(candidate=candidate, disable=disable, benchmark_path=benchmark)
-    typer.echo(json.dumps(report, indent=2, default=str))
+    payload = run_ablation_job(candidate=candidate, disable=disable, benchmark_id=benchmark)
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    if payload["status"] != "completed":
+        raise typer.Exit(code=2)
 
 
 @app.command()
 def promote(
-    bundle: Annotated[str, typer.Option(help="Model bundle id.")],
-    approval: Annotated[Path, typer.Option(help="Signed approval document.")],
+    bundle: Annotated[Path, typer.Option(help="Model bundle directory.")],
+    report: Annotated[Path | None, typer.Option(help="Benchmark report JSON.")] = None,
+    evidence: Annotated[
+        list[str] | None, typer.Option("--evidence", help="One supplied evidence item. Repeatable.")
+    ] = None,
+    expected_rule_family: Annotated[
+        str | None, typer.Option(help="Rule family the session will use.")
+    ] = None,
+    output: Annotated[Path | None, typer.Option(help="Write the decision here.")] = None,
 ) -> None:
     """Record a promotion decision. Refuses without frozen thresholds and evidence."""
-    from .learning.promotion import promote_bundle
+    from .learning.promotion import decide_from_paths
 
-    decision = promote_bundle(bundle_id=bundle, approval_path=approval)
-    typer.echo(json.dumps(decision, indent=2, default=str))
-    if decision.get("approved") is not True:
+    decision = decide_from_paths(
+        bundle_directory=bundle,
+        report_path=report,
+        evidence_supplied=tuple(evidence or ()),
+        expected_rule_family=expected_rule_family,
+    )
+    _emit(decision, output)
+    if decision.get("promoted") is not True:
         raise typer.Exit(code=1)
 
 
