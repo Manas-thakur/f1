@@ -671,7 +671,28 @@ Run on the final tree, in the order CI runs them.
 | Demo runbook | `uv run python scripts/demo.py --base-url http://127.0.0.1:8125` | 13/13 steps, exit 0, 4.28 s and 4.17 s |
 
 The `learning` group is excluded exactly as CI excludes it; torch is not
-installed here, so no learning test ran and no learning claim is made.
+installed here, so no learning test ran and no learning claim is made. The
+Python suite reported 1198 outcomes with no failures or errors on the final
+tree.
+
+### 5.1 Re-opened in Chrome on the finished build
+
+Every route in §2 was opened again on the final tree, and the connected flow of
+§2.1 was driven once more end to end on `ses-e068f7f1a1db4e27`, created from
+`/lab` with no session open. The control plane's own counters over the whole
+23-minute session, covering that flow and the route sweep:
+
+```
+uptime_s              1378
+websocket_resyncs        0
+snapshot reads          76
+spool_depth              0
+```
+
+Against the pre-fix measurement of 10 939 resyncs and 10 947 snapshot reads
+from a single tab in nine minutes. No JavaScript error or unhandled rejection
+was recorded on any route, `Restore snapshot` now renders as a styled disabled
+control, and the report page still states precisely which body it cannot read.
 
 ---
 
