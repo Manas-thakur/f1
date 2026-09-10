@@ -10,6 +10,9 @@ Module map
 ``env``          the Gymnasium environment at a one-second policy cadence
 ``config``       readers for ``configs/learning/``
 ``value``        the ordinary continuation-return ensemble
+``calibration``  the isotonic probability calibrator and its refusals
+``dataset``      forecast/realisation and continuation collection from episodes
+``prediction``   one serving surface for every learned prediction
 ``serving``      the frozen bundle, its hashes and the loader that refuses
 ``promotion``    ``promote_bundle``, whose default answer is no
 ``architecture``  layer tables and trainable-parameter counts, read off the modules
@@ -51,6 +54,16 @@ from .architecture import (
     describe_sac,
     parameter_totals,
 )
+from .calibration import (
+    CALIBRATOR_SCHEMA,
+    CalibratedProbability,
+    CalibrationFit,
+    CalibrationSample,
+    CalibratorStatus,
+    ProbabilityCalibrator,
+    fit_calibrator,
+    isotonic_fit,
+)
 from .config import (
     EnvConfig,
     SacConfig,
@@ -69,6 +82,14 @@ from .features import (
     encode,
 )
 from .policy import ActorPolicy, PolicyLoadError, load_actor
+from .prediction import (
+    ContinuationPrediction,
+    PredictionService,
+    PredictionUnavailable,
+    build_prediction_service,
+    service_from_directory,
+    support_reason_text,
+)
 from .promotion import (
     FrozenPromotionPolicy,
     PromotionDecision,
@@ -108,6 +129,7 @@ from .value import (
 
 __all__ = [
     "BUNDLE_SCHEMA_VERSION",
+    "CALIBRATOR_SCHEMA",
     "DEFAULT_BASELINE_IDENTITY",
     "REWARD_REVISION",
     "ActionBounds",
@@ -115,7 +137,12 @@ __all__ = [
     "ArchitectureReport",
     "BoundsStatus",
     "BundleRejection",
+    "CalibratedProbability",
+    "CalibrationFit",
+    "CalibrationSample",
+    "CalibratorStatus",
     "ContinuationEnsemble",
+    "ContinuationPrediction",
     "ContinuationSample",
     "ContinuationScore",
     "DecodedPreferences",
@@ -131,6 +158,9 @@ __all__ = [
     "LookaheadSample",
     "NetworkArchitecture",
     "PolicyLoadError",
+    "PredictionService",
+    "PredictionUnavailable",
+    "ProbabilityCalibrator",
     "PromotionDecision",
     "RefusalCode",
     "RejectionReason",
@@ -142,6 +172,7 @@ __all__ = [
     "ValueConfig",
     "ValueMember",
     "action_space",
+    "build_prediction_service",
     "compute_bounds",
     "decide_from_paths",
     "decode_action",
@@ -150,7 +181,9 @@ __all__ = [
     "describe_sac",
     "discounted_returns",
     "encode",
+    "fit_calibrator",
     "fit_ensemble",
+    "isotonic_fit",
     "load_actor",
     "load_bundle",
     "load_env_config",
@@ -162,6 +195,8 @@ __all__ = [
     "parameter_totals",
     "potential",
     "promote_bundle",
+    "service_from_directory",
     "step_reward",
+    "support_reason_text",
     "write_bundle",
 ]
