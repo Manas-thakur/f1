@@ -20,7 +20,7 @@ export function moduleGroups(sessionId: string | null): readonly ModuleGroup[] {
       links: [
         { to: '/sessions', label: 'Sessions' },
         ...(sessionBase === null
-          ? []
+          ? [{ to: '/lab', label: 'Simulation lab' }]
           : [
               { to: `${sessionBase}/engineer`, label: 'Engineer console' },
               { to: `${sessionBase}/lab`, label: 'Simulation lab' },
