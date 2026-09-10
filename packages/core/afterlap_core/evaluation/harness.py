@@ -48,7 +48,15 @@ from afterlap_core.rules import CarState as RuleCarState, RulePack, load_rule_pa
 from afterlap_core.simulation import Simulator, load_bundle
 from afterlap_core.simulation.branching import snapshot_hash
 
-from .controllers import ControlDecision, Controller, ControlRequest, build_request
+from .controllers import (
+    AblatedController,
+    ControlDecision,
+    Controller,
+    ControlRequest,
+    UnavailableController,
+    build_request,
+)
+from .statistics import UTILITY, EvaluationUnit, PairedSample
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -804,3 +812,125 @@ def run_benchmark(
 
 
 __all__ += ["OWN_ENERGY_UNAVAILABLE", "Objective", "controller_rule_context", "percentile"]
+
+
+def paired_sample_from_run(
+    run: BenchmarkRun,
+    *,
+    objective: Objective | None = None,
+    paths: Paths | None = None,
+) -> PairedSample:
+    """Reduce a benchmark run to one utility value per ``(scenario, seed)``.
+
+    One episode contributes exactly one unit per controller, which is the shape
+    :func:`~afterlap_core.evaluation.statistics.hierarchical_paired_bootstrap`
+    requires. Controllers that produced nothing for an episode are recorded in
+    ``missing`` rather than dropped, so a withdrawal or an unmerged row stays
+    visible in the denominator instead of quietly improving the mean.
+    """
+    resolved = objective or load_objective(paths=paths)
+    grouped: dict[tuple[str, int], dict[str, Any]] = {}
+    for outcome in run.outcomes:
+        key = (outcome.scenario_id, outcome.seed)
+        entry = grouped.setdefault(key, {"family": outcome.family, "values": {}, "missing": []})
+        if outcome.measured:
+            entry["values"][outcome.controller] = objective_utility(outcome, resolved)
+        else:
+            entry["missing"].append(outcome.controller)
+    return PairedSample(
+        metric=UTILITY,
+        units=tuple(
+            EvaluationUnit(
+                scenario_id=scenario_id,
+                seed=seed,
+                family=str(entry["family"]),
+                values=dict(entry["values"]),
+                missing=tuple(sorted(entry["missing"])),
+            )
+            for (scenario_id, seed), entry in sorted(grouped.items())
+        ),
+    )
+
+
+ABLATION_TARGETS: dict[str, str] = {
+    "none": "nothing is disabled; this is the unmodified candidate",
+    "policy": "the learned actor proposal is disabled and the solve starts from its own warm start",
+    "terminal": "the learned continuation term is disabled and the analytic terminal term is used",
+}
+
+
+def run_ablation(
+    manifest: BenchmarkManifest,
+    controllers: Sequence[Controller],
+    *,
+    disable: str = "none",
+    paths: Paths | None = None,
+    expected_model_bundle_hash: str | None = None,
+    offered_model_bundle_hashes: Mapping[str, str] | None = None,
+) -> BenchmarkRun:
+    """Run one ablation of the learned system over the same scenarios.
+
+    An ablation is only meaningful against a controller that actually uses the
+    contribution being removed. When no supplied controller uses it, every run
+    is recorded as unavailable with that reason: an ablation of an absent
+    component would otherwise report "no difference" and read as evidence that
+    the component does not matter.
+    """
+    if disable not in ABLATION_TARGETS:
+        raise ValueError(f"unknown ablation target {disable!r}; expected one of {sorted(ABLATION_TARGETS)}")
+
+    def uses_target(controller: Controller) -> bool:
+        if disable == "policy":
+            return bool(controller.uses_actor)
+        if disable == "terminal":
+            return bool(controller.uses_learned_return)
+        return bool(controller.uses_actor or controller.uses_learned_return)
+
+    relevant = [c for c in controllers if uses_target(c)]
+    if disable != "none" and not relevant:
+        detail = (
+            f"no supplied controller uses the {disable!r} contribution, so removing it cannot be "
+            "measured; this ablation is unmeasured rather than a null result"
+        )
+        return run_benchmark(
+            manifest,
+            [
+                UnavailableController(
+                    f"{c.name}+ablate_{disable}",
+                    owner="ablation",
+                    uses_actor=bool(c.uses_actor),
+                    uses_learned_return=bool(c.uses_learned_return),
+                    detail=detail,
+                )
+                for c in controllers
+            ]
+            or [
+                UnavailableController(
+                    f"ablate_{disable}",
+                    owner="ablation",
+                    detail=detail,
+                )
+            ],
+            paths=paths,
+            rerun_command=(
+                f"uv run python -m afterlap_core.cli ablate --benchmark {manifest.id} --disable {disable}"
+            ),
+        )
+
+    ablated: list[Controller] = [
+        AblatedController(controller, disable=disable) if uses_target(controller) else controller
+        for controller in controllers
+    ]
+    return run_benchmark(
+        manifest,
+        ablated,
+        paths=paths,
+        expected_model_bundle_hash=expected_model_bundle_hash,
+        offered_model_bundle_hashes=offered_model_bundle_hashes,
+        rerun_command=(
+            f"uv run python -m afterlap_core.cli ablate --benchmark {manifest.id} --disable {disable}"
+        ),
+    )
+
+
+__all__ += ["ABLATION_TARGETS", "paired_sample_from_run", "run_ablation"]
