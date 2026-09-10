@@ -51,12 +51,14 @@ from afterlap_contracts import (
     ActionCode,
     CandidatePlan,
     CheckpointDefinition,
+    CheckpointOutcome,
     CheckStatus,
     ConstraintResult,
     DeploymentProfile,
     EligibilityState,
     ExecutionEvent,
     ExecutionMatch,
+    LearnedContribution,
     ModelManifest,
     OutcomeRecord,
     PlanningResult,
@@ -81,6 +83,12 @@ from afterlap_core.data import (
     simulator_session_mapping,
 )
 from afterlap_core.estimation import EstimationContext, EstimatorState, create_state, update
+from afterlap_core.planning.forecast import outcome_ranges
+from afterlap_core.planning.publication import (
+    alternatives_for,
+    learned_contribution,
+    selected_candidate,
+)
 from afterlap_core.rules import (
     CarState,
     EligibilityMachine,
@@ -179,6 +187,22 @@ class RuntimeConfig:
     execution_window_s: float = 1.5
     eligibility: EligibilityPolicy = SYNTHETIC_GAP_THRESHOLD
     checkpoint_horizon_s: float = 30.0
+    planner_rollout_enabled: bool = False
+    """Whether the planner re-simulates finalists inside the decision budget.
+
+    Off by default because it does not fit. Measured on the development machine
+    (Windows 11, 16 threads, CasADi 3.8.0 / IPOPT), one decision takes 60-120 ms
+    without re-simulation and 200-460 ms with it, against the 200 ms budget
+    ``planner_deadline_s`` declares. With it on, every decision past the
+    eligibility resolution exceeded the deadline and the session withdrew advice
+    indefinitely.
+
+    Turning it on is a deliberate act that must come with a raised
+    ``planner_deadline_s``. The cost of leaving it off is visible rather than
+    silent: no scenario rollout means no event probabilities and no outcome
+    ranges, and the recommendation publishes that absence in
+    ``unavailable_reasons``.
+    """
 
     def __post_init__(self) -> None:
         if self.dt_s <= 0.0 or self.decision_interval_s <= 0.0:
@@ -279,6 +303,7 @@ class InProcessSessionRuntime:
         model_bundle: ModelManifest | None = None,
         objective_version: str = "objective-v1",
         expected_feature_hash: str | None = None,
+        planner_notes: tuple[str, ...] = (),
     ) -> None:
         self._bundle = bundle
         self._pack = pack
@@ -288,6 +313,7 @@ class InProcessSessionRuntime:
         self._model_bundle = model_bundle
         self._objective_version = objective_version
         self._expected_feature_hash = expected_feature_hash
+        self._planner_notes = tuple(planner_notes)
 
         self._lock = threading.RLock()
         self._manifest: SessionManifest | None = None
@@ -695,7 +721,11 @@ class InProcessSessionRuntime:
         while self._next_observation_s <= now + 1e-12:
             self._next_observation_s += period
         ego = self._bundle.scenario.ego_car_id
-        source.offer(simulator.observe(car_id=ego)[ego])
+        observation = simulator.observe(car_id=ego)[ego]
+        source.offer(observation)
+        observer = getattr(self._planner, "observe", None)
+        if observer is not None:
+            observer(observation)
 
     def _ingest_pending(self) -> None:
         adapter = self._require_adapter()
@@ -1040,7 +1070,7 @@ class InProcessSessionRuntime:
             )
             return
 
-        candidate = planning.accepted[0]
+        candidate = selected_candidate(planning) or planning.accepted[0]
         checked = check_plan(
             candidate,
             checker_state_for(
@@ -1057,7 +1087,8 @@ class InProcessSessionRuntime:
         )
         plan = candidate.revise(constraint_result=checked)
         self._last_planning = planning.revise(
-            accepted=(plan, *planning.accepted[1:]), selected_plan_id=plan.id
+            accepted=tuple(plan if other.id == plan.id else other for other in planning.accepted),
+            selected_plan_id=plan.id,
         )
         if checked.status is not CheckStatus.PASS:
             self._last_recommendation = self._withdraw(
@@ -1072,6 +1103,7 @@ class InProcessSessionRuntime:
             return
 
         self._last_accepted_plan = plan
+        learned = self._learned_contribution(self._last_planning)
         recommendation = Recommendation(
             schema_version=SCHEMA_VERSION,
             id=f"rec-{uuid.uuid4().hex[:16]}",
@@ -1099,11 +1131,16 @@ class InProcessSessionRuntime:
             model_hash=self._require_manifest().model_hash,
             objective_version=self._objective_version,
             reason_codes=tuple(dict.fromkeys((*plan.reason_codes, *report.reason_codes))),
-            outcomes=(),
-            probabilities=(),
+            outcomes=_selected_outcomes(plan),
+            probabilities=plan.probabilities,
             constraint_result=checked,
-            learned_contribution_enabled=bool(self._model_decision and self._model_decision.enabled),
+            learned_contribution_enabled=learned.enabled,
             baseline_identity=self._identity(),
+            outcome_ranges=outcome_ranges(plan.scenario_outcomes),
+            alternatives=alternatives_for(self._last_planning, recommended_plan_id=plan.id),
+            learned=learned,
+            planner_identity=self._planner_identity(),
+            unavailable_reasons=self._unavailable_reasons(report),
         )
         self._register(recommendation, estimate, plan, now_s=now_s)
 
@@ -1161,6 +1198,9 @@ class InProcessSessionRuntime:
             constraint_result=result,
             learned_contribution_enabled=False,
             baseline_identity=self._identity(),
+            alternatives=() if planning is None else alternatives_for(planning),
+            planner_identity=self._planner_identity(),
+            unavailable_reasons=self._unavailable_reasons(report),
         )
         self._register(recommendation, estimate, None, now_s=now_s)
         return recommendation
@@ -1446,6 +1486,54 @@ class InProcessSessionRuntime:
             finished=self._stopped,
         )
 
+    def _planner_identity(self) -> str:
+        """Which planner produced the decision, not which one was hoped for."""
+        return str(getattr(self._planner, "identity", type(self._planner).__name__))
+
+    def _learned_notes(self) -> Any | None:
+        return getattr(self._planner, "notes", None)
+
+    def _learned_contribution(self, planning: PlanningResult) -> LearnedContribution:
+        """The per-decision learned verdict, from what actually contributed."""
+        notes = self._learned_notes()
+        decision = self._model_decision
+        enabled = bool(decision and decision.enabled)
+        return learned_contribution(
+            planning.revise(learned_contribution_enabled=enabled)
+            if planning.learned_contribution_enabled != enabled
+            else planning,
+            baseline_identity=self._identity(),
+            bundle_id=None if notes is None else notes.bundle_id,
+            weights_hash=(
+                self._require_manifest().model_hash
+                if notes is None
+                else (notes.weights_hash or self._require_manifest().model_hash)
+            ),
+            calibrator_id=None if notes is None else notes.calibrator_id,
+            continuation_value=None if notes is None else notes.continuation_value,
+            disagreement=None if notes is None else notes.continuation_disagreement,
+            member_count=None if notes is None else notes.member_count,
+            in_support=bool(notes is not None and notes.continuation_in_support),
+            support_reason=None if notes is None else notes.support_reason,
+        )
+
+    def _unavailable_reasons(self, report: DegradationReport) -> tuple[str, ...]:
+        """Plain-language reasons a capability did not contribute to this decision.
+
+        Assembled from three places rather than one, because they fail for
+        different reasons: the degradation table, the model-compatibility gate,
+        and whatever the planner adapter could not supply this tick.
+        """
+        reasons: list[str] = list(self._planner_notes)
+        reasons.extend(finding.detail for finding in report.findings if getattr(finding, "detail", None))
+        decision = self._model_decision
+        if decision is not None and not decision.enabled and decision.detail:
+            reasons.append(decision.detail)
+        notes = self._learned_notes()
+        if notes is not None:
+            reasons.extend(notes.unavailable_reasons)
+        return tuple(dict.fromkeys(reason for reason in reasons if reason))
+
     def _identity(self) -> str:
         decision = self._model_decision
         return decision.baseline_identity if decision is not None else BASELINE_IDENTITY
@@ -1511,6 +1599,21 @@ class InProcessSessionRuntime:
         if self._eligibility is None:
             raise SessionRuntimeError("the session has not been initialised")
         return self._eligibility
+
+
+def _selected_outcomes(plan: CandidatePlan) -> tuple[CheckpointOutcome, ...]:
+    """The predicted checkpoint states of the scenario the ensemble weights most.
+
+    One scenario's checkpoints, not a blend of several: averaging an elapsed
+    time across scenarios that reached different checkpoints produces a
+    trajectory none of them followed. The spread across the whole ensemble is
+    published separately as ``outcome_ranges``.
+    """
+    feasible = [outcome for outcome in plan.scenario_outcomes if outcome.feasible]
+    if not feasible:
+        return ()
+    heaviest = max(feasible, key=lambda outcome: (outcome.weight, outcome.scenario_id))
+    return heaviest.checkpoints
 
 
 def default_planner() -> tuple[Planner, str]:
