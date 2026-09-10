@@ -32,7 +32,6 @@ import math
 from typing import Annotated, Any
 
 import numpy as np
-from fastapi import APIRouter, Query, Request
 
 from afterlap_contracts import (
     CentrelineResponse,
@@ -65,16 +64,17 @@ from afterlap_core.tracks.loader import (
 )
 from afterlap_core.tracks.package import TrackPackage, readiness_rank
 
+from ..call import Request
 from ..db import LifecycleError
+from ..deps import QueryBound
 from ..redaction import scrub_local_paths
+from ..router import get
 from ..session.circuit import (
     MINIMUM_READINESS,
     REAL_CIRCUIT_LABEL,
     has_synthetic_sketch,
     overlay_content_hash,
 )
-
-router = APIRouter()
 
 MAX_CENTRELINE_POINTS = 20000
 """A stride that would return more than this is refused rather than silently coarsened."""
@@ -215,7 +215,7 @@ def _registry_track_ids(registry: Any | None) -> tuple[str, ...]:
     return tuple(getattr(registry, "track_ids", ()) or ())
 
 
-@router.get("/tracks", response_model=TrackListResponse)
+@get("/tracks")
 async def list_tracks(request: Request) -> TrackListResponse:
     """The season registry joined with the compiled packages actually on disk."""
     paths = catalogue_paths(request)
@@ -229,7 +229,7 @@ async def list_tracks(request: Request) -> TrackListResponse:
     )
 
 
-@router.get("/tracks/{track_id}", response_model=TrackDetailResponse)
+@get("/tracks/{track_id}")
 async def get_track(request: Request, track_id: str) -> TrackDetailResponse:
     """Package summary, validation report and event overlays. No raw arrays."""
     paths = catalogue_paths(request)
@@ -293,11 +293,11 @@ async def get_track(request: Request, track_id: str) -> TrackDetailResponse:
     )
 
 
-@router.get("/tracks/{track_id}/centreline", response_model=CentrelineResponse)
+@get("/tracks/{track_id}/centreline")
 async def get_centreline(
     request: Request,
     track_id: str,
-    stride_m: Annotated[float, Query(ge=1.0, le=2000.0)] = 25.0,
+    stride_m: Annotated[float, QueryBound(1.0, 2000.0)] = 25.0,
 ) -> CentrelineResponse:
     """Downsampled ``s/x/y/curvature`` from the compiled arrays, plus the hashes.
 
@@ -365,7 +365,7 @@ async def get_centreline(
     )
 
 
-@router.get("/conditions", response_model=ConditionsListResponse)
+@get("/conditions")
 async def list_conditions_tapes(request: Request) -> ConditionsListResponse:
     """Every conditions document, resolved offline. An absent tape says so."""
     paths = catalogue_paths(request)
@@ -426,7 +426,7 @@ async def list_conditions_tapes(request: Request) -> ConditionsListResponse:
     return ConditionsListResponse(conditions=tuple(out))
 
 
-@router.get("/scenarios", response_model=ScenarioListResponse)
+@get("/scenarios")
 async def list_scenario_documents(request: Request) -> ScenarioListResponse:
     """Every scenario with the circuit and conditions it actually resolves to.
 
@@ -487,4 +487,4 @@ async def list_scenario_documents(request: Request) -> ScenarioListResponse:
     return ScenarioListResponse(scenarios=tuple(out))
 
 
-__all__ = ["MAX_CENTRELINE_POINTS", "catalogue_paths", "router"]
+__all__ = ["MAX_CENTRELINE_POINTS", "catalogue_paths"]

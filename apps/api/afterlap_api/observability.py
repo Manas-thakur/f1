@@ -15,12 +15,10 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from fastapi.responses import JSONResponse
-
 from afterlap_core.diagnostics import redact
 
 if TYPE_CHECKING:
-    from fastapi import FastAPI
+    from .plane import ControlPlane
 
 _CONFIGURED = False
 
@@ -152,15 +150,15 @@ class RequestMetrics:
         }
 
 
-def metrics_response(app: FastAPI) -> JSONResponse:
-    metrics: RequestMetrics | None = getattr(app.state, "metrics", None)
+def metrics_payload(plane: ControlPlane) -> tuple[int, dict[str, Any]]:
+    metrics: RequestMetrics | None = getattr(plane.state, "metrics", None)
     if metrics is None:
-        return JSONResponse({"detail": "metrics are not initialised"}, status_code=503)
-    hub = getattr(app.state, "hub", None)
+        return 503, {"detail": "metrics are not initialised"}
+    hub = getattr(plane.state, "hub", None)
     resyncs = getattr(hub, "resync_count", None)
     if resyncs is not None:
         metrics.websocket_resyncs = int(resyncs)
-    return JSONResponse(metrics.snapshot())
+    return 200, metrics.snapshot()
 
 
-__all__ = ["JsonFormatter", "RequestMetrics", "configure_logging", "metrics_response"]
+__all__ = ["JsonFormatter", "RequestMetrics", "configure_logging", "metrics_payload"]

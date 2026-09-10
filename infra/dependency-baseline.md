@@ -24,8 +24,6 @@ claims about the newest release of each project.
 | torch | 2.14.0+cpu (`learning` group) |
 | gymnasium | 1.3.0 (`learning` group) |
 | stable-baselines3 | 2.9.0 (`learning` group) |
-| fastapi | 0.141.1 |
-| uvicorn | 0.52.4 |
 | sqlalchemy | 2.0.52 |
 | alembic | 1.19.2 |
 | psycopg | 3.3.5 |
@@ -33,7 +31,6 @@ claims about the newest release of each project.
 | pypdf | 6.18.0 (`track-ingestion` group) |
 | typer | 0.27.2 |
 | pyyaml | 6.0.3 |
-| websockets | 17.1 (transitive, via `uvicorn[standard]`) |
 | tensorboard | 2.21.0 (`learning` group) |
 | pytest | 9.1.1 |
 | hypothesis | 6.167.1 |
@@ -110,7 +107,7 @@ maps onto an extra of `afterlap-core` (or of `afterlap-api`):
 | `solver` | casadi | the continuous optimal-control solver |
 | `track-ingestion` | scipy, pypdf | centreline compilation and FIA overlay parsing |
 | `learning` | torch, gymnasium, stable-baselines3, tensorboard | SAC training and the value estimator |
-| `dev` | pytest, ruff, mypy, hypothesis, httpx | the toolchain |
+| `dev` | pytest, ruff, mypy, hypothesis | the toolchain |
 
 `default-groups = ["runtime", "dev"]`, so a plain `uv sync` installs a working
 control plane and nothing heavier. Every group is genuinely optional: the

@@ -48,7 +48,7 @@ class ApiError(RuntimeError):
 class ApiClient:
     """Minimal JSON client against one AFTERLAP origin."""
 
-    base_url: str = "http://127.0.0.1:8000"
+    base_url: str = "http://127.0.0.1:3000"
     prefix: str = "/api/v1"
     operator_id: str = "console-operator"
     timeout_s: float = DEFAULT_TIMEOUT_S

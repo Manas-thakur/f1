@@ -658,11 +658,11 @@ cd source
 uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor        # must report contracts, numerics, storage available
 
-AFTERLAP_ENV=development uv run python -m uvicorn afterlap_api.main:app \\
+AFTERLAP_ENV=development uv run python -m afterlap_api.cli serve \\
     --host 127.0.0.1 --port 8000
 
 # second terminal
-cd apps/web && bun install --frozen-lockfile && bunx vite --port 5200
+cd apps/web && bun install --frozen-lockfile && bun run dev
 ```
 
 The API creates its schema on startup, so no separate migration step is needed
@@ -671,7 +671,7 @@ for the SQLite development store.
 ## Verify it works, without a browser
 
 ```
-uv run python scripts/demo.py --base-url http://127.0.0.1:8000 --json demo-report.json
+uv run python scripts/demo.py --base-url http://127.0.0.1:3000 --json demo-report.json
 ```
 
 That executes the demonstration runbook against the live server: create a

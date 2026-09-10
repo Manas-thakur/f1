@@ -2,7 +2,7 @@
 
 ## Deliverable
 
-Implement `apps/api/`, `workers/` and reviewed persistence migrations. Next.js exposes the contract routes by spawning `python -m afterlap_api.cli`. FastAPI remains the loopback session runtime. A single owner processes each session's state transitions. A process pool handles bounded optimisation jobs; batch training/evaluation runs separately. Use a bounded IPC queue and explicit cancellation/deadlines.
+Implement `apps/api/`, `workers/` and reviewed persistence migrations. Next.js exposes the contract routes by spawning `python -m afterlap_api.cli`. Python has no HTTP server. A single owner processes each session's state transitions. A process pool handles bounded optimisation jobs; batch training/evaluation runs separately. Use a bounded IPC queue and explicit cancellation/deadlines.
 
 ## Database model
 

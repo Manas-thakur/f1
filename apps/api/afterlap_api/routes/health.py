@@ -27,7 +27,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import anyio.to_thread
-from fastapi import APIRouter, Request, Response
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -35,6 +34,8 @@ from afterlap_contracts import CapabilityState
 from afterlap_contracts.requests import HealthResponse
 from afterlap_core.paths import Paths
 
+from ..call import Request, Response
+from ..router import get
 from ..runtime.port import RuntimeUnavailable
 from ..session.runtime import SessionRuntimeError
 from ..worker_health import BATCH_WORKER, worker_status
@@ -42,20 +43,18 @@ from ..worker_health import BATCH_WORKER, worker_status
 if TYPE_CHECKING:
     from ..runtime.registry import RuntimeRegistry
 
-router = APIRouter()
-
 REQUIRED_FOR_READINESS = ("contracts", "numerics", "storage")
 
 IDLE_LIFECYCLES = frozenset({"created", "paused", "stopped", "finished"})
 """Lifecycles that are idle because nobody asked them to decide, not by a fault."""
 
 
-@router.get("/health/live", response_model=HealthResponse)
+@get("/health/live")
 async def live() -> HealthResponse:
     return HealthResponse(status="live", detail={"note": "the process loop is running"})
 
 
-@router.get("/health/ready", response_model=HealthResponse)
+@get("/health/ready")
 async def ready(request: Request, response: Response) -> HealthResponse:
     capabilities: dict[str, CapabilityState] = getattr(request.app.state, "capabilities", {})
     detail = {name: state.value for name, state in capabilities.items()}
@@ -89,7 +88,7 @@ async def ready(request: Request, response: Response) -> HealthResponse:
     return HealthResponse(status="ready", detail=detail)
 
 
-@router.get("/health/workers")
+@get("/health/workers")
 async def workers(request: Request) -> dict[str, Any]:
     """What each background worker last reported about itself.
 
@@ -183,4 +182,19 @@ def _decision_health(runtime: object) -> dict[str, Any] | None:
     }
 
 
-__all__ = ["IDLE_LIFECYCLES", "REQUIRED_FOR_READINESS", "router"]
+@get("/version")
+async def version(request: Request) -> dict[str, object]:
+    from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION
+
+    capabilities = getattr(request.app.state, "capabilities", {})
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "contract_revision": CONTRACT_REVISION,
+        "capabilities": {
+            name: state.value if isinstance(state, CapabilityState) else str(state)
+            for name, state in capabilities.items()
+        },
+    }
+
+
+__all__ = ["IDLE_LIFECYCLES", "REQUIRED_FOR_READINESS"]

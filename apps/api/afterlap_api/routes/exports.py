@@ -29,7 +29,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
@@ -44,6 +43,7 @@ from afterlap_contracts.requests import CreateExportRequest, ExportJobResponse
 from afterlap_core.data import redact_mapping
 from afterlap_core.paths import Paths, atomic_write_bytes, atomic_write_text, sha256_json
 
+from ..call import Request
 from ..db import LifecycleError
 from ..db.models import (
     Decision,
@@ -59,12 +59,11 @@ from ..db.models import (
 )
 from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
 from ..redaction import artefact_relative
+from ..router import get, post
 from ..session.circuit import REAL_CIRCUIT_LABEL
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-router = APIRouter()
 
 SYNTHETIC_EXPORT_NOTICE = (
     "SYNTHETIC EXPORT. Produced from the AFTERLAP simulator on invented configurations. "
@@ -300,7 +299,7 @@ def _to_csv(body: dict) -> str:
     return buffer.getvalue()
 
 
-@router.post("/exports", response_model=ExportJobResponse, status_code=201)
+@post("/exports", status_code=201)
 async def create_export(
     request: Request,
     payload: CreateExportRequest,
@@ -371,7 +370,7 @@ def _write(target: Path, body: dict, fmt: str) -> Path:
     raise LifecycleError(ErrorCode.VALIDATION_FAILED, f"unsupported export format {fmt!r}")
 
 
-@router.get("/exports/{export_id}", response_model=ExportJobResponse)
+@get("/exports/{export_id}")
 async def get_export(export_id: str, db: DbSession) -> ExportJobResponse:
     record = db.get(ExportJob, export_id)
     if record is None:
@@ -386,4 +385,4 @@ async def get_export(export_id: str, db: DbSession) -> ExportJobResponse:
     )
 
 
-__all__ = ["SYNTHETIC_EXPORT_NOTICE", "UNITS", "build_export_body", "router"]
+__all__ = ["SYNTHETIC_EXPORT_NOTICE", "UNITS", "build_export_body"]

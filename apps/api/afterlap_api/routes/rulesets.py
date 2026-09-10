@@ -4,26 +4,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request
 from sqlalchemy import select
 
 from afterlap_contracts import ErrorCode, RuleManifest
 from afterlap_contracts.requests import RulesetResponse
 from afterlap_core.rules import list_rule_packs, load_rule_pack
 
+from ..call import Request
 from ..db import LifecycleError
 from ..db.models import RuleManifestRow
 from ..deps import DbSession
+from ..router import get
 from .catalog import catalogue_paths
 
 if TYPE_CHECKING:
     from afterlap_core.paths import Paths
     from afterlap_core.rules import RulePack
 
-router = APIRouter()
 
-
-@router.get("/rulesets/{ruleset_id}", response_model=RulesetResponse)
+@get("/rulesets/{ruleset_id}")
 async def get_ruleset(ruleset_id: str, request: Request, db: DbSession) -> RulesetResponse:
     """Resolve a pack by id or by content hash.
 

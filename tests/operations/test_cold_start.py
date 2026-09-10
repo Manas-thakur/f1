@@ -21,9 +21,9 @@ import time
 from typing import TYPE_CHECKING
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy import inspect, text
 
+from afterlap_api.client import TestClient
 from afterlap_api.db.models import Base
 from afterlap_api.deps import Settings
 from afterlap_api.main import create_app

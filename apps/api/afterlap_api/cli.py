@@ -2,23 +2,24 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import sys
-import urllib.error
+import threading
 import urllib.parse
-import urllib.request
 from typing import Annotated, Any
 
 import typer
-import uvicorn
 
 from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION
 
+from .call import Incoming
 from .deps import Settings
-from .main import API_PREFIX, create_app
+from .ipc import connect, read_message, write_message
+from .plane import create_app
 
 app = typer.Typer(
     name="afterlap-api",
-    help="AFTERLAP control-plane CLI. Next.js is the public HTTP server; this process owns Python work.",
+    help="AFTERLAP Python CLI. Next.js is the public HTTP server.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -30,13 +31,11 @@ def runtime_url() -> str:
     return os.environ.get("AFTERLAP_RUNTIME_URL", DEFAULT_RUNTIME_URL).rstrip("/")
 
 
-def _decode_body(raw: bytes) -> Any:
-    if not raw:
-        return None
-    try:
-        return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError:
-        return raw.decode("utf-8")
+def runtime_addr(base_url: str | None = None) -> tuple[str, int]:
+    parsed = urllib.parse.urlparse(base_url or runtime_url())
+    host = parsed.hostname or os.environ.get("AFTERLAP_HOST", "127.0.0.1")
+    port = parsed.port or int(os.environ.get("AFTERLAP_PORT", "8000"))
+    return host, port
 
 
 def _header_pairs(headers: list[str]) -> dict[str, str]:
@@ -49,7 +48,17 @@ def _header_pairs(headers: list[str]) -> dict[str, str]:
     return parsed
 
 
-def perform_http_request(
+def _query_map(items: list[str] | None) -> dict[str, str]:
+    query: dict[str, str] = {}
+    for item in items or []:
+        if "=" not in item:
+            raise typer.BadParameter(f"query must be name=value, got {item!r}")
+        name, value = item.split("=", 1)
+        query[name] = value
+    return query
+
+
+def perform_runtime_request(
     method: str,
     path: str,
     *,
@@ -59,28 +68,10 @@ def perform_http_request(
     base_url: str | None = None,
     timeout_s: float = 60.0,
 ) -> dict[str, Any]:
-    rooted = path if path.startswith("/") else f"/{path}"
-    url = f"{(base_url or runtime_url())}{rooted}"
-    if query:
-        url = f"{url}?{urllib.parse.urlencode(query)}"
-    request_headers = {"Accept": "application/json", **(headers or {})}
-    if body is not None and not any(key.lower() == "content-type" for key in request_headers):
-        request_headers["Content-Type"] = "application/json"
-    request = urllib.request.Request(url, data=body, method=method.upper(), headers=request_headers)
+    host, port = runtime_addr(base_url)
     try:
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:
-            return {
-                "status": int(response.status),
-                "headers": {k.lower(): v for k, v in response.headers.items()},
-                "body": _decode_body(response.read()),
-            }
-    except urllib.error.HTTPError as exc:
-        return {
-            "status": int(exc.code),
-            "headers": {k.lower(): v for k, v in exc.headers.items()} if exc.headers is not None else {},
-            "body": _decode_body(exc.read()),
-        }
-    except urllib.error.URLError as exc:
+        sock = connect(host, port, timeout_s=timeout_s)
+    except OSError as exc:
         return {
             "status": 503,
             "headers": {"content-type": "application/json"},
@@ -93,10 +84,44 @@ def perform_http_request(
                     ),
                     "retryable": True,
                     "request_id": "cli-runtime-down",
-                    "details": {"capability": "python_runtime", "reason": str(exc.reason)},
+                    "details": {"capability": "python_runtime", "reason": str(exc)},
                 }
             },
         }
+    try:
+        write_message(
+            sock,
+            {
+                "kind": "request",
+                "method": method.upper(),
+                "path": path if path.startswith("/") else f"/{path}",
+                "query": query or {},
+                "headers": headers or {},
+                "body": None if body is None else body.decode("utf-8"),
+            },
+        )
+        reply = read_message(sock)
+        return {
+            "status": int(reply.get("status", 500)),
+            "headers": {str(key).lower(): str(value) for key, value in (reply.get("headers") or {}).items()},
+            "body": reply.get("body"),
+        }
+    except (OSError, ConnectionError, json.JSONDecodeError) as exc:
+        return {
+            "status": 503,
+            "headers": {"content-type": "application/json"},
+            "body": {
+                "error": {
+                    "code": "capability_unavailable",
+                    "message": "the Python runtime closed the CLI connection",
+                    "retryable": True,
+                    "request_id": "cli-runtime-io",
+                    "details": {"capability": "python_runtime", "reason": str(exc)},
+                }
+            },
+        }
+    finally:
+        sock.close()
 
 
 def perform_in_process_request(
@@ -108,47 +133,95 @@ def perform_in_process_request(
     body: bytes | None = None,
     settings: Settings | None = None,
 ) -> dict[str, Any]:
-    from fastapi.testclient import TestClient
-
-    application = create_app(settings)
-    with TestClient(application) as client:
-        response = client.request(
-            method.upper(),
-            path if path.startswith("/") else f"/{path}",
-            params=query,
-            headers=headers,
-            content=body,
+    plane = create_app(settings)
+    plane.start()
+    try:
+        outgoing = plane.handle(
+            Incoming(
+                method=method.upper(),
+                path=path if path.startswith("/") else f"/{path}",
+                query=query or {},
+                headers=headers or {},
+                body=body,
+            )
         )
-        payload: Any
-        if not response.content:
-            payload = None
-        else:
-            try:
-                payload = response.json()
-            except ValueError:
-                payload = response.text
-        return {
-            "status": int(response.status_code),
-            "headers": {k.lower(): v for k, v in response.headers.items()},
-            "body": payload,
-        }
+        return {"status": outgoing.status, "headers": outgoing.headers, "body": outgoing.body}
+    finally:
+        plane.stop()
+
+
+def _run_runtime(host: str, port: int) -> None:
+    plane = create_app()
+    plane.start()
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind((host, port))
+    listener.listen()
+    try:
+        while True:
+            conn, _addr = listener.accept()
+            thread = threading.Thread(target=_serve_connection, args=(conn, plane), daemon=True)
+            thread.start()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        listener.close()
+        plane.stop()
+
+
+def _serve_connection(conn: socket.socket, plane: Any) -> None:
+    try:
+        while True:
+            message = read_message(conn)
+            kind = message.get("kind")
+            if kind == "request":
+                raw_body = message.get("body")
+                body = None if raw_body is None else str(raw_body).encode("utf-8")
+                outgoing = plane.handle(
+                    Incoming(
+                        method=str(message.get("method", "GET")),
+                        path=str(message.get("path", "/")),
+                        query=dict(message.get("query") or {}),
+                        headers=dict(message.get("headers") or {}),
+                        body=body,
+                    )
+                )
+                write_message(
+                    conn,
+                    {
+                        "kind": "response",
+                        "status": outgoing.status,
+                        "headers": outgoing.headers,
+                        "body": outgoing.body,
+                    },
+                )
+            elif kind == "stream":
+                session_id = str(message.get("session_id", ""))
+                after = int(message.get("after_sequence", 0))
+                for frame in plane.iter_stream(session_id, after):
+                    write_message(conn, {"kind": "envelope", "data": frame})
+            else:
+                write_message(conn, {"kind": "error", "message": f"unknown kind {kind!r}"})
+    except (OSError, ConnectionError):
+        return
+    finally:
+        conn.close()
 
 
 @app.command()
 def serve(
-    host: Annotated[
-        str,
-        typer.Option(help="Bind address. Public HTTP is Next.js, not this socket."),
-    ] = "127.0.0.1",
-    port: Annotated[int, typer.Option(help="Bind port for the internal Python runtime.")] = 8000,
+    host: Annotated[str, typer.Option(help="Bind address for the CLI runtime.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Bind port for the CLI runtime.")] = 8000,
 ) -> None:
-    uvicorn.run(
-        "afterlap_api.main:app",
-        host=host,
-        port=port,
-        factory=False,
-        log_level="info",
-    )
+    _run_runtime(host, port)
+
+
+@app.command()
+def runtime(
+    host: Annotated[str, typer.Option(help="Bind address for the CLI runtime.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Bind port for the CLI runtime.")] = 8000,
+) -> None:
+    _run_runtime(host, port)
 
 
 @app.command("request")
@@ -166,24 +239,19 @@ def request_command(
     ] = None,
     in_process: Annotated[
         bool,
-        typer.Option("--in-process", help="Use an in-process app instead of AFTERLAP_RUNTIME_URL."),
+        typer.Option("--in-process", help="Handle the call in this process instead of attaching to serve."),
     ] = False,
 ) -> None:
-    query_map: dict[str, str] = {}
-    for item in query or []:
-        if "=" not in item:
-            raise typer.BadParameter(f"query must be name=value, got {item!r}")
-        name, value = item.split("=", 1)
-        query_map[name] = value
     payload = body.encode("utf-8") if body is not None else None
     headers = _header_pairs(header or [])
+    mapped = _query_map(query)
     if in_process:
         result = perform_in_process_request(
-            method, path, query=query_map or None, headers=headers or None, body=payload
+            method, path, query=mapped or None, headers=headers or None, body=payload
         )
     else:
-        result = perform_http_request(
-            method, path, query=query_map or None, headers=headers or None, body=payload
+        result = perform_runtime_request(
+            method, path, query=mapped or None, headers=headers or None, body=payload
         )
     typer.echo(json.dumps(result))
     if int(result["status"]) >= 500:
@@ -195,40 +263,32 @@ def stream(
     session_id: Annotated[str, typer.Argument()],
     after_sequence: Annotated[int, typer.Option("--after-sequence")] = 0,
     base_url: Annotated[str | None, typer.Option("--runtime-url")] = None,
+    in_process: Annotated[bool, typer.Option("--in-process")] = False,
 ) -> None:
-    origin = (base_url or runtime_url()).rstrip("/")
-    parsed = urllib.parse.urlparse(origin)
-    scheme = "wss" if parsed.scheme == "https" else "ws"
-    netloc = parsed.netloc
-    ws_url = (
-        f"{scheme}://{netloc}{API_PREFIX}/sessions/{urllib.parse.quote(session_id)}"
-        f"/stream?after_sequence={after_sequence}"
-    )
+    if in_process:
+        plane = create_app()
+        plane.start()
+        try:
+            for frame in plane.iter_stream(session_id, after_sequence):
+                typer.echo(frame, err=False)
+        finally:
+            plane.stop()
+        return
+    host, port = runtime_addr(base_url)
     try:
-        from websockets.sync.client import connect
-    except ImportError as exc:
-        typer.echo(
-            json.dumps(
-                {
-                    "error": {
-                        "code": "capability_unavailable",
-                        "message": "the websockets package is not installed",
-                        "retryable": True,
-                        "request_id": "cli-stream",
-                        "details": {"capability": "stream", "reason": str(exc)},
-                    }
-                }
-            ),
-            err=True,
+        sock = connect(host, port, timeout_s=None)
+        sock.settimeout(None)
+        write_message(
+            sock,
+            {"kind": "stream", "session_id": session_id, "after_sequence": after_sequence},
         )
-        raise typer.Exit(code=1) from exc
-
-    try:
-        with connect(ws_url) as socket:
-            for message in socket:
-                text = message if isinstance(message, str) else message.decode("utf-8")
-                typer.echo(text, err=False)
-    except Exception as exc:
+        while True:
+            message = read_message(sock)
+            if message.get("kind") == "envelope":
+                typer.echo(str(message.get("data", "")), err=False)
+            elif message.get("kind") == "stream_end":
+                break
+    except (OSError, ConnectionError) as exc:
         typer.echo(
             json.dumps(
                 {
@@ -273,7 +333,7 @@ __all__ = [
     "DEFAULT_RUNTIME_URL",
     "app",
     "main",
-    "perform_http_request",
     "perform_in_process_request",
+    "perform_runtime_request",
     "runtime_url",
 ]

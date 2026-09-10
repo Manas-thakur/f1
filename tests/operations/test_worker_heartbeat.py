@@ -18,8 +18,7 @@ import threading
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from fastapi.testclient import TestClient
-
+from afterlap_api.client import TestClient
 from afterlap_api.deps import Settings
 from afterlap_api.main import create_app
 from afterlap_api.worker_health import (

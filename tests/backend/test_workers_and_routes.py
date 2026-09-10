@@ -4,20 +4,17 @@ The batch worker's guarantees are concurrency guarantees: one job id yields at
 most one successful report, a lost lease discards its own work, and cancellation
 between rollouts preserves partial output labelled incomplete.
 
-The routes are exercised against a real FastAPI app. ``main.py`` is
-coordinator-owned and does not yet include these routers, so the app is
-assembled here the way ``handoffs/A08-integration-patch.md`` proposes to assemble
-it there.
+The routes are exercised against a real control-plane process. ``main.py``
+owns route loading, so this fixture only points the plane at a temporary
+database and artefact tree.
 """
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
-from fastapi.testclient import TestClient
 from workers.batch_worker import (
     INCOMPLETE_LABEL,
     BatchWorker,
@@ -27,19 +24,16 @@ from workers.batch_worker import (
     read_report,
 )
 
+from afterlap_api.client import TestClient
 from afterlap_api.db import create_all
 from afterlap_api.db.engine import command_transaction
 from afterlap_api.db.models import ExperimentJob, SnapshotRow
 from afterlap_api.deps import Settings
 from afterlap_api.main import API_PREFIX, create_app
-from afterlap_api.routes import experiments as experiments_routes, exports as exports_routes
 from afterlap_api.session import SessionFactory
 from afterlap_contracts import JobStatus
 
 from .conftest import SCENARIO_ID, actionable, start_session
-
-if TYPE_CHECKING:
-    from fastapi import FastAPI
 
 
 def _queue_job(factory, job_id: str = "job-1") -> str:
@@ -194,9 +188,7 @@ def client(tmp_path):
         artifact_root=tmp_path,
         session_runtime_backend="in_process",
     )
-    app: FastAPI = create_app(settings)
-    app.include_router(experiments_routes.router, prefix=API_PREFIX, tags=["experiments"])
-    app.include_router(exports_routes.router, prefix=API_PREFIX, tags=["exports"])
+    app = create_app(settings)
     with TestClient(app) as test_client:
         create_all(app.state.database.engine)
         app.state.session_factory = SessionFactory()

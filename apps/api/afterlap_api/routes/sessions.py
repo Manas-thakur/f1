@@ -7,17 +7,12 @@ frontend's controls are not the authority.
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
-import time
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import Annotated
 
 import anyio.to_thread
-from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, update
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 
 from afterlap_contracts import (
@@ -36,7 +31,6 @@ from afterlap_contracts import (
     SessionSnapshot,
     SessionSummary,
     SnapshotReference,
-    StreamEnvelope,
     StreamEventType,
 )
 from afterlap_contracts.events import SnapshotPayload
@@ -59,6 +53,7 @@ from afterlap_contracts.requests import (
 from afterlap_core.tracks.loader import TrackPackageError, load_track_package
 from afterlap_core.tracks.package import ReadinessStatus
 
+from ..call import Request
 from ..db import LifecycleError, acquire_lease, apply_operator_action, body_hash_of
 from ..db.models import (
     ControlLease as ControlLeaseRow,
@@ -72,21 +67,18 @@ from ..db.models import (
     SnapshotRow,
 )
 from ..db.repository import append_event, expire_due, next_sequence, require_lease
-from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId, require_simulation_mode
+from ..deps import (
+    CommandDbSession,
+    DbSession,
+    IdempotencyKey,
+    OperatorId,
+    QueryBound,
+    require_simulation_mode,
+)
 from ..errors import CapabilityUnavailable
+from ..router import get, post
 from ..runtime.port import RuntimeTick, RuntimeUnavailable
 from ..runtime.registry import RuntimeRegistry
-
-if TYPE_CHECKING:
-    from ..stream import StreamHub
-
-router = APIRouter()
-
-HEARTBEAT_INTERVAL_S = 10.0
-
-
-def _hub(request: Request) -> StreamHub:
-    return request.app.state.hub
 
 
 def _registry(request: Request) -> RuntimeRegistry:
@@ -302,7 +294,7 @@ def _pin_rule_manifest(request: Request, db: OrmSession, ruleset_id: str, rulese
     )
 
 
-@router.post("/sessions", response_model=CreateSessionResponse, status_code=201)
+@post("/sessions", status_code=201)
 async def create_session(
     request: Request,
     payload: CreateSessionRequest,
@@ -369,12 +361,12 @@ async def create_session(
     return CreateSessionResponse(manifest=manifest, snapshot=snapshot)
 
 
-@router.get("/sessions", response_model=SessionListResponse)
+@get("/sessions")
 async def list_sessions(
     db: DbSession,
-    mode: Annotated[SessionMode | None, Query()] = None,
-    cursor: Annotated[str | None, Query()] = None,
-    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    mode: SessionMode | None = None,
+    cursor: str | None = None,
+    limit: Annotated[int, QueryBound(1, 100)] = 25,
 ) -> SessionListResponse:
     statement = select(Session).order_by(Session.created_at.desc()).limit(limit + 1)
     if mode is not None:
@@ -402,12 +394,12 @@ async def list_sessions(
     )
 
 
-@router.get("/sessions/{session_id}/snapshot", response_model=SessionSnapshot)
+@get("/sessions/{session_id}/snapshot")
 async def get_snapshot(request: Request, session_id: str, db: DbSession) -> SessionSnapshot:
     return _build_snapshot(request, db, _session_row(db, session_id))
 
 
-@router.post("/sessions/{session_id}/control-lease", response_model=AcquireLeaseResponse)
+@post("/sessions/{session_id}/control-lease")
 async def take_lease(
     session_id: str,
     payload: AcquireLeaseRequest,
@@ -435,7 +427,7 @@ async def take_lease(
     )
 
 
-@router.post("/sessions/{session_id}/commands", response_model=SessionCommandResponse)
+@post("/sessions/{session_id}/commands")
 async def run_command(
     request: Request,
     session_id: str,
@@ -536,10 +528,7 @@ def _observe_decision_metrics(request: Request, session_id: str, tick: RuntimeTi
         metrics.spool_depth = persistence.spooled
 
 
-@router.post(
-    "/sessions/{session_id}/recommendations/{recommendation_id}/actions",
-    response_model=RecommendationActionResponse,
-)
+@post("/sessions/{session_id}/recommendations/{recommendation_id}/actions")
 async def act_on_recommendation(
     request: Request,
     session_id: str,
@@ -594,7 +583,7 @@ async def act_on_recommendation(
     )
 
 
-@router.post("/sessions/{session_id}/simulator/driver-action", response_model=DriverActionResponse)
+@post("/sessions/{session_id}/simulator/driver-action")
 async def driver_action(
     request: Request,
     session_id: str,
@@ -625,7 +614,7 @@ async def driver_action(
     return DriverActionResponse(execution=execution, recommendation=updated)
 
 
-@router.post("/sessions/{session_id}/snapshots", response_model=CreateSnapshotResponse, status_code=201)
+@post("/sessions/{session_id}/snapshots", status_code=201)
 async def create_snapshot(
     request: Request,
     session_id: str,
@@ -664,7 +653,7 @@ async def create_snapshot(
     )
 
 
-@router.get("/decisions/{decision_id}", response_model=DecisionEvidenceResponse)
+@get("/decisions/{decision_id}")
 async def get_decision(decision_id: str, db: DbSession) -> DecisionEvidenceResponse:
     decision = db.get(Decision, decision_id)
     if decision is None:
@@ -730,65 +719,4 @@ def _operator_events(db: OrmSession, decision: Decision) -> tuple[OperatorEvent,
     return tuple(events)
 
 
-def _durable_sequence(app: Any, session_id: str) -> int | None:
-    """The store's cursor for a session, or ``None`` when it cannot be read.
-
-    Called from a worker thread: the stream route must not block the event
-    loop on the database, and a store that cannot answer has to degrade to the
-    conservative subscription rather than refuse the connection.
-    """
-    database = getattr(app.state, "database", None)
-    factory = getattr(database, "factory", None)
-    if factory is None:
-        return None
-    try:
-        with factory() as db:
-            row = db.get(Session, session_id)
-            return None if row is None else int(row.last_sequence)
-    except SQLAlchemyError:
-        return None
-
-
-@router.websocket("/sessions/{session_id}/stream")
-async def stream(websocket: WebSocket, session_id: str, after_sequence: int = 0) -> None:
-    """Resume from ``after_sequence``; a cursor outside the buffer resyncs.
-
-    The store's cursor travels with the subscription. A process that has
-    published nothing for this session yet — the state after every restart —
-    has no retained window to judge the request against, and the durable
-    sequence is the only thing that can tell a client that is current from one
-    that is behind or claiming events that were never issued.
-    """
-    hub: StreamHub = websocket.app.state.hub
-    await websocket.accept()
-
-    known = await anyio.to_thread.run_sync(_durable_sequence, websocket.app, session_id)
-    subscriber, _ = await hub.subscribe(session_id, after_sequence, known_sequence=known)
-    started = time.monotonic()
-
-    async def _pump() -> None:
-        while True:
-            envelope: StreamEnvelope = await subscriber.queue.get()
-            await websocket.send_text(envelope.model_dump_json())
-
-    async def _heartbeat() -> None:
-        while True:
-            await asyncio.sleep(HEARTBEAT_INTERVAL_S)
-            await websocket.send_text(hub.heartbeat(session_id, time.monotonic() - started).model_dump_json())
-
-    pump = asyncio.create_task(_pump())
-    beat = asyncio.create_task(_heartbeat())
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
-    finally:
-        for task in (pump, beat):
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
-        await hub.unsubscribe(subscriber)
-
-
-__all__ = ["router"]
+__all__ = []

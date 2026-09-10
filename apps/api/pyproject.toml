@@ -9,11 +9,8 @@ dependencies = [
     "afterlap-core",
     "afterlap-infrastructure",
     "anyio>=4.0",
-    "fastapi>=0.115,<1",
     "numpy>=2.0,<3",
-    "starlette>=0.40",
     "typer>=0.12",
-    "uvicorn[standard]>=0.32",
     "sqlalchemy>=2.0,<3",
     "alembic>=1.13",
 ]

@@ -79,7 +79,7 @@ LAYERS: dict[str, Layer] = {
     "afterlap_api": Layer(
         import_root=Path("apps", "api", "afterlap_api"),
         allowed_afterlap=INNER_LAYERS | {"afterlap_api"},
-        banned=frozenset(),
+        banned=WEB_FRAMEWORKS,
     ),
     "workers": Layer(
         import_root=Path("workers"),
@@ -141,7 +141,9 @@ def files_under(root: Path, suffix: str) -> tuple[Path, ...]:
             and name not in PRUNED_DIR_NAMES
             and here / name != GENERATED_CONTRACTS
         )
-        found.extend(sorted(here / name for name in filenames if name.endswith(suffix)))
+        found.extend(
+            sorted(here / name for name in filenames if name.endswith(suffix) and not name.startswith("._"))
+        )
     return tuple(found)
 
 
@@ -359,7 +361,6 @@ def test_the_infrastructure_layer_imports_no_application_layer_and_no_web_framew
 
 
 def test_the_http_composition_root_wires_every_inner_layer():
-    """``afterlap_api`` is the one place allowed to see all four inner packages at once."""
     found = violations_of("afterlap_api")
     assert not found, render("afterlap_api import boundary violations", found)
 

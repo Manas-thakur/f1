@@ -6,9 +6,6 @@ promote a bundle; promotion is a coordinator command with frozen thresholds.
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Query
 from sqlalchemy import select
 
 from afterlap_contracts import ApprovalStatus, ModelManifest
@@ -16,14 +13,13 @@ from afterlap_contracts.requests import ModelListResponse
 
 from ..db.models import ModelBundle
 from ..deps import DbSession
+from ..router import get
 
-router = APIRouter()
 
-
-@router.get("/models", response_model=ModelListResponse)
+@get("/models")
 async def list_models(
     db: DbSession,
-    approval_status: Annotated[ApprovalStatus | None, Query()] = None,
+    approval_status: ApprovalStatus | None = None,
 ) -> ModelListResponse:
     statement = select(ModelBundle).order_by(ModelBundle.created_at.desc())
     if approval_status is not None:

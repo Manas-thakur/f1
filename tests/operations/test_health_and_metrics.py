@@ -28,8 +28,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from fastapi.testclient import TestClient
 
+from afterlap_api.client import TestClient
 from afterlap_api.deps import Settings
 from afterlap_api.main import create_app
 from afterlap_api.routes.health import REQUIRED_FOR_READINESS

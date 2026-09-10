@@ -335,8 +335,7 @@ def physics_claims(circuit: str, ledger: Ledger) -> dict[str, Any]:
 
 def api_claims(circuit: str, ledger: Ledger, measured: dict[str, Any], root: Path) -> None:
     """Claims 6 to 13: the decision chain, the operator, the driver, the record."""
-    from fastapi.testclient import TestClient
-
+    from afterlap_api.client import TestClient
     from afterlap_api.deps import Settings
     from afterlap_api.main import create_app
     from afterlap_infrastructure.persistence import create_all
