@@ -28,20 +28,36 @@ and are computed differently:
 They differ exactly when a pass is completed and then lost again before the
 line, which is the case the greedy-pass test constructs.
 
-Both are reported as weighted scenario frequencies with their sample counts and
-``calibration_status=uncalibrated``: no calibrator exists yet, and a raw
-frequency must never be published as a calibrated probability.
+Both are computed as weighted scenario frequencies with their sample counts.
+What is *published* depends on whether a calibrator was supplied:
+
+* with no calibrator the raw frequency is published under
+  ``calibration_status=uncalibrated``, exactly as before. A raw frequency must
+  never be published as a calibrated probability;
+* with a calibrator that is frozen and covers the event, the calibrated value is
+  published under ``calibration_status=calibrated`` and ``raw_frequency`` keeps
+  the uncalibrated number beside it, so the adjustment is auditable rather than
+  invisible;
+* with a calibrator that refuses -- not frozen, event never fitted, thin
+  support -- the raw frequency is published as uncalibrated and the refusal
+  reason is recorded on the evidence. A refusal degrades the claim, never the
+  number.
+
+The calibrator arrives as a :class:`ProbabilityCalibration` protocol, so this
+module does not import ``afterlap_core.learning``: the same arrangement
+``scoring.ContinuationModel`` already uses for the continuation ensemble.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from afterlap_contracts import (
     CalibrationStatus,
     CheckpointOutcome,
     DeploymentProfile,
+    OutcomeRange,
     ProbabilityStatement,
     ProfileSegment,
     ScenarioOutcome,
@@ -58,6 +74,7 @@ from ..simulation import (
     run_branch,
 )
 from ..simulation.config import resolve_bundle
+from .forecast import outcome_ranges
 
 if TYPE_CHECKING:
     from .config import PlannerConfig
@@ -65,9 +82,18 @@ if TYPE_CHECKING:
     from .segments import PlanFrame
     from .surrogate import SurrogateWeights
 
-__all__ = ["PlanningWorld", "RolloutEvidence", "SegmentController", "rollout_candidate"]
+__all__ = [
+    "FORECASTER_VERSION",
+    "PlanningWorld",
+    "ProbabilityCalibration",
+    "RolloutEvidence",
+    "SegmentController",
+    "rollout_candidate",
+]
 
 _COMPLETED_PASS = "completed_pass"
+FORECASTER_VERSION = "planner-rollout-ensemble-v1"
+"""The ensemble that produces the raw frequency. A calibrator appends its own id."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,6 +140,45 @@ class RolloutEvidence:
     horizon_s: float
     incomplete_count: int
     """Scenarios in which the reference progress was not reached inside the horizon."""
+
+    calibration_notes: tuple[str, ...] = field(default_factory=tuple)
+    """Why a probability was published uncalibrated, when a calibrator was offered.
+
+    Empty when no calibrator was supplied at all: that case is already visible
+    from ``calibration_status`` on every statement, and repeating it here would
+    turn the normal path into a warning.
+    """
+
+    calibrator_id: str | None = None
+
+    outcome_ranges: tuple[OutcomeRange, ...] = field(default_factory=tuple)
+    """The per-checkpoint spread across the ensemble, for publication.
+
+    Derived rather than stored twice: it is a reduction of ``outcomes``, kept
+    here so a payload does not have to re-derive it and risk deriving it
+    differently.
+    """
+
+
+@runtime_checkable
+class ProbabilityCalibration(Protocol):
+    """A frozen calibration map from raw ensemble frequency to probability.
+
+    Implemented by ``afterlap_core.learning.calibration.ProbabilityCalibrator``.
+    Declared here as a protocol so the planner never imports the learning
+    package, which is the same boundary ``scoring.ContinuationModel`` keeps for
+    the continuation ensemble.
+    """
+
+    @property
+    def calibrator_id(self) -> str: ...
+
+    def apply(self, event_definition: str, raw_frequency: float) -> Any:
+        """Return an object with ``value``, ``status``, ``detail`` and ``clamped``.
+
+        ``value`` is ``None`` when the calibration could not be applied. It is
+        never zero standing in for unknown.
+        """
 
 
 class SegmentController:
@@ -231,8 +296,14 @@ def rollout_candidate(
     weights: SurrogateWeights,
     *,
     candidate_id: str,
+    calibrator: ProbabilityCalibration | None = None,
 ) -> RolloutEvidence:
-    """Re-simulate ``segments`` across ``scenarios`` with reacting rivals."""
+    """Re-simulate ``segments`` across ``scenarios`` with reacting rivals.
+
+    ``calibrator`` is optional and defaults to absent. With no calibrator the
+    published probabilities are raw weighted frequencies marked uncalibrated,
+    which is what this function did before one existed.
+    """
     if not segments:
         raise ValueError("a rollout needs at least one profile segment")
     horizon_s = float(config.budgets.rollout_horizon_s.value)
@@ -329,6 +400,7 @@ def rollout_candidate(
         )
 
     probabilities: list[ProbabilityStatement] = []
+    notes: list[str] = []
     for checkpoint_id in checkpoint_ids:
         seen = observed_weight.get(checkpoint_id, 0.0)
         if seen <= 0.0:
@@ -342,14 +414,13 @@ def rollout_candidate(
         ):
             frequency = table.get(checkpoint_id, 0.0) / seen
             probabilities.append(
-                ProbabilityStatement(
-                    event_definition=f"{label}(checkpoint={checkpoint_id})",
+                _statement(
+                    label=label,
                     checkpoint_id=checkpoint_id,
-                    value=frequency,
-                    raw_frequency=frequency,
-                    sample_count=samples,
-                    model_version="planner-rollout-ensemble-v1",
-                    calibration_status=CalibrationStatus.UNCALIBRATED,
+                    frequency=frequency,
+                    samples=samples,
+                    calibrator=calibrator,
+                    notes=notes,
                 )
             )
 
@@ -362,4 +433,62 @@ def rollout_candidate(
         step_s=step_s,
         horizon_s=horizon_s,
         incomplete_count=incomplete,
+        calibration_notes=tuple(dict.fromkeys(notes)),
+        calibrator_id=None if calibrator is None else calibrator.calibrator_id,
+        outcome_ranges=outcome_ranges(tuple(outcomes)),
+    )
+
+
+def _statement(
+    *,
+    label: str,
+    checkpoint_id: str,
+    frequency: float,
+    samples: int,
+    calibrator: ProbabilityCalibration | None,
+    notes: list[str],
+) -> ProbabilityStatement:
+    """Publish one event probability, calibrated only if it really was.
+
+    ``raw_frequency`` always carries the uncalibrated weighted frequency, so a
+    calibrated value can be audited against what the ensemble actually observed.
+    """
+    event_definition = f"{label}(checkpoint={checkpoint_id})"
+    if calibrator is None:
+        return ProbabilityStatement(
+            event_definition=event_definition,
+            checkpoint_id=checkpoint_id,
+            value=frequency,
+            raw_frequency=frequency,
+            sample_count=samples,
+            model_version=FORECASTER_VERSION,
+            calibration_status=CalibrationStatus.UNCALIBRATED,
+        )
+
+    calibrated = calibrator.apply(event_definition, frequency)
+    value = getattr(calibrated, "value", None)
+    if value is None:
+        detail = getattr(calibrated, "detail", "") or getattr(calibrated, "status", "refused")
+        notes.append(f"{event_definition}: published uncalibrated ({detail})")
+        return ProbabilityStatement(
+            event_definition=event_definition,
+            checkpoint_id=checkpoint_id,
+            value=frequency,
+            raw_frequency=frequency,
+            sample_count=samples,
+            model_version=FORECASTER_VERSION,
+            calibration_status=CalibrationStatus.UNCALIBRATED,
+        )
+    if getattr(calibrated, "clamped", False):
+        notes.append(
+            f"{event_definition}: calibrated value clamped to the fitted domain (raw {frequency:.4f})"
+        )
+    return ProbabilityStatement(
+        event_definition=event_definition,
+        checkpoint_id=checkpoint_id,
+        value=float(value),
+        raw_frequency=frequency,
+        sample_count=samples,
+        model_version=f"{FORECASTER_VERSION}+{calibrator.calibrator_id}",
+        calibration_status=CalibrationStatus.CALIBRATED,
     )
