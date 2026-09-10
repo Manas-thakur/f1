@@ -66,6 +66,7 @@ from ..db.models import (
     ExecutionEventRow,
     Manifest,
     OperatorCommand,
+    RuleManifestRow,
     Session,
     SessionEvent,
     SnapshotRow,
@@ -269,6 +270,38 @@ def _build_snapshot(request: Request, db: OrmSession, row: Session) -> SessionSn
     )
 
 
+def _pin_rule_manifest(request: Request, db: OrmSession, ruleset_id: str, ruleset_hash: str) -> None:
+    """Store the rule pack this session was checked against, once, by hash.
+
+    ``backend/TECHNICAL_SPEC.md`` keeps rule manifests in the store so a
+    decision's evidence resolves to the document that was actually in force,
+    not to whatever the file says later. Nothing wrote the table, so the pack a
+    session pinned could only ever be re-read from disk.
+
+    The document is stored only when it still hashes to what the session
+    pinned. A mismatch means the file moved under the run, and re-reading it
+    would file the wrong pack under the right hash; the store is left empty
+    and the read route says the pack is not loaded.
+    """
+    from .catalog import catalogue_paths
+    from .rulesets import pack_on_disk
+
+    if db.get(RuleManifestRow, ruleset_hash) is not None:
+        return
+    pack = pack_on_disk(ruleset_id, catalogue_paths(request))
+    if pack is None or pack.ruleset_hash != ruleset_hash:
+        return
+    db.add(
+        RuleManifestRow(
+            hash=ruleset_hash,
+            ruleset_id=pack.manifest.ruleset_id,
+            season_revision=pack.manifest.season_revision,
+            synthetic=pack.manifest.synthetic,
+            payload=pack.manifest.model_dump(mode="json"),
+        )
+    )
+
+
 @router.post("/sessions", response_model=CreateSessionResponse, status_code=201)
 async def create_session(
     request: Request,
@@ -293,6 +326,7 @@ async def create_session(
             payload=manifest.model_dump(mode="json"),
         )
     )
+    _pin_rule_manifest(request, db, payload.ruleset_id, manifest.ruleset_hash)
     row = Session(
         id=manifest.id,
         mode=manifest.mode.value,
