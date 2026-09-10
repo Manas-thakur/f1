@@ -117,6 +117,7 @@ from .planning import (
     PlanningResult,
     ProfileSegment,
     Recommendation,
+    RecommendationAlternative,
     ScenarioOutcome,
     Trigger,
 )
@@ -243,6 +244,7 @@ __all__ = [
     "RawSourcePacket",
     "ReasonCode",
     "Recommendation",
+    "RecommendationAlternative",
     "RecommendationStatus",
     "RecommendationUpdatedPayload",
     "ResyncRequiredPayload",
