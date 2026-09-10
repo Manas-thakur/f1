@@ -22,7 +22,7 @@
   gap: var(--s3);
   flex-wrap: wrap;
   border-bottom: 1px solid var(--rule);
-  padding-bottom: var(--s2);
+  padding-bottom: var(--s1);
 }
 
 /* The route's one h1. Small on purpose: the instruction is the large type. */
@@ -36,11 +36,12 @@
 
 .contextRow {
   display: flex;
-  gap: var(--s3);
+  gap: var(--s2) var(--s3);
   flex-wrap: wrap;
   font-family: var(--font-mono);
-  font-size: var(--text-secondary);
+  font-size: var(--text-micro);
   color: var(--muted);
+  letter-spacing: 0.02em;
 }
 
 .primaryBlock {
@@ -113,7 +114,7 @@
 }
 
 .primaryText {
-  font: 700 clamp(28px, 6vw, 56px) / 1.05 var(--font-display);
+  font: 700 clamp(32px, 6.6vw, 64px) / 1.02 var(--font-display);
   font-variant-numeric: tabular-nums;
   letter-spacing: -1px;
   margin: 0;
@@ -132,10 +133,39 @@
   color: var(--muted);
 }
 
+/* Two-tier cluster: Speed and Stored energy (the figures a driver reads at
+   a glance) fill a wide primary row on their own; the rest auto-wrap onto a
+   narrower secondary row underneath — a real cluster grouping driven by
+   column-span math, not DOM order. */
 .numberRow {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
-  gap: var(--s3);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--s2);
+}
+
+.numberRow > *:nth-child(1),
+.numberRow > *:nth-child(2) {
+  grid-column: span 3;
+}
+
+.numberRow > *:nth-child(3),
+.numberRow > *:nth-child(4),
+.numberRow > *:nth-child(5) {
+  grid-column: span 2;
+}
+
+@media (max-width: 480px) {
+  .numberRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .numberRow > *:nth-child(1),
+  .numberRow > *:nth-child(2),
+  .numberRow > *:nth-child(3),
+  .numberRow > *:nth-child(4),
+  .numberRow > *:nth-child(5) {
+    grid-column: span 1;
+  }
 }
 
 .number {
@@ -159,6 +189,33 @@
   font: 600 clamp(22px, 4vw, 34px) / 1.1 var(--font-mono);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+
+/* First cell is Speed: the one figure a driver reads at a glance, so it reads
+   larger than the rest of the row, cluster-style. */
+.numberRow > .number:first-child {
+  border-color: var(--accent);
+}
+
+.numberRow > .number:first-child .numberValue:not([data-available='false']) {
+  font-size: clamp(28px, 5.4vw, 46px);
+}
+
+/* Second cell is stored energy: a decorative segmented well, matching the
+   tick language of an energy gauge without implying a fill level we do not
+   have a normalised fraction for. */
+.numberRow > .number:nth-child(2) {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--rule-strong) 0,
+    var(--rule-strong) 2px,
+    transparent 2px,
+    transparent 14px
+  );
+  background-position: bottom var(--s1) left var(--s1);
+  background-size: calc(100% - 2 * var(--s1)) 3px;
+  background-repeat: no-repeat;
+  padding-bottom: calc(var(--s3) + 3px);
 }
 
 .numberUnit {

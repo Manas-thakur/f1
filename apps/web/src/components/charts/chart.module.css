@@ -1,17 +1,22 @@
+/* ATLAS-style gutter: channel identity sits in a narrow rail beside the well,
+   not in a horizontal bar above it. The head, cursor row, summary and event
+   list still span the full width above/below that rail + well row. */
 .frame {
   border: 1px solid var(--rule);
   border-radius: var(--radius);
   background: var(--surface);
   min-width: 0;
   display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
 }
 
 .head {
+  grid-column: 1 / -1;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s3);
-  padding: var(--s3);
+  padding: var(--s2) var(--s3);
   border-bottom: 1px solid var(--rule);
   flex-wrap: wrap;
 }
@@ -25,9 +30,17 @@
   color: var(--muted);
 }
 
+/* The empty-series branch renders one unlabelled div (padding var(--s4))
+   straight after .head, with no legend/well row — let it span the full
+   width rather than sitting in the narrow gutter column. */
+.head + div {
+  grid-column: 1 / -1;
+}
+
 /* The trace well is dark so numeric evidence reads as instrumentation and not
  * as another panel of interface chrome. */
 .well {
+  grid-column: 2;
   background: var(--well);
   border-bottom: 1px solid var(--rule);
   min-height: 160px;
@@ -49,6 +62,11 @@
   overflow: hidden;
 }
 
+.wellPlot :global(.u-cursor-x) {
+  background: var(--well-muted) !important;
+  opacity: 0.55;
+}
+
 .wellFallback {
   position: absolute;
   inset: var(--s2);
@@ -59,24 +77,35 @@
 }
 
 .legend {
+  grid-column: 1;
   display: flex;
-  gap: var(--s4);
-  flex-wrap: wrap;
-  padding: var(--s2) var(--s3);
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s3);
+  padding: var(--s2);
+  background: var(--well-raised);
   border-bottom: 1px solid var(--rule);
-  font-size: var(--text-secondary);
-  color: var(--muted);
+  border-right: 1px solid var(--well-rule);
+  font-size: var(--text-micro);
+  font-family: var(--font-mono);
+  color: var(--well-muted);
+  overflow-y: auto;
+  line-height: 1.35;
 }
 
 .legendItem {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
+  display: grid;
+  gap: var(--s1);
+  max-width: 100%;
+}
+
+.legendItem span {
+  overflow-wrap: break-word;
 }
 
 .swatch {
   display: inline-block;
-  width: 22px;
+  width: 16px;
   height: 0;
   border-top-width: 2px;
   border-top-style: solid;
@@ -94,9 +123,10 @@
 }
 
 .cursorRow {
+  grid-column: 1 / -1;
   display: grid;
   gap: var(--s2);
-  padding: var(--s3);
+  padding: var(--s2) var(--s3);
   border-bottom: 1px solid var(--rule);
 }
 
@@ -115,6 +145,7 @@
 }
 
 .summary {
+  grid-column: 1 / -1;
   padding: var(--s3);
 }
 
@@ -155,6 +186,7 @@
 }
 
 .eventList {
+  grid-column: 1 / -1;
   padding: 0 var(--s3) var(--s3);
   margin: 0;
   list-style: none;
@@ -164,4 +196,22 @@
   font-size: var(--text-micro);
   color: var(--muted);
   font-family: var(--font-mono);
+}
+
+@media (max-width: 480px) {
+  .frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .legend {
+    grid-column: 1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    border-right: 0;
+  }
+
+  .well {
+    grid-column: 1;
+  }
 }
