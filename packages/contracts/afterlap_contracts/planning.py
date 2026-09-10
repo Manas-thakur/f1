@@ -11,12 +11,13 @@ from pydantic import Field, model_validator
 from .base import Contract, VersionedContract
 from .enums import (
     ActionCode,
+    CalibrationStatus,
     DeploymentProfile,
     PlanningStatus,
     ReasonCode,
     RecommendationStatus,
 )
-from .quantities import ProbabilityStatement
+from .quantities import IntervalValue, ProbabilityStatement
 from .rules import ConstraintResult
 
 
@@ -89,6 +90,86 @@ class ScenarioOutcome(Contract):
         default=None, description="'analytic' or the learned bundle id that supplied it."
     )
     feasible: bool = True
+
+
+class OutcomeRange(Contract):
+    """The spread of one predicted quantity across the scenario ensemble.
+
+    A point prediction from a weighted ensemble hides the thing an engineer
+    needs: whether the scenarios agreed. Every field is an ``IntervalValue`` so
+    the interval carries its own ``kind`` and coverage, and a quantity no
+    scenario produced is ``None`` rather than a zero-width interval at zero.
+
+    ``kind`` on each interval is ``physical_bounds``: these are the minimum and
+    maximum actually observed across the sampled scenarios, not a fitted
+    quantile and not a confidence interval. Labelling an observed spread as a
+    quantile would overstate what an ensemble of a handful of scenarios can say.
+    """
+
+    checkpoint_id: str = Field(min_length=1)
+    progress_m: float = Field(ge=0.0)
+    scenario_count: int = Field(ge=0, description="Scenarios that reached this checkpoint.")
+    weight_covered: float = Field(
+        ge=0.0, le=1.0, description="Ensemble weight that reached it; below 1.0 means some did not."
+    )
+    elapsed_time_s: IntervalValue | None = None
+    gap_to_reference_s: IntervalValue | None = None
+    own_energy_j: IntervalValue | None = None
+    ahead_of_rival_weight: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="Weighted share of scenarios that finished ahead."
+    )
+
+    @model_validator(mode="after")
+    def _coverage_needs_scenarios(self) -> OutcomeRange:
+        if self.scenario_count == 0 and self.weight_covered > 0.0:
+            raise ValueError("weight cannot be covered by zero scenarios")
+        if self.scenario_count == 0 and any(
+            field is not None for field in (self.elapsed_time_s, self.gap_to_reference_s, self.own_energy_j)
+        ):
+            raise ValueError("a checkpoint no scenario reached cannot carry a predicted range")
+        return self
+
+
+class LearnedContribution(Contract):
+    """What a learned model contributed to one decision, and whether it was used.
+
+    Published so an engineer can tell a baseline decision from a learned one
+    without inferring it from reason codes. ``disagreement`` is carried even
+    when ``in_support`` is false: a refusal caused by ensemble spread is more
+    informative with the number attached.
+    """
+
+    enabled: bool = Field(description="False whenever the validated baseline answered instead.")
+    bundle_id: str | None = None
+    weights_hash: str | None = None
+    in_support: bool = False
+    support_reason: str | None = Field(
+        default=None, description="Why the learned contribution was or was not in support."
+    )
+    continuation_value: float | None = Field(
+        default=None, description="Dimensionless continuation return; never seconds."
+    )
+    disagreement: float | None = Field(default=None, ge=0.0)
+    member_count: int | None = Field(default=None, ge=0)
+    calibrator_id: str | None = None
+    calibration_status: CalibrationStatus = CalibrationStatus.UNAVAILABLE
+    baseline_identity: str = Field(
+        min_length=1, description="The validated path that answers when this is disabled."
+    )
+    reason_codes: tuple[ReasonCode, ...] = ()
+
+    @model_validator(mode="after")
+    def _disabled_carries_no_value(self) -> LearnedContribution:
+        if not self.enabled and self.continuation_value is not None:
+            raise ValueError(
+                "a disabled learned contribution cannot publish a continuation value; the "
+                "baseline answered and its result must not carry a learned number"
+            )
+        if self.enabled and self.bundle_id is None:
+            raise ValueError("an enabled learned contribution must name the bundle that produced it")
+        if self.continuation_value is not None and not self.in_support:
+            raise ValueError("a continuation value cannot be published from outside support")
+        return self
 
 
 class ObjectiveTerms(Contract):
@@ -242,7 +323,9 @@ class Recommendation(VersionedContract):
 __all__ = [
     "CandidatePlan",
     "CheckpointOutcome",
+    "LearnedContribution",
     "ObjectiveTerms",
+    "OutcomeRange",
     "PlanningResult",
     "ProfileSegment",
     "Recommendation",
