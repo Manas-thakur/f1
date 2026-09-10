@@ -13,6 +13,7 @@ SKIP_DIR_NAMES = {
     "node_modules",
     "dist",
     ".build",
+    ".next",
     "__pycache__",
     "generated",
     ".mypy_cache",
@@ -22,7 +23,7 @@ SKIP_DIR_NAMES = {
     "mockups",
     "new_plan",
 }
-SKIP_FILE_NAMES = {"complete_package.py", "revise_design.py"}
+SKIP_FILE_NAMES = {"complete_package.py", "revise_design.py", "next-env.d.ts"}
 ALLOWED_PYTHON = (
     "noqa",
     "type: ignore",

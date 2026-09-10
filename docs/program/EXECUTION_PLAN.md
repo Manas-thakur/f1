@@ -10,7 +10,7 @@ Use the repository root as the implementation project. Scaffold Python package, 
 |---|---|---|
 | 0 | A01 contracts/coordinator | Schemas, fixtures, generated client and test command contracts frozen |
 | 1 | A02 data; A03 simulator; A04 rules; A09 engineer shell; A10 lab shell; A11 driver; A12 design | Independent modules pass fixture tests; no integration success claimed |
-| 2 | A05 estimation; A06 baseline planning; A08 backend; A13 evaluation; A14 operations | Feed -> estimate -> constrained plan -> API vertical slice |
+| 2 | A05 estimation; A06 baseline planning; A08 backend; A13 evaluation; A14 operations | Feed -> estimate -> constrained plan -> Next.js/CLI vertical slice |
 | 3 | A07 learning; A09/A10/A11 real integration; A13 closed-loop benchmark | Frozen learned candidate; lifecycle, expiry and branch flows functional |
 | 4 | Coordinator + A13 integration; A15 presentation | Held-out report, failure drill, claim audit, reproducible release |
 
@@ -18,11 +18,11 @@ Workers should not be idle waiting on full modules: use the coordinator's typed 
 
 ## Ownership
 
-Each module contains a ready-to-paste `AGENT_BRIEF.md`. Its allowed write set includes corresponding module tests. Root dependency files, generated schemas, migrations and shared UI shell/tokens are coordinator-controlled. A09 owns engineer route, A10 lab/replay route, A11 driver route, A12 shared design components through coordinator review. Do not simultaneously edit `App.tsx` or router registration: submit one small integration patch in the handoff.
+Each module contains a ready-to-paste `AGENT_BRIEF.md`. Its allowed write set includes corresponding module tests. Root dependency files, generated schemas, migrations and shared UI shell/tokens are coordinator-controlled. A09 owns engineer route, A10 lab/replay route, A11 driver route, A12 shared design components through coordinator review. Do not simultaneously edit `apps/web/src/app` route files: submit one small integration patch in the handoff.
 
 ## Coordinator prompt
 
-> Implement the AFTERLAP product strictly within the repository root. Read docs/AGENTS.md and program plus contracts first. Own root scaffolding, contract freeze, dependency versions, migrations, shared router and integration gates. Assign workers only the disjoint paths in their AGENT_BRIEF. Ignore all pre-existing parent-project contents. Require tests and handoffs, merge by wave, and keep simulated data explicitly labelled. Do not publish externally. A complete product requires the closed-loop and failure-handling gates; static mockups are only the design reference.
+> Implement the AFTERLAP product strictly within the repository root. Read docs/AGENTS.md and program plus contracts first. Own root scaffolding, contract freeze, dependency versions, migrations, shared Next.js routes and integration gates. Assign workers only the disjoint paths in their AGENT_BRIEF. Ignore all pre-existing parent-project contents. Require tests and handoffs, merge by wave, and keep simulated data explicitly labelled. Do not publish externally. A complete product requires the closed-loop and failure-handling gates; static mockups are only the design reference.
 
 ## Worker launch procedure
 

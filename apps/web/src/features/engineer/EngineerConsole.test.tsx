@@ -14,7 +14,7 @@ import {
   makeFetch,
   noSocket,
   renderRoute,
-  socketFactory,
+  sourceFactory,
   type FetchStub,
 } from '@/test/testUtils';
 
@@ -64,12 +64,12 @@ function baseHandlers(
   ];
 }
 
-function renderConsole(stub: FetchStub, socketFactory = noSocket()) {
+function renderConsole(stub: FetchStub, factory = noSocket()) {
   const client = apiClientFor(stub);
   return renderRoute(
     <EngineerConsole
       client={client}
-      runtimeOptions={{ client, socketFactory }}
+      runtimeOptions={{ client, sourceFactory: factory }}
     />,
     { path: PATH, route: ROUTE },
   );
@@ -122,7 +122,7 @@ describe('selection', () => {
 
     const client = apiClientFor({ ...stub, fetchImpl: slowFetch });
     renderRoute(
-      <EngineerConsole client={client} runtimeOptions={{ client, socketFactory: noSocket() }} />,
+      <EngineerConsole client={client} runtimeOptions={{ client, sourceFactory: noSocket() }} />,
       { path: PATH, route: ROUTE },
     );
 
@@ -154,7 +154,7 @@ describe('selection', () => {
     }) as typeof fetch;
 
     const client = apiClientFor({ ...stub, fetchImpl: slowFetch });
-    renderRoute(<EngineerConsole client={client} runtimeOptions={{ client, socketFactory: noSocket() }} />, {
+    renderRoute(<EngineerConsole client={client} runtimeOptions={{ client, sourceFactory: noSocket() }} />, {
       path: PATH,
       route: ROUTE,
     });
@@ -210,7 +210,7 @@ describe('stream handling', () => {
   it('ignores an envelope for another session and applies one for this session', async () => {
     const sockets: FakeSocket[] = [];
     const stub = makeFetch(baseHandlers());
-    renderConsole(stub, socketFactory(sockets));
+    renderConsole(stub, sourceFactory(sockets));
 
     await waitFor(() => expect(sockets.length).toBe(1));
     const socket = sockets[0] as FakeSocket;
@@ -233,7 +233,7 @@ describe('stream handling', () => {
   it('asks for a resync when the sequence jumps', async () => {
     const sockets: FakeSocket[] = [];
     const stub = makeFetch(baseHandlers());
-    renderConsole(stub, socketFactory(sockets));
+    renderConsole(stub, sourceFactory(sockets));
 
     await waitFor(() => expect(sockets.length).toBe(1));
     const socket = sockets[0] as FakeSocket;

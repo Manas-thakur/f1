@@ -25,14 +25,14 @@ Working product name: **AFTERLAP**. Prepared 8 September 2026. The product helps
 | Folder | Responsibility |
 |---|---|
 | [program](program/ARCHITECTURE.md) | Product boundaries, architecture, decisions, integration order |
-| [contracts](contracts/DOMAIN_MODEL.md) | Shared data types, wire schema, events, REST/WebSocket contracts |
+| [contracts](contracts/DOMAIN_MODEL.md) | Shared data types, wire schema, events, REST/SSE contracts |
 | [data](data/TECHNICAL_SPEC.md) | Ingestion, clocks, source provenance, recording and replay |
 | [simulation](simulation/TECHNICAL_SPEC.md) | Physics, battery, track, opponents, deterministic branching |
 | [rules](rules/TECHNICAL_SPEC.md) | Versioned regulations and independent plan validation |
 | [estimation](estimation/TECHNICAL_SPEC.md) | Own-car state, hidden opponent state, uncertainty |
 | [planning](planning/TECHNICAL_SPEC.md) | Scenario MPC, tactical candidates, recommendations |
 | [learning](learning/TECHNICAL_SPEC.md) | SAC, long-horizon value, training, promotion |
-| [backend](backend/TECHNICAL_SPEC.md) | API, sessions, persistence, workers, operator authority |
+| [backend](backend/TECHNICAL_SPEC.md) | Python CLI, sessions, persistence, workers, operator authority |
 | [engineer-console](engineer-console/TECHNICAL_SPEC.md) | Race engineer workflow and evidence inspection |
 | [simulation-lab](simulation-lab/TECHNICAL_SPEC.md) | Scenarios, branching, experiments, replay |
 | [driver-display](driver-display/TECHNICAL_SPEC.md) | Simulator-only driver display and lifecycle |

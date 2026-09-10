@@ -51,7 +51,7 @@ function renderLab(stub: FetchStub) {
     <SimulationLab
       client={api}
       labClientOverride={lab}
-      runtimeOptions={{ client: api, socketFactory: noSocket() }}
+      runtimeOptions={{ client: api, sourceFactory: noSocket() }}
     />,
     { path: PATH, route: ROUTE },
   );

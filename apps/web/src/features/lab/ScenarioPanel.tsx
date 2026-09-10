@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link } from 'react-router';
+import Link from 'next/link';
 import type { ApiError, SessionManifest, SessionMode } from '@contracts';
 
 import { newIdempotencyKey } from '@/api/client';
@@ -297,8 +297,8 @@ export function ScenarioPanel({
       {createdSessionId === null ? null : (
         <Notice live testId="session-created">
           Created session <span className="afterlap-mono">{createdSessionId}</span>.{' '}
-          <Link to={`/sessions/${createdSessionId}/lab`}>Open its laboratory</Link> or{' '}
-          <Link to={`/sessions/${createdSessionId}/engineer`}>its engineer console</Link>. A new
+          <Link href={`/sessions/${createdSessionId}/lab`}>Open its laboratory</Link> or{' '}
+          <Link href={`/sessions/${createdSessionId}/engineer`}>its engineer console</Link>. A new
           configuration is a new session; it never mutates an archived experiment.
           {createdManifest === null ? null : (
             <>

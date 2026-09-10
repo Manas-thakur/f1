@@ -32,7 +32,7 @@ commit
 publish committed event
 ```
 
-Use a transactional outbox so a crash between commit and WebSocket publish does not lose the notification. Publishing twice is harmless when clients deduplicate sequence/event ID. Database transaction order and runtime event ordering must agree.
+Use a transactional outbox so a crash between commit and stream publish does not lose the notification. Publishing twice is harmless when clients deduplicate sequence/event ID. Database transaction order and runtime event ordering must agree.
 
 ## Worker protocol
 

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 import type { ApiError } from '@contracts';
+
+import { routeParam } from '@/shell/params';
 
 import { guidanceFor, toApiError } from '@/api/errors';
 import { useExperiment } from '@/api/queries';
@@ -119,7 +121,7 @@ const COVERAGE_COLUMNS: readonly Column<MatrixCoverageRow>[] = [
 
 
 export function ExperimentReport({ client = labClient }: ExperimentReportProps) {
-  const { experimentId } = useParams();
+  const experimentId = routeParam(useParams().experimentId);
   const jobQuery = useExperiment(experimentId);
 
   const reportQuery = useQuery({

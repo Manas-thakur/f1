@@ -1,6 +1,8 @@
 # Control plane and stream contract
 
-Base `/api/v1`. All mutable routes require an operator identity, session control lease and `Idempotency-Key`; replay/live-team capabilities are checked server-side. Return typed errors with `code`, `message`, `retryable`, `request_id`, `details`. Never expose exception traces to the UI.
+Base `/api/v1`. Next.js is the public HTTP origin. Route handlers spawn `python -m afterlap_api.cli request` and `python -m afterlap_api.cli stream`. FastAPI remains the loopback session runtime; it is not the public server. Envelope JSON is unchanged.
+
+All mutable routes require an operator identity, session control lease and `Idempotency-Key`; replay/live-team capabilities are checked server-side. Return typed errors with `code`, `message`, `retryable`, `request_id`, `details`. Never expose exception traces to the UI.
 
 | Method and route | Input | Response / semantics |
 |---|---|---|
@@ -21,11 +23,11 @@ Base `/api/v1`. All mutable routes require an operator identity, session control
 | POST /exports | session_id, format, selected_range | local export job, hashes and provenance |
 | GET /health/live and /health/ready | none | process liveness / dependency readiness |
 
-## WebSocket
+## Stream
 
-`/api/v1/sessions/{id}/stream?after_sequence=N` uses authenticated same-origin session access. Messages: `snapshot`, `telemetry_view`, `estimate_updated`, `recommendation_updated`, `execution_observed`, `rule_context_changed`, `quality_changed`, `experiment_progress`, `heartbeat`, `resync_required`. Envelope fields: schema_version, session_id, sequence, event_type, session_time_s, payload.
+`GET /api/v1/sessions/{id}/stream?after_sequence=N` is a same-origin SSE stream. Next.js spawns `python -m afterlap_api.cli stream`. Messages: `snapshot`, `telemetry_view`, `estimate_updated`, `recommendation_updated`, `execution_observed`, `rule_context_changed`, `quality_changed`, `experiment_progress`, `heartbeat`, `resync_required`. Envelope fields: schema_version, session_id, sequence, event_type, session_time_s, payload.
 
-Client must not apply a delta to the wrong snapshot revision. Server retains a bounded reconnect buffer; older cursors trigger `resync_required`. High-rate telemetry views may be coalesced with explicit sequence-range metadata; decision/quality/operator events are lossless. Slow clients receive a snapshot rather than an unbounded queue. A heartbeat proves a connection exists, not that telemetry is fresh.
+Each SSE `data:` line is one JSON envelope. Client must not apply a delta to the wrong snapshot revision. Server retains a bounded reconnect buffer; older cursors trigger `resync_required`. High-rate telemetry views may be coalesced with explicit sequence-range metadata; decision/quality/operator events are lossless. Slow clients receive a snapshot rather than an unbounded queue. A heartbeat proves a connection exists, not that telemetry is fresh.
 
 ## Concurrency and errors
 

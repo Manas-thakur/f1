@@ -14,6 +14,7 @@
 | ADR-10 | Benchmark gate for learned model | No assumed RL superiority from feature count or a training curve |
 | ADR-11 | No LLM in critical planner or rules | Text templates express computed results; optional narrative is read-only |
 | ADR-12 | No full CFD or tyre thermodynamics initially | Add complexity only after sensitivity and validation justify it |
+| ADR-13 | Next.js is the public HTTP origin | Pages, `/api/v1` and SSE share one origin. Python is a CLI plus loopback session runtime, not the public server |
 
 ## Parameters deliberately not fabricated
 

@@ -2,7 +2,7 @@
 
 ## Boundary
 
-Implement `apps/web/src/features/driver/` at `/sessions/:id/driver` for simulation sessions. The real-F1 product path is engineer voice communication. This connected display is not a claim of approved onboard F1 integration. Server-side mode enforcement is mandatory even if someone manually opens the URL.
+Implement `apps/web/src/features/driver/` at `/sessions/{id}/driver` for simulation sessions. The real-F1 product path is engineer voice communication. This connected display is not a claim of approved onboard F1 integration. Server-side mode enforcement is mandatory even if someone manually opens the URL.
 
 ## Layout
 

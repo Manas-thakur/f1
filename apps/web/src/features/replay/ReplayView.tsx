@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 
 import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
+import { routeParam } from '@/shell/params';
 import {
   Button,
   ChartFrame,
@@ -34,7 +35,7 @@ const PANELS: readonly { title: string; channels: readonly string[] }[] = [
 
 
 export function ReplayView({ runtimeOptions }: ReplayViewProps) {
-  const { sessionId } = useParams();
+  const sessionId = routeParam(useParams().sessionId);
   const runtime = useSessionRuntime(sessionId, runtimeOptions ?? {});
 
   const telemetry = useSessionStore((s) => s.server.telemetry);

@@ -247,7 +247,7 @@ Acceptance:
 - mypy on apps/api and packages/contracts
 - clean-database migration up/down/up
 - Docker Compose startup with PostgreSQL, API, batch worker and web healthy
-- scripts/demo.py succeeds through nginx
+- scripts/demo.py succeeds through the Next.js origin
 - no route or log exposes credentials or local artifact paths
 
 Handoff:

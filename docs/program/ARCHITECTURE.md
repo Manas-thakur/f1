@@ -28,7 +28,7 @@ flowchart TD
 
 ## Processes and ownership
 
-Use a modular monolith API, a session-runtime worker and separate batch workers. FastAPI is the control plane. Python domain modules contain no HTTP dependency. The runtime owns an in-memory session state and serialises state mutations. IPC carries typed messages; the database is not polled on every physics tick. Batch simulation/training cannot consume the runtime's reserved CPU cores or overwrite its loaded artefacts.
+Use a modular monolith, a session-runtime worker and separate batch workers. Next.js is the public HTTP control plane. Python work is invoked through `python -m afterlap_api.cli`. Python domain modules contain no HTTP dependency. The runtime owns an in-memory session state and serialises state mutations. IPC carries typed messages; the database is not polled on every physics tick. Batch simulation/training cannot consume the runtime's reserved CPU cores or overwrite its loaded artefacts.
 
 React/TypeScript renders all web surfaces. Charts consume downsampled views with source timestamps. PostgreSQL stores sessions, decisions, operator events and manifests; partitioned Parquet stores high-volume telemetry and experiment trajectories. CasADi formulates smooth dynamics and IPOPT solves the continuous subproblems; a bounded tactical enumerator handles discrete intentions and legal profiles. SAC and a separate ordinary-return value estimator are trained in PyTorch.
 
@@ -58,23 +58,9 @@ Start with 100 Hz simulated dynamics; perform convergence tests at 50/100/200 Hz
 
 Missing required own-car energy -> analysis-only mode, no precise energy directive. Unknown opponent energy -> wider scenarios, not a made-up point value. Missing event rules -> unsupported eligibility/curve state. Solver timeout -> revalidated prior plan or withdrawn tactical advice. Database failure -> bounded local spool and visible persistence warning. Spool full -> halt new operational recommendations to preserve auditability. Training/model mismatch -> disable learned contribution and explicitly identify the validated baseline path.
 
-## Future code layout
+## Code layout
 
-```text
-implementation/
-  apps/api/                 # backend routes and dependencies
-  apps/web/                 # React routes and UI components
-  packages/contracts/      # schemas and generated clients
-  packages/core/           # data, simulation, rules, estimation, planning, learning
-  workers/                 # session and batch process entrypoints
-  configs/                 # tracks, cars, event packs, benchmark manifests
-  tests/                   # contract and cross-module acceptance
-  infra/                   # compose, health checks, local packaging
-  handoffs/                # agent outputs and contract proposals
-```
-
-The directories above are a specification, not existing production code.
-
+Canonical paths are in [TECH_STACK.md](TECH_STACK.md). Next.js lives in `apps/web`. Python control-plane CLI and loopback runtime live in `apps/api`. Session ports live in `packages/application`. Persistence lives in `packages/infrastructure`. Domain code lives in `packages/core`. Contracts live in `packages/contracts`.
 
 ## Implementation refinements
 

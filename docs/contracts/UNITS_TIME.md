@@ -14,7 +14,7 @@ Use `s_m` wrapped in [0, track_length_m) and `progress_m = completed_laps * trac
 
 `source_time_utc` is ISO8601 UTC; `source_time_s` is source session time; `received_monotonic_s` is local ingestion clock; `session_time_s` is the canonical deterministic session clock. Wall time never advances paused simulation. Record a clock mapping and its uncertainty. Bound out-of-order buffering; late events enter the archive but cannot rewrite an already published decision's observed state.
 
-Each event has increasing `sequence` assigned by the session owner. Snapshot records contain `last_sequence`. WebSocket clients detect gaps and request a new snapshot; reconnect is not a reason to replay an operator command. Each decision has `observation_cutoff_s`, `created_at_s`, `valid_from_s`, `expires_at_s` and a ruleset hash. Evaluate freshness at selection and execution as well as publication.
+Each event has increasing `sequence` assigned by the session owner. Snapshot records contain `last_sequence`. Stream clients detect gaps and request a new snapshot; reconnect is not a reason to replay an operator command. Each decision has `observation_cutoff_s`, `created_at_s`, `valid_from_s`, `expires_at_s` and a ruleset hash. Evaluate freshness at selection and execution as well as publication.
 
 ## Events crossing a step
 

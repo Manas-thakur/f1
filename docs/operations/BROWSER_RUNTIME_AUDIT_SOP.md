@@ -132,9 +132,9 @@ Use dedicated loopback ports. The established audit ports are:
 
 | Service | Address |
 |---|---|
-| API | `http://127.0.0.1:8125` |
-| Web | `http://127.0.0.1:5205` |
-| API readiness | `http://127.0.0.1:8125/api/v1/health/ready` |
+| Python runtime | `http://127.0.0.1:8125` |
+| Next.js public origin | `http://127.0.0.1:5205` |
+| Readiness through Next.js | `http://127.0.0.1:5205/api/v1/health/ready` |
 
 Before starting, check whether those ports are already in use.
 
@@ -166,11 +166,11 @@ Use three terminals from the audit worktree.
 
 ### 8.1 PowerShell
 
-Terminal 1, API and process-backed session runtime:
+Terminal 1, Python runtime and process-backed session:
 
 ```powershell
 $env:AFTERLAP_ENV = 'development'
-uv run python -m uvicorn afterlap_api.main:app --host 127.0.0.1 --port 8125
+uv run python -m afterlap_api.cli serve --host 127.0.0.1 --port 8125
 ```
 
 Terminal 2, batch worker:
@@ -179,12 +179,13 @@ Terminal 2, batch worker:
 uv run python scripts/batch_worker_main.py --poll-interval 2.0
 ```
 
-Terminal 3, web application:
+Terminal 3, Next.js public origin:
 
 ```powershell
+$env:AFTERLAP_RUNTIME_URL = 'http://127.0.0.1:8125'
+$env:AFTERLAP_AUTOSTART_RUNTIME = '0'
 Set-Location apps/web
-$env:AFTERLAP_API_ORIGIN = 'http://127.0.0.1:8125'
-bunx vite --host 127.0.0.1 --port 5205 --strictPort
+bunx next dev --hostname 127.0.0.1 --port 5205
 ```
 
 ### 8.2 Bash, zsh or another POSIX shell
@@ -192,7 +193,7 @@ bunx vite --host 127.0.0.1 --port 5205 --strictPort
 Terminal 1:
 
 ```bash
-AFTERLAP_ENV=development uv run python -m uvicorn afterlap_api.main:app \
+AFTERLAP_ENV=development uv run python -m afterlap_api.cli serve \
   --host 127.0.0.1 --port 8125
 ```
 
@@ -206,46 +207,29 @@ Terminal 3:
 
 ```bash
 cd apps/web
-AFTERLAP_API_ORIGIN=http://127.0.0.1:8125 \
-  bunx vite --host 127.0.0.1 --port 5205 --strictPort
+AFTERLAP_RUNTIME_URL=http://127.0.0.1:8125 AFTERLAP_AUTOSTART_RUNTIME=0 \
+  bunx next dev --hostname 127.0.0.1 --port 5205
 ```
 
 Wait for application startup and verify readiness. A live HTTP process is not
-enough; inspect the returned capability states.
+enough; inspect the returned capability states. Browser traffic goes to Next.js
+on port 5205. Next.js invokes Python through `python -m afterlap_api.cli`.
+Do not point the browser at the Python runtime port.
 
 ## 9. Configure the browser audit agent
 
-When Claude in Chrome is used, start it from the clean worktree with Opus and
-maximum reasoning. Give it the base revision, runtime ports, route list,
-invariants, validation commands and report path. Require it to verify every
-claim from runtime evidence and source rather than trusting status documents.
+Start the browser-capable audit agent from the clean worktree. Give it the base
+revision, runtime ports, route list, invariants, validation commands and report
+path. Require it to verify every claim from runtime evidence and source rather
+than trusting status documents.
 
-An example invocation is:
+Monitor a background run without assuming it completed successfully. Steer a
+stuck or unsafe approach. Inspect the process before terminating a child
+command; stop only the process that belongs to the audit.
 
-```bash
-claude --chrome --model opus --effort max
-```
-
-The September audit ran as a background session with:
-
-```bash
-claude --bg --chrome --model opus --effort max --permission-mode bypassPermissions
-```
-
-Monitor a background run without assuming it completed successfully:
-
-```bash
-claude agents --json
-claude logs <agent-id>
-claude attach <agent-id>
-```
-
-Use `attach` to steer a stuck or unsafe approach. Inspect the process before
-terminating a child command; stop only the process that belongs to the audit.
-
-Run permission bypass only in a dedicated, reviewed worktree when the operator
-has explicitly authorised it. It does not remove the requirement to protect
-other checkouts, processes, containers and secrets.
+Run elevated browser permissions only in a dedicated, reviewed worktree when
+the operator has explicitly authorised it. It does not remove the requirement
+to protect other checkouts, processes, containers and secrets.
 
 The agent instruction must require these behaviours:
 
@@ -256,7 +240,7 @@ The agent instruction must require these behaviours:
 - Add meaningful regression checks for behavioural fixes.
 - Preserve all repository invariants.
 - Run the exact CI commands from `.github/workflows/ci.yml`.
-- Write `docs/handoffs/CLAUDE_BROWSER_AUDIT.md` with measured evidence.
+- Write `docs/handoffs/BROWSER_RUNTIME_AUDIT.md` with measured evidence.
 - Commit in reviewable units without pushing or merging until reviewed.
 
 If an external session manager such as Herdr is used, control it only from the
@@ -271,14 +255,14 @@ Before making changes:
 2. Run the scripted demonstration.
 3. Open the engineer console and measure stream behaviour for at least one
    active session.
-4. Record request counts, WebSocket resync count, highest published sequence,
+4. Record request counts, SSE resync count, highest published sequence,
    snapshot `last_sequence`, console errors and unavailable panels.
 5. Calculate the baseline readiness score with section 16.
 
-Run the API demonstration with:
+Run the API demonstration through the Next.js origin:
 
 ```bash
-uv run python scripts/demo.py --base-url http://127.0.0.1:8125
+uv run python scripts/demo.py --base-url http://127.0.0.1:5205
 ```
 
 An exit code of zero means all 13 scripted steps occurred. It does not prove the
@@ -434,7 +418,7 @@ bun run test:e2e
 ### Live workflow
 
 ```bash
-uv run python scripts/demo.py --base-url http://127.0.0.1:8125
+uv run python scripts/demo.py --base-url http://127.0.0.1:5205
 ```
 
 The build currently warns that the main JavaScript chunk exceeds 500 kB after

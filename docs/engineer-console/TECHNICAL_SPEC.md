@@ -2,7 +2,7 @@
 
 ## Responsibility
 
-Implement `apps/web/src/features/engineer/`. Consume generated API types and the shared session reducer. Default route `/sessions/:id/engineer` shows the next decision, current battle and energy consequences. Do not implement planning or eligibility in React. Design reference: [selected operating workspace](../design/mockups/app.html#engineer).
+Implement `apps/web/src/features/engineer/`. Consume generated API types and the shared session reducer. Default route `/sessions/{id}/engineer` shows the next decision, current battle and energy consequences. Do not implement planning or eligibility in React. Design reference: [selected operating workspace](../design/mockups/app.html#engineer).
 
 ## Information hierarchy
 

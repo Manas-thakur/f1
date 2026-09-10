@@ -39,4 +39,4 @@ MoTeC/ATLAS/Grafana/Linear are inspirations for interaction principles only. No 
 
 ## Revision 2 implementation references
 
-The [technology stack](../program/TECH_STACK.md) cites official uv, Vite, React, FastAPI, Pydantic and acados documentation reviewed on 8 September 2026. The [learning guide](../learning/README.md) links official SB3 SAC, Gymnasium time-limit and scikit-learn calibration documentation at the relevant implementation decisions. These support tool semantics, not claims that the proposed stack or models have already been built or validated.
+The [technology stack](../program/TECH_STACK.md) cites official uv, Next.js, React, Pydantic and acados documentation reviewed on 10 September 2026. The [learning guide](../learning/README.md) links official SB3 SAC, Gymnasium time-limit and scikit-learn calibration documentation at the relevant implementation decisions. These support tool semantics, not claims that the proposed stack or models have already been built or validated.

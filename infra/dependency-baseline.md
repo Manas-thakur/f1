@@ -86,8 +86,11 @@ acados path remains the documented upgrade and is listed as remaining work.
 uv sync --frozen --all-packages --all-extras
 uv run python -m afterlap_core.cli doctor
 uv run python -m afterlap_core.cli generate-contracts --check
+uv run python -m afterlap_api.cli serve
 uv run python -m pytest tests/contracts tests/numerics
 bun install --frozen-lockfile
+bun run --filter @afterlap/web dev
+
 bun run typecheck
 bun run test
 bun run build

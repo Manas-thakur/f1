@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 import type { SnapshotReference } from '@contracts';
 
 import { Notice, StatusBadge } from '@/components';
 import { apiClient, type ApiClient } from '@/api/client';
+import { routeParam } from '@/shell/params';
 import { useSessionStore } from '@/state/sessionStore';
 import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
 import styles from '@/styles/workspace.module.css';
@@ -27,7 +28,7 @@ export function SimulationLab({
   client = apiClient,
   labClientOverride = labClient,
 }: SimulationLabProps) {
-  const { sessionId } = useParams();
+  const sessionId = routeParam(useParams().sessionId);
   const runtime = useSessionRuntime(sessionId, runtimeOptions ?? {});
   const manifest = useSessionStore((s) => s.server.manifest);
 

@@ -14,7 +14,7 @@ Each adapter implements `capabilities()`, `open(manifest)`, `events()`, `close()
 
 Parse -> structural validation -> source timestamp conversion -> SI conversion -> deduplication -> bounded reorder -> assign session sequence -> quality classification -> append raw/normalised records -> publish. Configure reorder windows per source; report resulting latency. Do not wait indefinitely for a missing packet. A late packet is recorded with an out-of-order label and excluded from already-finalised decision states.
 
-Quality evaluation compares last source observation age, expected cadence, bounds and clock uncertainty. Never derive freshness from WebSocket heartbeats. A gap in battery power integration must widen estimator uncertainty downstream. Monotonic sensor sequences and explicit adapter restarts prevent duplicate packet replay.
+Quality evaluation compares last source observation age, expected cadence, bounds and clock uncertainty. Never derive freshness from stream heartbeats. A gap in battery power integration must widen estimator uncertainty downstream. Monotonic sensor sequences and explicit adapter restarts prevent duplicate packet replay.
 
 ## Storage
 

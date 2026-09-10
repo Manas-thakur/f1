@@ -8,15 +8,17 @@ Product code lives at the repository root. Specifications, plans, design mockups
 
 | Path | Role |
 |---|---|
-| `apps/api` | FastAPI control plane |
-| `apps/web` | Engineer console, lab, driver display |
+| `apps/api` | Python control-plane CLI and session runtime |
+| `apps/web` | Next.js engineer console, lab, driver display, and `/api/v1` |
+| `packages/application` | Session runtime ports and out-of-process spawn |
+| `packages/infrastructure` | Persistence adapters |
 | `packages/contracts` | Authoritative Pydantic models and generated schemas |
 | `packages/core` | Simulation, rules, estimation, planning, learning, tracks |
 | `workers` | Session and batch process launchers |
 | `configs` | Cars, tracks, rules, scenarios, planning, learning |
 | `scripts` | Doctor, migrate, demo, release, CI helpers |
 | `tests` | pytest suites |
-| `infra` | Compose, images, nginx |
+| `infra` | Compose and Linux images |
 | `docs` | Specs, design, deck, handoffs |
 
 ## Commands
@@ -30,6 +32,10 @@ bun install --frozen-lockfile
 
 ```
 uv run python -m afterlap_core.cli doctor
+uv run python -m afterlap_api.cli --help
+uv run python -m afterlap_api.cli serve
+bun run --filter @afterlap/web dev
+
 uv run ruff check .
 uv run ruff format --check .
 uv run mypy
@@ -53,6 +59,7 @@ while filesystem access goes through `pathlib.Path`.
 GitHub Actions runs the complete suite on Linux and a portability gate on Windows and macOS. Docker
 Desktop with Linux containers is the canonical numerical runtime on Windows; native Windows remains
 supported for development, contracts, API, web and lightweight simulation tests.
+
 
 ## Docs
 

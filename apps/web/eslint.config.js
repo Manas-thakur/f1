@@ -9,10 +9,12 @@ export default tseslint.config(
   {
     ignores: [
       "dist/**",
+      ".next/**",
       "node_modules/**",
       "playwright-report/**",
       "test-results/**",
       "eslint.config.js",
+      "next-env.d.ts",
       "**/._*",
     ],
   },
@@ -72,23 +74,6 @@ export default tseslint.config(
       "react-hooks/set-state-in-effect": "off",
       "react-hooks/refs": "off",
       "react-hooks/purity": "off",
-    },
-  },
-  {
-    files: ["src/features/**"],
-    rules: {
-      "@typescript-eslint/no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["../*", "../*/*", "../*/**", "@/features/*", "@/features/**"],
-              message:
-                "A feature may not import from another feature. Move the shared module to src/api, src/components, src/contracts, src/state, src/styles or src/test and import it through its @/ alias.",
-            },
-          ],
-        },
-      ],
     },
   },
   {

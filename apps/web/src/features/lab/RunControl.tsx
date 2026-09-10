@@ -6,7 +6,7 @@ import { commandKeys, runCommand } from '@/api/commands';
 import { guidanceFor } from '@/api/errors';
 import { Button, Field, Notice, Panel, StatusBadge } from '@/components';
 import { useSessionStore } from '@/state/sessionStore';
-import { CONSOLE_OPERATOR_ID } from '@/app/operator';
+import { CONSOLE_OPERATOR_ID } from '@/shell/operator';
 import styles from '@/styles/workspace.module.css';
 
 

@@ -2,7 +2,7 @@
 
 ## Deliverable
 
-Implement `apps/web/src/features/lab/` and `features/replay/` plus typed experiment-job integration. The backend simulator owns physics and snapshots. The frontend renders it and chooses experiments. Design reference: [lab](../design/mockups/app.html#lab), [replay](../design/mockups/app.html#replay).
+Implement `apps/web/src/features/lab/` and `features/replay/` plus typed experiment-job integration. Default routes are `/sessions/{id}/lab` and `/sessions/{id}/replay`. The backend simulator owns physics and snapshots. The frontend renders it and chooses experiments. Design reference: [lab](../design/mockups/app.html#lab), [replay](../design/mockups/app.html#replay).
 
 ## Scenario creation
 

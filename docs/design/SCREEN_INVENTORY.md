@@ -4,15 +4,15 @@
 |---|---|---|
 | index.html | documentation-only | links every visual deliverable |
 | concepts.html | documentation-only | switch between three structural concepts |
-| app.html#engineer | /sessions/:id/engineer | select, communicate, observe execution, stale invalidation, evidence |
-| app.html#lab | /sessions/:id/lab | parameter edits, start/stop fixture, compare from same snapshot |
-| app.html#replay | /sessions/:id/replay | cursor selection and side-by-side trajectories |
-| app.html#evidence | /experiments/:id/report | show benchmark schema, missing measurements and audit detail |
-| app.html#rules | /rulesets/:id | source-linked coverage and unsupported conditions |
+| app.html#engineer | /sessions/{id}/engineer | select, communicate, observe execution, stale invalidation, evidence |
+| app.html#lab | /sessions/{id}/lab | parameter edits, start/stop fixture, compare from same snapshot |
+| app.html#replay | /sessions/{id}/replay | cursor selection and side-by-side trajectories |
+| app.html#evidence | /experiments/{id}/report | show benchmark schema, missing measurements and audit detail |
+| app.html#rules | /rulesets/{id} | source-linked coverage and unsupported conditions |
 | app.html#models | /models | candidate vs approved distinction, no fake promotion |
 | app.html#sessions | /sessions | session/source selection and provenance |
 | app.html#settings | /settings | density and reduced-motion preview preferences |
-| driver.html | /sessions/:id/driver | simulator-only instruction lifecycle and withdrawal |
+| driver.html | /sessions/{id}/driver | simulator-only instruction lifecycle and withdrawal |
 | landing.html | / | product narrative and link to engineer workspace |
 | simulation.html | /simulation-lab | reproducibility narrative and link to lab |
 

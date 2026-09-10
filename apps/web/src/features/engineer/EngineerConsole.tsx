@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useParams } from 'react-router';
+import { useParams } from 'next/navigation';
 
 import { apiClient, type ApiClient } from '@/api/client';
 import { guidanceFor } from '@/api/errors';
 import { queryKeys } from '@/api/queries';
 import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
-import { OPERATOR_IDENTITY_NOTE } from '@/app/operator';
+import { OPERATOR_IDENTITY_NOTE } from '@/shell/operator';
+import { routeParam } from '@/shell/params';
 import {
   ChartFrame,
   Notice,
@@ -155,7 +156,7 @@ function SourcePanel() {
 
 
 export function EngineerConsole({ runtimeOptions, client = apiClient }: EngineerConsoleProps) {
-  const { sessionId } = useParams();
+  const sessionId = routeParam(useParams().sessionId);
   const runtime = useSessionRuntime(sessionId, runtimeOptions ?? {});
   const queryClient = useQueryClient();
   const narrow = useNarrowViewport();
