@@ -153,14 +153,37 @@ consistent with SQLite's `synchronous=FULL` fsync-per-commit on NTFS — several
 commits happen per step (decision, outbox, session row) — but that attribution
 was **not** isolated further and should not be quoted as a measured cause.
 
-Two consequences worth acting on:
+One observation worth keeping from that run: it produced the **same snapshot
+hash** on both platforms
+(`sha256:eab94853b460759caf76c31cff1411a4687f1075ccf3a29ec4e2c8a52efdfd43`), so
+the simulation is bit-reproducible across Windows and Linux for this scenario
+and seed. That is one observation, not a determinism proof.
 
-1. **Do not benchmark anything on the native Windows/SQLite path.** Numbers
-   from it are dominated by commit latency and say nothing about the product.
-2. The same run produced the **same snapshot hash** on both platforms
-   (`sha256:eab94853b460759caf76c31cff1411a4687f1075ccf3a29ec4e2c8a52efdfd43`),
-   so the simulation is bit-reproducible across Windows and Linux for this
-   scenario and seed. That is one observation, not a determinism proof.
+### The native column above no longer reproduces
+
+Re-measured on 10 September 2026 on the same machine, on branch
+`codex/browser-runtime-audit`, native Windows with the default SQLite store and
+`AFTERLAP_SESSION_RUNTIME=process`:
+
+| Measurement | Recorded above | Re-measured |
+|---|---|---|
+| Demo runbook, 13 steps | 159.44 s | **4.28 s** and 4.17 s (two runs) |
+| `step` command p50 | 5 905 ms | **61.7 ms** (min 56.7, p95 69.5, max 91.1, n=30) |
+
+Two things follow, and one does not.
+
+1. The 77× native-versus-container gap the table drew its conclusions from is
+   gone, so **"do not benchmark anything on the native path" is withdrawn**.
+   The native `step` p50 is now within the spread of the container figure
+   recorded above. Both are latency of the whole command path, not of physics.
+2. The compose column was **not** re-measured here, so this table no longer
+   compares two contemporaneous runs. Treat the container figures as belonging
+   to the build that produced them.
+
+What does *not* follow is an explanation. The plausible cause is the
+out-of-process session runtime that `fa841e6` made the default, which moves
+physics and the store writes off the request path — but that was not isolated,
+and neither figure was attributed to a cause here.
 
 ## Compose acceptance
 
