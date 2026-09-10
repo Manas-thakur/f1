@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Providers } from './Providers';
 import { AppRoutes } from './routes';
 import { SYNTHETIC_DATA_NOTICE } from '../fixtures/notices';
+import { useSessionStore } from '../state/sessionStore';
 import { SESSION_SNAPSHOT } from '../test/contractFixtures';
 
 function hrefOf(input: RequestInfo | URL): string {
@@ -159,6 +160,15 @@ describe('sessions route', () => {
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ sessions: [], next_cursor: null })));
     renderAt('/sessions');
     expect(await screen.findByText(/missing artefact: session manifest/)).toBeInTheDocument();
+  });
+
+  it('says which pack "current" means when no session is open', async () => {
+    useSessionStore.getState().reset();
+    renderAt('/rulesets/current');
+
+    expect(
+      await screen.findByText(/No session is loaded, so there is no current pack/),
+    ).toBeInTheDocument();
   });
 
   it('sends an operator with no sessions somewhere that can create one', async () => {
