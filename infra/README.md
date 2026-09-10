@@ -21,7 +21,7 @@ docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --wait
 | Surface | Address |
 |---|---|
 | Engineer console (Next.js) | http://127.0.0.1:8080 |
-| Python runtime (direct, for debugging) | http://127.0.0.1:8010 |
+| Python runtime (CLI IPC, not HTTP) | 127.0.0.1:8010 |
 | API through Next.js (same origin) | http://127.0.0.1:8080/api/v1 |
 | Session stream | http://127.0.0.1:8080/api/v1/sessions/{id}/stream |
 | PostgreSQL | 127.0.0.1:5433 |

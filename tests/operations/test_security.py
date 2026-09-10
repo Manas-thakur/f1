@@ -8,7 +8,7 @@
 * the export-path refusal is exercised against a real file that really exists
   outside the storage root, and the filesystem is checked afterwards to
   confirm nothing was written there;
-* the `live_team` refusal goes through the real FastAPI app over the real
+* the `live_team` refusal goes through the real control plane over the real
   route, so it is the server's enforcement being tested and not the console's;
 * a real credential is placed in the process environment where the application
   reads its database URL from, and then every artefact the run produces — the
@@ -25,8 +25,8 @@ import re
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
+from afterlap_api.client import TestClient
 from afterlap_api.deps import Settings
 from afterlap_api.errors import CapabilityUnavailable
 from afterlap_api.main import create_app

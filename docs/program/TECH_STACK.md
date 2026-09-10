@@ -13,7 +13,7 @@ This is the implementation decision, not a list of alternatives. All production 
 | Live view state | Zustand | Bounded telemetry buffers, cursor, selected channels and connection sequence. |
 | Styling | CSS Modules, semantic HTML; Radix Dialog/Popover | Custom instruments with accessible complex controls. No imported dashboard theme. |
 | Charts | uPlot; SVG track view | Linked numeric traces and circuit position. Provide accessible numeric summaries. |
-| API | Next.js Route Handlers invoking `python -m afterlap_api.cli` | Public HTTP/SSE control plane. Python owns session runtime, numerics and persistence. |
+| API | Next.js Route Handlers invoking `python -m afterlap_api.cli` | Public HTTP/SSE control plane. Python owns session runtime, numerics and persistence through the CLI. |
 | Contracts | Pydantic → JSON Schema/OpenAPI → openapi-typescript; Ajv | One schema authority, generated types and runtime event validation. |
 | Numerics | NumPy, float64 physics | Dynamics, filters, likelihoods and reference checks. SciPy is needed only for track ingestion and ships in the `track-ingestion` group. |
 | Planner | CasADi, IPOPT | Symbolic dynamics and continuous optimal-control subproblems. Discrete tactics stay in the outer enumerator. acados is not built on this platform; see `infra/README.md` D-02. |
@@ -37,7 +37,7 @@ packages/core/afterlap_core/
   data/ simulation/ rules/ estimation/ planning/ learning/
 packages/application/afterlap_application/  # session runtime ports and process spawn
 packages/infrastructure/afterlap_infrastructure/  # persistence adapters
-apps/api/afterlap_api/                   # CLI, loopback FastAPI, composition
+apps/api/afterlap_api/                   # CLI and session runtime
 workers/                                # thin process launchers importing packages
 apps/web/src/
   app/                                  # Next.js layouts, pages and route handlers

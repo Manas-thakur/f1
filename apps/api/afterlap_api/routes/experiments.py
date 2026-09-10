@@ -17,7 +17,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
 
@@ -35,12 +34,12 @@ from afterlap_contracts.requests import (
     ExperimentStatusResponse,
 )
 
+from ..call import Request
 from ..db import LifecycleError
 from ..db.models import ExperimentJob, Manifest, SnapshotRow
-from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId
+from ..deps import CommandDbSession, DbSession, IdempotencyKey, OperatorId, QueryBound
 from ..redaction import artefact_relative
-
-router = APIRouter()
+from ..router import get, post
 
 METRICS_VERSION = "metrics-v1"
 
@@ -68,7 +67,7 @@ def _job(db: OrmSession, job_id: str) -> ExperimentJob:
     return row
 
 
-@router.post("/experiments", response_model=CreateExperimentResponse, status_code=202)
+@post("/experiments", status_code=202)
 async def create_experiment(
     request: Request,
     payload: CreateExperimentRequest,
@@ -125,7 +124,7 @@ async def create_experiment(
     return CreateExperimentResponse(job=_as_contract(row))
 
 
-@router.get("/experiments/{job_id}", response_model=ExperimentStatusResponse)
+@get("/experiments/{job_id}")
 async def get_experiment(request: Request, job_id: str, db: DbSession) -> ExperimentStatusResponse:
     row = _job(db, job_id)
     report_path: str | None = None
@@ -137,11 +136,11 @@ async def get_experiment(request: Request, job_id: str, db: DbSession) -> Experi
     )
 
 
-@router.get("/experiments", response_model=list[ExperimentStatusResponse])
+@get("/experiments")
 async def list_experiments(
     db: DbSession,
-    status: Annotated[JobStatus | None, Query()] = None,
-    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    status: JobStatus | None = None,
+    limit: Annotated[int, QueryBound(1, 100)] = 25,
 ) -> list[ExperimentStatusResponse]:
     statement = select(ExperimentJob).order_by(ExperimentJob.created_at.desc()).limit(limit)
     if status is not None:
@@ -150,7 +149,7 @@ async def list_experiments(
     return [ExperimentStatusResponse(job=_as_contract(row), status=JobStatus(row.status)) for row in rows]
 
 
-@router.post("/experiments/{job_id}/cancel", response_model=ExperimentStatusResponse)
+@post("/experiments/{job_id}/cancel")
 async def cancel_experiment(
     job_id: str,
     payload: CancelExperimentRequest,
@@ -178,4 +177,4 @@ async def cancel_experiment(
     return ExperimentStatusResponse(job=_as_contract(row), status=JobStatus.CANCELLED)
 
 
-__all__ = ["METRICS_VERSION", "router"]
+__all__ = ["METRICS_VERSION"]

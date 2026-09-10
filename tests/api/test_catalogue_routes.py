@@ -262,8 +262,9 @@ def test_the_scenario_catalogue_resolves_the_circuit_each_scenario_would_run_on(
 
 def test_every_catalogue_route_lives_under_one_api_prefix(client):
     """One authoritative prefix. A second surface is a second thing to keep true."""
-    app = client.app_instance  # type: ignore[attr-defined]
-    documented = list(app.openapi()["paths"])
+    from afterlap_api.router import documented_paths
+
+    documented = documented_paths()
     catalogue = [p for p in documented if "tracks" in p or "conditions" in p or "scenarios" in p]
     print(f"\ncatalogue routes: {catalogue}")
 

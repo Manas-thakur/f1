@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.9
 #
 # AFTERLAP numerical runtime image (Linux). Serves three roles from one build:
-# the FastAPI control plane, the Alembic migration job and the batch worker.
+# the Python CLI runtime, the Alembic migration job and the batch worker.
 #
 # What is deliberately NOT in here:
 #
@@ -81,11 +81,9 @@ USER 10001:10001
 EXPOSE 8000
 
 # Liveness is the process loop; readiness is measured capability. The container
-# healthcheck uses readiness on purpose: a process that answers HTTP but cannot
-# reach its storage or its numerics is not a decision system.
+# healthcheck uses the CLI so this image never speaks HTTP.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=40s --retries=6 \
-    CMD ["python", "-c", "import sys,urllib.request;\
-sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=4).status == 200 else 1)"]
+    CMD ["python", "-m", "afterlap_api.cli", "request", "GET", "/api/v1/health/ready"]
 
 # 0.0.0.0 *inside* the container only. The host-side publish in
 # docker-compose.yml binds 127.0.0.1, so nothing is reachable off the machine.

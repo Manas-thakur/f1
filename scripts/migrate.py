@@ -10,7 +10,7 @@ stack: `docker-compose.yml` gates the API on
 The API *also* calls `ensure_schema` during startup. That duplication is
 deliberate — coordinator decision D-07 defect 1 was a clean install with no
 schema at all, and `alembic upgrade head` is idempotent — so a developer
-running `uvicorn` directly gets a working database without remembering a
+running `python -m afterlap_api.cli serve` directly gets a working database without remembering a
 second command, while the packaged stack still fails loudly if the migration
 cannot be applied.
 
