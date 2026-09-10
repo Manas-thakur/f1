@@ -186,12 +186,16 @@ class TestPairedSampleFromRun:
         assert set(keys) == expected
 
     def test_a_controller_that_produced_nothing_stays_visible_as_missing(self, run) -> None:
-        """A dropped row would quietly improve the mean it is absent from."""
+        """A dropped row would quietly improve the mean it is absent from.
+
+        ``full_system`` is used rather than ``mpc_only``: the latter is runnable
+        now, so it is no longer among the unavailable stubs this run is given.
+        """
         sample = paired_sample_from_run(run)
         assert sample.units
         for unit in sample.units:
-            assert "mpc_only" in unit.missing
-            assert "mpc_only" not in unit.values
+            assert "full_system" in unit.missing
+            assert "full_system" not in unit.values
 
     def test_the_metric_is_the_frozen_objective_utility(self, run) -> None:
         from afterlap_core.evaluation.harness import load_objective, objective_utility
