@@ -232,9 +232,7 @@ class StreamHub:
         self._channels.pop(session_id, None)
 
 
-def _refusal_reason(
-    channel: SessionChannel, after_sequence: int, known_sequence: int | None
-) -> str:
+def _refusal_reason(channel: SessionChannel, after_sequence: int, known_sequence: int | None) -> str:
     """Say which side of the known head the refused cursor fell on.
 
     Both answers are a resync; telling them apart is what lets an operator see

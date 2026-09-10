@@ -98,8 +98,7 @@ def test_a_pack_id_never_names_a_file_outside_the_rules_directory(tmp_path: Path
         response = client.get(f"/api/v1/rulesets/{requested}")
 
     assert response.status_code in {404, 405}, (
-        f"a pack id of {requested!r} was resolved to something: "
-        f"{response.status_code} {response.text[:200]}"
+        f"a pack id of {requested!r} was resolved to something: {response.status_code} {response.text[:200]}"
     )
 
 
@@ -123,7 +122,5 @@ def test_a_session_pins_its_pack_so_the_hash_resolves(tmp_path: Path):
 
         by_hash = client.get(f"/api/v1/rulesets/{ruleset_hash}")
 
-    assert by_hash.status_code == 200, (
-        f"the hash this session pinned resolves to nothing: {by_hash.text}"
-    )
+    assert by_hash.status_code == 200, f"the hash this session pinned resolves to nothing: {by_hash.text}"
     assert by_hash.json()["manifest"]["ruleset_id"] == RULE_PACK_ID

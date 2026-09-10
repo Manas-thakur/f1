@@ -113,8 +113,7 @@ def test_the_decision_record_carries_the_human_actions_taken_on_it(tmp_path: Pat
 
     events = evidence["operator_events"]
     assert [event["action"] for event in events] == ["select", "mark_communicated"], (
-        "the decision timeline cannot show what the operator did: "
-        f"{events}"
+        f"the decision timeline cannot show what the operator did: {events}"
     )
     assert [event["resulting_status"] for event in events] == ["selected", "communicated"]
     assert all(event["operator_id"] == OPERATOR for event in events)
@@ -122,7 +121,7 @@ def test_the_decision_record_carries_the_human_actions_taken_on_it(tmp_path: Pat
     assert all(event["idempotency_key"] for event in events), (
         "the audit record must carry the key the command was submitted under"
     )
-    assert [event["sequence"] for event in events] == sorted(
-        event["sequence"] for event in events
-    ), "operator events must be returned in server sequence order"
+    assert [event["sequence"] for event in events] == sorted(event["sequence"] for event in events), (
+        "operator events must be returned in server sequence order"
+    )
     assert evidence["execution_events"] == [], "selection is not execution"
