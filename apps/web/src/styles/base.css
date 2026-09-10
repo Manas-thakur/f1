@@ -111,6 +111,7 @@ canvas {
 .afterlap-mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .afterlap-muted {
