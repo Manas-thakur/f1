@@ -69,11 +69,19 @@ class SessionChannel:
         return [e for e in self.buffer if e.sequence > after_sequence]
 
     def can_replay(self, after_sequence: int) -> bool:
-        """True when the retained window still covers the client's cursor."""
+        """True when the retained window still covers the client's cursor.
+
+        A cursor *ahead* of the newest sequence is not "up to date": the client
+        claims to have seen events this session never emitted, so the server
+        cannot prove what continuing from it would skip. Answering ``True``
+        there hands back an empty replay and then nothing but heartbeats, which
+        is the silent gap a resync exists to prevent. Equal to the newest
+        sequence is genuinely current and replays nothing.
+        """
         if not self.buffer:
             return after_sequence == 0
-        if after_sequence >= self.latest_sequence:
-            return True
+        if after_sequence > self.latest_sequence:
+            return False
         return after_sequence >= self.earliest_sequence - 1
 
 

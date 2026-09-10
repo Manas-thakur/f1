@@ -27,6 +27,17 @@ from .conftest import (
     simulator_config,
 )
 
+try:
+    import pyarrow as pa  # noqa: F401
+
+    HAS_PARQUET = True
+except ImportError:
+    HAS_PARQUET = False
+
+requires_parquet = pytest.mark.skipif(
+    not HAS_PARQUET, reason="reads or writes parquet chunks, which needs pyarrow"
+)
+
 
 def _speed_records(output_records):
     return [r for r in output_records if r.event.channel == "speed_mps"]
@@ -301,6 +312,7 @@ def test_provenance_and_session_identity_come_from_the_configuration():
     assert event.car_id == CAR_ID
 
 
+@requires_parquet
 def test_an_interrupted_import_leaves_no_partially_visible_chunk(tmp_path):
     sink = MemorySink()
     pipeline = IngestionPipeline(simulator_config(reorder_window_s=0.0), sink=sink)

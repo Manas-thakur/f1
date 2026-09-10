@@ -34,16 +34,45 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+import anyio.to_thread
+
 from afterlap_contracts import StreamEnvelope, StreamEventType
 
 from ..db.engine import transaction
-from ..db.repository import mark_published, unpublished_outbox
+from ..db.repository import mark_published_batch, unpublished_outbox
 from ..stream import StreamHub, envelope_from_outbox
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from sqlalchemy.orm import Session as OrmSession, sessionmaker
 
 logger = logging.getLogger("afterlap.session.publisher")
+
+
+@dataclass(frozen=True, slots=True)
+class _PendingRow:
+    """One outbox row, detached from the session that read it.
+
+    The envelope is built and published outside any transaction, so nothing
+    downstream may hold an ORM instance whose session has already closed.
+    """
+
+    id: str
+    session_id: str
+    sequence: int
+    event_type: str
+    envelope: dict[str, Any]
+
+    @classmethod
+    def of(cls, row: Any) -> _PendingRow:
+        return cls(
+            id=row.id,
+            session_id=row.session_id,
+            sequence=row.sequence,
+            event_type=row.event_type,
+            envelope=dict(row.envelope),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,36 +123,67 @@ class OutboxPublisher:
         return tuple(self._faults.values())
 
     async def drain_once(self) -> PublishReport:
-        """Publish every unpublished row, oldest first."""
+        """Publish every unpublished row, oldest first.
+
+        Read, publish and mark are three steps on purpose. The session runtime
+        owns its own process and writes the same store, so a drain that held
+        its transaction open across ``await`` would keep the write lock while
+        the event loop ran something else, and the session's own decision
+        writes would be spooled behind a poll loop. Nothing here holds a
+        transaction across an await.
+
+        Both database steps run in a worker thread. They are synchronous, and
+        a contended SQLite writer waits out its busy timeout inside them; on
+        the event loop that wait would stall every open stream, and a client
+        would receive its heartbeat before the resync it was already owed.
+
+        Publishing before marking keeps delivery at-least-once: a crash in
+        between replays the row, which the stream's sequence de-duplication
+        already handles. The reverse order would lose it.
+        """
         report = PublishReport()
-        with transaction(self._factory) as db:
-            rows = unpublished_outbox(db, limit=self._batch_size)
-            for row in rows:
-                if row.id in self._faults:
-                    continue
-                envelope, repaired, reason = _envelope_for(row)
-                if envelope is None:
-                    fault = PublisherFault(
-                        outbox_id=row.id,
-                        session_id=row.session_id,
-                        sequence=row.sequence,
-                        event_type=row.event_type,
-                        reason=reason or "unrepresentable outbox row",
-                    )
-                    self._faults[row.id] = fault
-                    logger.warning(
-                        "outbox row %s (%s seq %d) is not representable on the stream contract: %s",
-                        row.id,
-                        row.event_type,
-                        row.sequence,
-                        fault.reason,
-                    )
-                    report = report + PublishReport(undeliverable=(fault,))
-                    continue
-                await self._hub.publish(envelope)
-                mark_published(db, row)
-                report = report + PublishReport(published=1, repaired=1 if repaired else 0)
+        pending = await anyio.to_thread.run_sync(self._read_pending)
+
+        delivered: list[str] = []
+        for row in pending:
+            if row.id in self._faults:
+                continue
+            envelope, repaired, reason = _envelope_for(row)
+            if envelope is None:
+                fault = PublisherFault(
+                    outbox_id=row.id,
+                    session_id=row.session_id,
+                    sequence=row.sequence,
+                    event_type=row.event_type,
+                    reason=reason or "unrepresentable outbox row",
+                )
+                self._faults[row.id] = fault
+                logger.warning(
+                    "outbox row %s (%s seq %d) is not representable on the stream contract: %s",
+                    row.id,
+                    row.event_type,
+                    row.sequence,
+                    fault.reason,
+                )
+                report = report + PublishReport(undeliverable=(fault,))
+                continue
+            await self._hub.publish(envelope)
+            delivered.append(row.id)
+            report = report + PublishReport(published=1, repaired=1 if repaired else 0)
+
+        if delivered:
+            await anyio.to_thread.run_sync(self._mark_delivered, delivered)
         return report
+
+    def _read_pending(self) -> list[_PendingRow]:
+        """One short read transaction, detached from the ORM session it used."""
+        with transaction(self._factory) as db:
+            return [_PendingRow.of(row) for row in unpublished_outbox(db, limit=self._batch_size)]
+
+    def _mark_delivered(self, delivered: Sequence[str]) -> None:
+        """One short write-first transaction over the rows that actually went out."""
+        with transaction(self._factory) as db:
+            mark_published_batch(db, delivered)
 
     async def run(self, *, interval_s: float = 0.05, stop: asyncio.Event | None = None) -> None:
         """Background drain loop."""

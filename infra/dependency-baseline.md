@@ -19,23 +19,22 @@ claims about the newest release of each project.
 |---|---|
 | pydantic | 2.13.5 |
 | numpy | 2.5.3 |
-| scipy | 1.18.1 |
-| casadi | 3.8.0 |
-| torch | 2.14.0+cpu |
-| gymnasium | 1.3.0 |
-| stable-baselines3 | 2.9.0 |
-| scikit-learn | 1.9.0 |
+| scipy | 1.18.1 (`track-ingestion` group) |
+| casadi | 3.8.0 (`solver` group) |
+| torch | 2.14.0+cpu (`learning` group) |
+| gymnasium | 1.3.0 (`learning` group) |
+| stable-baselines3 | 2.9.0 (`learning` group) |
 | fastapi | 0.141.1 |
 | uvicorn | 0.52.4 |
 | sqlalchemy | 2.0.52 |
 | alembic | 1.19.2 |
 | psycopg | 3.3.5 |
-| pyarrow | 25.0.1 |
-| prometheus-client | 0.26.0 |
+| pyarrow | 25.0.1 (`data` group) |
+| pypdf | 6.18.0 (`track-ingestion` group) |
 | typer | 0.27.2 |
 | pyyaml | 6.0.3 |
-| websockets | 17.1 |
-| tensorboard | 2.21.0 |
+| websockets | 17.1 (transitive, via `uvicorn[standard]`) |
+| tensorboard | 2.21.0 (`learning` group) |
 | pytest | 9.1.1 |
 | hypothesis | 6.167.1 |
 | ruff | 0.16.6 |
@@ -95,12 +94,41 @@ bun run build
 bun run test:e2e
 ```
 
-`--all-extras` is required: `torch`, `stable-baselines3`, `gymnasium`,
-`scikit-learn` and `casadi` are declared as the `learning` and `solver` extras so
-a contracts-only consumer can install a light dependency set.
+## Dependency groups
+
+The repository root is a non-published uv workspace coordinator with no
+`[project]` of its own. Optional weight is separated into groups, each of which
+maps onto an extra of `afterlap-core` (or of `afterlap-api`):
+
+| Group | Installs | What it buys |
+|---|---|---|
+| `runtime` | `afterlap-api[postgres]` (psycopg) | the PostgreSQL driver |
+| `data` | pyarrow | columnar session recording and Parquet export |
+| `solver` | casadi | the continuous optimal-control solver |
+| `track-ingestion` | scipy, pypdf | centreline compilation and FIA overlay parsing |
+| `learning` | torch, gymnasium, stable-baselines3, tensorboard | SAC training and the value estimator |
+| `dev` | pytest, ruff, mypy, hypothesis, httpx | the toolchain |
+
+`default-groups = ["runtime", "dev"]`, so a plain `uv sync` installs a working
+control plane and nothing heavier. Every group is genuinely optional: the
+imports that need these packages are deferred, and `doctor` reports an
+uninstalled one as **absent** rather than as a failure, so the default install
+passes the start gate. CI installs
+`--group data --group solver --group track-ingestion` because the test suite
+exercises all three; the cross-platform job deliberately uses the default
+install, which is what proves the deferral holds.
+
+`scikit-learn` was removed: it was declared for calibration and imported
+nowhere. `tensorboard` stays in `learning` only; it is reachable solely through
+the `tensorboard_log` argument of stable-baselines3.
 
 ## Notes
 
+- Workspace members are `packages/contracts`, `packages/core`,
+  `packages/application`, `packages/infrastructure` and `apps/api`. Each builds
+  with a pinned `uv_build` backend; every one is pure Python. Adding a package
+  directory means adding it to `[tool.uv.workspace] members`, to
+  `[tool.uv.sources]`, and to the manifest layer of `infra/api.Dockerfile`.
 - Workspace members install in editable mode. After adding a new package
   directory, run `uv sync ... --reinstall-package <name>` once so the built
   wheel is refreshed.

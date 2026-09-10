@@ -9,7 +9,7 @@ import {
   noSocket,
   renderRoute,
   type FetchStub,
-} from '../engineer/testUtils';
+} from '@/test/testUtils';
 import { DriverDisplay } from './DriverDisplay';
 
 const SESSION_ID = SESSION_SNAPSHOT.session_id;

@@ -15,21 +15,20 @@ This is the implementation decision, not a list of alternatives. All production 
 | Charts | uPlot; SVG track view | Linked numeric traces and circuit position. Provide accessible numeric summaries. |
 | API | FastAPI, Pydantic 2, Uvicorn | Typed HTTP/WebSocket control plane. |
 | Contracts | Pydantic → JSON Schema/OpenAPI → openapi-typescript; Ajv | One schema authority, generated types and runtime event validation. |
-| Numerics | NumPy, SciPy, float64 physics | Dynamics, filters, likelihoods and reference checks. |
-| Planner | CasADi, acados | Symbolic dynamics and compiled continuous optimal-control subproblems. Discrete tactics stay in the outer enumerator. |
+| Numerics | NumPy, float64 physics | Dynamics, filters, likelihoods and reference checks. SciPy is needed only for track ingestion and ships in the `track-ingestion` group. |
+| Planner | CasADi, IPOPT | Symbolic dynamics and continuous optimal-control subproblems. Discrete tactics stay in the outer enumerator. acados is not built on this platform; see `infra/README.md` D-02. |
 | ML/RL | PyTorch 2, Gymnasium, Stable-Baselines3 SAC | Continuous policy training and separate ordinary-return estimator. |
-| Calibration | scikit-learn | Calibration/regression diagnostics and frozen calibrators. |
 | Database | PostgreSQL 17, SQLAlchemy 2, Alembic, psycopg 3 | Transactional events, commands, leases, outbox and manifests. |
-| Trajectories | PyArrow Parquet, DuckDB | Columnar recordings and offline interrogation. |
+| Trajectories | PyArrow Parquet | Columnar recordings, installed by the `data` dependency group. |
 | Model artifacts | Local content-addressed filesystem | Weights/reports keyed by SHA-256; database holds references. |
 | Tests | pytest, Hypothesis, Vitest, Testing Library, Playwright, axe-core | Numerical invariants, contracts, component state and connected browser workflows. |
 | Static checks | Ruff, mypy, ESLint, TypeScript compiler | Authored-code quality and type correctness. |
 | Packaging | Docker Compose, Linux numerical image, nginx | Reproducible local product with same-origin API/WebSocket routing. |
-| Diagnostics | JSON logging, Prometheus client, TensorBoard | Correlated operational metrics and offline training traces; no cloud account required. |
+| Diagnostics | JSON logging, TensorBoard | Correlated operational metrics and offline training traces; no cloud account required. `/metrics` serves JSON, not the Prometheus text format. |
 
 ## Canonical source paths
 
-Use uv members `packages/contracts`, `packages/core`, `apps/api`, each with a pyproject. Root owns dev tools and workspace configuration. Use direct Python package layout:
+Use uv members `packages/contracts`, `packages/core`, `packages/application`, `packages/infrastructure` and `apps/api`, each with a pyproject. Root owns dev tools and workspace configuration. Use direct Python package layout:
 
 ```text
 packages/contracts/afterlap_contracts/   # authoritative Pydantic models

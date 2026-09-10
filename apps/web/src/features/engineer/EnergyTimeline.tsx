@@ -1,16 +1,18 @@
 import type { Recommendation, RuleContext, StateEstimate, TelemetrySeries } from '@contracts';
 
-import { ChartFrame, Notice, ValueReadout } from '@/components';
-import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
 import {
+  ChartFrame,
+  Notice,
+  ValueReadout,
   compact,
   decisionMarkers,
   domainOf,
   energyFloorSeries,
   projectedEnergySeries,
   seriesFor,
-} from './series';
-import styles from './workspace.module.css';
+} from '@/components';
+import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
+import styles from '@/styles/workspace.module.css';
 
 export interface EnergyTimelineProps {
   readonly telemetry: Readonly<Record<string, TelemetrySeries>>;

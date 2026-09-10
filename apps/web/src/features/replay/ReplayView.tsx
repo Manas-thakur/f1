@@ -1,15 +1,24 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router';
 
-import { ChartFrame, EmptyState, Field, Notice, Panel, StatusBadge } from '@/components';
+import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
+import {
+  ChartFrame,
+  EmptyState,
+  Field,
+  Notice,
+  Panel,
+  StatusBadge,
+  compact,
+  decisionMarkers,
+  domainOf,
+  seriesFor,
+} from '@/components';
 import { CHANNELS } from '@/contracts/channels';
 import { selectCursor } from '@/state/selectors';
 import { useSessionStore } from '@/state/sessionStore';
-import type { CursorAxis } from '@/state/types';
-import { ALIGNMENT_LABEL } from '../lab/BranchCompare';
-import { compact, decisionMarkers, domainOf, seriesFor } from '../engineer/series';
-import { useSessionRuntime, type SessionRuntimeOptions } from '../engineer/sessionRuntime';
-import styles from '../engineer/workspace.module.css';
+import { ALIGNMENT_LABEL, type CursorAxis } from '@/state/types';
+import styles from '@/styles/workspace.module.css';
 
 export interface ReplayViewProps {
   readonly runtimeOptions?: SessionRuntimeOptions;

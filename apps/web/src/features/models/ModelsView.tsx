@@ -11,7 +11,7 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT } from '@/contracts/units';
-import styles from '../engineer/workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 function approvalTone(status: ModelManifest['approval_status']) {
   if (status === 'approved') {return 'verified' as const;}

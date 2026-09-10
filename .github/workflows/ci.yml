@@ -21,7 +21,7 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Install
-        run: uv sync --frozen --all-packages --extra solver
+        run: uv sync --frozen --all-packages --group data --group solver --group track-ingestion
       - name: Format
         run: uv run ruff format --check .
       - name: Lint
@@ -81,7 +81,7 @@ jobs:
       - name: Install Python
         run: uv sync --frozen --all-packages
       - name: Cross-platform Python contracts
-        run: uv run pytest tests/operations/test_platform_portability.py tests/operations/test_model_regime.py tests/operations/test_worker_heartbeat.py
+        run: uv run pytest tests/operations/test_platform_portability.py tests/operations/test_model_regime.py tests/operations/test_worker_heartbeat.py tests/operations/test_session_process_runtime.py
       - name: Install web
         run: bun install --frozen-lockfile
       - name: Cross-platform web types

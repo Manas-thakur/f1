@@ -6,14 +6,14 @@ import { useSessionStore } from '@/state/sessionStore';
 import { SESSION_SNAPSHOT } from '@/test/contractFixtures';
 import { telemetryEnvelope } from '@/test/envelopes';
 import type {
-  FakeSocket} from '../engineer/testUtils';
+  FakeSocket} from '@/test/testUtils';
 import {
   apiClientFor,
   makeFetch,
   renderRoute,
   socketFactory,
   type FetchStub,
-} from '../engineer/testUtils';
+} from '@/test/testUtils';
 import { ReplayView } from './ReplayView';
 
 const SESSION_ID = SESSION_SNAPSHOT.session_id;

@@ -6,7 +6,7 @@ import { useSessionStore } from '@/state/sessionStore';
 import { SESSION_SNAPSHOT } from '@/test/contractFixtures';
 import { foreignEnvelope, recommendationEnvelope, telemetryEnvelope } from '@/test/envelopes';
 import { EngineerConsole } from './EngineerConsole';
-import type { FakeSocket } from './testUtils';
+import type { FakeSocket } from '@/test/testUtils';
 import {
   apiClientFor,
   apiError,
@@ -16,7 +16,7 @@ import {
   renderRoute,
   socketFactory,
   type FetchStub,
-} from './testUtils';
+} from '@/test/testUtils';
 
 const SESSION_ID = SESSION_SNAPSHOT.session_id;
 const PATH = `/sessions/${SESSION_ID}/engineer`;

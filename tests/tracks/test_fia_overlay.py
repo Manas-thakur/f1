@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+pytest.importorskip("pypdf")
+
 from afterlap_core.tracks import EventOverlay
 from afterlap_core.tracks.fia_overlay import (
     NUMERIC_FIELDS,

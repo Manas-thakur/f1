@@ -5,14 +5,14 @@ import type { SnapshotReference } from '@contracts';
 import { Notice, StatusBadge } from '@/components';
 import { apiClient, type ApiClient } from '@/api/client';
 import { useSessionStore } from '@/state/sessionStore';
-import { useSessionRuntime, type SessionRuntimeOptions } from '../engineer/sessionRuntime';
-import styles from '../engineer/workspace.module.css';
+import { useSessionRuntime, type SessionRuntimeOptions } from '@/api/sessionRuntime';
+import styles from '@/styles/workspace.module.css';
 import { BranchCompare } from './BranchCompare';
 import { CircuitConfiguration } from './CircuitConfiguration';
 import { ExperimentJobs, type SubmittedExperiment } from './ExperimentJobs';
 import { RunControl } from './RunControl';
 import { ScenarioPanel } from './ScenarioPanel';
-import { labClient, type LabClient } from './controlPlane';
+import { labClient, type LabClient } from '@/api/controlPlane';
 
 export interface SimulationLabProps {
   readonly runtimeOptions?: SessionRuntimeOptions;

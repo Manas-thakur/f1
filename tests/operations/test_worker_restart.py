@@ -33,6 +33,7 @@ from workers.session_worker import (
     WorkerUnavailable,
 )
 
+from afterlap_api.composition import RUNTIME_BUILDER
 from afterlap_api.session import InProcessSessionRuntime, SessionRecorder
 from afterlap_api.session.runtime import SNAPSHOT_SCHEMA
 from afterlap_contracts import Recommendation, RecommendationStatus
@@ -68,6 +69,7 @@ def killed_worker(tmp_path_factory: pytest.TempPathFactory) -> dict[str, Any]:
         scenario_id=SCENARIO_ID,
         ruleset_id=RULE_PACK_ID,
         seed=SEED,
+        runtime_builder=RUNTIME_BUILDER,
     )
     handle = SessionWorkerHandle(config)
     handle.start()
@@ -302,6 +304,7 @@ def test_an_out_of_process_session_persists_its_own_decisions(tmp_path: Path):
         scenario_id=SCENARIO_ID,
         ruleset_id=RULE_PACK_ID,
         seed=SEED,
+        runtime_builder=RUNTIME_BUILDER,
         database_url=f"sqlite+pysqlite:///{database.as_posix()}",
         artifact_root=str(tmp_path / "artifacts-root"),
     )

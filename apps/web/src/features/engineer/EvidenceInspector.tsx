@@ -16,7 +16,7 @@ import {
   type Column,
 } from '@/components';
 import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
-import styles from './workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 export interface EvidenceInspectorProps {
   readonly open: boolean;

@@ -19,6 +19,7 @@ from afterlap_contracts import CONTRACT_REVISION, SCHEMA_VERSION, CapabilityStat
 from afterlap_core.diagnostics import run_doctor
 from afterlap_core.paths import ArtifactStore, Paths
 
+from .composition import ProcessSessionFactory
 from .db import ensure_schema
 from .deps import Database, Settings
 from .errors import install_error_handlers
@@ -67,7 +68,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             spool=BoundedSpool(paths.spool, session_id),
         )
 
-    app.state.session_factory = SessionFactory(recorder_factory=_recorder)
+    if settings.session_runtime_backend == "process":
+        app.state.session_factory = ProcessSessionFactory(
+            database_url=settings.database_url,
+            artifact_root=paths.root,
+            queue_size=settings.session_queue_size,
+            command_timeout_s=settings.session_command_timeout_s,
+        )
+    else:
+        app.state.session_factory = SessionFactory(recorder_factory=_recorder)
     app.state.track_paths = app.state.session_factory.paths
     app.state.publisher = OutboxPublisher(app.state.database.factory, app.state.hub)
     app.state.publisher.start()

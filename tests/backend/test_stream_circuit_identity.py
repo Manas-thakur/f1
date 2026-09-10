@@ -149,6 +149,7 @@ def streaming(tmp_path: Path):  # type: ignore[no-untyped-def]
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -226,6 +227,22 @@ def test_the_streamed_announcement_carries_the_same_circuit_as_rest_and_storage(
     assert announced[1] == package.package_hash
 
 
+def _first_substantive_frame(socket: object, *, limit: int = 8) -> dict[str, object]:
+    """The first frame that is not a keepalive.
+
+    A heartbeat is a liveness tick on the same socket, not an answer to the
+    cursor. Under load the pump task can be scheduled after the heartbeat
+    timer, so reading exactly one frame pins scheduling order rather than the
+    claim. The bound turns a stream that only ever heartbeats into a failure
+    rather than a hang.
+    """
+    for _ in range(limit):
+        frame = json.loads(socket.receive_text())
+        if frame["event_type"] != StreamEventType.HEARTBEAT.value:
+            return frame
+    raise AssertionError(f"no substantive frame within {limit} frames; the stream only heartbeat")
+
+
 def test_a_resync_points_at_a_snapshot_with_the_same_circuit_identity(streaming):
     """The REST snapshot a `resync_required` names is the resync target.
 
@@ -239,7 +256,7 @@ def test_a_resync_points_at_a_snapshot_with_the_same_circuit_identity(streaming)
     session_id = created["manifest"]["id"]
 
     with client.websocket_connect(f"/api/v1/sessions/{session_id}/stream?after_sequence=9999") as socket:
-        first = json.loads(socket.receive_text())
+        first = _first_substantive_frame(socket)
     print(f"\ncursor outside the buffer produced {first['event_type']}")
     assert first["event_type"] == StreamEventType.RESYNC_REQUIRED.value, (
         "a cursor outside the retained window was served a replay with a silent gap"

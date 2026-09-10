@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CANDIDATE_MODEL, RULE_MANIFEST } from '../engineer/testFixtures';
+import { CANDIDATE_MODEL, RULE_MANIFEST } from '@/test/testFixtures';
 import {
   EMPTY_DRAFT,
   issuesFor,

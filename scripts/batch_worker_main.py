@@ -64,6 +64,8 @@ def _ensure_workspace_on_path() -> None:
         root / "apps" / "api",
         root / "packages" / "core",
         root / "packages" / "contracts",
+        root / "packages" / "infrastructure",
+        root / "packages" / "application",
     ):
         if candidate.is_dir() and str(candidate) not in sys.path:
             sys.path.insert(0, str(candidate))
@@ -115,9 +117,9 @@ def _rule_pack_id_for(db: Any, ruleset_hash: str) -> str:
     and it never guesses: an unresolvable hash raises so the job fails with a
     reason rather than running against a pack nobody asked for.
     """
-    from afterlap_api.db.models import RuleManifestRow
     from afterlap_core.config import list_configs
     from afterlap_core.rules import load_rule_pack
+    from afterlap_infrastructure.persistence.models import RuleManifestRow
 
     row = db.get(RuleManifestRow, ruleset_hash)
     if row is not None:
@@ -160,11 +162,11 @@ def _controller_for(treatment_id: str) -> Any:
 
 def build_runner(factory: Any) -> Any:
     """Return a runner closure for `BatchWorker.run`."""
-    from afterlap_api.db.engine import transaction
-    from afterlap_api.db.models import Manifest, Session, SnapshotRow
     from afterlap_contracts import ExperimentManifest
     from afterlap_core.evaluation.harness import BenchmarkManifest, run_benchmark
     from afterlap_core.paths import Paths
+    from afterlap_infrastructure.persistence.engine import transaction
+    from afterlap_infrastructure.persistence.models import Manifest, Session, SnapshotRow
 
     def runner(context: Any) -> dict[str, Any]:
         with transaction(factory) as db:
@@ -284,8 +286,12 @@ def main(argv: list[str] | None = None) -> int:
 
     from workers.batch_worker import BatchWorker
 
-    from afterlap_api.db.engine import create_db_engine, create_session_factory, default_database_url
     from afterlap_core.paths import Paths
+    from afterlap_infrastructure.persistence.engine import (
+        create_db_engine,
+        create_session_factory,
+        default_database_url,
+    )
 
     url = default_database_url()
     if args.wait_for_database > 0.0:

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
+import type { TrackSummary } from '@contracts';
 
-import { StatusBadge } from '@/components';
-import type { TrackCatalogueEntry } from '@/api/trackCatalogue';
+import { StatusBadge } from '../StatusBadge';
 import {
   MIN_SELECTABLE_RUNG,
   OPENF1_ATTRIBUTION,
@@ -10,13 +10,14 @@ import {
   needsOpenF1Attribution,
   provenanceText,
   readinessTone,
+  readinessView,
   selectability,
   shortHash,
-} from './readiness';
-import styles from './circuits.module.css';
+} from '@/contracts/readiness';
+import styles from '@/styles/circuits.module.css';
 
 export interface CircuitSelectorProps {
-  readonly tracks: readonly TrackCatalogueEntry[];
+  readonly tracks: readonly TrackSummary[];
   readonly selectedTrackId: string | null;
   readonly onSelect: (trackId: string) => void;
   readonly name?: string;
@@ -41,7 +42,9 @@ export function CircuitSelector({
   onSelect,
   name = 'lab-circuit',
 }: CircuitSelectorProps) {
-  const anyOpenF1 = tracks.some((track) => needsOpenF1Attribution(track.geometry_provenance));
+  const anyOpenF1 = tracks.some((track) =>
+    needsOpenF1Attribution(track.geometry_provenance ?? null),
+  );
 
   return (
     <div>
@@ -50,6 +53,11 @@ export function CircuitSelector({
           const state = selectability(track);
           const reasonId = `circuit-${track.track_id}-reason`;
           const hash = shortHash(track.package_hash);
+          const licences = track.licence_labels ?? [];
+          const closureErrorM = track.closure_error_m ?? null;
+          const lengthErrorFraction = track.length_error_fraction ?? null;
+          const officialLengthM = track.official_length_m ?? null;
+          const reported = readinessView(track).reported;
           return (
             <li
               key={track.track_id}
@@ -70,15 +78,17 @@ export function CircuitSelector({
               />
               <div className={styles.optionBody}>
                 <label className={styles.optionTitle} htmlFor={`circuit-${track.track_id}`}>
-                  <span>{track.display_name ?? track.track_id}</span>
+                  <span>{track.display_name}</span>
                   <span className={styles.optionId}>{track.track_id}</span>
-                  <StatusBadge label="Readiness rung" tone={readinessTone(track.readiness)}>
-                    {track.readiness ?? track.readiness_reported ?? 'no rung reported'}
+                  <StatusBadge label="Readiness rung" tone={readinessTone(reported)}>
+                    {reported ?? 'no rung reported'}
                   </StatusBadge>
                 </label>
 
                 <dl className={styles.factList}>
-                  <Fact term="Geometry provenance">{provenanceText(track.geometry_provenance)}</Fact>
+                  <Fact term="Geometry provenance">
+                    {provenanceText(track.geometry_provenance ?? null)}
+                  </Fact>
                   <Fact term="Package hash">
                     {hash === null ? (
                       <Unavailable>no compiled package</Unavailable>
@@ -86,35 +96,37 @@ export function CircuitSelector({
                       <span className={styles.hash}>{hash}</span>
                     )}
                   </Fact>
-                  <Fact term="Corridor quality">{corridorText(track.corridor_quality)}</Fact>
+                  <Fact term="Corridor quality">
+                    {corridorText(track.corridor_quality ?? null)}
+                  </Fact>
                   <Fact term="Closure error">
-                    {track.closure_error_m === null ? (
+                    {closureErrorM === null ? (
                       <Unavailable>not measured</Unavailable>
                     ) : (
-                      `${track.closure_error_m.toExponential(1)} m`
+                      `${closureErrorM.toExponential(1)} m`
                     )}
                   </Fact>
                   <Fact term="Length vs official">
-                    {track.length_error_fraction === null ? (
+                    {lengthErrorFraction === null ? (
                       <Unavailable>not measured</Unavailable>
                     ) : (
-                      `${(track.length_error_fraction * 100).toFixed(3)} %`
+                      `${(lengthErrorFraction * 100).toFixed(3)} %`
                     )}
                   </Fact>
                   <Fact term="Official length">
-                    {track.official_length_m === null ? (
+                    {officialLengthM === null ? (
                       <Unavailable>not retrieved</Unavailable>
                     ) : (
-                      `${track.official_length_m.toFixed(0)} m${
-                        track.official_length_verified ? '' : ' (unverified source)'
+                      `${officialLengthM.toFixed(0)} m${
+                        (track.official_length_verified ?? false) ? '' : ' (unverified source)'
                       }`
                     )}
                   </Fact>
                 </dl>
 
-                {track.licence_labels.length === 0 ? null : (
+                {licences.length === 0 ? null : (
                   <p className={styles.attribution}>
-                    Source permissions: {track.licence_labels.join(' · ')}
+                    Source permissions: {licences.join(' · ')}
                   </p>
                 )}
 

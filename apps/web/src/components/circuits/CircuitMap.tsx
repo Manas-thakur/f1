@@ -1,14 +1,14 @@
 import { useMemo } from 'react';
+import type { CentrelineResponse } from '@contracts';
 
-import type { CentrelineResponse } from '@/api/trackCatalogue';
 import {
   OPENF1_ATTRIBUTION,
   corridorText,
   needsOpenF1Attribution,
   provenanceText,
   shortHash,
-} from './readiness';
-import styles from './circuits.module.css';
+} from '@/contracts/readiness';
+import styles from '@/styles/circuits.module.css';
 
 const PAD_FRACTION = 0.04;
 
@@ -87,13 +87,13 @@ function project(x: readonly number[], y: readonly number[]): Projection | null 
 
 export function CircuitMap({ centreline, displayName, readiness }: CircuitMapProps) {
   const projection = useMemo(
-    () => project(centreline.x_m, centreline.y_m),
+    () => project(centreline.x_m ?? [], centreline.y_m ?? []),
     [centreline.x_m, centreline.y_m],
   );
 
   const hash = shortHash(centreline.package_hash);
   const name = displayName ?? centreline.track_id;
-  const drawn = centreline.x_m.length;
+  const drawn = (centreline.x_m ?? []).length;
 
   if (projection === null) {
     return (
@@ -161,16 +161,8 @@ export function CircuitMap({ centreline, displayName, readiness }: CircuitMapPro
           )}
         </span>
         <span>
-          {drawn} of{' '}
-          {centreline.source_point_count ?? (
-            <span className={styles.unavailable}>an unreported number of</span>
-          )}{' '}
-          compiled samples, strided server-side at{' '}
-          {centreline.stride_m === null ? (
-            <span className={styles.unavailable}>an unreported stride</span>
-          ) : (
-            `${centreline.stride_m.toFixed(0)} m`
-          )}
+          {drawn} of {centreline.source_point_count} compiled samples, strided server-side at{' '}
+          {centreline.stride_m.toFixed(0)} m
         </span>
         <span>
           arrays{' '}
@@ -180,14 +172,7 @@ export function CircuitMap({ centreline, displayName, readiness }: CircuitMapPro
             <span className={styles.hash}>{shortHash(centreline.arrays_sha256)}</span>
           )}
         </span>
-        <span>
-          length{' '}
-          {centreline.length_m === null ? (
-            <span className={styles.unavailable}>not reported</span>
-          ) : (
-            `${centreline.length_m.toFixed(1)} m`
-          )}
-        </span>
+        <span>length {centreline.length_m.toFixed(1)} m</span>
         <span>corridor {corridorText(centreline.corridor_quality)}</span>
         <span>marker: first sample, s = 0</span>
       </div>
@@ -201,7 +186,7 @@ export function CircuitMap({ centreline, displayName, readiness }: CircuitMapPro
           {OPENF1_ATTRIBUTION}
         </p>
       ) : null}
-      {centreline.notice === null ? null : (
+      {centreline.notice === undefined ? null : (
         <p className={styles.attribution}>{centreline.notice}</p>
       )}
     </div>

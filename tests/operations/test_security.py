@@ -118,6 +118,7 @@ def test_a_real_export_writes_only_inside_the_storage_root(tmp_path: Path):
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -162,6 +163,7 @@ def test_a_non_simulation_session_refuses_a_simulator_driver_action(tmp_path: Pa
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / f'api-{mode.value}.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:
@@ -253,6 +255,7 @@ def test_a_database_credential_never_reaches_a_report_a_log_or_an_export(
         Settings(
             database_url=f"sqlite+pysqlite:///{(tmp_path / 'api.sqlite3').as_posix()}",
             artifact_root=tmp_path,
+            session_runtime_backend="in_process",
         )
     )
     with TestClient(app) as client:

@@ -34,11 +34,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-from afterlap_api.db.engine import transaction
-from afterlap_api.db.models import ExperimentJob
-from afterlap_api.db.repository import claim_experiment_job
 from afterlap_contracts import JobStatus
 from afterlap_core.paths import atomic_write_json, sha256_json
+from afterlap_infrastructure.persistence.engine import transaction
+from afterlap_infrastructure.persistence.models import ExperimentJob
+from afterlap_infrastructure.persistence.repository import claim_experiment_job
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence

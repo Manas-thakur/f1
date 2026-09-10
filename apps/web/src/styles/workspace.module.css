@@ -1,10 +1,10 @@
 /*
  * Layout for the operational routes.
  *
- * Shared by the engineer console, the lab, replay and the evidence views for
- * the same reason `sessionRuntime.ts` is: this is the only directory all four
- * may import from. It adds layout only — no colour that the tokens do not
- * already define, no second palette, no restyling of a shared primitive.
+ * Shared by the engineer console, the lab, replay and the evidence views, so
+ * it lives in `styles/` rather than inside any one feature. It adds layout
+ * only — no colour that the tokens do not already define, no second palette,
+ * no restyling of a shared primitive.
  */
 
 .page {

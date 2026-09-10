@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 
 import { ApiClient } from '@/api/client';
 import { Providers } from '@/app/Providers';
-import { LabClient } from '../lab/controlPlane';
+import { LabClient } from '@/api/controlPlane';
 
 export interface RecordedRequest {
   readonly url: string;

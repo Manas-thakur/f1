@@ -13,7 +13,7 @@ import {
   type DataTableState,
 } from '@/components';
 import { UNAVAILABLE_TEXT, formatChannelValue } from '@/contracts/units';
-import styles from '../engineer/workspace.module.css';
+import styles from '@/styles/workspace.module.css';
 
 function coverageTone(status: CoverageEntry['status']) {
   if (status === 'implemented_and_tested') {return 'verified' as const;}

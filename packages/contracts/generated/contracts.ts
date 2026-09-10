@@ -602,7 +602,7 @@ export interface ScenarioSummary {
   "duration_s"?: number | null;
   "seed"?: number | null;
   "real_circuit"?: boolean;
-  "track_readiness"?: string | null;
+  "track_readiness"?: TrackReadiness | null;
   "track_package_hash"?: string | null;
   "run_label"?: string | null;
   "unavailable_reason"?: string | null;
@@ -629,7 +629,7 @@ export interface SessionManifest {
   "event_id"?: string | null;
   "track_package_hash"?: string | null;
   "event_package_hash"?: string | null;
-  "track_readiness"?: string | null;
+  "track_readiness"?: TrackReadiness | null;
   "geometry_provenance"?: string | null;
   "conditions_id"?: string | null;
   "conditions_hash"?: string | null;
@@ -667,6 +667,15 @@ export interface SessionSummary {
 export interface SnapshotPayload {
   "event_type"?: "snapshot";
   "snapshot": SessionSnapshot;
+}
+
+export interface SnapshotReference {
+  "snapshot_id": string;
+  "session_id": string;
+  "snapshot_hash": string;
+  "session_time_s": number;
+  "label"?: string | null;
+  "created_at": string;
 }
 
 export interface SourceCapability {
@@ -735,11 +744,13 @@ export interface TelemetryViewPayload {
   "coalesced_to_sequence"?: number | null;
 }
 
+export type TrackReadiness = "discovered" | "geometry_validated" | "event_rules_validated" | "condition_calibrated" | "simulation_eligible" | "rejected";
+
 export interface TrackSummary {
   "track_id": string;
   "display_name": string;
   "country"?: string | null;
-  "registry_readiness"?: string | null;
+  "registry_readiness"?: TrackReadiness | null;
   "official_length_m"?: number | null;
   "official_length_verified"?: boolean;
   "official_length_source_url"?: string | null;
@@ -747,7 +758,7 @@ export interface TrackSummary {
   "event_ids"?: Array<string>;
   "package_present"?: boolean;
   "package_hash"?: string | null;
-  "readiness"?: string | null;
+  "readiness"?: TrackReadiness | null;
   "geometry_provenance"?: string | null;
   "corridor_quality"?: string | null;
   "lateral_geometry_surveyed"?: boolean | null;
@@ -781,7 +792,7 @@ export interface Trigger {
 }
 
 export interface ValidationSummary {
-  "status": string;
+  "status": TrackReadiness;
   "closure_error_m"?: number | null;
   "length_error_fraction"?: number | null;
   "official_length_m"?: number | null;
@@ -826,15 +837,6 @@ export interface QualityEvent {
   "channels"?: Array<ChannelQuality>;
   "capability_states"?: Record<string, CapabilityState>;
   "message"?: string | null;
-}
-
-export interface SnapshotReference {
-  "snapshot_id": string;
-  "session_id": string;
-  "snapshot_hash": string;
-  "session_time_s": number;
-  "label"?: string | null;
-  "created_at": string;
 }
 
 export interface PlanningResult {
@@ -1027,12 +1029,28 @@ export interface DriverActionResponse {
   "recommendation"?: Recommendation | null;
 }
 
+export interface CreateSnapshotRequest {
+  "label"?: string | null;
+}
+
+export interface CreateSnapshotResponse {
+  "snapshot": SnapshotReference;
+}
+
 export interface CreateExperimentRequest {
   "snapshot_id": string;
   "treatments": Array<TreatmentSpec>;
   "seeds": Array<number>;
   "evaluator_version": string;
   "evaluation_horizon_s": number;
+}
+
+export interface CreateExperimentResponse {
+  "job": ExperimentJob;
+}
+
+export interface CancelExperimentRequest {
+  "reason": string;
 }
 
 export interface ExperimentStatusResponse {
@@ -1049,6 +1067,13 @@ export interface RulesetResponse {
   "manifest": RuleManifest;
 }
 
+export interface CreateExportRequest {
+  "session_id": string;
+  "format": string;
+  "start_session_time_s"?: number | null;
+  "end_session_time_s"?: number | null;
+}
+
 export interface ExportJobResponse {
   "export_id": string;
   "status": JobStatus;
@@ -1056,6 +1081,11 @@ export interface ExportJobResponse {
   "hashes"?: Record<string, string>;
   "synthetic"?: boolean;
   "created_at": string;
+}
+
+export interface HealthResponse {
+  "status": string;
+  "detail"?: Record<string, string>;
 }
 
 export interface DecisionEvidenceResponse {
@@ -1069,7 +1099,7 @@ export interface TrackListResponse {
   "schema_version"?: string;
   "season"?: number | null;
   "snapshot_date"?: string | null;
-  "minimum_readiness_to_drive"?: string;
+  "minimum_readiness_to_drive"?: TrackReadiness;
   "notice"?: string;
   "tracks"?: Array<TrackSummary>;
 }
@@ -1089,7 +1119,7 @@ export interface CentrelineResponse {
   "track_id": string;
   "package_hash": string;
   "arrays_sha256"?: string | null;
-  "readiness": string;
+  "readiness": TrackReadiness;
   "geometry_provenance": string;
   "corridor_quality": string;
   "length_m": number;

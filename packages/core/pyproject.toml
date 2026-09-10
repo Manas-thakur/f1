@@ -6,19 +6,28 @@ requires-python = "==3.12.*"
 dependencies = [
     "afterlap-contracts",
     "numpy>=2.0,<3",
-    "scipy>=1.14,<2",
-    "pyarrow>=17.0",
     "pyyaml>=6.0",
     "typer>=0.12",
-    "pypdf>=5.0,<7",
+]
+
+[project.optional-dependencies]
+data = ["pyarrow>=17.0"]
+solver = ["casadi>=3.6,<4"]
+track-ingestion = ["scipy>=1.14,<2", "pypdf>=5.0,<7"]
+learning = [
+    "torch>=2.4,<3",
+    "gymnasium>=1.0,<2",
+    "stable-baselines3>=2.4,<3",
+    "tensorboard>=2.17",
 ]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.12.10,<0.13"]
+build-backend = "uv_build"
 
-[tool.hatch.build.targets.wheel]
-packages = ["afterlap_core"]
+[tool.uv.build-backend]
+module-name = "afterlap_core"
+module-root = ""
 
 [tool.uv.sources]
 afterlap-contracts = { workspace = true }

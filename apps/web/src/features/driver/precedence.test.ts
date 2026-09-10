@@ -16,7 +16,7 @@ import {
   estimateWithoutEnergy,
   recommendation,
   ruleContext,
-} from '../engineer/testFixtures';
+} from '@/test/testFixtures';
 
 function withFlag(flag: FlagState) {
   return estimate({
