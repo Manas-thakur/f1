@@ -21,6 +21,7 @@ Product code lives at the repository root. Specifications, plans, design mockups
 | `infra` | Compose catalog, Linux images, unique host ports |
 | `Makefile` | Local stack orchestration (`make up`) |
 | `docs` | Specs, design, deck, handoffs |
+| `AFTERLAP_CONTEXT.md` | End-to-end context dump of the product |
 
 ## Commands
 
@@ -76,7 +77,7 @@ GitHub Actions runs the complete suite on Linux and a portability gate on Window
 
 ## Docs
 
-Start at [docs/README.md](docs/README.md). Preview design mockups with:
+Start at [docs/README.md](docs/README.md). The whole-tree context dump is [AFTERLAP_CONTEXT.md](AFTERLAP_CONTEXT.md). Preview design mockups with:
 
 ```
 python -m http.server 8765 --bind 127.0.0.1 --directory docs/design/mockups
