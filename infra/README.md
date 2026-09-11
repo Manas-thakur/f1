@@ -11,35 +11,44 @@ Next.js.
 
 ## Quick start
 
+From the implementation workspace root:
+
 ```
-cd .
-cp infra/.env.example infra/.env
-python -c "import secrets; print(secrets.token_urlsafe(32))"   # put it in infra/.env
-docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --wait
+make env
+make up
 ```
+
+`make env` writes `infra/.env` with a generated password. `make up` builds
+images and starts the stack through `ac`. `make demo` runs the closed-loop
+runbook without a browser. `make down` stops containers; `ac afterlap down -v`
+also discards named volumes.
 
 | Surface | Address |
 |---|---|
-| Engineer console (Next.js) | http://127.0.0.1:8080 |
-| Python runtime (CLI IPC, not HTTP) | 127.0.0.1:8010 |
-| API through Next.js (same origin) | http://127.0.0.1:8080/api/v1 |
-| Session stream | http://127.0.0.1:8080/api/v1/sessions/{id}/stream |
-| PostgreSQL | 127.0.0.1:5433 |
+| Engineer console (Next.js) | http://127.0.0.1:18473 |
+| Python runtime (CLI IPC, not HTTP) | 127.0.0.1:19284 |
+| API through Next.js (same origin) | http://127.0.0.1:18473/api/v1 |
+| Session stream | http://127.0.0.1:18473/api/v1/sessions/{id}/stream |
+| PostgreSQL | 127.0.0.1:17539 |
 
-All four bind `127.0.0.1`. There is no authentication in this release, so
-nothing here may be exposed on a routable interface. `docker compose down`
-stops the stack; `down -v` also discards the four named volumes.
+All five bind `127.0.0.1`. There is no authentication in this release, so
+nothing here may be exposed on a routable interface.
 
-Verify the loop without a browser:
+Linux compose, same ports:
 
 ```
-uv run python scripts/demo.py --base-url http://127.0.0.1:8080
+make compose-up
 ```
+
+Commands, port policy and the `ac` manifest are in
+[docs/operations/LOCAL_STACK.md](../docs/operations/LOCAL_STACK.md).
 
 ## Files
 
 | File | What it is |
 |---|---|
+| `../Makefile` | Orchestration: `make up`, `make down`, `make demo`, `make dev` |
+| `ports.env` | Committed unique host ports |
 | `docker-compose.yml` | db, migrate, runtime, batch, web; four named volumes; loopback publishes |
 | `api.Dockerfile` | Linux numerical image. Serves the Python runtime, the migration job and the batch worker |
 | `web.Dockerfile` | bun Next.js build, then Node plus the Python CLI client |
@@ -70,7 +79,8 @@ that directory is not this package's to write.
 * **`psycopg` is included** (the `postgres` extra of `afterlap-api`), which is
   what makes the PostgreSQL service usable.
 
-Measured inside the running container:
+Measured inside the running container (host port was 8080 on that build; the
+current host mapping is 18473, container listen port is still 8080):
 
 ```
 $ curl -s http://127.0.0.1:8080/api/v1/health/ready

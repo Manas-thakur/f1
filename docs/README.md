@@ -19,6 +19,7 @@ Working product name: **AFTERLAP**. Prepared 8 September 2026. The product helps
 - [Detailed ML/RL guide](learning/README.md)
 - [Current design revision](design/DESIGN_REVISION_02.md)
 - [Browser runtime audit and remediation SOP](operations/BROWSER_RUNTIME_AUDIT_SOP.md)
+- [Local stack (Make, ports, ac)](operations/LOCAL_STACK.md)
 
 ## Map
 
@@ -38,7 +39,7 @@ Working product name: **AFTERLAP**. Prepared 8 September 2026. The product helps
 | [driver-display](driver-display/TECHNICAL_SPEC.md) | Simulator-only driver display and lifecycle |
 | [design](design/DESIGN_SYSTEM.md) | Research, concept comparison, screen specifications, mockups |
 | [validation](validation/TECHNICAL_SPEC.md) | Benchmarks, calibration, numerical and end-to-end validation |
-| [operations](operations/TECHNICAL_SPEC.md) | Deployment, observability, security, incident recovery |
+| [operations](operations/TECHNICAL_SPEC.md) | Deployment, local stack, observability, security, incident recovery |
 | [demo](demo/DEMO_RUNBOOK.md) | Presentation narrative and honest claims |
 | [sources](sources/SOURCE_REGISTER.md) | Official references, research and verification scope |
 | [tracks](tracks/README.md) | 2026 circuits, event overlays, race conditions and RL generalisation |

@@ -18,12 +18,27 @@ Product code lives at the repository root. Specifications, plans, design mockups
 | `configs` | Cars, tracks, rules, scenarios, planning, learning |
 | `scripts` | Doctor, migrate, demo, release, CI helpers |
 | `tests` | pytest suites |
-| `infra` | Compose and Linux images |
+| `infra` | Compose catalog, Linux images, unique host ports |
+| `Makefile` | Local stack orchestration (`make up`) |
 | `docs` | Specs, design, deck, handoffs |
 
 ## Commands
 
-Python 3.12 and Bun 1.3. Install with frozen locks:
+Python 3.12 and Bun 1.3. Install with frozen locks, or start the packaged
+stack with Make:
+
+```
+make env
+make up
+make demo
+make down
+```
+
+Host ports are 18473 (web), 19284 (runtime), 17539 (postgres). They are
+pinned in `infra/ports.env` so they do not collide with 3000, 8000, 8080 or
+5432. See [docs/operations/LOCAL_STACK.md](docs/operations/LOCAL_STACK.md).
+
+Install and check without containers:
 
 ```
 uv sync --frozen --all-packages
@@ -56,9 +71,7 @@ Run repository commands through `uv run` and `bun run`; do not call `.venv/bin/p
 PowerShell, bash and zsh. Paths stored in contracts and API payloads use `/` as the portable separator,
 while filesystem access goes through `pathlib.Path`.
 
-GitHub Actions runs the complete suite on Linux and a portability gate on Windows and macOS. Docker
-Desktop with Linux containers is the canonical numerical runtime on Windows; native Windows remains
-supported for development, contracts, API, web and lightweight simulation tests.
+GitHub Actions runs the complete suite on Linux and a portability gate on Windows and macOS. The local packaged stack on macOS is `make up` (Apple container via `ac`). `infra/docker-compose.yml` is the Linux compose catalog. Native Windows remains supported for development, contracts, API, web and lightweight simulation tests.
 
 
 ## Docs
