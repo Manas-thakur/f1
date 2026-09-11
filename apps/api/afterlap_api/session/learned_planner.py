@@ -45,6 +45,7 @@ mismatch that nothing downstream could detect.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import PlanningResult
@@ -401,6 +402,10 @@ def build_learned_planner(
     for. This is what ``default_planner`` was written to do and never called to
     do; the difference is that this one is wired in.
     """
+    if find_spec("casadi") is None:
+        from .baseline_planner import BaselinePlanner
+
+        return BaselinePlanner(), "the solver extra is unavailable; using the baseline"
     try:
         from afterlap_core.planning import plan as external_plan
     except ImportError as exc:

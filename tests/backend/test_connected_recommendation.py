@@ -308,6 +308,21 @@ class TestTheModelRegistry:
         assert note
         assert planner.identity == LEARNED_PLANNER_IDENTITY
 
+    def test_building_without_the_solver_uses_the_portable_baseline(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from afterlap_core.rules import load_rule_pack
+        from afterlap_core.simulation import load_bundle
+
+        monkeypatch.setattr("afterlap_api.session.learned_planner.find_spec", lambda _: None)
+        planner, note = build_learned_planner(
+            bundle=load_bundle("two-straight-counterattack"),
+            pack=load_rule_pack("synthetic-pack-v1"),
+            session_id="test-session",
+        )
+        assert planner.identity == BASELINE_IDENTITY
+        assert "solver extra is unavailable" in note
+
 
 class TestPublicationHelpers:
     def test_no_recommended_plan_means_no_alternative_is_selected(self, driven) -> None:
