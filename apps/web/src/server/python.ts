@@ -41,7 +41,7 @@ export function runtimeListen(): { host: string; port: string } {
   return { host: '127.0.0.1', port: process.env.AFTERLAP_PORT ?? '8000' };
 }
 
-function pythonCli(): { command: string; prefix: string[] } {
+export function pythonCli(): { command: string; prefix: string[] } {
   const override = process.env.AFTERLAP_PYTHON;
   if (override !== undefined && override !== '') {
     return { command: override, prefix: ['-m', 'afterlap_api.cli'] };
