@@ -5,17 +5,14 @@
 browser. This file performs it against a **live API** and prints what it
 actually observed at every step. It is the demonstration; a screenshot is not.
 
-    # terminal 1
-    AFTERLAP_ENV=development uv run python -m afterlap_api.cli serve --host 127.0.0.1 --port 8000
-    bun run --filter @afterlap/web dev
-    # terminal 2
-    uv run python scripts/demo.py --base-url http://127.0.0.1:3000
+    make up
+    uv run python scripts/demo.py --base-url http://127.0.0.1:18473
 
-    uv run python scripts/demo.py --base-url http://127.0.0.1:8080 --json report.json
+    uv run python scripts/demo.py --base-url http://127.0.0.1:18473 --json report.json
 
 Exit code 0 means every step below genuinely happened. Any step that does not
 happen raises :class:`DemoFailure` and the script exits 1 with the observation
-that failed — it never prints a success it did not see, and it never falls back
+that failed. It never prints a success it did not see, and it never falls back
 to a fixture.
 
 Steps, and the specification line each one exists to demonstrate:
@@ -510,7 +507,7 @@ def run(client: ApiClient, *, verbose: bool = True) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Execute the AFTERLAP demonstration runbook.")
-    parser.add_argument("--base-url", default="http://127.0.0.1:3000")
+    parser.add_argument("--base-url", default="http://127.0.0.1:18473")
     parser.add_argument("--operator-id", default=CONSOLE_OPERATOR)
     parser.add_argument("--json", type=Path, default=None, help="Write the observation log here.")
     parser.add_argument("--quiet", action="store_true")
