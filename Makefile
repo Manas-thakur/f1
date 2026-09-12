@@ -133,3 +133,40 @@ stop-dev:
 	@if [ -f "$(STATE)/web.pid" ]; then kill "$$(cat "$(STATE)/web.pid")" 2>/dev/null || true; rm -f "$(STATE)/web.pid"; fi
 	@if [ -f "$(STATE)/runtime.pid" ]; then kill "$$(cat "$(STATE)/runtime.pid")" 2>/dev/null || true; rm -f "$(STATE)/runtime.pid"; fi
 	@echo "native processes stopped; postgres is still the compose db service (make down to stop it)"
+
+CIRCUIT ?= silverstone
+SEED ?= 42
+CARS ?= 20
+LAPS ?= 3
+DURATION ?= 1800
+STEPS ?= 10000
+OUTPUT ?= .afterlap/race/$(CIRCUIT)-$(SEED).jsonl
+
+.PHONY: race race-server race-generate race-train race-check race-up race-down
+race:
+	$(PYTHON) scripts/race_stack.py
+
+race-server:
+	$(PYTHON) scripts/race.py serve
+
+race-generate:
+	$(PYTHON) scripts/race.py generate --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --output $(OUTPUT)
+
+race-train:
+	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --steps $(STEPS) --output .afterlap/race/policy-$(SEED)
+
+race-check:
+	uv run pytest tests/race tests/numerics
+	uv run ruff check packages/core/afterlap_core/race apps/api/afterlap_api/race_server.py scripts/race.py scripts/race_stack.py tests/race
+	uv run mypy packages/core/afterlap_core/race apps/api/afterlap_api/race_server.py scripts/race.py scripts/race_stack.py
+	cd apps/web && bunx eslint src/features/race src/app/race e2e/race.spec.ts playwright.race.config.ts
+	bun run --filter @afterlap/web typecheck
+
+race-browser-check:
+	cd apps/web && bunx playwright test --config playwright.race.config.ts
+
+race-up:
+	docker compose -f infra/race-compose.yml up --build --detach --wait
+
+race-down:
+	docker compose -f infra/race-compose.yml down

@@ -6,7 +6,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['**/._*'],
+  testIgnore: ['**/._*', '**/race.spec.ts'],
   fullyParallel: true,
   forbidOnly: process.env['CI'] === 'true',
   retries: 0,
