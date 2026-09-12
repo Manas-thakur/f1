@@ -888,32 +888,6 @@ export interface QualityEvent {
   "message"?: string | null;
 }
 
-export interface OutcomeRange {
-  "checkpoint_id": string;
-  "progress_m": number;
-  "scenario_count": number;
-  "weight_covered": number;
-  "elapsed_time_s"?: IntervalValue | null;
-  "gap_to_reference_s"?: IntervalValue | null;
-  "own_energy_j"?: IntervalValue | null;
-  "ahead_of_rival_weight"?: number | null;
-}
-
-export interface LearnedContribution {
-  "enabled": boolean;
-  "bundle_id"?: string | null;
-  "weights_hash"?: string | null;
-  "in_support"?: boolean;
-  "support_reason"?: string | null;
-  "continuation_value"?: number | null;
-  "disagreement"?: number | null;
-  "member_count"?: number | null;
-  "calibrator_id"?: string | null;
-  "calibration_status"?: CalibrationStatus;
-  "baseline_identity": string;
-  "reason_codes"?: Array<ReasonCode>;
-}
-
 export interface PlanningResult {
   "schema_version": "1.0";
   "session_id": string;
