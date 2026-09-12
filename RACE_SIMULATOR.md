@@ -19,7 +19,7 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 ## Controls
 
-Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. Compute rate reports simulated seconds per computation second, not guaranteed real-time throughput.
+Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. Compute rate reports simulated seconds per computation second, not guaranteed real-time throughput.
 
 Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode includes traffic-aware following and lane choice; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. BMS training changes only the battery profile while retaining the automatic driving policy.
 

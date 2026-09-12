@@ -3,9 +3,18 @@
 import { Circuit } from './Circuit';
 import { useRace } from './Connection';
 import styles from './race.module.css';
+import type { RaceCar } from './types';
 
 export function number(value: number | undefined, digits = 1) {
   return value === undefined ? 'Unavailable' : value.toFixed(digits);
+}
+
+function lapNumber(car: RaceCar | undefined, total: number) {
+  if (car?.finish_time_s !== undefined && car.finish_time_s !== null) {
+    return total;
+  }
+  const completed = car?.channels['lap'];
+  return completed === undefined ? undefined : Math.min(total, Math.floor(completed) + 1);
 }
 
 export function Transport() {
@@ -16,6 +25,10 @@ export function Transport() {
       <strong>
         {number(frame?.time_s)} <small>SIM SECONDS</small>
       </strong>
+      <span aria-label="Race lap" className={styles.lapCounter}>
+        LAP {number(lapNumber(frame?.cars[0], frame?.settings.laps ?? 1), 0)} /{' '}
+        {frame?.settings.laps ?? '?'}
+      </span>
       <button
         type="button"
         className={styles.primary}
@@ -54,6 +67,12 @@ export function RaceView() {
   const { frame, selected, select, history } = useRace();
   const car = frame?.cars.find((item) => item.id === selected);
   const ch = car?.channels ?? {};
+  const lapProgress =
+    car?.finish_time_s !== undefined && car.finish_time_s !== null
+      ? 100
+      : ch['s_m'] === undefined || !frame
+        ? undefined
+        : Math.max(0, Math.min(100, (ch['s_m'] / frame.circuit_map.length_m) * 100));
   const speeds = history.map(
     (tick) => tick.cars.find((item) => item.id === selected)?.channels['speed_mps'],
   );
@@ -68,7 +87,10 @@ export function RaceView() {
           <p>ENERGY & RACE DYNAMICS</p>
           <h1>Race simulator</h1>
         </div>
-        <span>SEED {frame?.settings.seed ?? '...'} · 100 Hz reference dynamics</span>
+        <span>
+          SEED {frame?.settings.seed ?? '...'} · {Math.round(1 / (frame?.settings.dt_s ?? 0.01))}{' '}
+          Hz reference dynamics
+        </span>
       </div>
       <Transport />
       <div className={styles.workspace}>
@@ -82,6 +104,7 @@ export function RaceView() {
                 <tr>
                   <th>POS</th>
                   <th>CAR</th>
+                  <th>LAP</th>
                   <th>KM/H</th>
                   <th>ENERGY</th>
                 </tr>
@@ -95,6 +118,7 @@ export function RaceView() {
                         {item.id}
                       </button>
                     </td>
+                    <td>{number(lapNumber(item, frame?.settings.laps ?? 1), 0)}</td>
                     <td>
                       {number(
                         item.channels['speed_mps'] === undefined
@@ -127,6 +151,12 @@ export function RaceView() {
           <span className={styles.muted}>
             Age {number(frame && car ? frame.time_s - car.observed_at_s : undefined, 2)} s
           </span>
+          <p aria-label="Selected car lap">
+            {car?.finish_time_s !== undefined && car.finish_time_s !== null ? 'FINISHED' : 'LAP'}{' '}
+            {number(lapNumber(car, frame?.settings.laps ?? 1), 0)} / {frame?.settings.laps ?? '?'}
+          </p>
+          <progress aria-label="Selected car lap progress" max={100} value={lapProgress} />
+          <span className={styles.muted}>{number(lapProgress)}% of lap</span>
         </div>
         <div>
           <p>SPEED</p>

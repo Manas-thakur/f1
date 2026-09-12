@@ -9,6 +9,7 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   await expect(page.getByText('● CONNECTED', { exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monza');
   await page.getByLabel('Cars', { exact: true }).fill('2');
+  await page.getByLabel('Laps', { exact: true }).fill('5');
   await page.getByLabel('Time limit (s)').fill('30');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
@@ -16,6 +17,12 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   await page.getByRole('link', { name: 'Circuit view', exact: true }).click();
   await expect(page.getByLabel('Live circuit')).toContainText('MONZA');
   await expect(page.getByRole('button', { name: 'car-01', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Race lap', { exact: true })).toHaveText('LAP 1 / 5');
+  await expect(page.getByLabel('Selected car lap', { exact: true })).toHaveText('LAP 1 / 5');
+  await expect(page.getByRole('progressbar', { name: 'Selected car lap progress' })).toHaveAttribute(
+    'value',
+    /\d/,
+  );
   await page.getByRole('button', { name: 'Pause race', exact: true }).click();
   await page.getByRole('link', { name: 'Race control', exact: true }).click();
   await page.getByRole('button', { name: 'Save checkpoint' }).click();
