@@ -7,7 +7,7 @@ import { rankedCar } from './motion';
 import { Classification, Transport } from './RacePanels';
 import { ControlDrawer } from './ControlDrawer';
 import { useRace } from './Connection';
-import type { CameraMode, RaceWorld } from './RaceWorld';
+import type { CameraMode, GraphicsQuality, RaceWorld } from './RaceWorld';
 import styles from './race.module.css';
 
 const CAMERAS: { id: CameraMode; label: string; key: string }[] = [
@@ -32,7 +32,7 @@ export function Circuit() {
   const latest = useRef({ frame, selected, select });
   latest.current = { frame, selected, select };
   const [mode, setMode] = useState<CameraMode>('chase');
-  const [highQuality, setHighQuality] = useState(true);
+  const [graphicsQuality, setGraphicsQuality] = useState<GraphicsQuality>('ultra');
   const [help, setHelp] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
@@ -69,7 +69,7 @@ export function Circuit() {
           (id) => latest.current.select(id), setError, setFps);
         world.current = scene;
         scene.setMinimap(minimapCanvas.current);
-        setHighQuality(scene.highQuality);
+        setGraphicsQuality(scene.graphicsQuality);
         if (latest.current.frame) {
           scene.update(latest.current.frame, latest.current.selected);
         }
@@ -153,12 +153,13 @@ export function Circuit() {
             </button>
           ))}
         </div>
-        <select aria-label="Graphics quality" value={highQuality ? 'high' : 'performance'}
+        <select aria-label="Graphics quality" value={graphicsQuality}
           onChange={(event) => {
-            const high = event.target.value === 'high';
-            setHighQuality(high);
-            world.current?.setQuality(high);
+            const quality = event.target.value as GraphicsQuality;
+            setGraphicsQuality(quality);
+            world.current?.setQuality(quality);
           }}>
+          <option value="ultra">Ultra graphics</option>
           <option value="high">High graphics</option>
           <option value="performance">Performance</option>
         </select>

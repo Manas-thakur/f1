@@ -2,19 +2,32 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Sky } from 'three/addons/objects/Sky.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
+import { Atmosphere } from './Atmosphere';
 import { energyMode } from './energyStatus';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
 import { Minimap } from './Minimap';
 import { RaceMotion } from './motion';
 import type { CircuitMap, RaceFrame } from './types';
-import { box, createCar, foliageTexture, ribbon, spinWheels, surfaceTexture, trackPose } from './worldGeometry';
+import { box, createCar, foliageTexture, ribbon, spinWheels, surfaceDetailTexture,
+  surfaceTexture, trackPose } from './worldGeometry';
 
 export type CameraMode = 'chase' | 'cockpit' | 'orbit' | 'track';
+export type GraphicsQuality = 'ultra' | 'high' | 'performance';
 
 export class RaceWorld {
   readonly renderer: THREE.WebGLRenderer;
+  private readonly composer: EffectComposer;
+  private readonly ambientOcclusion: GTAOPass;
+  private readonly bloom: UnrealBloomPass;
+  private readonly antialias: SMAAPass;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(52, 1, 0.12, 16000);
   readonly controls: OrbitControls;
@@ -37,6 +50,9 @@ export class RaceWorld {
   private readonly motion = new RaceMotion();
   private readonly minimap: Minimap;
   private readonly surroundings: Scenery;
+  private readonly atmosphere: Atmosphere;
+  private readonly wetMaterials: THREE.MeshPhysicalMaterial[] = [];
+  private quality: GraphicsQuality;
   private mapCanvas: HTMLCanvasElement | null = null;
   private readonly lastFollowPosition = new THREE.Vector3();
   private followedCar: string | null = null;
@@ -59,16 +75,19 @@ export class RaceWorld {
     this.onMode = onMode;
     this.onSelect = onSelect;
     this.onError = onError;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance',
+      logarithmicDepthBuffer: true });
     const gl = this.renderer.getContext();
     const debug = gl.getExtension('WEBGL_debug_renderer_info');
     const device: unknown = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : '';
     const software = typeof device === 'string' && /swiftshader|llvmpipe|software/i.test(device);
-    this.renderer.setPixelRatio(software ? 0.65 : Math.min(window.devicePixelRatio, 1.75));
+    this.quality = software ? 'performance' : 'ultra';
+    this.renderer.setPixelRatio(software ? 0.65 : Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = !software;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.75;
+    this.renderer.toneMappingExposure = 0.9;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.domElement.setAttribute('aria-label', 'Interactive 3D race scene');
     this.renderer.domElement.setAttribute('role', 'img');
     host.appendChild(this.renderer.domElement);
@@ -82,24 +101,44 @@ export class RaceWorld {
     room.dispose();
     pmrem.dispose();
     const profile = sceneryProfile(map.id);
-    this.scene.fog = new THREE.FogExp2(profile.night ? '#243440' : '#b7c8cc', 0.0002);
+    this.scene.fog = new THREE.FogExp2(profile.night ? '#17232c' : '#aebfc1', 0.00024);
     this.renderer.toneMappingExposure = profile.night ? 0.65 : 0.85;
-    this.scene.add(new THREE.HemisphereLight('#d7edff', '#39402e', 0.8));
+    this.scene.add(new THREE.HemisphereLight('#dcefff', '#283527', profile.night ? 0.45 : 1.15));
     const sky = new Sky();
     sky.scale.setScalar(12000);
     Object.assign(sky.material.uniforms, {
-      turbidity: { value: 3 }, rayleigh: { value: 1.6 },
-      sunPosition: { value: new THREE.Vector3(0.6, profile.night ? -0.025 : 0.35, -0.45) },
+      turbidity: { value: profile.night ? 8 : 5.5 }, rayleigh: { value: profile.night ? 0.18 : 1.9 },
+      mieCoefficient: { value: 0.008 }, mieDirectionalG: { value: 0.88 },
+      sunPosition: { value: new THREE.Vector3(0.6, profile.night ? -0.025 : 0.28, -0.45) },
     });
     this.scene.add(sky);
     this.sun.castShadow = true;
-    this.sun.shadow.mapSize.set(1024, 1024);
+    this.sun.shadow.mapSize.set(2048, 2048);
     Object.assign(this.sun.shadow.camera, { left: -65, right: 65, top: 65, bottom: -65, near: 1, far: 350 });
-    this.sun.shadow.normalBias = 0.035;
+    this.sun.shadow.normalBias = 0.025;
+    this.sun.shadow.bias = -0.00015;
     this.scene.add(this.sun, this.sun.target);
     this.buildTrack();
     this.surroundings = new Scenery(map, profile, () => { this.dirty = true; });
     this.scene.add(this.surroundings);
+    this.atmosphere = new Atmosphere(map, this.center, this.span, this.wetMaterials, profile.night);
+    this.atmosphere.setWeather({ ...map, circuit: map.id, seed: 0, cars: 0, laps: 0, dt_s: 0,
+      wetness: 0, temperature_k: 293.15, wind_mps: 0, wake: false,
+      variability: { preset: 'baseline' }, time_limit_s: 0 });
+    this.scene.add(this.atmosphere);
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.ambientOcclusion = new GTAOPass(this.scene, this.camera);
+    this.ambientOcclusion.updateGtaoMaterial({ radius: 0.35, distanceExponent: 1.8,
+      thickness: 1.2, distanceFallOff: 0.7, samples: 12, screenSpaceRadius: true });
+    this.ambientOcclusion.updatePdMaterial({ radius: 4, rings: 2, samples: 8 });
+    this.composer.addPass(this.ambientOcclusion);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), profile.night ? 0.35 : 0.1, 0.3, 0.78);
+    this.composer.addPass(this.bloom);
+    this.antialias = new SMAAPass();
+    this.composer.addPass(this.antialias);
+    this.composer.addPass(new OutputPass());
+    this.configureQuality();
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.12;
@@ -145,16 +184,24 @@ export class RaceWorld {
     ground.receiveShadow = true;
     this.scene.add(ground);
     const asphalt = surfaceTexture('asphalt');
-    const road = new THREE.Mesh(ribbon(this.map, -6, 6, 0.025),
-      new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.93, side: THREE.DoubleSide }));
+    const roadMaterial = new THREE.MeshPhysicalMaterial({ map: asphalt,
+      normalMap: surfaceDetailTexture('asphalt', 'normal'),
+      roughnessMap: surfaceDetailTexture('asphalt', 'roughness'), normalScale: new THREE.Vector2(0.45, 0.45),
+      roughness: 0.9, metalness: 0.04, clearcoat: 0, envMapIntensity: 0.55, side: THREE.DoubleSide });
+    this.wetMaterials.push(roadMaterial);
+    const road = new THREE.Mesh(ribbon(this.map, -6, 6, 0.025), roadMaterial);
     road.receiveShadow = true;
     this.scene.add(road);
-    const curb = new THREE.MeshStandardMaterial({ map: surfaceTexture('curb'), roughness: 0.8,
-      side: THREE.DoubleSide });
+    const curb = new THREE.MeshStandardMaterial({ map: surfaceTexture('curb'),
+      normalMap: surfaceDetailTexture('curb', 'normal'),
+      roughnessMap: surfaceDetailTexture('curb', 'roughness'), normalScale: new THREE.Vector2(0.35, 0.35),
+      roughness: 0.82, side: THREE.DoubleSide });
     const white = new THREE.MeshStandardMaterial({ color: '#f1eee1', roughness: 0.8,
       side: THREE.DoubleSide });
-    const gravel = new THREE.MeshStandardMaterial({ map: surfaceTexture('gravel'), color: sceneryProfile(this.map.id).runoff, roughness: 1,
-      side: THREE.DoubleSide });
+    const gravel = new THREE.MeshStandardMaterial({ map: surfaceTexture('gravel'),
+      normalMap: surfaceDetailTexture('gravel', 'normal'),
+      roughnessMap: surfaceDetailTexture('gravel', 'roughness'), normalScale: new THREE.Vector2(0.9, 0.9),
+      color: sceneryProfile(this.map.id).runoff, roughness: 1, side: THREE.DoubleSide });
     const barrier = new THREE.MeshStandardMaterial({ color: '#91999b', roughness: 0.4, metalness: 0.65 });
     for (const side of [-1, 1]) {
       this.scene.add(new THREE.Mesh(ribbon(this.map, side * 6, side * 6.9, 0.045), curb));
@@ -263,6 +310,10 @@ export class RaceWorld {
       this.motion.push(frame, performance.now());
     }
     this.frame = frame;
+    this.atmosphere.setWeather(frame.settings);
+    if (this.scene.fog instanceof THREE.FogExp2) {
+      this.scene.fog.density = 0.00022 + frame.settings.wetness * 0.0011;
+    }
     this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
@@ -324,14 +375,24 @@ export class RaceWorld {
     this.dirty = true;
   }
 
-  setQuality(high: boolean) {
-    this.renderer.setPixelRatio(high ? Math.min(window.devicePixelRatio, 1.75) : 0.65);
-    this.renderer.shadowMap.enabled = high;
+  setQuality(quality: GraphicsQuality) {
+    this.quality = quality;
+    this.configureQuality();
     this.resizeCanvas();
   }
 
-  get highQuality() {
-    return this.renderer.shadowMap.enabled;
+  private configureQuality() {
+    this.renderer.setPixelRatio(this.quality === 'performance' ? 0.65
+      : Math.min(window.devicePixelRatio, this.quality === 'ultra' ? 2 : 1.35));
+    this.renderer.shadowMap.enabled = this.quality !== 'performance';
+    this.sun.shadow.mapSize.setScalar(this.quality === 'ultra' ? 2048 : 1024);
+    this.ambientOcclusion.enabled = this.quality === 'ultra';
+    this.bloom.enabled = this.quality === 'ultra';
+    this.antialias.enabled = this.quality === 'ultra';
+  }
+
+  get graphicsQuality() {
+    return this.quality;
   }
 
   zoom(factor: number) {
@@ -399,6 +460,7 @@ export class RaceWorld {
     const width = this.host.clientWidth;
     const height = this.host.clientHeight;
     this.renderer.setSize(width, height);
+    this.composer.setSize(width, height);
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();
   }
@@ -463,8 +525,14 @@ export class RaceWorld {
       return;
     }
     this.dirty = false;
-    this.surroundings.update(performance.now() / 1000, this.camera.position, this.highQuality);
-    this.renderer.render(this.scene, this.camera);
+    const time = performance.now() / 1000;
+    this.surroundings.update(time, this.camera.position, this.quality !== 'performance');
+    this.atmosphere.update(time, this.camera.position);
+    if (this.quality === 'ultra') {
+      this.composer.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
     if (this.mapCanvas) {
       this.minimap.draw(this.mapCanvas, this.cars, this.selected);
     }
@@ -488,6 +556,7 @@ export class RaceWorld {
     this.renderer.setAnimationLoop(null);
     this.resize.disconnect();
     this.surroundings.dispose();
+    this.atmosphere.dispose();
     this.controls.dispose();
     this.renderer.domElement.removeEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.pointerUp);
@@ -518,6 +587,7 @@ export class RaceWorld {
     textures.forEach((item) => item.dispose());
     this.sun.shadow.dispose();
     this.environment.dispose();
+    this.composer.dispose();
     this.renderer.forceContextLoss();
     this.renderer.dispose();
     this.renderer.domElement.remove();
