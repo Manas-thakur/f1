@@ -32,6 +32,9 @@ export class Scenery extends THREE.Group {
     this.buildLandscape();
     this.buildLandmark();
     this.buildFences();
+    this.buildGroundDetails();
+    this.buildTrackLife();
+    this.buildInfrastructure();
     this.batchStaticMeshes();
     this.loadTrees();
   }
@@ -226,6 +229,195 @@ export class Scenery extends THREE.Group {
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     this.add(posts, new THREE.LineSegments(geometry,
       new THREE.LineBasicMaterial({ color: '#5f6a66', transparent: true, opacity: 0.45 })));
+  }
+
+  private buildGroundDetails() {
+    const bladeCount = Math.min(7200, 900 + this.profile.trees * 8);
+    const bladeGeometry = new THREE.PlaneGeometry(0.45, 1.2);
+    bladeGeometry.translate(0, 0.58, 0);
+    const grass = new THREE.InstancedMesh(bladeGeometry,
+      new THREE.MeshStandardMaterial({ color: '#50673a', roughness: 1, side: THREE.DoubleSide }), bladeCount);
+    for (let i = 0; i < bladeCount; i++) {
+      const progress = i * 0.61803398875 % 1;
+      const spread = 16 + (i * 47 % 32);
+      const pose = trackPose(this.map, progress * this.map.length_m, (i % 2 ? 1 : -1) * spread);
+      const scale = 0.35 + (i * 31 % 100) / 130;
+      this.dummy.position.copy(pose.position).y = 0;
+      this.dummy.rotation.set(0, pose.yaw + i * 2.39996, (i % 7 - 3) * 0.03);
+      this.dummy.scale.set(scale, scale, scale);
+      this.dummy.updateMatrix();
+      grass.setMatrixAt(i, this.dummy.matrix);
+      grass.setColorAt(i, new THREE.Color().setHSL(0.19 + i % 9 * 0.006, 0.27, 0.29 + i % 7 * 0.018));
+    }
+    grass.receiveShadow = true;
+    this.add(grass);
+
+    const shrubCount = Math.min(850, 120 + this.profile.trees);
+    const shrubs = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 1),
+      material('#445e35'), shrubCount);
+    for (let i = 0; i < shrubCount; i++) {
+      const pose = trackPose(this.map, (i * 0.754877666 % 1) * this.map.length_m,
+        (i % 2 ? 1 : -1) * (21 + i * 29 % 85));
+      const radius = 0.5 + i % 9 * 0.13;
+      this.dummy.position.copy(pose.position).y = radius * 0.7;
+      this.dummy.rotation.set(i * 0.11, i * 1.7, 0);
+      this.dummy.scale.set(radius * 1.4, radius, radius * 1.2);
+      this.dummy.updateMatrix();
+      shrubs.setMatrixAt(i, this.dummy.matrix);
+      shrubs.setColorAt(i, new THREE.Color().setHSL(0.22 + i % 11 * 0.004, 0.26, 0.25 + i % 5 * 0.025));
+    }
+    shrubs.castShadow = shrubs.receiveShadow = true;
+    this.add(shrubs);
+  }
+
+  private buildTrackLife() {
+    const workerCount = 72;
+    const orange = material('#ff5a1f');
+    const skin = material('#b77c5b');
+    const dark = material('#151b20');
+    const concrete = material('#a5a59e');
+    const steel = material('#6d7677', 0.7);
+    const workers = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.16, 0.68, 4, 8), orange, workerCount);
+    const heads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.14, 10, 8), skin, workerCount);
+    const tireCount = 320;
+    const tires = new THREE.InstancedMesh(new THREE.TorusGeometry(0.34, 0.12, 7, 14), dark, tireCount);
+    for (let station = 0; station < 12; station++) {
+      const side = station % 2 ? 1 : -1;
+      const progress = (station + 0.12) / 12;
+      const group = this.place(progress, side * 19.5);
+      box(group, concrete, [3.8, 0.25, 2.6], [0, 0.12, 0]);
+      box(group, steel, [0.14, 2.9, 0.14], [-1.7, 1.45, -1.1]);
+      box(group, steel, [0.14, 2.9, 0.14], [-1.7, 1.45, 1.1]);
+      box(group, steel, [0.14, 2.9, 0.14], [1.7, 1.45, -1.1]);
+      box(group, steel, [0.14, 2.9, 0.14], [1.7, 1.45, 1.1]);
+      const roof = box(group, orange, [4.4, 0.18, 3.2], [0, 3, 0]);
+      roof.rotation.z = side * 0.035;
+      for (let person = 0; person < 6; person++) {
+        const index = station * 6 + person;
+        const local = new THREE.Vector3((person % 3 - 1) * 0.78, 0.68, (Math.floor(person / 3) - 0.5) * 0.86);
+        local.applyAxisAngle(new THREE.Vector3(0, 1, 0), group.rotation.y).add(group.position);
+        this.dummy.position.copy(local);
+        this.dummy.rotation.set(0, group.rotation.y + (person % 3 - 1) * 0.22, 0);
+        this.dummy.scale.setScalar(1);
+        this.dummy.updateMatrix();
+        workers.setMatrixAt(index, this.dummy.matrix);
+        this.dummy.position.y += 0.57;
+        this.dummy.updateMatrix();
+        heads.setMatrixAt(index, this.dummy.matrix);
+      }
+    }
+    for (let i = 0; i < tireCount; i++) {
+      const section = Math.floor(i / 20);
+      const pose = trackPose(this.map, (section + 0.36) / 16 * this.map.length_m,
+        (section % 2 ? 1 : -1) * 14.35);
+      const local = new THREE.Vector3((i % 4 - 1.5) * 0.36, 0.34 + Math.floor(i % 20 / 4) * 0.38,
+        (i % 5 - 2) * 0.36).applyAxisAngle(new THREE.Vector3(0, 1, 0), pose.yaw).add(pose.position);
+      this.dummy.position.copy(local);
+      this.dummy.rotation.set(Math.PI / 2, pose.yaw, 0);
+      this.dummy.scale.setScalar(1);
+      this.dummy.updateMatrix();
+      tires.setMatrixAt(i, this.dummy.matrix);
+    }
+    workers.castShadow = heads.castShadow = tires.castShadow = true;
+    workers.receiveShadow = heads.receiveShadow = tires.receiveShadow = true;
+    this.add(workers, heads, tires);
+
+    const boardCanvas = document.createElement('canvas');
+    boardCanvas.width = 1024;
+    boardCanvas.height = 256;
+    const boardContext = boardCanvas.getContext('2d');
+    if (boardContext) {
+      boardContext.fillStyle = '#d7ff45';
+      boardContext.fillRect(0, 0, 1024, 256);
+      boardContext.fillStyle = '#0b171b';
+      boardContext.font = 'italic 900 142px Arial';
+      boardContext.textAlign = 'center';
+      boardContext.fillText('AFTERLAP', 512, 181);
+    }
+    const boardTexture = new THREE.CanvasTexture(boardCanvas);
+    boardTexture.colorSpace = THREE.SRGBColorSpace;
+    const boardMaterial = new THREE.MeshStandardMaterial({ map: boardTexture, roughness: 0.52,
+      emissive: this.profile.night ? '#395000' : '#000000', emissiveIntensity: 0.42 });
+    for (let i = 0; i < 36; i++) {
+      const side = i % 2 ? 1 : -1;
+      const group = this.place((i + 0.25) / 36, side * 14.6);
+      const board = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 1.45), boardMaterial);
+      board.position.y = 1.55;
+      board.rotation.y = side < 0 ? Math.PI : 0;
+      board.castShadow = board.receiveShadow = true;
+      group.add(board);
+    }
+
+    for (let i = 0; i < 14; i++) {
+      const side = i % 2 ? 1 : -1;
+      const group = this.place((i + 0.55) / 14, side * 22);
+      box(group, steel, [0.18, 4.2, 0.18], [0, 2.1, 0]);
+      const camera = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.4, 0.82), dark);
+      camera.position.set(0, 4.3, 0);
+      camera.rotation.y = side < 0 ? Math.PI : 0;
+      camera.castShadow = true;
+      group.add(camera);
+      const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.35, 16),
+        new THREE.MeshPhysicalMaterial({ color: '#182e43', metalness: 0.7, roughness: 0.12, clearcoat: 1 }));
+      lens.rotation.x = Math.PI / 2;
+      lens.position.set(0, 4.3, side < 0 ? 0.56 : -0.56);
+      group.add(lens);
+    }
+  }
+
+  private buildInfrastructure() {
+    const asphalt = material('#343a3d');
+    const concrete = material('#b7b7af');
+    const dark = material('#1c2930', 0.35);
+    const glass = new THREE.MeshPhysicalMaterial({ color: '#43616e', metalness: 0.4, roughness: 0.15,
+      transmission: 0.12, clearcoat: 1, emissive: this.profile.night ? '#8b9d88' : '#000000',
+      emissiveIntensity: 0.35 });
+    const red = material('#c72531', 0.25);
+    const rubber = material('#17191a');
+    for (let i = 0; i < 9; i++) {
+      const group = this.place(0.01 + i * 0.004, -48 - i % 2 * 12);
+      box(group, asphalt, [12, 0.08, 16], [0, 0.02, 0]);
+      const height = 4.5 + i % 3 * 1.8;
+      box(group, concrete, [10, height, 13], [0, height / 2, 0]);
+      box(group, glass, [10.1, 1.25, 13.1], [0, height - 1.25, 0]);
+      box(group, dark, [10.8, 0.22, 14], [0, height + 0.15, 0]);
+      for (const z of [-4.5, 0, 4.5]) {
+        box(group, dark, [0.12, height - 1.8, 2.8], [5.06, (height - 1.8) / 2, z]);
+      }
+    }
+    for (let i = 0; i < 18; i++) {
+      const side = i % 2 ? 1 : -1;
+      const group = this.place((i + 0.71) / 18, side * (26 + i % 3 * 3));
+      const bodyColor = i % 4 === 0 ? red : i % 4 === 1 ? concrete : dark;
+      box(group, bodyColor, [2.3, 1.65, 5.8], [0, 1.15, 0]);
+      box(group, glass, [2.34, 0.75, 1.55], [0, 1.75, -2.2]);
+      for (const x of [-1.2, 1.2]) {
+        for (const z of [-1.85, 1.85]) {
+          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.3, 16), rubber);
+          wheel.position.set(x, 0.48, z);
+          wheel.rotation.z = Math.PI / 2;
+          wheel.castShadow = true;
+          group.add(wheel);
+        }
+      }
+    }
+    for (let i = 0; i < 28; i++) {
+      const side = i % 2 ? 1 : -1;
+      const group = this.place((i + 0.18) / 28, side * 24);
+      box(group, dark, [0.22, 11, 0.22], [0, 5.5, 0]);
+      box(group, dark, [4.8, 0.16, 0.16], [-side * 2.25, 10.8, 0]);
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.24, 1.25),
+        new THREE.MeshStandardMaterial({ color: '#e5eee8', emissive: '#d8f2ff',
+          emissiveIntensity: this.profile.night ? 5 : 0.15 }));
+      lamp.position.set(-side * 4.35, 10.65, 0);
+      group.add(lamp);
+      if (this.profile.night) {
+        const light = new THREE.SpotLight('#d8efff', 38, 45, 0.75, 0.65, 1.3);
+        light.position.copy(lamp.position);
+        light.target.position.set(-side * 9, 0, 0);
+        group.add(light, light.target);
+      }
+    }
   }
 
   private batchStaticMeshes() {
