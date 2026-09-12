@@ -11,6 +11,7 @@ export default defineConfig({
     cwd: '../..',
     url: 'http://127.0.0.1:18760/race',
     reuseExistingServer: true,
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 15000 },
     timeout: 120000,
   },
 });
