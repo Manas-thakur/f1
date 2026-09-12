@@ -51,8 +51,8 @@ export const BEATS: readonly Beat[] = [
   beat("decision", 566, 708),
   beat("waitGhost", 699, 719),
   beat("attackChip", 711, 759),
-  beat("durable", 821, 868),
-  beat("logo", 867, 942),
+  beat("durable", 821, 870),
+  beat("logo", 870, 942),
 ];
 
 export const findBeat = (id: string): Beat => {

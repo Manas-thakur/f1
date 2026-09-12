@@ -22,7 +22,10 @@ const STOPS: readonly GradeStop[] = [
   { frame: 686, saturate: 0.66, brightness: 0.94, contrast: 1.04 },
   { frame: 698, saturate: 0.96, brightness: 1, contrast: 1.02 },
   { frame: 866, saturate: 0.96, brightness: 1, contrast: 1.02 },
-  { frame: 867, saturate: 0, brightness: 0, contrast: 1 },
+  { frame: 870, saturate: 0.8, brightness: 0.72, contrast: 1.02 },
+  { frame: 874, saturate: 0.5, brightness: 0.39, contrast: 1.02 },
+  { frame: 876, saturate: 0.2, brightness: 0.1, contrast: 1.02 },
+  { frame: 878, saturate: 0, brightness: 0.02, contrast: 1 },
   { frame: 942, saturate: 0, brightness: 0, contrast: 1 },
 ];
 

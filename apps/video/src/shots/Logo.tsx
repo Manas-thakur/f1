@@ -4,32 +4,32 @@ import { FONT, PALETTE, VIDEO } from "../theme";
 export const Logo = () => {
   const frame = useCurrentFrame();
 
-  const spark = interpolate(frame, [0, 6, 16], [0, 1, 0.35], {
+  const spark = interpolate(frame, [4, 10, 20], [0, 1, 0.35], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const sweep = interpolate(frame, [4, 30], [0, 1], {
+  const sweep = interpolate(frame, [7, 30], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const word = interpolate(frame, [8, 45], [0, 1], {
+  const word = interpolate(frame, [5, 42], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const tagline = interpolate(frame, [33, 47], [0, 1], {
+  const tagline = interpolate(frame, [30, 44], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   return (
-    <div style={{ position: "absolute", inset: 0, background: PALETTE.ink }}>
+    <div style={{ position: "absolute", inset: 0, background: "transparent" }}>
       <div
         style={{
           position: "absolute",
           left: VIDEO.width / 2,
           top: 506,
           transform: "translate(-50%, -50%)",
-          width: 820 * sweep,
+          width: 880 * sweep * sweep,
           height: 3,
           background: `linear-gradient(90deg, rgba(255,51,39,0) 0%, ${PALETTE.attack} 50%, rgba(255,51,39,0) 100%)`,
           filter: "blur(1.6px)",

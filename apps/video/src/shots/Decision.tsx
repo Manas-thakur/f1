@@ -21,14 +21,16 @@ export const Decision = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const out = interpolate(frame, [128, 142], [1, 0], {
+  const out = interpolate(frame, [134, 142], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  const reframed = frame >= 121;
+  const shift = reframed ? "translate(274px, -212px) scale(1.094)" : "translate(0px, 0px)";
 
   return (
     <div style={{ position: "absolute", inset: 0, opacity: out }}>
-      <Scrim left={800} top={216} width={1080} height={470} strength={0.2} blur={22} opacity={card} />
+      <Scrim left={reframed ? 1074 : 800} top={reframed ? 4 : 216} width={1080} height={470} strength={0.2} blur={22} opacity={card} />
 
       <DecisionCard
         reveal={card}
@@ -38,7 +40,7 @@ export const Decision = () => {
         style={{
           left: 868,
           top: 266,
-          transform: `perspective(2000px) rotateY(-6deg) translateX(${(1 - card) * 34}px)`,
+          transform: `${shift} perspective(2000px) rotateY(-6deg) translateX(${(1 - card) * 34}px)`,
           transformOrigin: "left center",
         }}
       />
@@ -52,7 +54,7 @@ export const Decision = () => {
           border: `1px solid ${PALETTE.panelEdge}`,
           borderRadius: 14,
           padding: "12px 18px 16px",
-          opacity: abstain,
+          opacity: reframed ? 0 : abstain,
           transform: `perspective(2000px) rotateY(-6deg) translateX(${(1 - abstain) * 26}px)`,
           transformOrigin: "left center",
         }}

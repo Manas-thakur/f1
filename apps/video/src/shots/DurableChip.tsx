@@ -8,7 +8,7 @@ export const DurableChip = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const out = interpolate(frame, [44, 47], [1, 0], {
+  const out = interpolate(frame, [44, 48], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
