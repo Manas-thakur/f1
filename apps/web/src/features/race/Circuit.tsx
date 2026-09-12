@@ -240,12 +240,16 @@ export function Circuit() {
             aria-label={`Circuit minimap tracking ${selected}`} role="img" />
           <small>{selected.toUpperCase()} · P{car ? (frame?.cars.indexOf(car) ?? 0) + 1 : '?'}</small>
         </div>
+        <div className={styles.followDock}>
+          <small>FOLLOWING</small>
+          <strong>{selected.toUpperCase()}</strong>
+          <div className={styles.carSwitch}>
+            <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
+            <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>
+          </div>
+        </div>
         <div className={styles.worldHud}>
           <div><small>FOLLOWING</small><strong>{selected.toUpperCase()}</strong>
-            <div className={styles.carSwitch}>
-              <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
-              <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>
-            </div>
             <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} ·{' '}
               {car?.tyres.phase === 'track' ? frame?.status.toUpperCase() : `PIT ${car?.tyres.phase.toUpperCase()}`}</span>
           </div>

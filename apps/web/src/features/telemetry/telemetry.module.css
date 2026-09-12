@@ -271,8 +271,8 @@
 
 .overlay {
   position: absolute;
-  left: 12px;
-  top: calc(var(--toolbar-bottom, 130px) + 346px);
+  right: 16px;
+  bottom: 30px;
   z-index: 9;
   border: 1px solid #ffffff26;
   border-radius: 10px;
