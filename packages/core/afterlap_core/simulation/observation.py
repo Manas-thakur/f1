@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 OWN_CHANNELS: tuple[str, ...] = (
     "speed_mps",
+    "grip_multiplier",
     "progress_m",
     "s_m",
     "lap",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -15,7 +15,7 @@ from .battery import EnergyLedger, LedgerPlan, SaturationEvent
 from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, load_bundle
 from .energy_limits import ElectricalLimits, EventEnergyLimits
 from .observation import Observation, observe
-from .overtake import OvertakeTracker, corridor_known
+from .overtake import OvertakeTracker
 from .policies import DriverAction, OpponentPolicy, build_policy
 from .state import (
     CarState,
@@ -48,10 +48,6 @@ _PREVIEW_OFFSETS = np.unique(
 
 _PREVIEW_OFFSETS_LIST: list[float] = _PREVIEW_OFFSETS.tolist()
 _MAX_MODELLED_SPEED_MPS = 130.0
-_BRAKE_DEADBAND_MPS = 0.05
-
-
-_BRAKE_BAND_MPS = 0.5
 
 
 _CORNER_GRIP_SHARE = 0.95
@@ -268,30 +264,30 @@ class Simulator:
         if model is None:
             return WAKE_DISABLED
         world = self.world
-        leader_id: str | None = None
-        nearest = float("inf")
+        strongest = WAKE_FREE_AIR
         for other_id, other in world.cars.items():
             if other_id == car_id:
                 continue
-            delta = other.progress_m - progress_m
-            if 0.0 < delta < nearest:
-                nearest = delta
-                leader_id = other_id
-        if leader_id is None:
-            return WAKE_FREE_AIR
-        leader = world.cars[leader_id]
-        clearance = self._clearance_m(world.bundle, car_id, leader_id)
-        own_s = progress_m % world.track.length
-        lateral_offset: float | None = None
-        if corridor_known(world, own_s) and corridor_known(world, leader.s_m):
-            lateral_offset = lateral_d_m - leader.lateral_d_m
-        return model.evaluate(
-            separation_m=nearest - clearance,
-            lateral_offset_m=lateral_offset,
-            relative_speed_mps=leader.speed_mps - speed_mps,
-            leader_speed_mps=leader.speed_mps,
-            leader_car_id=leader_id,
-        )
+            delta = (other.progress_m - progress_m) % world.track.length
+            clearance = self._clearance_m(world.bundle, car_id, other_id)
+            if not 0 < delta < model.range_m + clearance:
+                continue
+            effect = model.evaluate(
+                separation_m=max(0, delta - clearance),
+                lateral_offset_m=lateral_d_m - other.lateral_d_m,
+                relative_speed_mps=other.speed_mps - speed_mps,
+                leader_speed_mps=other.speed_mps,
+                leader_car_id=other_id,
+            )
+            shielding = effect.shielding * min(1, delta / clearance) ** 2
+            if shielding > strongest.shielding:
+                strongest = replace(
+                    effect,
+                    shielding=shielding,
+                    drag_multiplier=1 - model.drag_reduction_max * shielding,
+                    downforce_multiplier=1 - model.downforce_loss_max * shielding,
+                )
+        return strongest
 
     @staticmethod
     def _clearance_m(bundle: ScenarioBundle, a: str, b: str) -> float:
@@ -493,7 +489,9 @@ class Simulator:
         factor *= rho / float(car.air_density_kgpm3.value)
         mu *= np.asarray(
             [
-                world.environment.grip_multiplier(float(sample), world.race.session_time_s)
+                getattr(world.environment, "preview_grip", world.environment.grip_multiplier)(
+                    float(sample), world.race.session_time_s
+                )
                 for sample in samples
             ]
         )
@@ -599,11 +597,8 @@ class Simulator:
         if action.throttle is not None or action.brake is not None:
             throttle = 0.0 if action.throttle is None else action.throttle
             brake = 0.0 if action.brake is None else action.brake
-        elif speed > target_speed + _BRAKE_DEADBAND_MPS:
-            throttle = 0.0
-            brake = min(1.0, (speed - target_speed) / _BRAKE_BAND_MPS)
         else:
-            tau = 0.6
+            tau = 0.08 if speed > target_speed else 0.6
             desired_a = (target_speed - speed) / tau
             required_n = mass * desired_a + drag_n + roll_n + grade_n
             if required_n >= 0.0:
@@ -612,6 +607,18 @@ class Simulator:
             else:
                 throttle = 0.0
                 brake = min(1.0, -required_n / max_brake_n) if max_brake_n > 0.0 else 0.0
+
+        if action.acceleration_ceiling_mps2 is not None:
+            requested_n = mass * action.acceleration_ceiling_mps2 + drag_n + roll_n + grade_n
+            drive_w = (
+                ice_full_w + DEPLOY_FRACTION[world.cars[car_id].active_profile] * deploy_ceiling_w
+            ) * float(car.drivetrain_efficiency.value)
+            drive_n = physics.tractive_force(drive_w, speed, float(car.max_tractive_force_n.value))
+            if requested_n >= 0:
+                throttle = min(throttle, requested_n / max(1, drive_n))
+            else:
+                throttle = 0.0
+                brake = max(brake, min(1, -requested_n / max(1, max_brake_n)))
 
         if action.brake_floor > 0.0:
             brake = max(brake, action.brake_floor)
@@ -652,6 +659,9 @@ class Simulator:
         heading_error = math.atan2(lateral_rate, max(speed, 1.0))
 
         diagnostics = {
+            "applied_throttle": throttle,
+            "applied_brake": brake,
+            "grip_multiplier": grip_multiplier,
             "drive_force_n": applied_n,
             "drag_force_n": drag_n,
             "rolling_force_n": roll_n,
@@ -894,6 +904,17 @@ class Simulator:
                 if pair.label == "behind":
                     pair.label = "contesting"
 
+            if (
+                pair.label != "ahead"
+                and not pair.overlapped
+                and abs(delta) < clearance
+                and not self._overlapping(a, b)
+            ):
+                pair.overlapped = True
+                record = PassRecord(now, a, b, "longitudinal_overlap")
+                world.passes.append(record)
+                report.passes.append(record)
+
             if pair.label != "ahead" and delta > clearance:
                 if self._overlapping(a, b):
                     record = PassRecord(
@@ -922,6 +943,7 @@ class Simulator:
                 pair.label = "behind"
                 pair.armed = False
                 pair.attempted = False
+                pair.overlapped = False
                 pair.completed_at_s = None
                 pair.completed_progress_m = None
                 pair.retained_evaluated = False
@@ -970,6 +992,9 @@ class Simulator:
             cars={
                 car_id: {
                     "speed_mps": state.speed_mps,
+                    "grip_multiplier": world.environment.grip_multiplier(
+                        state.s_m, world.race.session_time_s
+                    ),
                     "progress_m": state.progress_m,
                     "s_m": state.s_m,
                     "lap": float(state.lap),

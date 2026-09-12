@@ -8,6 +8,7 @@ export interface RaceSettings {
   temperature_k: number;
   wind_mps: number;
   wake: boolean;
+  variability: { preset: 'baseline' | 'mild' | 'training' | 'stress' };
   time_limit_s: number;
 }
 

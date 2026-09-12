@@ -17,6 +17,7 @@ export function Control() {
     send('reset', {
       settings: {
         circuit: data.get('circuit'),
+        variability: { preset: data.get('variability') },
         seed: Number(data.get('seed')),
         cars: Number(data.get('cars')),
         laps: Number(data.get('laps')),
@@ -81,6 +82,16 @@ export function Control() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className={styles.wide}>
+              Variability
+              <select aria-label="Variability" name="variability" defaultValue={frame?.settings.variability.preset ?? 'mild'}>
+                <option value="baseline">Deterministic baseline</option>
+                <option value="mild">Mild variability</option>
+                <option value="training">Broad training variation</option>
+                <option value="stress">Stress testing</option>
+              </select>
+              <span>Driver traits, car setup, surface and wind. Synthetic scenario ranges.</span>
             </label>
             <label>
               Seed

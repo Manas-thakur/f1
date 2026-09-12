@@ -10,6 +10,7 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   await page.goto('/race/control');
   await expect(page.getByText('● CONNECTED', { exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monza');
+  await page.getByRole('combobox', { name: 'Variability', exact: true }).selectOption('training');
   await page.getByLabel('Cars', { exact: true }).fill('2');
   await page.getByLabel('Laps', { exact: true }).fill('5');
   await page.getByLabel('Time limit (s)').fill('30');
@@ -36,12 +37,12 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download recent telemetry' }).click();
   expect((await download).suggestedFilename()).toContain('race-telemetry');
-  await page.screenshot({ path: '/tmp/race-control.png', fullPage: true });
+  await page.screenshot({ path: test.info().outputPath('race-control.png'), fullPage: true });
   await page.getByRole('link', { name: 'Circuit view', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Race simulator', exact: true })).toBeVisible();
-  await page.screenshot({ path: '/tmp/race-circuit.png', fullPage: true });
+  await page.screenshot({ path: test.info().outputPath('race-circuit.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: '/tmp/race-mobile.png', fullPage: true });
+  await page.screenshot({ path: test.info().outputPath('race-mobile.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -51,7 +52,7 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
 test('race websocket follows a forwarded dashboard port', async ({ page }) => {
   const sockets = new Set<Socket>();
   const forwarder = createServer((client) => {
-    const upstream = connect(18760, '127.0.0.1');
+    const upstream = connect(Number(process.env['RACE_WEB_PORT'] ?? 18860), '127.0.0.1');
     for (const socket of [client, upstream]) {
       sockets.add(socket);
       socket.on('close', () => sockets.delete(socket));

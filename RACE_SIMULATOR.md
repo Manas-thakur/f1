@@ -1,6 +1,6 @@
 # Race simulator
 
-All simulator code is maintained on the `simulator` branch, independently of `main`. Push changes directly to this branch without opening pull requests. CI runs on each push and includes the live race and forwarded connection browser checks.
+Simulator development targets `simulator`, independently of `main`. Work in feature worktrees, make checkpoint commits and open pull requests targeting `simulator`. CI runs for these pull requests and branch pushes. Do not merge this physics change without separate authorization.
 
 The race lab runs a deterministic physics engine with a seeded field of up to 20 cars. A separate Python process owns the race. Next.js and Bun provide `/race` and `/race/control`, and receive delayed simulated observations over WebSockets. The browser never advances physics.
 
@@ -25,9 +25,9 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. Compute rate reports simulated seconds per computation second, not guaranteed real-time throughput.
 
-Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode includes traffic-aware following and lane choice; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. BMS training changes only the battery profile while retaining the automatic driving policy.
+Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode uses persistent observation-driven pass intention, clearance prediction and bounded acceleration/lateral requests; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. BMS training changes only the battery profile while retaining the automatic driving policy.
 
-Save checkpoint captures simulator state, random streams, pending driver commands, observation buffers, control overrides, automatic lane memory, finish classifications and episode counters. Restore returns to this state and pauses. Reset or restore changes the UI generation so old plotted history is discarded.
+Save checkpoint captures simulator state, random streams, pending driver commands, observation buffers, control overrides, driver traits, interaction state, scheduled decision time, finish classifications and episode counters. Restore returns to this state and pauses. Reset or restore changes the UI generation so old plotted history is discarded.
 
 The telemetry download contains at most the most recent 200 frames observed by that browser. It is labelled as a bounded telemetry sample. Use the headless generator for complete learning transitions.
 
@@ -41,7 +41,7 @@ The corridor is an explicitly assumed constant 12 metres. Elevation is assumed f
 
 ## Physics
 
-Internal units are metres, seconds, kilograms, joules, watts and kelvin. Display conversions happen at the frontend. Speed and acceleration are consequences of force integration, not independently randomized every frame. Seeded car differences include mass, drag area, downforce area, engine power map, low-speed tractive-force ceiling, initial speed, battery charge and driver reaction delay.
+Internal units are metres, seconds, kilograms, joules, watts and kelvin. Display conversions happen at the frontend. Speed and acceleration are consequences of force integration, not independently randomized every frame. Seeded car differences include mass, correlated drag/downforce setup, engine power map, low-speed tractive-force ceiling, initial speed and battery charge. Persistent driver traits use independent named streams. The baseline, mild, training and stress presets control variation, with explicit synthetic provenance.
 
 | Component | Model and limits |
 | --- | --- |
@@ -52,13 +52,13 @@ Internal units are metres, seconds, kilograms, joules, watts and kelvin. Display
 | Brakes | Friction-force ceiling, available tyre force and regenerative blending |
 | Battery | Actual deployed/recovered energy, conversion losses, auxiliary load, upper/lower energy saturation |
 | Thermal response | Lumped heat capacity and heat rejection, temperature-based electrical derating |
-| Weather | Constant scenario temperature and wind, ideal-gas air density, wetness-dependent grip |
-| Traffic | Observation-driven following/lane choice, bounded wake drag/downforce changes, footprint contact detection |
+| Weather | Constant ambient temperature, ideal-gas density, evolving synthetic wetting/drying, periodic surface patches and smooth correlated wind |
+| Traffic | Observation-driven following/lane choice, bounded wake drag/downforce changes based on physical periodic proximity, footprint contact detection |
 | Outcomes | Shared finish-line crossing, time ordering, attempted/completed/retained passes, explicit unsupported-contact abort |
 
 Battery power creates wheel force through the drivetrain. Harvesting requires mechanical braking energy; it is not a free recharge button. The low-drag tradeoff also enters the corner-speed preview. Wake-enabled preview uses a conservative downforce-loss bound rather than planning a corner with free-air grip. Braking preview respects the mechanical brake ceiling.
 
-The battery and tyre coefficients are modelling assumptions, not measured cell chemistry or rubber characteristics. This is a reduced model: no CFD, suspension dynamics, detailed tyre temperature/wear, fuel burn, pit stops, gearbox shifts, crash damage, aquaplaning or event-certified active-aero zones. Lateral motion is a bounded line-tracking approximation rather than a full multibody vehicle. Speeds above 300 km/h are possible where the configured power, drag and geometry allow them; no track is forced to reach a target speed.
+The battery and tyre coefficients are modelling assumptions, not measured cell chemistry or rubber characteristics. This is a reduced model: no CFD, suspension dynamics, tyre temperature/wear, fuel burn, pit stops, gearbox shifts, crash damage, aquaplaning or event-certified active-aero zones. Lateral motion is a bounded line-tracking approximation rather than a full multibody vehicle. Speeds above 300 km/h are possible where the configured power, drag and geometry allow them; no track is forced to reach a target speed.
 
 ## Learning contract: race-bms-v1
 
@@ -115,8 +115,26 @@ References: [Gymnasium environment API](https://gymnasium.farama.org/api/env/), 
 
 ## Verification
 
-`make race-check` runs race and numerical tests, targeted Python lint/types, and frontend lint/types. `make race-browser-check` starts or reuses the local app and exercises its live controls in Chromium. `bun run build` checks the complete Next.js production build.
+`make race-check` runs race and numerical tests, targeted Python lint/types, and frontend lint/types. `make race-browser-check` starts an isolated app on ports 18860/18861 and refuses to reuse another server and exercises its live controls in Chromium. `bun run build` checks the complete Next.js production build.
 
 Tests cover all 23 imported layouts, 20-car setup, deterministic delayed-command restore, energy balance, masked observations, rival-energy isolation, finish versus timeout, contact abort, command validation and real WebSocket exchanges. A live browser test checks circuit changes, start/pause, stepping, checkpoint restore, driver commands, telemetry download and mobile overflow.
 
 The default 20-car reference engine is CPU intensive. The UI reports its actual computation rate. A requested playback rate above available compute does not reduce physics accuracy or skip steps. Long RL runs should measure throughput before choosing episode counts; vectorized environments can distribute separate episodes across available CPU cores.
+
+
+## Physics v2 configuration and evidence
+
+See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The BMS observation/action contract remains `race-bms-v1`; model behavior is `race-physics-v2`. An extra delayed own grip channel supports automatic racecraft and operator telemetry, but is not appended to the BMS feature vector. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Old policies must be retrained; action indices are never reinterpreted.
+
+The control page adds one variability preset selector. For precise experiments, use `--settings file.json` with generate, train or evaluate. The entire settings file takes precedence over individual scenario flags, including seed. Use nested feature scales to disable variation groups or supply individual driver traits. Weather phases, target wetness, driver traits, initial states and sensor parameters are included in manifests, not actor observations.
+
+```sh
+uv run python scripts/race_experiments.py --seeds 101 202 303 --output experiments.json
+uv run python scripts/race_benchmark.py --settings scenario.json --output diagnostics.json
+uv run python scripts/race.py evaluate --settings scenario.json --profile neutral
+uv run --group learning python scripts/race.py evaluate --settings scenario.json --policy policy.zip
+```
+
+Diagnostics are privileged offline truth, distinct from generated learning transitions. The experiment script initializes matched physical states on a Monza straight, including a leader using a fixed speed controller and a leader that accelerates away. It reports every timeout, failure, event and time series. It does not move cars after initialization or award pass bonuses.
+
+For isolated local service ports, set `RACE_WEB_PORT` and `RACE_SIM_PORT` when running `scripts/race_stack.py`; the upstream URL follows the simulator port. Browser tests use these same variables. Stop only the processes started for your worktree.

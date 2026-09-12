@@ -33,7 +33,9 @@ def main() -> None:
     bun = shutil.which("bun")
     if bun is None:
         raise RuntimeError("Bun is required")
-    check_ports()
+    web_port = int(os.environ.get("RACE_WEB_PORT", "18760"))
+    simulator_port = int(os.environ.get("RACE_SIM_PORT", "18761"))
+    check_ports((web_port, simulator_port))
 
     def stop(signum: int, frame: object) -> None:
         raise KeyboardInterrupt
@@ -42,20 +44,21 @@ def main() -> None:
     try:
         children.append(
             subprocess.Popen(
-                [sys.executable, "scripts/race.py", "serve"],
+                [sys.executable, "scripts/race.py", "serve", "--port", str(simulator_port)],
                 cwd=ROOT,
                 start_new_session=True,
             )
         )
         children.append(
-            subprocess.Popen(  # noqa: S603
-                [bun, "x", "next", "dev", "--hostname", "127.0.0.1", "--port", "18760"],
+            subprocess.Popen(
+                [bun, "x", "next", "dev", "--hostname", "127.0.0.1", "--port", str(web_port)],
                 cwd=ROOT / "apps/web",
+                env={**os.environ, "AFTERLAP_RACE_UPSTREAM": f"http://127.0.0.1:{simulator_port}"},
                 start_new_session=True,
             )
         )
         print(
-            "race view: http://127.0.0.1:18760/race\nrace control: http://127.0.0.1:18760/race/control",
+            f"race view: http://127.0.0.1:{web_port}/race\nrace control: http://127.0.0.1:{web_port}/race/control",
             flush=True,
         )
         while all(child.poll() is None for child in children):

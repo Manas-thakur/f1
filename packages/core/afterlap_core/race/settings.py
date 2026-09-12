@@ -1,4 +1,8 @@
-from pydantic import BaseModel, ConfigDict, Field
+from __future__ import annotations
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from .variability import Variability
 
 
 class RaceSettings(BaseModel):
@@ -14,3 +18,12 @@ class RaceSettings(BaseModel):
     wind_mps: float = Field(default=0.0, ge=-20, le=20)
     wake: bool = True
     time_limit_s: float = Field(default=1800, ge=1, le=14400)
+
+    variability: Variability = Field(default_factory=Variability)
+
+    @model_validator(mode="after")
+    def known_drivers(self) -> RaceSettings:
+        allowed = {f"car-{index + 1:02d}" for index in range(self.cars)}
+        if self.variability.drivers.keys() - allowed:
+            raise ValueError("driver overrides must name a car in this field")
+        return self

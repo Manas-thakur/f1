@@ -8,24 +8,36 @@ from typing import Any
 
 from afterlap_contracts import DeploymentProfile
 
+from ..rng import StreamRegistry
 from ..simulation.engine import Simulator
 from ..simulation.observation import Observation
 from ..simulation.policies import DriverAction
+from ..simulation.state import PassRecord
 from ..simulation.track import footprints_overlap
 from ..simulation.wake import WakeModel
 from .circuit import circuit
-from .factory import RaceWeather, race_bundle
+from .factory import race_bundle
+from .racecraft import Racecraft
 from .settings import RaceSettings
+from .variability import RaceWeather
 
 
 class RaceSession:
     def __init__(self, settings: RaceSettings | None = None) -> None:
         self.settings = settings or RaceSettings()
         self.bundle = race_bundle(self.settings)
-        self.track, self.map = circuit(self.settings.circuit, self.settings.wetness)
+        self.track, self.map = circuit(self.settings.circuit, 0)
+        self.weather = RaceWeather(
+            self.settings.temperature_k,
+            self.settings.wind_mps,
+            self.settings.wetness,
+            self.track.length,
+            self.settings.variability,
+            self.settings.seed,
+        )
         self.simulator = Simulator().reset(
             self.bundle,
-            environment=RaceWeather(self.settings.temperature_k, self.settings.wind_mps),
+            environment=self.weather,
             wake=WakeModel() if self.settings.wake else None,
         )
         self.simulator.world.policies.clear()
@@ -34,6 +46,21 @@ class RaceSession:
         self.lanes = {
             car: initial.lateral_d_m.value for car, initial in self.bundle.scenario.initial_states.items()
         }
+        streams = StreamRegistry(self.settings.seed)
+        self.drivers = {
+            car: Racecraft(
+                self.settings.variability.sample_driver(streams, car),
+                lane,
+                length_m=self.bundle.car_configs[car].length_m.value,
+                width_m=self.bundle.car_configs[car].width_m.value,
+            )
+            for car, lane in self.lanes.items()
+        }
+        for car, lane in self.lanes.items():
+            self.simulator.world.active_actions[car] = DriverAction(
+                target_lateral_d_m=lane, acceleration_ceiling_mps2=0
+            )
+        self.next_decision_s = 0.0
         self.finishes: dict[str, float] = {}
         self.events: list[dict[str, Any]] = []
         self.status = "paused"
@@ -59,48 +86,20 @@ class RaceSession:
 
     def automatic_action(self, observation: Observation) -> DriverAction:
         car_id = observation.car_id
-        lane = self.lanes[car_id]
-        profile = DeploymentProfile.CONSERVE
-        ahead = observation.rival_ahead()
-        if ahead is not None and ahead["relative_progress_m"] < 50:
-            profile = DeploymentProfile.PUSH
-            if abs(ahead["lateral_d_m"] - lane) < 2.5:
-                candidate = -2.5 if ahead["lateral_d_m"] >= 0 else 2.5
-                clear = all(
-                    abs(rival["relative_progress_m"]) > 25 or abs(rival["lateral_d_m"] - candidate) > 2.5
-                    for rival in observation.rivals
-                )
-                if clear:
-                    lane = candidate
-        self.lanes[car_id] = lane
-        brake = None
-        own_speed = observation.channels.get("speed_mps", 0)
-        obstacles = [
-            rival
-            for rival in observation.rivals
-            if rival["relative_progress_m"] > 0
-            and abs(rival["lateral_d_m"] - observation.channels.get("lateral_d_m", lane)) < 2.8
-        ]
-        if obstacles:
-            obstacle = min(obstacles, key=lambda rival: rival["relative_progress_m"])
-            gap = obstacle["relative_progress_m"]
-            safe_gap = 12 + 0.5 * own_speed
-            acceleration = (obstacle["speed_mps"] - own_speed) / 0.5 + (gap - safe_gap) * 0.8
-            if acceleration < 0:
-                brake = min(1.0, -acceleration / 12)
-        if observation.channels.get("battery_energy_j", 0) < 6e5:
-            profile = DeploymentProfile.HARVEST
-        progress = float(observation.channels.get("progress_m", 0))
-        straight = all(
-            abs(self.track.curvature_at(progress + offset)) < 0.001 for offset in (0, 50, 100, 150)
-        )
-        return DriverAction(
-            profile=self.bms_profiles.get(car_id, profile),
-            pace_scale=0.90 + (int(car_id[-2:]) % 5) * 0.01,
-            target_lateral_d_m=lane,
-            low_drag=straight and brake is None,
-            brake_floor=brake or 0.0,
-        )
+        driver = self.drivers[car_id]
+        prior = driver.state
+        action = driver.react(observation, self.track)
+        if driver.state != prior and driver.state in {"committed", "aborting"} and driver.rival_id:
+            event = PassRecord(
+                observation.delivered_at_s,
+                car_id,
+                driver.rival_id,
+                "pass_intent" if driver.state == "committed" else "aborted_attempt",
+            )
+            self.simulator.world.passes.append(event)
+            self.events.append(asdict(event))
+        self.lanes[car_id] = action.target_lateral_d_m
+        return replace(action, profile=self.bms_profiles.get(car_id, action.profile))
 
     def advance(self, duration_s: float = 0.1) -> None:
         if not math.isfinite(duration_s) or not 0 < duration_s <= 10:
@@ -112,8 +111,8 @@ class RaceSession:
                 self.status = "truncated"
                 break
             actions = None
-            cadence_steps = round(0.1 / self.settings.dt_s)
-            if self.steps % cadence_steps == 0:
+            if self.simulator.session_time_s >= self.next_decision_s - 1e-9:
+                self.next_decision_s += 0.1
                 actions = {
                     car: replace(
                         self.overrides[car] if car in self.overrides else self.automatic_action(observation),
@@ -121,6 +120,7 @@ class RaceSession:
                     )
                     for car, observation in self.observations().items()
                 }
+            h = min(h, self.next_decision_s - self.simulator.session_time_s)
             report = self.simulator.step(actions, h)
             self.steps += 1
             remaining -= h
@@ -147,13 +147,13 @@ class RaceSession:
                 a.s_m,
                 a.lateral_d_m,
                 a.heading_error_rad,
-                5.6,
-                2.0,
+                world.car_configs[a.car_id].length_m.value,
+                world.car_configs[a.car_id].width_m.value,
                 b.s_m,
                 b.lateral_d_m,
                 b.heading_error_rad,
-                5.6,
-                2.0,
+                world.car_configs[b.car_id].length_m.value,
+                world.car_configs[b.car_id].width_m.value,
             ):
                 self.failure = f"contact: {a.car_id} / {b.car_id}; collision response is unsupported"
                 break
@@ -206,6 +206,10 @@ class RaceSession:
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(
             {
+                "model_version": "race-physics-v2",
+                "settings": self.settings.model_dump(),
+                "drivers": self.drivers,
+                "next_decision_s": self.next_decision_s,
                 "world": self.simulator.snapshot(),
                 "overrides": self.overrides,
                 "bms_profiles": self.bms_profiles,
@@ -219,14 +223,39 @@ class RaceSession:
         )
 
     def restore(self, snapshot: dict[str, Any]) -> None:
+        if (
+            snapshot.get("model_version") != "race-physics-v2"
+            or snapshot.get("settings") != self.settings.model_dump()
+        ):
+            raise ValueError("incompatible race model or settings in checkpoint")
         saved = copy.deepcopy(snapshot)
         self.simulator.restore(saved["world"])
-        for key in ("overrides", "bms_profiles", "lanes", "finishes", "events", "steps", "failure", "status"):
+        for key in (
+            "drivers",
+            "next_decision_s",
+            "overrides",
+            "bms_profiles",
+            "lanes",
+            "finishes",
+            "events",
+            "steps",
+            "failure",
+            "status",
+        ):
             setattr(self, key, saved[key])
 
     def manifest(self) -> dict[str, Any]:
         return {
             "type": "manifest",
+            "model_version": "race-physics-v2",
+            "environment_version": "race-bms-v1",
+            "drivers": {car: driver.traits.model_dump() for car, driver in self.drivers.items()},
+            "weather": self.weather.manifest(),
+            "initial_states": {
+                car: state.model_dump(mode="json")
+                for car, state in self.bundle.scenario.initial_states.items()
+            },
+            "sensor_config": self.bundle.scenario.observation.model_dump(mode="json"),
             "version": "race-v1",
             "settings": self.settings.model_dump(),
             "bundle_hash": self.bundle.bundle_hash,
