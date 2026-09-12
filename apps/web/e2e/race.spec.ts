@@ -66,12 +66,15 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   await expect(page.getByText('● CONNECTED', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Chase', exact: true })).toBeEnabled();
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monza');
+  await expect(page.getByRole('combobox', { name: 'Lap preset', exact: true })).toHaveValue('grand-prix');
+  await expect(page.getByText('53 laps from the official 2026 circuit listing.')).toBeVisible();
   await page.getByRole('combobox', { name: 'Variability', exact: true }).selectOption('training');
   await page.getByLabel('Cars', { exact: true }).fill('2');
-  await page.getByLabel('Laps', { exact: true }).fill('5');
+  await page.getByRole('combobox', { name: 'Lap preset', exact: true }).selectOption('custom');
+  await page.getByLabel('Custom laps', { exact: true }).fill('5');
   await page.getByLabel('Time limit (s)').fill('1800');
   await expect(page.getByRole('combobox', { name: 'Circuit', exact: true })).toHaveValue('monza');
-  await expect(page.getByLabel('Laps', { exact: true })).toHaveValue('5');
+  await expect(page.getByLabel('Custom laps', { exact: true })).toHaveValue('5');
   expect(await page.locator('form').first().evaluate((form) => form instanceof HTMLFormElement && form.checkValidity())).toBe(true);
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await expect(page.getByLabel('Live circuit')).toContainText('MONZA');

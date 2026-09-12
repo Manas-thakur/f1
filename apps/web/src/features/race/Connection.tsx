@@ -3,12 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
-import type { CircuitMap, Message, RaceFrame } from './types';
+import type { CircuitSummary, Message, RaceFrame } from './types';
 import styles from './race.module.css';
 
 interface RaceConnection {
   frame: RaceFrame | null;
-  circuits: Omit<CircuitMap, 'points'>[];
+  circuits: CircuitSummary[];
   connected: boolean;
   socketUrl: string;
   error: string | null;
@@ -30,7 +30,7 @@ export function useRace() {
 
 export function RaceConnectionProvider({ children }: { readonly children: ReactNode }) {
   const [frame, setFrame] = useState<RaceFrame | null>(null);
-  const [circuits, setCircuits] = useState<Omit<CircuitMap, 'points'>[]>([]);
+  const [circuits, setCircuits] = useState<CircuitSummary[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, select] = useState('car-01');

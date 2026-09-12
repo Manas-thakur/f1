@@ -6,17 +6,29 @@ import type { SubmitEvent } from 'react';
 import { useRace } from './Connection';
 import { Telemetry } from './RacePanels';
 import styles from './race.module.css';
+import type { CircuitSummary, RaceFrame } from './types';
 
-export function Control() {
-  const { frame, circuits, send, connected, selected, select, history } = useRace();
-  const [profile, setProfile] = useState('neutral');
-  const [manual, setManual] = useState(false);
-  if (!frame) {
-    return (
-      <div className={styles.controlContent}>
-        <p role="status" className={styles.caption}>Loading race settings…</p>
-      </div>
-    );
+function RaceSetupForm({ frame, circuits, connected, send }: {
+  readonly frame: RaceFrame;
+  readonly circuits: CircuitSummary[];
+  readonly connected: boolean;
+  readonly send: (operation: string, payload?: Record<string, unknown>) => void;
+}) {
+  const [circuitId, setCircuitId] = useState(frame.settings.circuit);
+  const initialCircuit = circuits.find((item) => item.id === circuitId);
+  const initialPreset = initialCircuit?.lap_presets.find(
+    (item) => item.default_laps === frame.settings.laps,
+  );
+  const [lapChoice, setLapChoice] = useState(initialPreset?.id ?? 'custom');
+  const [customLaps, setCustomLaps] = useState(frame.settings.laps);
+  const selectedCircuit = circuits.find((item) => item.id === circuitId);
+  const selectedPreset = selectedCircuit?.lap_presets.find((item) => item.id === lapChoice);
+  const laps = selectedPreset?.default_laps ?? customLaps;
+  function changeCircuit(id: string) {
+    const next = circuits.find((item) => item.id === id);
+    setCircuitId(id);
+    setLapChoice(next?.lap_presets[0]?.id ?? 'custom');
+    setCustomLaps(next?.lap_presets[0]?.default_laps ?? customLaps);
   }
   function reset(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,6 +48,106 @@ export function Control() {
         wake: data.get('wake') === 'on',
       },
     });
+  }
+  return (
+    <form onSubmit={reset} className={styles.form}>
+      <label className={styles.wide}>
+        Circuit
+        <select name="circuit" value={circuitId} onChange={(event) => changeCircuit(event.target.value)}>
+          {circuits.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className={styles.wide}>
+        Lap preset
+        <select aria-label="Lap preset" value={lapChoice} onChange={(event) => setLapChoice(event.target.value)}>
+          {selectedCircuit?.lap_presets.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label} · {item.default_laps} laps
+            </option>
+          ))}
+          <option value="custom">Custom</option>
+        </select>
+        {selectedPreset ? (
+          <span>
+            {laps} laps from the official 2026 circuit listing.{' '}
+            <a href={selectedPreset.source_url} target="_blank" rel="noreferrer">Source</a>
+          </span>
+        ) : <span>Choose any race length from 1 to 80 laps.</span>}
+      </label>
+      {selectedPreset ? <input type="hidden" name="laps" value={laps} /> : (
+        <label>
+          Custom laps
+          <input
+            name="laps"
+            type="number"
+            min="1"
+            max="80"
+            required
+            value={customLaps}
+            onChange={(event) => setCustomLaps(Number(event.target.value))}
+          />
+        </label>
+      )}
+      <label className={styles.wide}>
+        Variability
+        <select aria-label="Variability" name="variability" defaultValue={frame.settings.variability.preset}>
+          <option value="baseline">Deterministic baseline</option>
+          <option value="mild">Mild variability</option>
+          <option value="training">Broad training variation</option>
+          <option value="stress">Stress testing</option>
+        </select>
+        <span>Driver traits, car setup, surface and wind. Synthetic scenario ranges.</span>
+      </label>
+      <label>
+        Seed
+        <input name="seed" type="number" min="0" max="4294967295" required defaultValue={frame.settings.seed} />
+      </label>
+      <label>
+        Cars
+        <input name="cars" type="number" min="1" max="20" required defaultValue={frame.settings.cars} />
+      </label>
+      <label>
+        Time limit (s)
+        <input name="duration" type="number" min="1" max="14400" required defaultValue={frame.settings.time_limit_s} />
+      </label>
+      <label>
+        Wetness (0 dry, 1 wet)
+        <input name="wetness" type="number" min="0" max="1" step="0.1" defaultValue={frame.settings.wetness} required />
+      </label>
+      <label>
+        Ambient (°C)
+        <input name="temperature" type="number" min="0" max="50" step="0.1"
+          defaultValue={Number((frame.settings.temperature_k - 273.15).toFixed(1))} required />
+      </label>
+      <label>
+        Wind (m/s)
+        <input name="wind" type="number" min="-20" max="20" step="0.1" defaultValue={frame.settings.wind_mps} required />
+      </label>
+      <label className={styles.checkbox}>
+        <input name="wake" type="checkbox" defaultChecked={frame.settings.wake} />{' '}
+        Wake interactions
+      </label>
+      <button type="submit" className={styles.primary} disabled={!connected}>
+        Reset race
+      </button>
+    </form>
+  );
+}
+
+export function Control() {
+  const { frame, circuits, send, connected, selected, select, history } = useRace();
+  const [profile, setProfile] = useState('neutral');
+  const [manual, setManual] = useState(false);
+  if (!frame) {
+    return (
+      <div className={styles.controlContent}>
+        <p role="status" className={styles.caption}>Loading race settings…</p>
+      </div>
+    );
   }
   function apply(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,117 +183,9 @@ export function Control() {
           <p className={styles.caption}>
             Reset applies these settings and creates a new paused race.
           </p>
-          <form onSubmit={reset} key={frame?.generation} className={styles.form}>
-            <label className={styles.wide}>
-              Circuit
-              <select name="circuit" defaultValue={frame?.settings.circuit}>
-                {circuits.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.wide}>
-              Variability
-              <select aria-label="Variability" name="variability" defaultValue={frame?.settings.variability.preset ?? 'mild'}>
-                <option value="baseline">Deterministic baseline</option>
-                <option value="mild">Mild variability</option>
-                <option value="training">Broad training variation</option>
-                <option value="stress">Stress testing</option>
-              </select>
-              <span>Driver traits, car setup, surface and wind. Synthetic scenario ranges.</span>
-            </label>
-            <label>
-              Seed
-              <input
-                name="seed"
-                type="number"
-                min="0"
-                max="4294967295"
-                required
-                defaultValue={frame?.settings.seed ?? 42}
-              />
-            </label>
-            <label>
-              Cars
-              <input
-                name="cars"
-                type="number"
-                min="1"
-                max="20"
-                required
-                defaultValue={frame?.settings.cars ?? 20}
-              />
-            </label>
-            <label>
-              Laps
-              <input
-                name="laps"
-                type="number"
-                min="1"
-                max="80"
-                required
-                defaultValue={frame?.settings.laps ?? 3}
-              />
-            </label>
-            <label>
-              Time limit (s)
-              <input
-                name="duration"
-                type="number"
-                min="1"
-                max="14400"
-                required
-                defaultValue={frame?.settings.time_limit_s ?? 1800}
-              />
-            </label>
-            <label>
-              Wetness (0 dry, 1 wet)
-              <input
-                name="wetness"
-                type="number"
-                min="0"
-                max="1"
-                step="0.1"
-                defaultValue={frame?.settings.wetness ?? 0}
-                required
-              />
-            </label>
-            <label>
-              Ambient (°C)
-              <input
-                name="temperature"
-                type="number"
-                min="0"
-                max="50"
-                step="0.1"
-                defaultValue={Number(
-                  ((frame?.settings.temperature_k ?? 303.15) - 273.15).toFixed(1),
-                )}
-                required
-              />
-            </label>
-            <label>
-              Wind (m/s)
-              <input
-                name="wind"
-                type="number"
-                min="-20"
-                max="20"
-                step="0.1"
-                defaultValue={frame?.settings.wind_mps ?? 0}
-                required
-              />
-            </label>
-            <label className={styles.checkbox}>
-              <input name="wake" type="checkbox" defaultChecked={frame?.settings.wake ?? true} />{' '}
-              Wake interactions
-            </label>
-            <button type="submit" className={styles.primary} disabled={!connected}>
-              Reset race
-            </button>
-          </form>
+          <RaceSetupForm key={`${frame.generation}-${circuits.length}`} {...{
+            frame, circuits, connected, send,
+          }} />
         </section>
         <section className={styles.panel}>
           <h2>Driver & battery controls</h2>

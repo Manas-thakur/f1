@@ -256,7 +256,7 @@ class RaceSession:
         return {
             "type": "manifest",
             "model_version": "race-physics-v3",
-            "environment_version": "race-bms-v1",
+            "environment_version": "race-control-v1",
             "drivers": {car: driver.traits.model_dump() for car, driver in self.drivers.items()},
             "weather": self.weather.manifest(),
             "initial_states": {

@@ -59,11 +59,14 @@ For browser tests against a separately started worktree, set `RACE_TEST_URL=http
 ## Generate and train
 
 ```sh
+make race-generate CIRCUIT=monza CARS=20
 make race-generate CIRCUIT=monza CARS=20 LAPS=3
 make race-train CIRCUIT=monza CARS=20 STEPS=10000
+uv run python scripts/race.py catalogue
+uv run python scripts/race.py schema
 ```
 
-See [RACE_SIMULATOR.md](RACE_SIMULATOR.md) for the physics model, observation/action contract, reward, datasets, training steps, and evaluation guidance. Training uses CPU PyTorch and Stable-Baselines3 PPO.
+When `LAPS` is omitted, each circuit uses its sourced Grand Prix distance. Set `LAPS` for a custom distance. The catalogue and schema commands expose every circuit preset, race setting, direct driver control, and normalized RL action field to scripts. See [RACE_SIMULATOR.md](RACE_SIMULATOR.md) for the physics model, observation/action contract, reward, datasets, training steps, and evaluation guidance. Training uses CPU PyTorch and Stable-Baselines3 PPO.
 
 ## Project layout
 

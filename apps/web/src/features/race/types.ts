@@ -19,6 +19,15 @@ export interface CircuitMap {
   points: [number, number][];
 }
 
+export interface LapPreset {
+  id: string;
+  default_laps: number;
+  label: string;
+  source_url: string;
+}
+
+export type CircuitSummary = Omit<CircuitMap, 'points'> & { lap_presets: LapPreset[] };
+
 export interface RaceCar {
   id: string;
   channels: Record<string, number | undefined>;
@@ -54,7 +63,7 @@ export interface RaceFrame {
 
 export type Message =
   | RaceFrame
-  | { type: 'catalogue'; circuits: Omit<CircuitMap, 'points'>[]; map: CircuitMap }
+  | { type: 'catalogue'; circuits: CircuitSummary[]; map: CircuitMap }
   | { type: 'map'; map: CircuitMap }
   | { type: 'error'; message: string; id: string | null }
   | { type: 'ack'; id: string };

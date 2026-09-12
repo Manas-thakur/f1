@@ -5,7 +5,7 @@ import pytest
 
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceSession, RaceSettings
-from afterlap_core.race.circuit import catalogue, circuit
+from afterlap_core.race.circuit import catalogue, circuit, default_laps
 from afterlap_core.rng import KeyedRandom
 from afterlap_core.simulation.braking import braking_speed
 from afterlap_core.simulation.engine import _PREVIEW_OFFSETS
@@ -41,10 +41,28 @@ def test_all_circuits_have_periodic_metric_geometry():
     for item in catalogue():
         track, artwork = circuit(item["id"])
         assert track.length == item["length_m"]
+        assert item["lap_presets"] == [
+            {
+                "id": "grand-prix",
+                "default_laps": default_laps(item["id"]),
+                "label": "Grand Prix distance",
+                "source_url": item["length_source"]["source_url"]
+                if item["id"] != "yas-marina"
+                else "https://www.formula1.com/en/racing/2026/united-arab-emirates",
+            }
+        ]
         assert not track.lateral_geometry_surveyed
         assert track.curvature_at(0) == track.curvature_at(track.length)
         assert all(math.isfinite(segment.curvature_inv_m.value) for segment in track.segments)
         assert len(artwork["source_sha256"]) == 64
+
+
+def test_race_settings_use_circuit_lap_presets_unless_customized():
+    assert RaceSettings().laps == 52
+    assert RaceSettings(circuit="monza").laps == 53
+    assert RaceSettings(circuit="monza", laps=7).laps == 7
+    with pytest.raises(ValueError, match="unknown circuit"):
+        RaceSettings(circuit="missing")
 
 
 def test_full_grid_randomization_and_observation_boundary():

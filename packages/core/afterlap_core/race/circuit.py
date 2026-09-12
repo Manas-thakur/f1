@@ -15,11 +15,35 @@ def assumed(value: float, unit: str) -> Parameter:
     return Parameter(value=value, unit=unit, source="synthetic:race-lab-v1")
 
 
+@lru_cache(maxsize=1)
+def lap_presets() -> dict[str, dict[str, Any]]:
+    path = Paths.default().configs / "race-lap-presets.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def default_laps(circuit_id: str) -> int:
+    try:
+        return int(lap_presets()[circuit_id]["default_laps"])
+    except KeyError as exc:
+        raise ValueError(f"unknown circuit: {circuit_id}") from exc
+
+
 def catalogue() -> list[dict[str, Any]]:
-    return [
-        {key: value for key, value in json.loads(path.read_text(encoding="utf-8")).items() if key != "points"}
-        for path in sorted((Paths.default().configs / "race-circuits").glob("*.json"))
-    ]
+    presets = lap_presets()
+    entries = []
+    for path in sorted((Paths.default().configs / "race-circuits").glob("*.json")):
+        metadata = {
+            key: value
+            for key, value in json.loads(path.read_text(encoding="utf-8")).items()
+            if key != "points"
+        }
+        preset = presets.get(metadata["id"])
+        if preset is None:
+            raise ValueError(f"circuit has no lap preset: {metadata['id']}")
+        entries.append({**metadata, "lap_presets": [{"id": "grand-prix", **preset}]})
+    if set(presets) != {entry["id"] for entry in entries}:
+        raise ValueError("lap presets must exactly match the circuit catalogue")
+    return entries
 
 
 @lru_cache(maxsize=24)
