@@ -3,7 +3,6 @@ from __future__ import annotations
 import copy
 import math
 from dataclasses import asdict, replace
-from itertools import combinations
 from typing import Any
 
 from afterlap_contracts import DeploymentProfile
@@ -14,11 +13,11 @@ from ..simulation.engine import Simulator
 from ..simulation.observation import Observation
 from ..simulation.policies import DriverAction
 from ..simulation.state import PassRecord
-from ..simulation.track import footprints_overlap
 from ..simulation.wake import WakeModel
 from .circuit import circuit
 from .factory import race_bundle
 from .racecraft import Racecraft
+from .racing_line import RacingLine
 from .settings import RaceSettings
 from .variability import RaceWeather
 
@@ -41,6 +40,7 @@ class RaceSession:
             environment=self.weather,
             event_limits=EventEnergyLimits.race_2026(),
             wake=WakeModel() if self.settings.wake else None,
+            ignore_contacts=self.settings.contact_mode == "ignore",
         )
         self.simulator.world.policies.clear()
         self.overrides: dict[str, DriverAction] = {}
@@ -49,15 +49,26 @@ class RaceSession:
             car: initial.lateral_d_m.value for car, initial in self.bundle.scenario.initial_states.items()
         }
         streams = StreamRegistry(self.settings.seed)
-        self.drivers = {
-            car: Racecraft(
-                self.settings.variability.sample_driver(streams, car),
+        self.drivers = {}
+        for car, lane in self.lanes.items():
+            traits = self.settings.variability.sample_driver(streams, car)
+            width_m = self.bundle.car_configs[car].width_m.value
+            self.drivers[car] = Racecraft(
+                traits,
                 lane,
                 length_m=self.bundle.car_configs[car].length_m.value,
-                width_m=self.bundle.car_configs[car].width_m.value,
+                width_m=width_m,
+                racing_line=RacingLine(
+                    self.track,
+                    self.settings.racing_line,
+                    streams,
+                    car,
+                    width_m,
+                    traits.preferred_line_m,
+                ),
+                ignore_collisions=self.settings.contact_mode == "ignore",
+                overtake_in_corners=self.settings.racing_line.overtake_in_corners,
             )
-            for car, lane in self.lanes.items()
-        }
         for car, lane in self.lanes.items():
             self.simulator.world.active_actions[car] = DriverAction(
                 target_lateral_d_m=lane, acceleration_ceiling_mps2=0
@@ -133,7 +144,8 @@ class RaceSession:
             self.events = self.events[-100:]
             if report.envelope_exceedances:
                 self.failure = "lateral tyre envelope exceeded; reduced model cannot continue"
-            self._check_contacts()
+            if self.settings.contact_mode == "terminate":
+                self._check_contacts()
             self._finish_crossings(h)
             if self.failure is not None:
                 self.status = "failed"
@@ -143,6 +155,10 @@ class RaceSession:
                 self.status = "truncated"
 
     def _check_contacts(self) -> None:
+        from itertools import combinations
+
+        from ..simulation.track import footprints_overlap
+
         world = self.simulator.world
         for a, b in combinations(world.cars.values(), 2):
             if a.car_id in self.finishes or b.car_id in self.finishes:
@@ -261,6 +277,10 @@ class RaceSession:
             "model_version": "race-physics-v3",
             "environment_version": "race-control-v1",
             "drivers": {car: driver.traits.model_dump() for car, driver in self.drivers.items()},
+            "racing_lines": {
+                car: () if driver.racing_line is None else driver.racing_line.preview()
+                for car, driver in self.drivers.items()
+            },
             "weather": self.weather.manifest(),
             "initial_states": {
                 car: state.model_dump(mode="json")
