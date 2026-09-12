@@ -106,9 +106,17 @@ class RaceWeather:
         patch = (2 + math.sin(3 * phase + self.phases[0]) + math.sin(7 * phase + self.phases[1])) / 4
         return (1 - 0.45 * self.wetness_at(session_time_s)) * (1 - self.patch_amplitude * patch)
 
+    def grip_multiplier_array(self, s_m: np.ndarray, session_time_s: float) -> np.ndarray:
+        phase = 2 * math.pi * (s_m % self.length_m) / self.length_m
+        patch = (2 + np.sin(3 * phase + self.phases[0]) + np.sin(7 * phase + self.phases[1])) / 4
+        return (1 - 0.45 * self.wetness_at(session_time_s)) * (1 - self.patch_amplitude * patch)
+
     def preview_grip(self, s_m: float, session_time_s: float) -> float:
         measured = self.wetness_at(max(0.0, session_time_s - 0.1))
         return (1 - 0.45 * measured) * (1 - self.patch_amplitude)
+
+    def preview_grip_array(self, s_m: np.ndarray, session_time_s: float) -> np.ndarray:
+        return np.full_like(s_m, self.preview_grip(0, session_time_s), dtype=np.float64)
 
     def manifest(self) -> dict[str, object]:
         return {

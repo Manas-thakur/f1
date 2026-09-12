@@ -24,6 +24,7 @@ FROM node:22-bookworm-slim AS web
 WORKDIR /app
 COPY --from=web-build /src/apps/web/.next/standalone ./
 COPY --from=web-build /src/apps/web/.next/static ./apps/web/.next/static
+COPY --from=web-build /src/apps/web/public ./apps/web/public
 ENV PORT=18760 HOSTNAME=0.0.0.0
 USER node
 CMD ["node", "apps/web/server.js"]

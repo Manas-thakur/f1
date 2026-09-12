@@ -14,7 +14,9 @@
   "dependencies": {
     "next": "15.5.9",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-rnd": "^10.5.3",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -22,6 +24,7 @@
     "@types/node": "26.5.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
+    "@types/three": "^0.186.0",
     "eslint": "9.39.5",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.5",

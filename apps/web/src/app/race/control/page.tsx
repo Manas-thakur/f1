@@ -1,5 +1,5 @@
-import { Control } from '@/features/race/Control';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <Control />;
+  redirect('/race');
 }

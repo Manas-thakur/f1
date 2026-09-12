@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import struct
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -28,6 +29,11 @@ class StreamKey:
         return derive_seed(self.scenario, self.seed, self.event_type, self.time_bin)
 
 
+@lru_cache(maxsize=8192)
+def _normal_sample(key: StreamKey, scale: float) -> float:
+    return float(np.random.default_rng(key.as_seed()).normal(0.0, scale))
+
+
 class KeyedRandom:
     def __init__(self, scenario: str, seed: int, *, bin_width_s: float = 0.5) -> None:
         if bin_width_s <= 0.0:
@@ -48,7 +54,7 @@ class KeyedRandom:
         return np.random.default_rng(self.key(event_type, physical_time_s).as_seed())
 
     def normal(self, event_type: str, physical_time_s: float, *, scale: float = 1.0) -> float:
-        return float(self.generator(event_type, physical_time_s).normal(0.0, scale))
+        return _normal_sample(self.key(event_type, physical_time_s), scale)
 
     def uniform(
         self, event_type: str, physical_time_s: float, *, low: float = 0.0, high: float = 1.0

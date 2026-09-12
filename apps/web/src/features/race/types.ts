@@ -38,6 +38,7 @@ export interface RaceFrame {
   cars: RaceCar[];
   requested_rate: number;
   actual_rate: number;
+  playback_rate?: number;
   has_checkpoint: boolean;
   circuit_map: CircuitMap;
   events: {

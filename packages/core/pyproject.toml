@@ -3,7 +3,14 @@ name = "afterlap-core"
 version = "0.1.0"
 description = "Standalone race simulator"
 requires-python = "==3.12.*"
-dependencies = ["afterlap-contracts", "gymnasium>=1,<2", "numpy>=2,<3", "pyyaml>=6", "pydantic>=2.9,<3"]
+dependencies = [
+    "afterlap-contracts",
+    "gymnasium>=1,<2",
+    "numpy>=2,<3",
+    "pyyaml>=6",
+    "pydantic>=2.9,<3",
+    "numba>=0.61,<1",
+]
 
 [project.optional-dependencies]
 learning = ["stable-baselines3>=2.4,<3", "torch>=2.4,<3"]
