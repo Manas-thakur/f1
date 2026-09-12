@@ -8,6 +8,7 @@ function frame(time: number, progress: number, status = 'running', generation = 
   return {
     type: 'frame', time_s: time, generation, status, steps: 0, failure: null,
     requested_rate: 1, actual_rate: 1, has_checkpoint: false, events: [],
+    recommendations: {}, training_metrics: null,
     boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
       accuracy: null, precision: null, recall: null },
     regulations: { name: 'FIA Formula 1 2026 race subset', effective_issue_dates: {}, sources: {},

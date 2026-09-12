@@ -91,6 +91,62 @@ export interface BoostEvaluation {
   recall: number | null;
 }
 
+export interface BoostRecommendation {
+  car_id: string;
+  mode: 'harvest' | 'conserve' | 'neutral' | 'push' | 'overtake';
+  source: 'rules_baseline' | 'ppo';
+  confidence: number | null;
+  boost_available: boolean;
+  overtake_available: boolean;
+  risk_score: number;
+  reward_score: number;
+  risk_reward_ratio: number | null;
+  opportunity: boolean;
+  target_car_id: string | null;
+  gap_ahead_s: number | null;
+  straight_score: number;
+  reason: string;
+  regulation_basis: string;
+  observed_at_s: number;
+  can_apply: boolean;
+}
+
+export interface TrainingCycleMetrics {
+  cycle: number;
+  timesteps: number;
+  optimizer_epochs: number;
+  improved: boolean;
+  reward_improvement_over_baseline: number;
+  episodes: number;
+  mean_reward: number;
+  reward_std: number;
+  mean_finish_position: number;
+  mean_deployed_mj: number;
+  mean_passes: number;
+  overtake_opportunity_recall: number;
+  boost_action_rate: number;
+  failure_rate: number;
+}
+
+export interface TrainingMetrics {
+  type: 'boost_training_metrics';
+  status: 'completed';
+  policy: string;
+  algorithm: string;
+  seed: number;
+  circuit: string;
+  total_timesteps: number;
+  cycles: number;
+  evaluation_episodes_per_cycle: number;
+  optimizer_epochs_per_cycle: number;
+  learning_rate: number;
+  best_cycle: number;
+  baseline: Omit<TrainingCycleMetrics, 'cycle' | 'timesteps' | 'optimizer_epochs' | 'improved' | 'reward_improvement_over_baseline'>;
+  history: TrainingCycleMetrics[];
+  promotion: { candidate: boolean; automatic: false; reason: string };
+  provenance: string;
+}
+
 export interface RaceEvent {
   kind: string;
   session_time_s: number;
@@ -119,6 +175,8 @@ export interface RaceFrame {
   circuit_map: CircuitMap;
   events: RaceEvent[];
   boost_evaluation: BoostEvaluation;
+  recommendations: Record<string, BoostRecommendation>;
+  training_metrics: TrainingMetrics | null;
   regulations: {
     name: string;
     effective_issue_dates: Record<string, string>;

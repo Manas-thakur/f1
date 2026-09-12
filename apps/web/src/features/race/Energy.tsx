@@ -10,7 +10,7 @@ function value(n: number | undefined, scale = 1, digits = 1) {
 }
 
 export function BatteryHud() {
-  const { frame, selected, connected } = useRace();
+  const { frame, selected, connected, send } = useRace();
   const car = frame?.cars.find((item) => item.id === selected);
   const ch = car?.channels ?? {};
   const window = car?.battery_window_j;
@@ -18,12 +18,18 @@ export function BatteryHud() {
   const percent = energy === undefined || !window || window[1] <= window[0]
     ? undefined : Math.max(0, Math.min(100, (energy - window[0]) / (window[1] - window[0]) * 100));
   const mode = connected ? energyMode(car) : 'UNAVAILABLE';
+  const recommendation = frame?.recommendations[selected];
   return <div className={styles.batteryHud} data-energy-mode={mode} aria-label="Battery and boost">
     <small>ENERGY STORE · {value(percent, 1, 0)}%</small>
     <strong>{value(energy, 1e6, 2)} <small>MJ</small></strong>
     <progress max={100} value={percent} aria-label="Usable battery charge" />
     <span className={styles.energyMode}>{mode} · {value(ch['electrical_power_w'], 1000, 0)} kW</span>
     <span>{mode === 'BOOST' ? 'Burst' : 'Last burst'} {value(ch[mode === 'BOOST' ? 'boost_elapsed_s' : 'last_boost_s'])} s</span>
+    <span className={styles.hudRecommendation}>
+      {recommendation?.mode.toUpperCase() ?? 'WAITING'} · {recommendation?.boost_available ? 'READY' : 'HELD'}
+    </span>
+    <button type="button" disabled={!connected || !recommendation?.can_apply}
+      onClick={() => send('boost', { car_id: selected })}>Apply boost</button>
   </div>;
 }
 

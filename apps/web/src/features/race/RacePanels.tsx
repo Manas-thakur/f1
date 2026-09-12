@@ -113,8 +113,11 @@ export function Telemetry() {
       <dt>2026 rules</dt><dd>{car?.regulation_status ?? 'running'}</dd>
     </dl>
     <EnergyTelemetry />
-    <details className={styles.strategyMatrix}><summary>Boost decision matrix</summary>
-      <p>Opportunity is a closing car within 65 m. This is strategy telemetry, not a trained-model result.</p>
+    <details className={styles.strategyMatrix}><summary>Scenario boost classification</summary>
+      <p>
+        Legacy storyline classification uses a closing car within 65 m. Policy evaluation is shown
+        in the decision engine panel.
+      </p>
       <dl className={styles.telemetryGrid}>
         <dt>True positive</dt><dd>{frame?.boost_evaluation.true_positive ?? 0}</dd>
         <dt>False positive</dt><dd>{frame?.boost_evaluation.false_positive ?? 0}</dd>
