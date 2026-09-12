@@ -710,30 +710,33 @@ NOT_SELECTED_REASON = (
 )
 
 
-def unavailable_matrix_controllers(
-    supplied_names: Iterable[str] = (),
-) -> tuple[UnavailableController, ...]:
-    """Explicit unavailable stubs for every matrix row this run does not measure.
+def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
+    """Explicit unavailable stubs for every matrix row that is not merged."""
+    return tuple(_stub(row) for row in COMPARISON_MATRIX if not row.measurable_today)
+
+
+def unmeasured_matrix_controllers(supplied_names: Iterable[str]) -> tuple[UnavailableController, ...]:
+    """Explicit stubs for every matrix row a run does not measure.
 
     A row that cannot run is unmeasured, never silently omitted -- and a row
     this package *can* build is no different if the job did not select it.
     ``mpc_only`` was the case in point: it stopped being unmeasurable when
-    ``PlannerController`` was written, so it dropped out of this list, and
-    because a baseline job does not select it either, it stopped appearing in
-    the report at all. A reader could not tell whether it had been measured,
-    refused, or forgotten. It is now listed, with the reason it was not run.
+    ``PlannerController`` was written, so it left
+    :func:`unavailable_matrix_controllers`, and because a baseline job does not
+    select it either, it stopped appearing in the report at all. A reader could
+    not tell whether it had been measured, refused, or forgotten.
     """
     covered = set(supplied_names)
-    return tuple(
-        UnavailableController(
-            row.controller_name,
-            owner=row.owner,
-            uses_actor=row.uses_actor,
-            uses_learned_return=row.uses_learned_return,
-            detail=(row.unmeasured_reason or "") if not row.measurable_today else NOT_SELECTED_REASON,
-        )
-        for row in COMPARISON_MATRIX
-        if row.controller_name not in covered
+    return tuple(_stub(row) for row in COMPARISON_MATRIX if row.controller_name not in covered)
+
+
+def _stub(row: MatrixRow) -> UnavailableController:
+    return UnavailableController(
+        row.controller_name,
+        owner=row.owner,
+        uses_actor=row.uses_actor,
+        uses_learned_return=row.uses_learned_return,
+        detail=(row.unmeasured_reason or "") if not row.measurable_today else NOT_SELECTED_REASON,
     )
 
 
@@ -745,4 +748,5 @@ __all__ += [
     "MatrixRow",
     "ScheduleEntry",
     "unavailable_matrix_controllers",
+    "unmeasured_matrix_controllers",
 ]

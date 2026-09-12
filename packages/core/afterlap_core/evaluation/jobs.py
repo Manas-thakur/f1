@@ -30,7 +30,7 @@ from .controllers import (
     Controller,
     LegalFixedSchedule,
     LegalGreedyAttacker,
-    unavailable_matrix_controllers,
+    unmeasured_matrix_controllers,
 )
 from .harness import (
     ABLATION_TARGETS,
@@ -135,7 +135,7 @@ def run_evaluation(
     active: list[Controller] = list(supplied)
     supplied_names = {c.name for c in supplied}
     if include_unavailable_rows:
-        active.extend(unavailable_matrix_controllers(supplied_names))
+        active.extend(unmeasured_matrix_controllers(supplied_names))
 
     run = run_benchmark(manifest, active, paths=paths)
     results, notes = _bootstraps(
