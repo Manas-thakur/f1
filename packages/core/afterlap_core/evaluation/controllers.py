@@ -533,6 +533,76 @@ class HashCheckedController:
         return self.primary.decide(request)
 
 
+class AblationUnsupported(RuntimeError):
+    """A controller was asked to drop a contribution it cannot drop."""
+
+
+class AblatedController:
+    """One learned contribution removed, with the removal named on every row.
+
+    ``SERVING_AND_EVALUATION.md`` requires the actor and the continuation term
+    to be ablatable separately. A controller opts in by exposing
+    ``without_contribution(target)``; one that does not is recorded as
+    *unavailable* for the ablation rather than run unmodified. Running the
+    unmodified controller would produce a difference of exactly zero and read
+    as evidence that the removed component contributes nothing.
+    """
+
+    def __init__(self, primary: Controller, *, disable: str) -> None:
+        self.primary = primary
+        self.disable = disable
+        factory = getattr(primary, "without_contribution", None)
+        self._ablated: Controller | None = None
+        self._detail = ""
+        if factory is None:
+            self._detail = (
+                f"{primary.name} does not implement without_contribution(), so the "
+                f"{disable!r} contribution cannot be removed and this row is unmeasured"
+            )
+        else:
+            try:
+                self._ablated = factory(disable)
+            except (AblationUnsupported, ValueError) as exc:
+                self._detail = f"{primary.name} refused the {disable!r} ablation: {exc}"
+
+    @property
+    def name(self) -> str:
+        return f"{self.primary.name}+ablate_{self.disable}"
+
+    @property
+    def uses_actor(self) -> bool:
+        if self.disable in {"policy", "all"}:
+            return False
+        return bool(self.primary.uses_actor)
+
+    @property
+    def uses_learned_return(self) -> bool:
+        if self.disable in {"terminal", "all"}:
+            return False
+        return bool(self.primary.uses_learned_return)
+
+    def decide(self, request: ControlRequest) -> ControlDecision:
+        if self._ablated is None:
+            return ControlDecision(
+                controller=self.name,
+                status=PlanningStatus.SOLVER_UNAVAILABLE,
+                action=None,
+                reasons=(ReasonCode.LEARNED_MODEL_DISABLED,),
+                provenance="ablation_unsupported",
+                detail=self._detail,
+            )
+        decision = self._ablated.decide(request)
+        return ControlDecision(
+            controller=self.name,
+            status=decision.status,
+            action=decision.action,
+            reasons=(*decision.reasons, ReasonCode.LEARNED_MODEL_DISABLED),
+            latency_ms=decision.latency_ms,
+            provenance=f"ablated:{self.disable}:{decision.provenance}",
+            detail=decision.detail,
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class MatrixRow:
     """One row of the required comparison matrix, with its build status."""
@@ -619,4 +689,11 @@ def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
     )
 
 
-__all__ += ["COMPARISON_MATRIX", "MatrixRow", "ScheduleEntry", "unavailable_matrix_controllers"]
+__all__ += [
+    "COMPARISON_MATRIX",
+    "AblatedController",
+    "AblationUnsupported",
+    "MatrixRow",
+    "ScheduleEntry",
+    "unavailable_matrix_controllers",
+]
