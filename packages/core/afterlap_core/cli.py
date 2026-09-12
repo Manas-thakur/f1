@@ -7,9 +7,10 @@ job that could not run reports failed or unavailable rather than exiting zero.
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 import typer
 
@@ -121,80 +122,119 @@ def list_configs_command(
         typer.echo(name)
 
 
+def _emit(payload: dict[str, object], output: Path | None = None) -> None:
+    text = json.dumps(payload, indent=2, allow_nan=False)
+    if output is not None:
+        from .paths import atomic_write_text
+
+        atomic_write_text(output, text + "\n")
+    typer.echo(text)
+
+
 @app.command()
 def simulate(
     scenario: Annotated[str, typer.Option(help="Scenario configuration id.")] = "two-straight-counterattack",
-    seed: Annotated[int, typer.Option(help="Scenario seed.")] = 42,
-    duration_s: Annotated[float, typer.Option(help="Simulated duration in seconds.")] = 30.0,
-    dt_s: Annotated[float, typer.Option(help="Integration step in seconds.")] = 0.01,
-    output: Annotated[Path | None, typer.Option(help="Write the trajectory summary here.")] = None,
+    seed: Annotated[int, typer.Option(min=0, max=2**32 - 1)] = 42,
+    duration_s: Annotated[float, typer.Option(min=0.001, max=3600)] = 30.0,
+    dt_s: Annotated[float, typer.Option(min=0.001, max=0.1)] = 0.01,
+    output: Annotated[Path | None, typer.Option()] = None,
 ) -> None:
-    """Run a headless closed-loop simulation and report the energy ledger."""
-    from .runner import run_headless
+    from .config import list_configs
+    from .evaluation import BenchmarkManifest, LegalFixedSchedule, run_benchmark
 
-    result = run_headless(scenario_id=scenario, seed=seed, duration_s=duration_s, dt_s=dt_s)
-    payload = result.summary()
-    typer.echo(json.dumps(payload, indent=2))
-    if output is not None:
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-        typer.echo(f"wrote {output}")
+    if scenario not in list_configs("scenarios"):
+        raise typer.BadParameter("scenario must name a shipped configuration")
+    if not math.isfinite(duration_s) or not math.isfinite(dt_s):
+        raise typer.BadParameter("duration and integration step must be finite")
+    manifest = BenchmarkManifest(
+        id="cli-simulation",
+        split="tuning",
+        description="Synthetic closed-loop legal baseline simulation; no learned policy.",
+        scenario_ids=(scenario,),
+        seeds=(seed,),
+        horizon_s=duration_s,
+        dt_s=dt_s,
+        decision_interval_s=1.0,
+        compute_budget_ms=200.0,
+        rule_pack_id="synthetic-pack-v1",
+    )
+    run = run_benchmark(manifest, [LegalFixedSchedule()])
+    _emit(run.as_dict(), output)
+    if run.failed_runs or any(item.status != "completed" for item in run.outcomes):
+        raise typer.Exit(code=1)
 
 
 @app.command()
 def train(
-    manifest: Annotated[Path | None, typer.Option(help="Training manifest YAML.")] = None,
-    resume: Annotated[Path | None, typer.Option(help="Checkpoint to resume from.")] = None,
-    total_steps: Annotated[int | None, typer.Option(help="Override the manifest step target.")] = None,
+    environment: Annotated[str, typer.Option()] = "env-v1",
+    algorithm: Annotated[str, typer.Option()] = "sac-v1",
+    total_steps: Annotated[int, typer.Option(min=1)] = 64,
+    seed: Annotated[int, typer.Option(min=0, max=2**32 - 1)] = 11,
+    resume: Annotated[Path | None, typer.Option(exists=True)] = None,
 ) -> None:
-    """Train the SAC energy-strategy candidate."""
-    from .learning.train_sac import run_training
+    from .learning.config import load_env_config, load_sac_config
 
-    if manifest is None and resume is None:
-        typer.echo("provide --manifest or --resume", err=True)
-        raise typer.Exit(code=2)
-    outcome = run_training(manifest=manifest, resume=resume, total_steps_override=total_steps)
-    typer.echo(json.dumps(outcome, indent=2, default=str))
+    try:
+        from .learning.train_sac import TrainingStatus, train as run_training
+    except ImportError:
+        _unavailable("learning", "install the learning dependency group to train")
+    outcome = run_training(
+        config=load_env_config(environment),
+        algorithm=load_sac_config(algorithm),
+        total_timesteps=total_steps,
+        seed=seed,
+        resume_from=resume,
+        is_smoke_run=True,
+    )
+    _emit(outcome.as_dict())
+    if outcome.status is not TrainingStatus.COMPLETED:
+        raise typer.Exit(code=1)
 
 
 @app.command()
 def evaluate(
-    candidate: Annotated[str, typer.Option(help="Model bundle id, or 'baseline'.")] = "baseline",
-    benchmark: Annotated[Path | None, typer.Option(help="Benchmark manifest YAML.")] = None,
-    output: Annotated[Path | None, typer.Option(help="Write the report here.")] = None,
+    candidate: Annotated[str, typer.Option()] = "baseline",
+    benchmark: Annotated[Path | None, typer.Option(exists=True, dir_okay=False)] = None,
+    output: Annotated[Path | None, typer.Option()] = None,
 ) -> None:
-    """Run a held-out benchmark and write a machine-readable report."""
-    from .evaluation.harness import run_benchmark
+    from .config import load_yaml
+    from .evaluation import BenchmarkManifest, LegalFixedSchedule, load_benchmark_manifest, run_benchmark
 
-    report = run_benchmark(candidate=candidate, benchmark_path=benchmark, output=output)
-    typer.echo(json.dumps(report, indent=2, default=str))
+    if candidate != "baseline":
+        _unavailable("model_evaluation", "no registered candidate controller is wired to this command")
+    manifest = (
+        load_benchmark_manifest("commissioning-smoke")
+        if benchmark is None
+        else BenchmarkManifest.model_validate(load_yaml(benchmark))
+    )
+    run = run_benchmark(manifest, [LegalFixedSchedule()])
+    _emit(run.as_dict(), output)
+    if run.failed_runs or any(item.status != "completed" for item in run.outcomes):
+        raise typer.Exit(code=1)
 
 
 @app.command()
 def ablate(
-    candidate: Annotated[str, typer.Option(help="Model bundle id.")],
-    disable: Annotated[str, typer.Option(help="policy | terminal | none")] = "none",
-    benchmark: Annotated[Path | None, typer.Option(help="Benchmark manifest YAML.")] = None,
+    candidate: Annotated[str, typer.Option()],
+    disable: Annotated[str, typer.Option()] = "none",
+    benchmark: Annotated[Path | None, typer.Option(exists=True)] = None,
 ) -> None:
-    """Run one ablation of the learned system against the same scenarios."""
-    from .evaluation.harness import run_ablation
+    del candidate, disable, benchmark
+    _unavailable("learned_ablation", "no promoted learned controller is wired to the comparison harness")
 
-    report = run_ablation(candidate=candidate, disable=disable, benchmark_path=benchmark)
-    typer.echo(json.dumps(report, indent=2, default=str))
+
+def _unavailable(capability: str, reason: str) -> NoReturn:
+    _emit({"status": "unavailable", "capability": capability, "reason": reason})
+    raise typer.Exit(code=1)
 
 
 @app.command()
 def promote(
-    bundle: Annotated[str, typer.Option(help="Model bundle id.")],
-    approval: Annotated[Path, typer.Option(help="Signed approval document.")],
+    bundle: Annotated[str, typer.Option()],
+    approval: Annotated[Path, typer.Option(exists=True, dir_okay=False)],
 ) -> None:
-    """Record a promotion decision. Refuses without frozen thresholds and evidence."""
-    from .learning.promotion import promote_bundle
-
-    decision = promote_bundle(bundle_id=bundle, approval_path=approval)
-    typer.echo(json.dumps(decision, indent=2, default=str))
-    if decision.get("approved") is not True:
-        raise typer.Exit(code=1)
+    del bundle, approval
+    _unavailable("model_promotion", "signed approval verification and registry promotion are not implemented")
 
 
 @app.command()
