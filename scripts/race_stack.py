@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -11,11 +12,25 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def check_ports(ports: tuple[int, ...] = (18760, 18761)) -> None:
+    for port in ports:
+        with socket.socket() as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                listener.bind(("127.0.0.1", port))
+            except OSError:
+                raise SystemExit(
+                    f"Port {port} is unavailable. If the Docker race stack is running, "
+                    "run make race-down before make race. Otherwise stop the process using this port."
+                ) from None
+
+
 def main() -> None:
     children: list[subprocess.Popen[bytes]] = []
     bun = shutil.which("bun")
     if bun is None:
         raise RuntimeError("Bun is required")
+    check_ports()
 
     def stop(signum: int, frame: object) -> None:
         raise KeyboardInterrupt
