@@ -10,13 +10,15 @@ definition, and the CI workflow.
 **Verdict.** The product works end to end. A session created in the browser
 runs through observation, estimation, legal planning, engineer selection,
 driver execution, snapshot, paired experiment and export, and every artefact it
-produces carries provenance. The audit found and fixed nine defects, none of
-which produced a wrong recommendation, and all of which were the same shape:
-a value that the contract could not check, so nothing did.
+produces carries provenance. The audit found and fixed eleven defects, none of
+which produced a wrong recommendation, and most of which were the same shape:
+a value that nothing was checking, because nothing could.
 
 The most consequential were two unauthenticated remote-code-execution
-advisories in the pinned Next.js version and a manifest field carrying two
-different digest encodings depending on which code path filled it.
+advisories in the pinned Next.js version, a manifest field carrying two
+different digest encodings depending on which code path filled it, and a mypy
+override that had quietly switched off fifteen error codes across every core
+and API module.
 
 Branch: `audit/end-to-end`. Every claim below is reproducible with `make audit`.
 
@@ -34,13 +36,13 @@ ports and drives it. Nothing in it is a mock.
 | `uv audit`, `bun audit` | pass, 0 advisories (was 34) |
 | `zizmor` on `.github/workflows` | pass, 0 findings (was 40) |
 | `ruff format --check`, `ruff check` | pass, 51 rule families |
-| `mypy` (strict, 329 files) | pass |
+| `mypy` (strict, 354 files) | pass |
 | comment policy, docs package, schema drift | pass |
 | `afterlap_core.cli doctor` | pass, 1 optional capability absent |
 | `pytest` (full suite, no deselection) | pass, 1 541 tests |
-| `biome check --error-on-warnings` | pass, 391 rules |
+| `biome check --error-on-warnings` | pass, 391 rules over 166 files |
 | `eslint`, `tsc --noEmit` | pass |
-| `vitest` | pass, 351 tests |
+| `vitest` | pass, 359 tests |
 | `next build` | pass, no warnings |
 | Playwright, fixture-driven | pass, 166 tests |
 | `afterlap_core.cli simulate` | pass, 30 s closed loop |
@@ -190,7 +192,43 @@ referenced by mutable tag, so a moved tag runs different code).
 Fixed: `persist-credentials: false` on every checkout, every action pinned to a
 commit SHA with the tag in a trailing comment. `zizmor` now reports nothing.
 
-### 2.9 The browser audit's own evidence did not show the feature working
+### 2.9 Fifteen mypy error codes were disabled across every core and API module
+
+While this branch was open, `main` gained an override disabling `arg-type`,
+`attr-defined`, `union-attr`, `no-any-return`, `operator`, `type-arg`,
+`comparison-overlap`, `unreachable`, `misc`, `call-arg`, `no-untyped-call`,
+`var-annotated`, `index`, `assignment` and `return-value` for
+`afterlap_core.*` and `afterlap_api.*` — that is, for the whole product. Strict
+mypy was still declared at the top of the file and still passed; it was
+checking almost nothing in the two packages that matter.
+
+This branch keeps the strict configuration and fixes the 27 errors it exposes.
+Three were real:
+
+- `CircuitIdentity.track_readiness` was typed `str` and fed a contract field
+  typed `TrackReadiness`, going through a `.value` round trip on the way. The
+  identity now holds the enum, and the one place a string is needed converts
+  explicitly.
+- `factory.py` imported `Planner` from `session.runtime`, which does not export
+  it. With `no_implicit_reexport` on, that is an error; it worked only because
+  the code disabling it also disabled `attr-defined`.
+- `PredictionController._proposal` called `.propose` and `.applicable_limits`
+  on values it had already established could be `None`.
+
+The rest were annotations: an `Any` from a JSON document narrowed nine times by
+an `isinstance` mypy could not follow, a `str` where a `Literal` was declared,
+and four `dict[str, object]` that should have been `dict[str, Any]`.
+
+### 2.10 The video app ships outside every gate
+
+`apps/video` has a `typecheck` script that nothing runs: the workspace
+`typecheck` filtered `@afterlap/web` only, `lint` runs ESLint on `apps/web`
+alone, and Biome's file list did not include it. The workspace script now runs
+both typechecks. Bringing it under Biome would take 29 mechanical edits to code
+this branch does not otherwise touch, so it is left as a recommendation rather
+than folded into an audit.
+
+### 2.11 The browser audit's own evidence did not show the feature working
 
 The driver screenshot fired the instant the route loaded, so the saved artefact
 showed `NO INSTRUCTION`, `mode unknown` and a connecting stream — the empty
@@ -293,7 +331,7 @@ production build is now warning-free.
 | `tests/operations/test_audit_runner.py` | the audit stops at the first failed gate, records the exit code, kills its live processes when a later gate fails, and never reports an interrupt as a pass |
 | `apps/web/e2e-live/workflow.spec.ts` | the experiment report names both controllers; replay and the sessions list render for the created session; the stream is open on return to the console; five reference surfaces render without a page error |
 
-The suite is 1 541 Python tests, 351 Vitest tests, 166 fixture-driven browser
+The suite is 1 541 Python tests, 359 Vitest tests, 166 fixture-driven browser
 tests and 16 live browser tests. Nothing is deselected: CI previously ran
 `pytest -m "not slow and not torch" --ignore=tests/learning`, which skipped the
 entire learning module. It now runs everything.
@@ -361,10 +399,12 @@ every checkout, every action pinned to a SHA.
    the set growing; nothing yet shrinks it.
 3. **Add a coverage floor.** `pytest-cov` is already a dependency and unused by
    any gate.
-4. **Reconsider `noUnnecessaryConditions` when Biome's type inference
+4. **Bring `apps/video` under Biome and ESLint.** Its typecheck is wired in
+   now; its lint is not, and it is 29 findings away.
+5. **Reconsider `noUnnecessaryConditions` when Biome's type inference
    matures.** It is the only rule turned off for being wrong rather than
    inapplicable, and it is a valuable rule when it works.
-5. **Automate the dependency bumps.** The advisory gate will now fail the build
+6. **Automate the dependency bumps.** The advisory gate will now fail the build
    the day a new one lands, which is correct but abrupt; Dependabot or Renovate
    would turn that into a pull request instead.
 
