@@ -293,6 +293,26 @@ test('unavailable WebGL keeps race controls usable and offers recovery', async (
   await expect(page.getByRole('button', { name: 'Reset race', exact: true })).toBeEnabled();
 });
 
+test('graphics quality and race weather drive the live renderer', async ({ page }) => {
+  await page.goto('/race');
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByLabel('Wetness (0 dry, 1 wet)').fill('0.8');
+  await page.getByLabel('Wind (m/s)').fill('7.5');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await expect(scene).toHaveAttribute('data-weather-wetness', '0.80');
+  await expect(scene).toHaveAttribute('data-weather-wind', '7.5');
+  await expect(page.getByText('HEAVY RAIN', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Graphics quality').locator('option')).toHaveText([
+    'Ultra graphics', 'High graphics', 'Performance',
+  ]);
+  await page.getByLabel('Graphics quality').selectOption('high');
+  await expect(scene).toHaveAttribute('data-graphics-quality', 'high');
+  await page.getByLabel('Graphics quality').selectOption('performance');
+  await expect(scene).toHaveAttribute('data-graphics-quality', 'performance');
+});
+
 
 test('settings dock, float, drag, resize and keep camera above ground', async ({ page }) => {
   await page.goto('/race');

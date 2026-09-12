@@ -312,6 +312,8 @@ export class RaceWorld {
     this.frame = frame;
     this.atmosphere.setWeather(frame.settings);
     this.surroundings.setWind(frame.settings.wind_mps);
+    this.host.dataset['weatherWetness'] = frame.settings.wetness.toFixed(2);
+    this.host.dataset['weatherWind'] = frame.settings.wind_mps.toFixed(1);
     if (this.scene.fog instanceof THREE.FogExp2) {
       this.scene.fog.density = 0.00022 + frame.settings.wetness * 0.0011;
     }
@@ -396,6 +398,7 @@ export class RaceWorld {
   }
 
   private configureQuality() {
+    this.host.dataset['graphicsQuality'] = this.quality;
     this.renderer.setPixelRatio(this.quality === 'performance' ? 0.65
       : Math.min(window.devicePixelRatio, this.quality === 'ultra' ? 2 : 1.35));
     this.renderer.shadowMap.enabled = this.quality !== 'performance';
