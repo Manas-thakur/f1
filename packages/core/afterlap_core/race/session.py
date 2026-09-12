@@ -435,10 +435,15 @@ class RaceSession:
                 else -car["channels"].get("progress_m", 0),
             )
         )
+        flags = next(
+            (list(observation.context["flags"]) for observation in observations.values()),
+            ["unknown"],
+        )
         return {
             "type": "frame",
             "version": "race-v2",
             "settings": self.settings.model_dump(),
+            "flags": flags,
             "time_s": self.simulator.session_time_s,
             "steps": self.steps,
             "status": self.status,
