@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import re
 import time
 from typing import Any, Literal
 
@@ -161,12 +162,20 @@ class RaceServer:
                 await sender
 
 
+def allowed_origins(origin: str) -> list[Origin | re.Pattern[str] | None]:
+    return [
+        Origin(origin),
+        re.compile(r"https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?"),
+        None,
+    ]
+
+
 async def run_server(host: str, port: int, origin: str) -> None:
     runtime = RaceServer()
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
-            runtime.connect, host, port, origins=[Origin(origin), None], max_size=16384, max_queue=16
+            runtime.connect, host, port, origins=allowed_origins(origin), max_size=16384, max_queue=16
         ):
             await asyncio.Future()
     finally:

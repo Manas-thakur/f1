@@ -39,7 +39,8 @@ export function RaceConnectionProvider({ children }: { readonly children: ReactN
     let disposed = false;
     let timer: ReturnType<typeof setTimeout>;
     function connect() {
-      const url = process.env['NEXT_PUBLIC_RACE_WS_URL'] ?? 'ws://127.0.0.1:18761';
+      const url = new URL('/race/socket', window.location.href);
+      url.protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const ws = new WebSocket(url);
       socket.current = ws;
       ws.onopen = () => {

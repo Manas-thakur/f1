@@ -13,9 +13,11 @@ make race
 
 Open [the circuit view](http://127.0.0.1:18760/race) or [race control](http://127.0.0.1:18760/race/control). Press Start race. Ctrl+C stops the processes started by this command. The simulator is deliberately separate from the existing operational session runtime.
 
+Use either native `make race` or Docker, since they share ports. If switching from Docker to native, run `make race-down` first. The native launcher checks both ports before starting either service and reports conflicts without stopping existing processes.
+
 For containers, use `make race-up` and `make race-down`. These create the `afterlap-race` Compose project with loopback ports 18760 and 18761. The race lab does not require a database: episode data is streamed to files and live state stays in the simulation process. The existing `make up` stack remains available for the PostgreSQL-backed operational product. Race checkpoints are in memory and are lost when the simulator stops.
 
-`make race-server` starts only the generator's WebSocket runtime. Its defaults accept the browser origin `http://127.0.0.1:18760` and local clients without an Origin header. The local lab has no user accounts or control leases. Commands from connected clients are serialized. It is not a multi-user remote deployment.
+`make race-server` starts only the generator's WebSocket runtime. Its defaults accept HTTP and HTTPS browser origins on localhost, 127.0.0.1 and IPv6 loopback at any port, plus local clients without an Origin header. Other browser origins require the explicit `--origin` option. The browser connects to `/race/socket` on the same host and port as the page, using `wss` for HTTPS. Next.js proxies the connection to the simulator, so only the dashboard port needs forwarding. The server-side `AFTERLAP_RACE_UPSTREAM` setting selects the simulator URL during development or production build; Docker builds use `http://simulator:18761`. The local lab has no user accounts or control leases. Commands from connected clients are serialized. It is not a multi-user remote deployment.
 
 ## Controls
 

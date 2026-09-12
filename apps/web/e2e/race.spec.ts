@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { connect, createServer } from 'node:net';
+import type { Socket } from 'node:net';
 
 test('live race controls, circuit switching, checkpoint restore and telemetry export', async ({
   page,
@@ -44,4 +46,44 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
     true,
   );
   expect(errors).toEqual([]);
+});
+
+test('race websocket follows a forwarded dashboard port', async ({ page }) => {
+  const sockets = new Set<Socket>();
+  const forwarder = createServer((client) => {
+    const upstream = connect(18760, '127.0.0.1');
+    for (const socket of [client, upstream]) {
+      sockets.add(socket);
+      socket.on('close', () => sockets.delete(socket));
+      socket.on('error', () => {
+        client.destroy();
+        upstream.destroy();
+      });
+    }
+    client.pipe(upstream).pipe(client);
+  });
+  await new Promise<void>((resolve) => forwarder.listen(0, '127.0.0.1', resolve));
+  try {
+    const address = forwarder.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Forwarded port unavailable');
+    }
+    const websocketUrls: string[] = [];
+    page.on('websocket', (websocket) => websocketUrls.push(websocket.url()));
+    await page.goto(`http://localhost:${address.port}/race/control`);
+    await expect(page.getByText('● CONNECTED', { exact: true })).toBeVisible();
+    expect(websocketUrls).toContain(`ws://localhost:${address.port}/race/socket`);
+    expect(websocketUrls.some((url) => url.includes(':18761'))).toBe(false);
+    await page.getByLabel('Cars', { exact: true }).fill('1');
+    await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+    await page.getByRole('button', { name: 'Start race', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Pause race', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
+  } finally {
+    for (const socket of sockets) {
+      socket.destroy();
+    }
+    await new Promise<void>((resolve) => forwarder.close(() => resolve()));
+  }
 });

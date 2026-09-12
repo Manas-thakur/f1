@@ -19,6 +19,7 @@ COPY apps/video/package.json apps/video/
 RUN bun install --frozen-lockfile --filter @afterlap/web && rm -rf /root/.bun/install/cache
 COPY packages/contracts/generated/ packages/contracts/generated/
 COPY apps/web/ apps/web/
+ENV AFTERLAP_RACE_UPSTREAM=http://simulator:18761
 RUN bun run --filter @afterlap/web build
 
 FROM node:22-bookworm-slim AS web

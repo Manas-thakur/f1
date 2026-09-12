@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   typedRoutes: false,
+  async rewrites() {
+    return [
+      {
+        source: '/race/socket',
+        destination: `${process.env['AFTERLAP_RACE_UPSTREAM'] ?? 'http://127.0.0.1:18761'}/`,
+      },
+    ];
+  },
   turbopack: {
     resolveAlias: {
       '@contracts': contractsFile,
