@@ -69,7 +69,9 @@ export class RaceMotion {
           unwrapped = Math.max(old.progress, prediction + correction);
         }
       }
-      const lateral = car.tyres.visual_lateral_m;
+      const lateral = car.tyres.phase === 'track'
+        ? car.channels['lateral_d_m'] ?? car.tyres.visual_lateral_m
+        : car.tyres.visual_lateral_m;
       const dt = previous ? time - previous.time : 0;
       const lateralRate = old && dt > 0 ? (lateral - old.lateral) / dt : 0;
       if (old && before && previous) {

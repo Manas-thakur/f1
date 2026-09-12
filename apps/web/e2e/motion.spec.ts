@@ -68,6 +68,19 @@ test('motion crosses the finish line forwards and resets immediately on pause an
   expect(motion.sample(600).size).toBe(0);
 });
 
+test('pit phases follow the rendered pit-lane lateral path', () => {
+  const motion = new RaceMotion();
+  const update = frame(1, 200);
+  const car = update.cars[0];
+  if (car) {
+    car.channels['lateral_d_m'] = 1;
+    car.tyres.phase = 'service';
+    car.tyres.visual_lateral_m = -13;
+  }
+  motion.push(update, 0);
+  expect(motion.sample(0).get('car-01')?.lateral).toBe(-13);
+});
+
 test('arrival jitter does not turn constant motion into packet-sized jumps', () => {
   const motion = new RaceMotion();
   const arrivals = [0, 150, 260, 480, 550, 760, 840, 1080, 1130, 1370, 1480, 1650, 1800];
