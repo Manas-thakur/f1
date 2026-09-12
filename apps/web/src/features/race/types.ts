@@ -52,6 +52,12 @@ export interface RaceFrame {
   actual_rate: number;
   playback_rate?: number;
   has_checkpoint: boolean;
+  button_input?: {
+    connected: boolean;
+    gpio_bcm: number | null;
+    press_count: number;
+    last_press_server_time_s: number | null;
+  };
   circuit_map: CircuitMap;
   events: {
     kind: string;
