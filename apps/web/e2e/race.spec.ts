@@ -338,3 +338,36 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
     .toBeGreaterThanOrEqual(0.65);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
 });
+
+test('electrical boost drains the battery and freezes its observed timer when paused', async ({ page }) => {
+  await page.goto('/race');
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monza');
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Playback', exact: true }).selectOption('0.25');
+  const hud = page.getByLabel('Battery and boost', { exact: true });
+  await expect(hud).toHaveAttribute('data-energy-mode', 'UNAVAILABLE');
+  await page.getByRole('combobox', { name: 'Battery profile', exact: true }).selectOption('push');
+  await page.getByRole('button', { name: 'Apply driver command', exact: true }).click();
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  await expect(scene).toHaveAttribute('data-boosting-cars', 'car-01');
+  const charge = page.getByRole('progressbar', { name: 'Usable battery charge' });
+  const initial = Number(await charge.getAttribute('value'));
+  await expect.poll(async () => Number(await charge.getAttribute('value'))).toBeLessThan(initial - 0.5);
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await page.screenshot({ path: test.info().outputPath('battery-boost.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Pause race', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
+
+  const frozen = await hud.textContent() ?? '';
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await expect(page.getByLabel('Lap energy telemetry')).toContainText('Total boost');
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await expect(hud).toHaveText(frozen);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(hud).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

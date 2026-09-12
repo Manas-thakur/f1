@@ -25,6 +25,13 @@ OWN_CHANNELS: tuple[str, ...] = (
     "recharge_this_lap_j",
     "recharge_cumulative_j",
     "electrical_power_w",
+    "boost_active",
+    "boost_elapsed_s",
+    "last_boost_s",
+    "boost_total_s",
+    "boost_this_lap_s",
+    "deployed_this_lap_j",
+    "deployed_cumulative_j",
 )
 
 
@@ -83,7 +90,10 @@ class Observation:
             "delivered_at_s": self.delivered_at_s,
             "channels": dict(self.channels),
             "rivals": [dict(rival) for rival in self.rivals],
-            "context": dict(self.context),
+            "context": {
+                **dict(self.context),
+                "energy_laps": [dict(lap) for lap in self.context.get("energy_laps", ())],
+            },
             "provenance": self.provenance.value,
             "quality": self.quality.value,
         }
@@ -234,6 +244,7 @@ def observe(
                 "mu": world.track.mu_at(truth["s_m"]),
                 "width_m": _known(world.track.width_at(truth["s_m"])),
                 "active_profile": truth["active_profile_code"],
+                "energy_laps": tuple(MappingProxyType(dict(lap)) for lap in truth["energy_laps"]),
                 "delay_s": float(sensor_config.delay_s.value),
                 "energy_channel_available": sensor_config.energy_channel_available,
                 "rival_energy_exposed": sensor_config.expose_rival_energy,

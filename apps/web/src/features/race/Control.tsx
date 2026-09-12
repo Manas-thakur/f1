@@ -205,7 +205,7 @@ export function Control() {
               Battery profile
               <select value={profile} onChange={(event) => setProfile(event.target.value)}>
                 {['harvest', 'conserve', 'neutral', 'push', 'overtake'].map((item) => (
-                  <option key={item}>{item}</option>
+                  <option key={item} value={item}>{item === 'push' ? 'Boost (80%)' : item === 'overtake' ? 'Maximum boost (100%)' : item}</option>
                 ))}
               </select>
             </label>

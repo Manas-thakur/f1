@@ -625,6 +625,11 @@ class Simulator:
             else:
                 mechanical_available_w = 0.0
                 requested_harvest_w = 0.0
+            allowance = limits.recharge_allowance_j()
+            if allowance is not None:
+                requested_harvest_w = min(
+                    requested_harvest_w, max(0.0, allowance - ledger.recharge_this_lap_j) / dt_s
+                )
             plan = ledger.plan(
                 dt_s,
                 requested_deploy_dc_w=requested_deploy_w,
@@ -748,6 +753,17 @@ class Simulator:
             state.battery_energy_j = ledger.energy_j
             state.recharge_ledger_j = ledger.recharge_cumulative_j
             state.recharge_ledger_this_lap_j = ledger.recharge_this_lap_j
+            state.deployed_this_lap_j += trial.plan.actual_deploy_dc_w * h
+            boosting = state.active_profile in {DeploymentProfile.PUSH, DeploymentProfile.OVERTAKE}
+            state.boost_active = float(boosting and trial.plan.actual_deploy_dc_w > 1000.0)
+            if state.boost_active:
+                state.boost_elapsed_s += h
+                state.boost_total_s += h
+                state.boost_this_lap_s += h
+            else:
+                if state.boost_elapsed_s > 0:
+                    state.last_boost_s = state.boost_elapsed_s
+                state.boost_elapsed_s = 0.0
             state.deploy_power_dc_w = trial.plan.actual_deploy_dc_w
             state.harvest_power_dc_w = trial.plan.actual_harvest_dc_w
             state.battery_out_power_w = trial.plan.battery_out_w
@@ -831,6 +847,16 @@ class Simulator:
             state = world.cars[car_id]
             ledger = world.ledgers[car_id]
             if line_id == TIMING_LINE_ID:
+                state.energy_laps.append(
+                    {
+                        "lap": float(state.lap),
+                        "deployed_j": state.deployed_this_lap_j,
+                        "recharged_j": ledger.recharge_this_lap_j,
+                        "boost_s": state.boost_this_lap_s,
+                    }
+                )
+                state.deployed_this_lap_j = 0.0
+                state.boost_this_lap_s = 0.0
                 ledger.reset_lap_counters()
                 state.recharge_ledger_this_lap_j = ledger.recharge_this_lap_j
             else:
@@ -995,6 +1021,14 @@ class Simulator:
                     "recharge_cumulative_j": state.recharge_ledger_j,
                     "electrical_power_w": state.deploy_power_dc_w - state.harvest_power_dc_w,
                     "active_profile_code": state.active_profile.value,
+                    "boost_active": state.boost_active,
+                    "boost_elapsed_s": state.boost_elapsed_s,
+                    "last_boost_s": state.last_boost_s,
+                    "boost_total_s": state.boost_total_s,
+                    "boost_this_lap_s": state.boost_this_lap_s,
+                    "deployed_this_lap_j": state.deployed_this_lap_j,
+                    "deployed_cumulative_j": world.ledgers[car_id].deployed_dc_j,
+                    "energy_laps": tuple(dict(lap) for lap in state.energy_laps),
                 }
                 for car_id, state in world.cars.items()
             },

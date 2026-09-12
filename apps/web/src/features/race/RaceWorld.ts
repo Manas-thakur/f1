@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 
+import { energyMode } from './energyStatus';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
 import { Minimap } from './Minimap';
@@ -262,6 +263,7 @@ export class RaceWorld {
       this.motion.push(frame, performance.now());
     }
     this.frame = frame;
+    this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
       model.visible = ids.has(id);
@@ -271,8 +273,25 @@ export class RaceWorld {
       if (!model) {
         model = createCar(Number(car.id.slice(-2)) - 1);
         model.userData['carId'] = car.id;
+        const boost = new THREE.Group();
+        boost.name = 'electrical-boost';
+        boost.position.z = -2.6;
+        for (const side of [-1, 1]) {
+          const material = new THREE.MeshBasicMaterial({ color: '#48dfff', transparent: true,
+            opacity: 0.65, depthWrite: false, blending: THREE.AdditiveBlending });
+          const streak = new THREE.Mesh(new THREE.ConeGeometry(0.14, 4, 8), material);
+          streak.rotation.x = -Math.PI / 2;
+          streak.position.set(side * 0.65, 0.3, -2);
+          boost.add(streak);
+        }
+        model.add(boost);
         this.cars.set(car.id, model);
         this.scene.add(model);
+      }
+      const boost = model.getObjectByName('electrical-boost');
+      if (boost) {
+        boost.visible = energyMode(car) === 'BOOST' && car.finish_time_s === null;
+        boost.scale.z = Math.max(0.25, Math.min(1, (car.channels['electrical_power_w'] ?? 0) / 350000));
       }
       model.visible = car.channels['s_m'] !== undefined;
     }

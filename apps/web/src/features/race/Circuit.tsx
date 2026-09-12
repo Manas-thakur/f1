@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { BatteryHud } from './Energy';
 import { rankedCar } from './motion';
 import { Classification, Transport } from './RacePanels';
 import { ControlDrawer } from './ControlDrawer';
@@ -137,7 +138,6 @@ export function Circuit() {
   };
   const car = frame?.cars.find((item) => item.id === selected);
   const speed = car?.channels['speed_mps'];
-  const energy = car?.channels['battery_energy_j'];
   return (
     <section ref={panel} className={styles.mapPanel} aria-label="Live circuit">
       <div className={styles.sceneWrap} style={{ width: `calc(100% - ${dockWidth}px)` }}>
@@ -235,9 +235,7 @@ export function Circuit() {
           <div className={styles.hudSpeed}>
             <strong>{speed === undefined ? 'N/A' : (speed * 3.6).toFixed(0)}</strong>
             <small>KM/H</small></div>
-          <div><small>BATTERY</small><strong>
-            {energy === undefined ? 'N/A' : (energy / 1e6).toFixed(2)} <small>MJ</small></strong>
-            <span>Observed telemetry</span></div>
+          <BatteryHud />
         </div>
       </div>
       <ControlDrawer parent={panel} open={settings} close={() => setSettings(false)} reserve={setDockWidth} />

@@ -9,6 +9,7 @@ from typing import Any
 from afterlap_contracts import DeploymentProfile
 
 from ..rng import StreamRegistry
+from ..simulation.energy_limits import EventEnergyLimits
 from ..simulation.engine import Simulator
 from ..simulation.observation import Observation
 from ..simulation.policies import DriverAction
@@ -38,6 +39,7 @@ class RaceSession:
         self.simulator = Simulator().reset(
             self.bundle,
             environment=self.weather,
+            event_limits=EventEnergyLimits.race_2026(),
             wake=WakeModel() if self.settings.wake else None,
         )
         self.simulator.world.policies.clear()
@@ -175,6 +177,12 @@ class RaceSession:
                     "id": car_id,
                     "channels": channels,
                     "observed_at_s": observation.observed_at_s,
+                    "active_profile": observation.context.get("active_profile"),
+                    "energy_laps": [dict(lap) for lap in observation.context.get("energy_laps", ())],
+                    "battery_window_j": [
+                        self.bundle.car_configs[car_id].battery_energy_min_j.value,
+                        self.bundle.car_configs[car_id].battery_energy_max_j.value,
+                    ],
                     "quality": observation.quality.value,
                     "requested_profile": self.overrides[car_id].profile.value
                     if car_id in self.overrides
@@ -206,7 +214,7 @@ class RaceSession:
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(
             {
-                "model_version": "race-physics-v2",
+                "model_version": "race-physics-v3",
                 "settings": self.settings.model_dump(),
                 "drivers": self.drivers,
                 "next_decision_s": self.next_decision_s,
@@ -224,7 +232,7 @@ class RaceSession:
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         if (
-            snapshot.get("model_version") != "race-physics-v2"
+            snapshot.get("model_version") != "race-physics-v3"
             or snapshot.get("settings") != self.settings.model_dump()
         ):
             raise ValueError("incompatible race model or settings in checkpoint")
@@ -247,7 +255,7 @@ class RaceSession:
     def manifest(self) -> dict[str, Any]:
         return {
             "type": "manifest",
-            "model_version": "race-physics-v2",
+            "model_version": "race-physics-v3",
             "environment_version": "race-control-v1",
             "drivers": {car: driver.traits.model_dump() for car, driver in self.drivers.items()},
             "weather": self.weather.manifest(),
@@ -263,6 +271,12 @@ class RaceSession:
             "geometry_hash": self.map["source_sha256"],
             "geometry_provenance": self.track.geometry_provenance,
             "cars": {car: config.model_dump(mode="json") for car, config in self.bundle.car_configs.items()},
+            "energy_rules": {
+                "reference": "FIA 2026 Section C Issue 20, C5.2.7-10",
+                "scope": "base dry power curve and 8.5 MJ recharge; event overrides unavailable",
+                "overtake_authorization": "unavailable; boost uses standard curve",
+                "strategy": "synthetic observation-driven straight and passing deployment",
+            },
             "integrator": "RK2 float64",
             "observation": "delayed simulated sensors; rival energy hidden",
         }

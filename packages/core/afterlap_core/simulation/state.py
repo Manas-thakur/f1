@@ -61,6 +61,13 @@ class CarState:
     electrical_loss_power_w: float = 0.0
     mechanical_braking_power_w: float = 0.0
     mechanical_rejected_power_w: float = 0.0
+    boost_active: float = 0.0
+    boost_elapsed_s: float = 0.0
+    last_boost_s: float = 0.0
+    boost_total_s: float = 0.0
+    boost_this_lap_s: float = 0.0
+    deployed_this_lap_j: float = 0.0
+    energy_laps: list[dict[str, float]] = field(default_factory=list)
     target_speed_mps: float = 0.0
     envelope_speed_mps: float = 0.0
     derate_factor: float = 1.0

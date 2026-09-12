@@ -1,5 +1,7 @@
 'use client';
 
+import { EnergyTelemetry } from './Energy';
+import { energyMode } from './energyStatus';
 import { useRace } from './Connection';
 import styles from './race.module.css';
 import type { RaceCar } from './types';
@@ -70,7 +72,9 @@ export function Classification() {
     <div className={styles.classificationScroll}>
       {frame?.cars.map((car, index) => <button key={car.id} type="button"
         aria-label={car.id} aria-pressed={selected === car.id} onClick={() => select(car.id)}>
-        <b>{index + 1}</b><span>{car.id.toUpperCase()}</span>
+        <b>{index + 1}</b><span>{car.id.toUpperCase()}
+          <em className={styles.classificationEnergy} data-energy-mode={energyMode(car)}>
+            {energyMode(car)}</em></span>
         <small>{number(car.channels['speed_mps'] === undefined ? undefined : car.channels['speed_mps'] * 3.6, 0)}</small>
       </button>)}
     </div>
@@ -92,6 +96,7 @@ export function Telemetry() {
       <dt>Temperature</dt><dd>{number(ch['battery_temperature_k'] === undefined ? undefined : ch['battery_temperature_k'] - 273.15)} °C</dd>
       <dt>Electrical power</dt><dd>{number(ch['electrical_power_w'] === undefined ? undefined : ch['electrical_power_w'] / 1000, 0)} kW</dd>
     </dl>
+    <EnergyTelemetry />
     <details><summary>Race events</summary>{frame?.events.slice(-10).reverse().map((event, i) =>
       <p key={i}>{event.session_time_s.toFixed(1)}s · {event.overtaking_car_id} / {event.overtaken_car_id} · {event.kind.replaceAll('_', ' ')}</p>)}</details>
   </section>;

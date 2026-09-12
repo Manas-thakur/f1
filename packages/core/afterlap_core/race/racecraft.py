@@ -199,15 +199,23 @@ class Racecraft:
                 else max(self.acceleration - change, min(self.acceleration + change, desired_a)),
             ),
         )
+        progress = observation.get("progress_m")
+        straight = all(abs(track.curvature_at(progress + offset)) < 0.001 for offset in (0, 50, 100, 150))
+        boost_reserve = 200000 if self.profile == DeploymentProfile.PUSH else 600000
         energy = observation.channels.get("battery_energy_j")
-        if energy is not None and energy < self.traits.reserve_j:
+        if energy is None or energy < self.traits.reserve_j:
             self.profile = DeploymentProfile.HARVEST
         elif self.profile != DeploymentProfile.HARVEST or (
             energy is not None and energy > self.traits.reserve_j + 200000
         ):
             self.profile = (
                 DeploymentProfile.PUSH
-                if self.state in {"committed", "alongside"}
+                if self.acceleration > 0.5
+                and speed > 20
+                and (
+                    self.state in {"committed", "alongside"}
+                    or (straight and energy is not None and energy > self.traits.reserve_j + boost_reserve)
+                )
                 else DeploymentProfile.CONSERVE
             )
         return DriverAction(
