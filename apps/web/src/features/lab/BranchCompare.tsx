@@ -142,7 +142,7 @@ export function BranchCompare({
         treatment_id: 'candidate',
         controller: candidateController.trim(),
         ...(candidateBundle.trim() === '' ? {} : { model_bundle_id: candidateBundle.trim() }),
-        description: 'Candidate arm, same snapshot and same disturbance seeds.',
+        description: 'Candidate arm, same scenario and same disturbance seeds.',
       },
     ];
     try {
@@ -258,11 +258,14 @@ export function BranchCompare({
         )}
       </Panel>
 
-      <Panel id="compare" title="Compare from here">
+      <Panel id="compare" title="Compare scenario treatments">
         <fieldset className={styles.fieldset}>
           <legend>Paired treatments</legend>
           <div className={styles.formGrid}>
-            <Field label="Snapshot id" hint="Both branches start from this state.">
+            <Field
+              label="Snapshot id"
+              hint="Records provenance. Trials restart from the scenario and seed; snapshot restoration is unavailable."
+            >
               <input
                 type="text"
                 value={snapshotChoice}
@@ -289,7 +292,7 @@ export function BranchCompare({
             </Field>
             <Field
               label="Candidate model bundle"
-              hint="Optional. Leave empty to run the candidate controller with no learned bundle."
+              hint="Learned bundles are unavailable in batch experiments. Leave this empty."
             >
               <input
                 type="text"

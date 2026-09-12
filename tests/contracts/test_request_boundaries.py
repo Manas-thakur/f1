@@ -89,3 +89,27 @@ def test_valid_boundary_values_round_trip_through_json():
     assert CreateSessionRequest.model_validate_json(request.model_dump_json()) == request
     step = SessionCommandRequest(kind="step", expected_revision=0, operator_id="op", step_duration_s=60)
     assert step.step_duration_s == 60
+
+
+@pytest.mark.parametrize(
+    ("treatments", "controllers"),
+    [(("reference", "candidate"), ("legal_fixed_schedule",)), (("same", "same"), ("a", "b"))],
+)
+def test_experiment_manifest_rejects_ambiguous_controller_mapping(treatments, controllers):
+    from datetime import UTC, datetime
+
+    from afterlap_contracts import ExperimentManifest
+
+    with pytest.raises(ValidationError):
+        ExperimentManifest(
+            schema_version="1.0",
+            id="experiment",
+            snapshot_hash="sha256:" + "a" * 64,
+            treatment_ids=treatments,
+            controller_ids=controllers,
+            disturbance_seed_ids=(42,),
+            evaluator_version="eval-1",
+            metrics_version="metrics-v1",
+            evaluation_horizon_s=1.0,
+            created_at=datetime.now(UTC),
+        )

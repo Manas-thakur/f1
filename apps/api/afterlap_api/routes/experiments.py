@@ -83,6 +83,11 @@ async def create_experiment(
             snapshot_id=payload.snapshot_id,
         )
 
+    if any(t.model_bundle_id is not None for t in payload.treatments):
+        raise LifecycleError(
+            ErrorCode.CAPABILITY_UNAVAILABLE, "learned model bundles are unavailable in batch experiments"
+        )
+
     treatment_ids = tuple(t.treatment_id for t in payload.treatments)
     if len(set(treatment_ids)) != len(treatment_ids):
         raise LifecycleError(
@@ -94,6 +99,7 @@ async def create_experiment(
         id=f"exp-{uuid.uuid4().hex[:16]}",
         snapshot_hash=snapshot.snapshot_hash,
         treatment_ids=treatment_ids,
+        controller_ids=tuple(t.controller for t in payload.treatments),
         disturbance_seed_ids=payload.seeds,
         evaluator_version=payload.evaluator_version,
         metrics_version=METRICS_VERSION,

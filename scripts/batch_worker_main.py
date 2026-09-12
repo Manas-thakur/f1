@@ -1,47 +1,11 @@
 #!/usr/bin/env python
-"""Batch experiment worker process — the `batch` service in docker-compose.yml.
 
-`workers/batch_worker.py` owns the lease, the staging directory, the atomic
-report publish and the cancellation semantics. It exposes `run_forever` but no
-`main`, and it takes the *runner* as an argument because the runner is a
-policy choice. This file is that policy, plus the two things a container
-entrypoint has to do that the library correctly refuses to decide:
-
-1. **Wait for the database.** Compose start order is not a fact.
-2. **Refuse work when the artefact root is full.** The architecture requires
-   experiment jobs to stop *first* when disk runs out, so operational evidence
-   survives. `afterlap_ops.quota` implements the budget and this loop consults
-   it before every claim. The API route `POST /experiments` does **not** yet do
-   the same — see `handoffs/A14-integration-patch.md`; a job queued through the
-   API while the disk is full is accepted there and refused here, which is the
-   safe half of the behaviour but not the whole of it.
-
-What the runner actually runs, stated plainly so nobody over-reads the output:
-each `(treatment, seed)` unit is one independent run of A13's benchmark harness
-over the session's own scenario, with the treatment's controller. It is an
-operator-requested branch comparison, labelled `split="tuning"`, and it is
-**not** a held-out benchmark — opening the held-out `test` split is a separate,
-visible act that belongs to promotion, not to a queued job.
-
-Two limitations are recorded in the report rather than papered over:
-
-* `ExperimentManifest` stores `treatment_ids` but not the controller each
-  treatment named (`TreatmentSpec.controller` lives only in the request body).
-  Treatments are therefore resolved by id against the controller registry
-  below, and an unrecognised id becomes an `UnavailableController` — an
-  explicit unmeasured row, never a substituted controller.
-* branching from the stored simulator snapshot is not implemented here: the
-  harness starts each unit from the frozen scenario and seed, not from the
-  snapshot the operator branched at. The snapshot hash is carried through into
-  the report so the mismatch is visible, and it is an integration action.
-
-    python scripts/batch_worker_main.py [--poll-interval 2.0] [--max-jobs N] [--once]
-"""
 
 from __future__ import annotations
 
 import argparse
 import logging
+import os
 import signal
 import sys
 import threading
@@ -129,6 +93,7 @@ def _rule_pack_id_for(db: Any, ruleset_hash: str) -> str:
         try:
             pack = load_rule_pack(candidate)
         except Exception:  # pragma: no cover - a malformed config is A04's problem
+            logger.debug("rule pack %s could not be loaded while resolving %s", candidate, ruleset_hash)
             continue
         if pack.ruleset_hash == ruleset_hash:
             return candidate
@@ -138,24 +103,23 @@ def _rule_pack_id_for(db: Any, ruleset_hash: str) -> str:
     )
 
 
-def _controller_for(treatment_id: str) -> Any:
+def _controller_for(treatment_id: str, controller_id: str) -> Any:
     from afterlap_core.evaluation.controllers import (
         LegalFixedSchedule,
         LegalGreedyAttacker,
         UnavailableController,
     )
 
-    if treatment_id == "legal_fixed_schedule":
+    if controller_id == "legal_fixed_schedule":
         return LegalFixedSchedule(name=treatment_id)
-    if treatment_id == "legal_greedy_attacker":
+    if controller_id == "legal_greedy_attacker":
         return LegalGreedyAttacker(name=treatment_id)
     return UnavailableController(
         treatment_id,
         owner="unresolved",
         detail=(
-            f"treatment {treatment_id!r} does not name a controller this worker can build. "
-            f"Resolvable ids: {sorted(CONTROLLER_REGISTRY)}. ExperimentManifest does not carry "
-            "TreatmentSpec.controller, so the treatment id is the only signal available."
+            f"controller {controller_id!r} for treatment {treatment_id!r} is unavailable. "
+            f"Resolvable controllers: {sorted(CONTROLLER_REGISTRY)}."
         ),
     )
 
@@ -189,7 +153,10 @@ def build_runner(factory: Any) -> Any:
                 raise RuntimeError(f"session {session.id} records no scenario id")
             rule_pack_id = _rule_pack_id_for(db, session.ruleset_hash)
 
-        controllers = [_controller_for(t) for t in manifest.treatment_ids]
+        controllers = [
+            _controller_for(treatment, controller)
+            for treatment, controller in zip(manifest.treatment_ids, manifest.controller_ids, strict=True)
+        ]
         benchmark = BenchmarkManifest(
             id=f"experiment-{context.job_id}",
             split="tuning",
@@ -230,6 +197,7 @@ def build_runner(factory: Any) -> Any:
             "kind": "afterlap.experiment.branch_comparison/1",
             "experiment_manifest_hash": context.manifest_hash,
             "snapshot_hash": manifest.snapshot_hash,
+            "controller_ids": dict(zip(manifest.treatment_ids, manifest.controller_ids, strict=True)),
             "scenario_id": scenario_id,
             "rule_pack_id": rule_pack_id,
             "benchmark": run.as_dict(),
@@ -301,7 +269,9 @@ def main(argv: list[str] | None = None) -> int:
 
     engine = create_db_engine(url)
     factory = create_session_factory(engine)
-    paths = Paths.default().ensure()
+    paths = Paths.default(
+        Path(os.environ["AFTERLAP_ARTIFACT_ROOT"]) if os.environ.get("AFTERLAP_ARTIFACT_ROOT") else None
+    ).ensure()
     quota = ArtifactQuota(paths.artifacts, QuotaPolicy.from_environment())
     worker = BatchWorker(
         factory,
@@ -407,7 +377,8 @@ def _healthcheck() -> int:
     from afterlap_api.worker_health import worker_status
     from afterlap_core.paths import Paths
 
-    status = worker_status(Paths.default().artifacts)
+    storage_root = os.environ.get("AFTERLAP_ARTIFACT_ROOT")
+    status = worker_status(Paths.default(None if storage_root is None else Path(storage_root)).artifacts)
     print(f"batch worker {status.status}: {status.detail}")
     return 0 if status.live else 1
 

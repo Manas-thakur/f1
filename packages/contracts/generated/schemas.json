@@ -7379,6 +7379,14 @@
           "title": "Checkpoint Ids",
           "type": "array"
         },
+        "controller_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Controller Ids",
+          "type": "array"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -7443,6 +7451,7 @@
         "id",
         "snapshot_hash",
         "treatment_ids",
+        "controller_ids",
         "disturbance_seed_ids",
         "evaluator_version",
         "metrics_version",

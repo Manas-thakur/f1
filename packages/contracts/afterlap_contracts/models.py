@@ -283,6 +283,7 @@ class ExperimentManifest(VersionedContract):
     id: str = Field(min_length=1)
     snapshot_hash: str = Field(min_length=1)
     treatment_ids: tuple[str, ...] = Field(min_length=1)
+    controller_ids: tuple[str, ...] = Field(min_length=1)
     opponent_policy_hashes: dict[str, str] = Field(default_factory=dict)
     disturbance_seed_ids: tuple[int, ...] = Field(min_length=1)
     evaluator_version: str = Field(min_length=1)
@@ -290,6 +291,16 @@ class ExperimentManifest(VersionedContract):
     evaluation_horizon_s: float = Field(gt=0.0)
     checkpoint_ids: tuple[str, ...] = ()
     created_at: datetime
+
+    @model_validator(mode="after")
+    def _controllers_match_treatments(self) -> ExperimentManifest:
+        if len(self.controller_ids) != len(self.treatment_ids):
+            raise ValueError("each treatment must name exactly one controller")
+        if len(set(self.treatment_ids)) != len(self.treatment_ids):
+            raise ValueError("treatment ids must be unique")
+        if any(not value.strip() for value in self.controller_ids):
+            raise ValueError("controller ids must not be blank")
+        return self
 
 
 class ExperimentJob(VersionedContract):
