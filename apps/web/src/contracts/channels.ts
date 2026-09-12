@@ -18,7 +18,7 @@ export interface ChannelSpec {
   readonly note: string | null;
 }
 
-function spec(partial: {
+function defineChannel(partial: {
   name: string;
   unit: string;
   displayUnit: string;
@@ -42,7 +42,7 @@ function spec(partial: {
 }
 
 export const CHANNELS: readonly ChannelSpec[] = [
-  spec({
+  defineChannel({
     name: 'speed_mps',
     unit: 'm/s',
     displayUnit: 'km/h',
@@ -54,7 +54,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     lowerBound: 0,
     upperBound: 120,
   }),
-  spec({
+  defineChannel({
     name: 'acceleration_mps2',
     unit: 'm/s^2',
     displayUnit: 'm/s²',
@@ -66,7 +66,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     lowerBound: -80,
     upperBound: 40,
   }),
-  spec({
+  defineChannel({
     name: 'progress_m',
     unit: 'm',
     displayUnit: 'm',
@@ -77,7 +77,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     plotColourToken: '--series-progress',
     lowerBound: 0,
   }),
-  spec({
+  defineChannel({
     name: 'lap_distance_m',
     unit: 'm',
     displayUnit: 'm',
@@ -88,7 +88,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     plotColourToken: '--series-progress',
     lowerBound: 0,
   }),
-  spec({
+  defineChannel({
     name: 'battery_energy_j',
     unit: 'J',
     displayUnit: 'MJ',
@@ -100,7 +100,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     lowerBound: 0,
     note: 'Battery-side stored energy. Not interchangeable with the CU-K recharge ledger.',
   }),
-  spec({
+  defineChannel({
     name: 'electrical_power_w',
     unit: 'W',
     displayUnit: 'kW',
@@ -111,7 +111,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     plotColourToken: '--series-power',
     note: 'Signed DC-bus power: positive deploys, negative harvests. Documented convention.',
   }),
-  spec({
+  defineChannel({
     name: 'deploy_power_w',
     unit: 'W',
     displayUnit: 'kW',
@@ -122,7 +122,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     plotColourToken: '--series-power',
     lowerBound: 0,
   }),
-  spec({
+  defineChannel({
     name: 'harvest_power_w',
     unit: 'W',
     displayUnit: 'kW',
@@ -134,7 +134,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     lowerBound: 0,
     note: 'Separately named nonnegative flow; never netted against deploy without a stated convention.',
   }),
-  spec({
+  defineChannel({
     name: 'recharge_ledger_j',
     unit: 'J',
     displayUnit: 'MJ',
@@ -146,7 +146,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     lowerBound: 0,
     note: 'Regulatory CU-K bus ledger, integrated at its specified bus, not battery gain.',
   }),
-  spec({
+  defineChannel({
     name: 'battery_temperature_k',
     unit: 'K',
     displayUnit: '°C',
@@ -159,7 +159,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     lowerBound: 200,
     upperBound: 450,
   }),
-  spec({
+  defineChannel({
     name: 'gap_ahead_s',
     unit: 's',
     displayUnit: 's',
@@ -170,7 +170,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     plotColourToken: '--series-gap',
     note: 'Derived at common progress, not by dividing distance by instantaneous speed.',
   }),
-  spec({
+  defineChannel({
     name: 'gap_behind_s',
     unit: 's',
     displayUnit: 's',
@@ -180,7 +180,7 @@ export const CHANNELS: readonly ChannelSpec[] = [
     expectedProvenance: ['estimated', 'simulated'],
     plotColourToken: '--series-gap',
   }),
-  spec({
+  defineChannel({
     name: 'lateral_position_m',
     unit: 'm',
     displayUnit: 'm',

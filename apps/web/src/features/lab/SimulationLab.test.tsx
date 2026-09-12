@@ -133,8 +133,7 @@ describe('snapshot and compare from here', () => {
       handlers([
         [
           '/experiments',
-          (request) =>
-            request.method === 'POST' ? { status: 202, body: created } : { body: [experimentJob()] },
+          (item) => (item.method === 'POST' ? { status: 202, body: created } : { body: [experimentJob()] }),
         ],
       ]),
     );

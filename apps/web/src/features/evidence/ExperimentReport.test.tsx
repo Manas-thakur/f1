@@ -24,7 +24,9 @@ function renderReport(stub: FetchStub) {
     path: PATH,
     route: ROUTE,
   });
-  restoreFetch = () => (globalThis.fetch = original);
+  restoreFetch = () => {
+    globalThis.fetch = original;
+  };
   return result;
 }
 

@@ -23,7 +23,6 @@ export function useNarrowViewport(query: string = NARROW_QUERY): boolean {
       list.addEventListener('change', onChange);
       return () => list.removeEventListener('change', onChange);
     }
-    return;
   }, [query]);
 
   return narrow;

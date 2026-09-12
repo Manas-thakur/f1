@@ -14,7 +14,12 @@ function renderRules(stub: FetchStub) {
   const original = globalThis.fetch;
   globalThis.fetch = stub.fetchImpl;
   const result = renderRoute(<RulesetView />, { path: PATH, route: ROUTE });
-  return { result, restore: () => (globalThis.fetch = original) };
+  return {
+    result,
+    restore: () => {
+      globalThis.fetch = original;
+    },
+  };
 }
 
 describe('coverage is declared per concern and linked to a source', () => {

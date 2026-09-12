@@ -1,4 +1,4 @@
-import { forwardRef, useId, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useId, type ButtonHTMLAttributes, type ReactNode, type Ref } from 'react';
 
 import styles from './primitives.module.css';
 
@@ -19,23 +19,22 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
   
   readonly successMessage?: string;
   readonly children: ReactNode;
+  readonly ref?: Ref<HTMLButtonElement>;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  {
-    variant = 'default',
-    state = 'default',
-    pendingLabel = 'Working…',
-    disabledReason,
-    errorMessage,
-    successMessage,
-    children,
-    className,
-    type = 'button',
-    ...rest
-  },
+export function Button({
+  variant = 'default',
+  state = 'default',
+  pendingLabel = 'Working…',
+  disabledReason,
+  errorMessage,
+  successMessage,
+  children,
+  className,
+  type = 'button',
   ref,
-) {
+  ...rest
+}: ButtonProps) {
   const generatedId = useId();
   const noteId = `${rest.id ?? generatedId}-note`;
 
@@ -88,4 +87,4 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ) : null}
     </span>
   );
-});
+}

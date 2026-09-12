@@ -6,5 +6,5 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest): Promise<Response> {
-  return forwardToPython(request, 'GET', '/metrics');
+  return await forwardToPython(request, 'GET', '/metrics');
 }

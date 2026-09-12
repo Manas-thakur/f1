@@ -24,7 +24,7 @@ export const RIVAL_ENERGY_QUANTILE_NOTE =
   `Model quantile from the opponent belief filter. Nominal ${(RIVAL_ENERGY_COVERAGE.nominal * 100).toFixed(0)}% label; ` +
   `measured empirical coverage ${RIVAL_ENERGY_COVERAGE.measured.toFixed(4)} on ${RIVAL_ENERGY_COVERAGE.sampleCount} samples ` +
   `(${RIVAL_ENERGY_COVERAGE.source}). The label is optimistic: the interval covers less often than it claims. ` +
-  `It is a belief, not a measurement of the rival car.`;
+  'It is a belief, not a measurement of the rival car.';
 
 export function describeInterval(
   interval: IntervalValue | null | undefined,

@@ -9,7 +9,9 @@ function renderModels(stub: FetchStub) {
   const original = globalThis.fetch;
   globalThis.fetch = stub.fetchImpl;
   renderRoute(<ModelsView />, { path: '/models', route: '/models' });
-  return () => (globalThis.fetch = original);
+  return () => {
+    globalThis.fetch = original;
+  };
 }
 
 describe('candidate and approved are distinguished by evidence', () => {

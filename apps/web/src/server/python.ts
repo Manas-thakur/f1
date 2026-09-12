@@ -146,6 +146,7 @@ export async function ensurePythonRuntime(): Promise<void> {
     });
     child.unref();
     for (let attempt = 0; attempt < 40; attempt += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the probe polls one runtime until it answers
       if (await runtimeIsLive()) {
         runtimeSlot.started = true;
         return;
@@ -169,6 +170,7 @@ export async function forwardToPython(request: Request, method: string, pathname
     let size = 0;
     try {
       while (true) {
+        // biome-ignore lint/performance/noAwaitInLoops: a request body arrives as an ordered chunk stream
         const { done, value } = await reader.read();
         if (done) {
           break;
