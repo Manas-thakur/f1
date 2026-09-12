@@ -65,6 +65,18 @@ FEATURE_SCALES = (
 OBSERVATION_SIZE = len(FEATURE_NAMES) * 2
 
 
+def decision_schema() -> dict[str, Any]:
+    return {
+        "environment_version": "boost-decision-v1",
+        "observation_features": FEATURE_NAMES,
+        "observation_scales": FEATURE_SCALES,
+        "observation_size": OBSERVATION_SIZE,
+        "missing_value_encoding": "zero value plus availability mask",
+        "actions": [profile.value for profile in DECISION_PROFILES],
+        "authority": "energy deployment profile only",
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class BoostRecommendation:
     car_id: str

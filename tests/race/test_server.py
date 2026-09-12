@@ -8,6 +8,7 @@ from websockets.asyncio.server import serve
 from websockets.exceptions import InvalidStatus
 
 from afterlap_api.race_server import Command, RaceServer, allowed_origins
+from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceSession, RaceSettings, RacingLineSettings
 from afterlap_core.simulation.physics import tractive_force
 
@@ -26,6 +27,23 @@ def test_controls_validate_bounds_and_require_checkpoint():
     runtime.apply(Command(id="4", operation="step"))
     runtime.apply(Command(id="5", operation="restore"))
     assert runtime.session.simulator.session_time_s == 0
+
+
+def test_boost_command_uses_live_recommendation_guard():
+    runtime = RaceServer(RaceSettings(cars=1, time_limit_s=3))
+    with pytest.raises(ValueError, match="boost unavailable"):
+        runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
+    runtime.session.bms_profiles["car-01"] = DeploymentProfile.PUSH
+    runtime.apply(Command(id="off", operation="boost", car_id="car-01", enabled=False))
+    assert "car-01" not in runtime.session.bms_profiles
+
+
+def test_frame_includes_recommendations_without_simulator_truth():
+    runtime = RaceServer(RaceSettings(cars=1, time_limit_s=3))
+    frame = json.loads(runtime.frame())
+    assert frame["recommendations"]["car-01"]["source"] == "rules_baseline"
+    assert frame["recommendations"]["car-01"]["overtake_available"] is False
+    assert "world" not in frame
 
 
 def test_server_starts_with_script_supplied_racing_line_settings():
