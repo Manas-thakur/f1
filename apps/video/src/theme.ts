@@ -1,36 +1,34 @@
 export const VIDEO = {
-  width: 1920,
-  height: 1080,
+  width: 3840,
+  height: 2160,
   fps: 30,
-  durationInFrames: 942,
+  durationInFrames: 900,
 } as const;
 
-export const PALETTE = {
-  ink: "#101418",
-  paper: "#f4f6f8",
+export const T = {
+  sky: "#0d1117",
+  deep: "#0b1016",
+  asphalt: "#343c45",
+  asphaltEdge: "#4a545f",
+  kerbA: "#c8ced4",
+  kerbB: "#8b3a3f",
+  line: "#e8edf1",
+  ink: "#f4f6f8",
+  muted: "#96a3b0",
+  own: "#4f9dea",
+  ownDeep: "#1c4e85",
+  rival: "#b083d0",
+  rivalDeep: "#5d3f75",
   attack: "#ff858a",
-  attackDeep: "#7d2f33",
-  delay: "#f0c65a",
+  prepare: "#f0c65a",
   defend: "#8dccf2",
-  defendDeep: "#2a5f7d",
-  recharge: "#8acd9e",
-  rechargeDeep: "#2c5f3f",
-  amber: "#f0c65a",
-  green: "#8acd9e",
-  greenDeep: "#2c5f3f",
-  rail: "#afb9c2",
-  mute: "rgba(244,246,248,0.66)",
-  panel: "rgba(21,28,34,0.82)",
-  panelEdge: "rgba(70,82,93,0.9)",
-  chip: "rgba(70,82,93,0.72)",
+  recover: "#8acd9e",
+  unknown: "#5d6b78",
 } as const;
-
-export const SCALE = VIDEO.width / 848;
-
-export const px = (value: number): number => value * SCALE;
 
 export const FONT = {
-  display: "'Segoe UI', 'Liberation Sans', Arial, sans-serif",
-  caption: "'Segoe UI', 'Liberation Sans', Arial, sans-serif",
+  body: "'Segoe UI', 'Liberation Sans', Arial, sans-serif",
   mono: "Consolas, 'DejaVu Sans Mono', 'Courier New', monospace",
 } as const;
+
+export const K = VIDEO.width / 1920;

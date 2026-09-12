@@ -11,7 +11,7 @@ bun run --filter @afterlap/video render
 bun run --filter @afterlap/video typecheck
 ```
 
-`dev` opens Remotion Studio. `render` writes `out/afterlap-promo.mp4`.
+`dev` opens Remotion Studio. `render` writes `out/afterlap-4k.mp4` at 3840x2160.
 
 ## Structure
 

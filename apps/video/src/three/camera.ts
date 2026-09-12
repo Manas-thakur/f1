@@ -104,3 +104,6 @@ export const planeCorners = (
   ];
   return [at(-1, 1), at(1, 1), at(1, -1), at(-1, -1)];
 };
+
+export const anchorAt = (basis: Basis, x: number, z: number, y = 0): Projected =>
+  project(basis, [x, y, z]);
