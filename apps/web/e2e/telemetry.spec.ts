@@ -22,6 +22,7 @@ function frame(time_s: number, cars: RaceCar[], generation = 1): RaceFrame {
     type: 'frame', time_s, generation, steps: Math.round(time_s * 100), status: 'running',
     failure: null, requested_rate: 1, actual_rate: 1, has_checkpoint: false, events: [],
     flags: ['green'],
+    recommendations: {}, training_metrics: null,
     boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
       accuracy: null, precision: null, recall: null },
     regulations: { name: 'FIA Formula 1 2026 race subset', effective_issue_dates: {}, sources: {},
