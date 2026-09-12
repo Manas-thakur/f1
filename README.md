@@ -89,3 +89,5 @@ bun run build
 CI runs Python tests on Linux, macOS, and Windows, builds and tests the dashboard, and smoke-tests dataset generation and PPO training on every push and pull request to `simulator`.
 
 The included physics and sensor modules are the dependencies needed by this simulator. Circuit geometry and vehicle parameters are synthetic and uncalibrated. The numerical checks establish implementation invariants, not real-car accuracy.
+
+See [battery and boost research, implementation and limitations](BATTERY.md) for the 2026 energy model and 3D indicators.

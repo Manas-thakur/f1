@@ -74,6 +74,19 @@ class EventEnergyLimits:
     recharge_allowance_j: float | None
 
     @classmethod
+    def race_2026(cls) -> EventEnergyLimits:
+        return cls(
+            "2026-base-illustration",
+            "public-base-limits; event overrides unavailable",
+            (
+                (0.0, 80.55555555555556, 94.44444444444444, 95.83333333333333),
+                (350000.0, 350000.0, 100000.0, 0.0),
+            ),
+            None,
+            8500000.0,
+        )
+
+    @classmethod
     def none(cls) -> EventEnergyLimits:
 
         return cls(None, None, None, None, None)

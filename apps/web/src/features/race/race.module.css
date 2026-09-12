@@ -117,3 +117,20 @@
   .worldHud { left: auto; right: 10px; gap: 8px; padding: 8px; }
   .worldHud > div:last-child { display: none; }
 }
+
+.batteryHud { min-width: 165px; }
+.batteryHud progress { display: block; width: 100%; height: 7px; margin: 7px 0; accent-color: #76dff4; }
+.batteryHud[data-energy-mode='RECHARGING'] progress { accent-color: #a2eda2; }
+.worldHud .energyMode { color: #76dff4; font-size: 10px; margin-bottom: 5px; }
+.batteryHud[data-energy-mode='RECHARGING'] .energyMode { color: #a2eda2; }
+.classificationEnergy { display: block; font: normal 8px monospace; opacity: 0.8; margin-top: 3px; }
+.classificationEnergy[data-energy-mode='BOOST'] { color: #48dfff; }
+.classificationEnergy[data-energy-mode='RECHARGING'] { color: #a2eda2; }
+.root .classificationScroll button[aria-pressed='true'] .classificationEnergy { color: #163b43; }
+.energyTelemetry { border-top: 1px solid #ffffff24; margin-top: 16px; padding-top: 12px; }
+.energyTelemetry p { font-size: 11px; line-height: 1.6; color: #b2c4be; }
+.energyTelemetry svg { width: 100%; background: #111d26; border-radius: 6px; }
+@media (max-width: 700px) {
+  .worldHud > .batteryHud:last-child { display: block; min-width: 120px; }
+  .worldHud { flex-wrap: wrap; }
+}

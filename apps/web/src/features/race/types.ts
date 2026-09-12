@@ -24,6 +24,9 @@ export interface RaceCar {
   channels: Record<string, number | undefined>;
   observed_at_s: number;
   requested_profile: string;
+  active_profile?: string | null;
+  battery_window_j?: [number, number];
+  energy_laps?: { lap: number; deployed_j: number; recharged_j: number; boost_s: number }[];
   finish_time_s: number | null;
 }
 

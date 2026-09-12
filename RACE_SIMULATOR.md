@@ -125,7 +125,7 @@ The default 20-car reference engine is CPU intensive. The UI reports observed pl
 
 ## Physics v2 configuration and evidence
 
-See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The BMS observation/action contract remains `race-bms-v1`; model behavior is `race-physics-v2`. An extra delayed own grip channel supports automatic racecraft and operator telemetry, but is not appended to the BMS feature vector. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Old policies must be retrained; action indices are never reinterpreted.
+See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The BMS observation/action contract remains `race-bms-v1`; model behavior is `race-physics-v3`. An extra delayed own grip channel supports automatic racecraft and operator telemetry, but is not appended to the BMS feature vector. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Old policies must be retrained; action indices are never reinterpreted.
 
 The control page adds one variability preset selector. For precise experiments, use `--settings file.json` with generate, train or evaluate. The entire settings file takes precedence over individual scenario flags, including seed. Use nested feature scales to disable variation groups or supply individual driver traits. Weather phases, target wetness, driver traits, initial states and sensor parameters are included in manifests, not actor observations.
 
