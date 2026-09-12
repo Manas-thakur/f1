@@ -74,8 +74,11 @@ def test_pit_service_only_starts_at_the_assigned_box():
     state.speed_mps = 0
     session._update_tyres(0.1)
     assert tyre.phase == "entry"
+    assert state.speed_mps == 1.5
+    assert session.simulator.world.active_actions["car-01"].label == "pit_entry"
     state.progress_m = tyre.box_progress_m
     state.s_m = session._pit_box_s("car-01")
+    state.speed_mps = 0
     session._update_tyres(0.1)
     assert tyre.phase == "service"
     assert state.progress_m == tyre.box_progress_m
@@ -99,6 +102,7 @@ def test_pit_boxes_are_unique_and_safe_releases_are_serialized():
     assert session.tyres["car-02"].release_waiting is True
     assert session.tyres["car-03"].release_waiting is True
     assert session.simulator.world.active_actions["car-01"].label == "pit_exit"
+    assert session.simulator.world.cars["car-01"].speed_mps == 1.5
     assert session.simulator.world.active_actions["car-02"].label == ""
 
 

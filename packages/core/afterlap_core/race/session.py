@@ -31,6 +31,7 @@ PIT_BOX_SPACING_M = 9.0
 PIT_TRANSIT_LATERAL_M = -10.5
 PIT_BOX_LATERAL_M = -15.0
 PIT_RELEASE_CLEARANCE_M = 14.0
+PIT_RELEASE_SPEED_MPS = 1.5
 PIT_EXIT_DISTANCE_M = 220.0
 
 
@@ -377,6 +378,8 @@ class RaceSession:
                 if tyre.release_waiting and self._pit_release_clear(car_id):
                     tyre.release_waiting = False
                     tyre.exit_after_progress_m = state.progress_m + PIT_EXIT_DISTANCE_M
+                    state.speed_mps = PIT_RELEASE_SPEED_MPS
+                    state.acceleration_mps2 = 0
                     self.drivers[car_id].acceleration = 3
                     self._apply_pit_action(car_id, self._pit_launch_action(car_id))
                     self.events.append(
@@ -389,6 +392,25 @@ class RaceSession:
                     self.events.append(
                         {"kind": "pit_exit", "car_id": car_id, "session_time_s": now}
                     )
+
+            if (
+                tyre.phase == "entry"
+                and state.progress_m < tyre.box_progress_m - 0.75
+                and state.speed_mps <= 0.05
+                and not self._pit_transit_blocked(car_id)
+            ):
+                state.speed_mps = PIT_RELEASE_SPEED_MPS
+                state.acceleration_mps2 = 0
+                self._apply_pit_action(
+                    car_id,
+                    DriverAction(
+                        profile=DeploymentProfile.HARVEST,
+                        pace_scale=0.7,
+                        target_lateral_d_m=self.drivers[car_id].lane,
+                        acceleration_ceiling_mps2=2.5,
+                        label="pit_entry",
+                    ),
+                )
 
             if (
                 tyre.phase in {"entry", "service", "exit"}
