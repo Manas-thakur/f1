@@ -4,7 +4,7 @@ include $(ROOT)/infra/ports.env
 
 ENV_FILE := $(ROOT)/infra/.env
 STATE := $(ROOT)/.afterlap
-AC_PROJECT := afterlap
+COMPOSE := docker compose -f $(ROOT)/infra/docker-compose.yml --env-file $(ENV_FILE)
 PYTHON := uv run python
 WEB_URL := http://127.0.0.1:$(AFTERLAP_WEB_PORT)
 API_URL := http://127.0.0.1:$(AFTERLAP_API_PORT)
@@ -13,34 +13,31 @@ DB_ADDR := 127.0.0.1:$(AFTERLAP_DB_PORT)
 export AFTERLAP_WEB_PORT
 export AFTERLAP_API_PORT
 export AFTERLAP_DB_PORT
-export AFTERLAP_AC_GATEWAY
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env install-ac build up down stop start restart logs ps wait urls doctor demo migrate install dev stop-dev compose-up compose-down
+.PHONY: help env build up down stop start restart logs ps wait urls doctor demo migrate install dev stop-dev
 
 help:
 	@printf '%s\n' \
-	  'AFTERLAP local stack. Host ports: web $(AFTERLAP_WEB_PORT), runtime $(AFTERLAP_API_PORT), postgres $(AFTERLAP_DB_PORT).' \
+	  'AFTERLAP local stack on docker compose. Host ports: web $(AFTERLAP_WEB_PORT), runtime $(AFTERLAP_API_PORT), postgres $(AFTERLAP_DB_PORT).' \
 	  '' \
 	  'make env          write infra/.env with a generated password if missing' \
-	  'make up           build images and start db, runtime, batch, web via ac' \
+	  'make up           build images and start db, runtime, batch, web' \
 	  'make down         stop and remove containers; volumes stay' \
 	  'make stop         stop containers in place' \
 	  'make start        start an already-created stack' \
 	  'make restart      restart the stack' \
 	  'make logs         follow container logs' \
 	  'make ps           show container status' \
-	  'make wait         block until every readyCmd passes' \
+	  'make wait         block until every service is healthy' \
 	  'make urls         print loopback addresses' \
 	  'make doctor       run afterlap_core.cli doctor' \
 	  'make demo         run the 13-step live runbook against $(WEB_URL)' \
 	  'make migrate      alembic upgrade against the stack database' \
 	  'make install      uv and bun frozen installs' \
-	  'make dev          native runtime + web on the unique ports, postgres via ac' \
-	  'make stop-dev     stop native runtime/web/batch started by make dev' \
-	  'make compose-up   Linux docker compose path (not used on this machine)' \
-	  'make compose-down stop the docker compose project'
+	  'make dev          native runtime + web on the unique ports, postgres in compose' \
+	  'make stop-dev     stop native runtime/web/batch started by make dev'
 
 env:
 	@if [ ! -f "$(ENV_FILE)" ]; then \
@@ -58,39 +55,35 @@ env:
 	  echo "wrote $(ENV_FILE)"; \
 	fi
 
-install-ac: env
-	@$(PYTHON) scripts/afterlap_ops/stack_manifest.py
+build: env
+	$(COMPOSE) build
 
-build: install-ac
-	ac $(AC_PROJECT) build
-
-up: install-ac
-	ac $(AC_PROJECT) build
-	ac $(AC_PROJECT) start
+up: env
+	$(COMPOSE) up --build --detach --wait
 	@$(MAKE) urls
 
-down:
-	ac $(AC_PROJECT) down
+down: env
+	$(COMPOSE) down
 
-stop:
-	ac $(AC_PROJECT) stop
+stop: env
+	$(COMPOSE) stop
 
-start: install-ac
-	ac $(AC_PROJECT) start
+start: env
+	$(COMPOSE) up --detach --wait
 	@$(MAKE) urls
 
-restart: install-ac
-	ac $(AC_PROJECT) restart
+restart: env
+	$(COMPOSE) restart
 	@$(MAKE) urls
 
-logs:
-	ac $(AC_PROJECT) logs -f
+logs: env
+	$(COMPOSE) logs -f
 
-ps:
-	ac $(AC_PROJECT) ls
+ps: env
+	$(COMPOSE) ps
 
-wait:
-	ac $(AC_PROJECT) wait
+wait: env
+	$(COMPOSE) up --detach --wait
 
 urls:
 	@printf '%s\n' \
@@ -115,10 +108,8 @@ install:
 	uv sync --frozen --all-packages
 	bun install --frozen-lockfile
 
-dev: env install-ac
-	@command -v ac >/dev/null
-	ac $(AC_PROJECT) start db
-	ac $(AC_PROJECT) wait db
+dev: env
+	$(COMPOSE) up --detach --wait db
 	@$(MAKE) migrate
 	@mkdir -p "$(STATE)"
 	@set -a && . "$(ENV_FILE)" && set +a && \
@@ -141,19 +132,4 @@ dev: env install-ac
 stop-dev:
 	@if [ -f "$(STATE)/web.pid" ]; then kill "$$(cat "$(STATE)/web.pid")" 2>/dev/null || true; rm -f "$(STATE)/web.pid"; fi
 	@if [ -f "$(STATE)/runtime.pid" ]; then kill "$$(cat "$(STATE)/runtime.pid")" 2>/dev/null || true; rm -f "$(STATE)/runtime.pid"; fi
-	@echo "native processes stopped; postgres is still the ac db service (make down to stop it)"
-
-compose-up: env
-	@if ! command -v docker >/dev/null 2>&1; then \
-	  echo "docker is not installed; use make up (Apple container via ac)"; \
-	  exit 1; \
-	fi
-	docker compose -f infra/docker-compose.yml --env-file "$(ENV_FILE)" up --build -d --wait
-	@$(MAKE) urls
-
-compose-down:
-	@if ! command -v docker >/dev/null 2>&1; then \
-	  echo "docker is not installed; use make down"; \
-	  exit 1; \
-	fi
-	docker compose -f infra/docker-compose.yml --env-file "$(ENV_FILE)" down
+	@echo "native processes stopped; postgres is still the compose db service (make down to stop it)"
