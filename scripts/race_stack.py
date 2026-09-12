@@ -65,7 +65,7 @@ def main() -> None:
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         for child in children:
             if child.poll() is None:
-                if os.name == "posix":
+                if sys.platform != "win32":
                     os.killpg(child.pid, signal.SIGTERM)
                 else:
                     child.terminate()
@@ -73,7 +73,7 @@ def main() -> None:
             try:
                 child.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                if os.name == "posix":
+                if sys.platform != "win32":
                     os.killpg(child.pid, signal.SIGKILL)
                 else:
                     child.kill()
