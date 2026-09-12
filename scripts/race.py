@@ -6,7 +6,7 @@ import contextlib
 import json
 from pathlib import Path
 
-from afterlap_core.race import RaceSettings
+from afterlap_core.race import RaceSettings, StorylineSettings
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
 from afterlap_core.race.environment import (
@@ -36,9 +36,13 @@ def main() -> None:
     parser.add_argument("--dt", type=float, default=0.01)
     parser.add_argument("--duration", type=float, default=1800)
     parser.add_argument("--wetness", type=float, default=0)
+    parser.add_argument("--weather", choices=("sunny", "rainy"), default="sunny")
     parser.add_argument("--temperature-k", type=float, default=303.15)
     parser.add_argument("--wind-mps", type=float, default=0)
     parser.add_argument("--wake", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--storylines", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--pit-stops", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--tyre-wear-scale", type=float, default=1)
     parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output", type=Path, default=Path(".afterlap/race/transitions.jsonl"))
     parser.add_argument("--host", default="127.0.0.1")
@@ -82,10 +86,16 @@ def main() -> None:
         "dt_s": args.dt,
         "time_limit_s": args.duration,
         "wetness": args.wetness,
+        "weather": args.weather,
         "temperature_k": args.temperature_k,
         "wind_mps": args.wind_mps,
         "wake": args.wake,
         "variability": Variability(preset=args.preset),
+        "storyline": StorylineSettings(
+            enabled=args.storylines,
+            pit_stops=args.pit_stops,
+            tyre_wear_scale=args.tyre_wear_scale,
+        ),
     }
     if args.laps is not None:
         settings_payload["laps"] = args.laps

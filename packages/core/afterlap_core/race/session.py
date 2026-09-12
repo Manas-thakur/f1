@@ -20,6 +20,8 @@ from .circuit import circuit
 from .factory import race_bundle
 from .racecraft import Racecraft
 from .settings import RaceSettings
+from .storyline import StorylineDirector
+from .tyres import TyreState, sample_compound
 from .variability import RaceWeather
 
 
@@ -49,6 +51,10 @@ class RaceSession:
             car: initial.lateral_d_m.value for car, initial in self.bundle.scenario.initial_states.items()
         }
         streams = StreamRegistry(self.settings.seed)
+        self.tyre_streams = StreamRegistry(
+            self.settings.seed,
+            tuple(f"tyres:{car}" for car in self.lanes),
+        )
         self.drivers = {
             car: Racecraft(
                 self.settings.variability.sample_driver(streams, car),
@@ -58,6 +64,24 @@ class RaceSession:
             )
             for car, lane in self.lanes.items()
         }
+        self.tyres = {}
+        for car_id, initial in self.bundle.scenario.initial_states.items():
+            rng = self.tyre_streams.stream(f"tyres:{car_id}")
+            compound = sample_compound(rng)
+            self.tyres[car_id] = TyreState(
+                compound=compound,
+                condition=1,
+                change_threshold=float(rng.uniform(0.12, 0.24)),
+                last_progress_m=initial.progress_m.value,
+                next_compound=sample_compound(rng, compound),
+                service_duration_s=float(rng.uniform(2, 3)),
+            )
+            self.simulator.world.cars[car_id].tyre_grip_multiplier = self.tyres[car_id].grip
+        self.storyline = StorylineDirector(
+            self.settings.seed,
+            tuple(self.lanes),
+            self.settings.storyline,
+        )
         for car, lane in self.lanes.items():
             self.simulator.world.active_actions[car] = DriverAction(
                 target_lateral_d_m=lane, acceleration_ceiling_mps2=0
@@ -89,6 +113,16 @@ class RaceSession:
     def automatic_action(self, observation: Observation) -> DriverAction:
         car_id = observation.car_id
         driver = self.drivers[car_id]
+        tyre = self.tyres[car_id]
+        if tyre.phase == "service":
+            return DriverAction(
+                profile=DeploymentProfile.HARVEST,
+                pace_scale=0.7,
+                target_lateral_d_m=driver.lane,
+                acceleration_ceiling_mps2=-15,
+                brake_floor=1,
+                label="pit_service",
+            )
         prior = driver.state
         action = driver.react(observation, self.track)
         if driver.state != prior and driver.state in {"committed", "aborting"} and driver.rival_id:
@@ -100,8 +134,126 @@ class RaceSession:
             )
             self.simulator.world.passes.append(event)
             self.events.append(asdict(event))
+        if tyre.phase == "entry":
+            state = self.simulator.world.cars[car_id]
+            box_s = self._pit_box_s(car_id)
+            distance = max(0, box_s - state.s_m)
+            stop_distance = state.speed_mps * state.speed_mps / 24 + 5
+            ceiling = -12 if distance <= stop_distance else (0 if state.speed_mps <= 22.22 else -4)
+            action = replace(
+                action,
+                profile=DeploymentProfile.HARVEST,
+                pace_scale=0.7,
+                acceleration_ceiling_mps2=ceiling,
+                label="pit_entry",
+            )
+        elif tyre.phase == "exit":
+            action = replace(
+                action,
+                pace_scale=min(0.9, action.pace_scale),
+                acceleration_ceiling_mps2=min(3, action.acceleration_ceiling_mps2 or 3),
+                label="pit_exit",
+            )
+        else:
+            action, event = self.storyline.direct(car_id, observation, action)
+            if event is not None:
+                self.events.append(event)
         self.lanes[car_id] = action.target_lateral_d_m
-        return replace(action, profile=self.bms_profiles.get(car_id, action.profile))
+        if tyre.phase == "track":
+            action = replace(action, profile=self.bms_profiles.get(car_id, action.profile))
+        return action
+
+    def _requested_action(self, observation: Observation) -> DriverAction:
+        car_id = observation.car_id
+        if self.tyres[car_id].phase != "track" or car_id not in self.overrides:
+            return self.automatic_action(observation)
+        return self.overrides[car_id]
+
+    def _pit_box_s(self, car_id: str) -> float:
+        index = int(car_id.rsplit("-", maxsplit=1)[-1]) - 1
+        return self.track.length - 42 - index * 5.5
+
+    def _visual_lateral(self, car_id: str) -> float:
+        tyre = self.tyres[car_id]
+        state = self.simulator.world.cars[car_id]
+        track_lateral = state.lateral_d_m
+        pit_lateral = -13.0
+        if tyre.phase == "entry":
+            start = self.track.length - 350
+            ratio = min(1, max(0, (state.s_m - start) / max(1, self._pit_box_s(car_id) - start)))
+            return track_lateral + (pit_lateral - track_lateral) * ratio
+        if tyre.phase == "service":
+            return pit_lateral
+        if tyre.phase == "exit":
+            remaining = max(0, tyre.exit_after_progress_m - state.progress_m)
+            ratio = min(1, remaining / 220)
+            return track_lateral + (pit_lateral - track_lateral) * ratio
+        return track_lateral
+
+    def _update_tyres(self, h: float) -> None:
+        now = self.simulator.session_time_s
+        for car_id, tyre in self.tyres.items():
+            state = self.simulator.world.cars[car_id]
+            distance = max(0, state.progress_m - tyre.last_progress_m)
+            tyre.last_progress_m = state.progress_m
+            tyre.wear(distance, state.tyre_utilisation, self.settings.storyline.tyre_wear_scale)
+            state.tyre_grip_multiplier = tyre.grip
+            if (
+                self.settings.storyline.pit_stops
+                and tyre.phase == "track"
+                and not tyre.requested
+                and tyre.condition <= tyre.change_threshold
+            ):
+                tyre.requested = True
+                self.events.append(
+                    {
+                        "kind": "pit_stop_requested",
+                        "car_id": car_id,
+                        "compound": tyre.next_compound.value,
+                        "session_time_s": now,
+                    }
+                )
+            if tyre.phase == "track" and tyre.requested and state.s_m >= self.track.length - 350:
+                tyre.phase = "entry"
+                self.events.append({"kind": "pit_entry", "car_id": car_id, "session_time_s": now})
+            elif tyre.phase == "entry" and state.speed_mps <= 0.25:
+                tyre.phase = "service"
+                tyre.service_remaining_s = tyre.service_duration_s
+                self.events.append(
+                    {
+                        "kind": "pit_service_started",
+                        "car_id": car_id,
+                        "compound": tyre.next_compound.value,
+                        "duration_s": tyre.service_duration_s,
+                        "session_time_s": now,
+                    }
+                )
+            elif tyre.phase == "service":
+                tyre.service_remaining_s = max(0, tyre.service_remaining_s - h)
+                if tyre.service_remaining_s <= 0:
+                    fitted = tyre.next_compound
+                    rng = self.tyre_streams.stream(f"tyres:{car_id}")
+                    tyre.compound = fitted
+                    tyre.condition = 1
+                    tyre.change_threshold = float(rng.uniform(0.12, 0.24))
+                    tyre.next_compound = sample_compound(rng, fitted)
+                    tyre.service_duration_s = float(rng.uniform(2, 3))
+                    tyre.requested = False
+                    tyre.phase = "exit"
+                    tyre.exit_after_progress_m = state.progress_m + 220
+                    tyre.stops += 1
+                    state.tyre_grip_multiplier = tyre.grip
+                    self.events.append(
+                        {
+                            "kind": "pit_service_completed",
+                            "car_id": car_id,
+                            "compound": fitted.value,
+                            "session_time_s": now,
+                        }
+                    )
+            elif tyre.phase == "exit" and state.progress_m >= tyre.exit_after_progress_m:
+                tyre.phase = "track"
+                self.events.append({"kind": "pit_exit", "car_id": car_id, "session_time_s": now})
 
     def advance(self, duration_s: float = 0.1) -> None:
         if not math.isfinite(duration_s) or not 0 < duration_s <= 10:
@@ -117,7 +269,7 @@ class RaceSession:
                 self.next_decision_s += 0.1
                 actions = {
                     car: replace(
-                        self.overrides[car] if car in self.overrides else self.automatic_action(observation),
+                        self._requested_action(observation),
                         issued_at_s=self.simulator.session_time_s,
                     )
                     for car, observation in self.observations().items()
@@ -126,6 +278,7 @@ class RaceSession:
             report = self.simulator.step(actions, h)
             self.steps += 1
             remaining -= h
+            self._update_tyres(h)
             self.events.extend(asdict(event) for event in report.passes)
             self.events = self.events[-100:]
             if report.envelope_exceedances:
@@ -143,6 +296,8 @@ class RaceSession:
         world = self.simulator.world
         for a, b in combinations(world.cars.values(), 2):
             if a.car_id in self.finishes or b.car_id in self.finishes:
+                continue
+            if self.tyres[a.car_id].phase != "track" or self.tyres[b.car_id].phase != "track":
                 continue
             if footprints_overlap(
                 self.simulator.geometry,
@@ -188,6 +343,9 @@ class RaceSession:
                     if car_id in self.overrides
                     else "auto",
                     "finish_time_s": self.finishes.get(car_id),
+                    "qualifying_position": int(car_id.rsplit("-", maxsplit=1)[-1]),
+                    "storyline": self.storyline.beats[car_id].mode,
+                    "tyres": self.tyres[car_id].payload(self._visual_lateral(car_id)),
                 }
             )
         cars.sort(
@@ -200,7 +358,7 @@ class RaceSession:
         )
         return {
             "type": "frame",
-            "version": "race-v1",
+            "version": "race-v2",
             "settings": self.settings.model_dump(),
             "time_s": self.simulator.session_time_s,
             "steps": self.steps,
@@ -208,15 +366,19 @@ class RaceSession:
             "failure": self.failure,
             "cars": cars,
             "events": self.events,
+            "boost_evaluation": self.storyline.confusion.payload(),
             "provenance": "simulated; uncalibrated cars and scaled circuit artwork",
         }
 
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(
             {
-                "model_version": "race-physics-v3",
+                "model_version": "race-physics-v4",
                 "settings": self.settings.model_dump(),
                 "drivers": self.drivers,
+                "tyres": self.tyres,
+                "tyre_streams": self.tyre_streams.capture(),
+                "storyline": self.storyline.snapshot(),
                 "next_decision_s": self.next_decision_s,
                 "world": self.simulator.snapshot(),
                 "overrides": self.overrides,
@@ -232,7 +394,7 @@ class RaceSession:
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         if (
-            snapshot.get("model_version") != "race-physics-v3"
+            snapshot.get("model_version") != "race-physics-v4"
             or snapshot.get("settings") != self.settings.model_dump()
         ):
             raise ValueError("incompatible race model or settings in checkpoint")
@@ -240,6 +402,7 @@ class RaceSession:
         self.simulator.restore(saved["world"])
         for key in (
             "drivers",
+            "tyres",
             "next_decision_s",
             "overrides",
             "bms_profiles",
@@ -251,20 +414,36 @@ class RaceSession:
             "status",
         ):
             setattr(self, key, saved[key])
+        self.tyre_streams.restore(saved["tyre_streams"])
+        self.storyline.restore(saved["storyline"])
 
     def manifest(self) -> dict[str, Any]:
         return {
             "type": "manifest",
-            "model_version": "race-physics-v3",
-            "environment_version": "race-control-v1",
+            "model_version": "race-physics-v4",
+            "environment_version": "race-control-v2",
             "drivers": {car: driver.traits.model_dump() for car, driver in self.drivers.items()},
+            "tyres": {
+                car: {
+                    "compound": tyre.compound.value,
+                    "condition": tyre.condition,
+                    "change_threshold": tyre.change_threshold,
+                    "next_compound": tyre.next_compound.value,
+                }
+                for car, tyre in self.tyres.items()
+            },
+            "storyline": {
+                **self.settings.storyline.model_dump(),
+                "boost_evaluation": self.storyline.confusion.payload(),
+                "provenance": "seeded synthetic race narrative, not calibrated strategy data",
+            },
             "weather": self.weather.manifest(),
             "initial_states": {
                 car: state.model_dump(mode="json")
                 for car, state in self.bundle.scenario.initial_states.items()
             },
             "sensor_config": self.bundle.scenario.observation.model_dump(mode="json"),
-            "version": "race-v1",
+            "version": "race-v2",
             "settings": self.settings.model_dump(),
             "bundle_hash": self.bundle.bundle_hash,
             "source_revision": self.map["source_revision"],

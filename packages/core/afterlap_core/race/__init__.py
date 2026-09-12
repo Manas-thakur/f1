@@ -1,4 +1,4 @@
 from .session import RaceSession
-from .settings import RaceSettings
+from .settings import RaceSettings, StorylineSettings
 
-__all__ = ["RaceSession", "RaceSettings"]
+__all__ = ["RaceSession", "RaceSettings", "StorylineSettings"]
