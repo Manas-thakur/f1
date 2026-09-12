@@ -44,7 +44,13 @@ from .models import (
     FeatureManifest,
     ModelManifest,
 )
-from .planning import CandidatePlan, PlanningResult, Recommendation
+from .planning import (
+    CandidatePlan,
+    LearnedContribution,
+    OutcomeRange,
+    PlanningResult,
+    Recommendation,
+)
 from .requests import (
     AcquireLeaseRequest,
     AcquireLeaseResponse,
@@ -91,6 +97,8 @@ EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     RuleContext,
     ConstraintResult,
     CandidatePlan,
+    OutcomeRange,
+    LearnedContribution,
     PlanningResult,
     Recommendation,
     ControlLease,

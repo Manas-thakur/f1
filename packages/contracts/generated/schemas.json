@@ -7817,6 +7817,172 @@
       "title": "HealthResponse",
       "type": "object"
     },
+    "LearnedContribution": {
+      "$defs": {
+        "CalibrationStatus": {
+          "description": "Whether a probability has been calibrated against held-out outcomes.",
+          "enum": [
+            "uncalibrated",
+            "calibrated",
+            "unavailable"
+          ],
+          "title": "CalibrationStatus",
+          "type": "string"
+        },
+        "ReasonCode": {
+          "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
+          "enum": [
+            "reserve_for_counterattack",
+            "insufficient_execution_lead",
+            "eligibility_unknown",
+            "energy_floor",
+            "small_expected_improvement",
+            "thermal_derate",
+            "recharge_allowance_exhausted",
+            "power_ceiling_exceeded",
+            "rival_energy_unknown",
+            "gap_too_large",
+            "expected_pass_retained",
+            "learned_model_out_of_support",
+            "learned_model_disabled",
+            "baseline_fallback",
+            "own_energy_unavailable",
+            "stale_observations",
+            "solver_timeout",
+            "switch_cost_dominates"
+          ],
+          "title": "ReasonCode",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+      "properties": {
+        "baseline_identity": {
+          "description": "The validated path that answers when this is disabled.",
+          "minLength": 1,
+          "title": "Baseline Identity",
+          "type": "string"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "calibration_status": {
+          "$ref": "#/$defs/CalibrationStatus",
+          "default": "unavailable"
+        },
+        "calibrator_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibrator Id"
+        },
+        "continuation_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dimensionless continuation return; never seconds.",
+          "title": "Continuation Value"
+        },
+        "disagreement": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disagreement"
+        },
+        "enabled": {
+          "description": "False whenever the validated baseline answered instead.",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "in_support": {
+          "default": false,
+          "title": "In Support",
+          "type": "boolean"
+        },
+        "member_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Member Count"
+        },
+        "reason_codes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "support_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why the learned contribution was or was not in support.",
+          "title": "Support Reason"
+        },
+        "weights_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights Hash"
+        }
+      },
+      "required": [
+        "enabled",
+        "baseline_identity"
+      ],
+      "title": "LearnedContribution",
+      "type": "object"
+    },
     "LifecycleTransition": {
       "$defs": {
         "RecommendationStatus": {
@@ -8757,6 +8923,215 @@
         "sequence"
       ],
       "title": "OperatorEvent",
+      "type": "object"
+    },
+    "OutcomeRange": {
+      "$defs": {
+        "IntervalValue": {
+          "additionalProperties": false,
+          "description": "A bounded belief about a quantity whose point value is not identified.\n\n``kind`` distinguishes physical bounds from statistical intervals so a\nconsumer never renders a support range as a confidence interval.",
+          "properties": {
+            "age_s": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Age S"
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 1.0,
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Nominal coverage for quantile/confidence kinds.",
+              "title": "Coverage"
+            },
+            "kind": {
+              "enum": [
+                "physical_bounds",
+                "quantile",
+                "confidence_interval"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "lower": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lower"
+            },
+            "observed_at_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Observed At S"
+            },
+            "provenance": {
+              "$ref": "#/$defs/Provenance"
+            },
+            "quality": {
+              "$ref": "#/$defs/Quality",
+              "default": "valid"
+            },
+            "unit": {
+              "minLength": 1,
+              "title": "Unit",
+              "type": "string"
+            },
+            "upper": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Upper"
+            }
+          },
+          "required": [
+            "lower",
+            "upper",
+            "unit",
+            "kind",
+            "provenance"
+          ],
+          "title": "IntervalValue",
+          "type": "object"
+        },
+        "Provenance": {
+          "description": "Where a numeric value came from. Never omit this next to a number.",
+          "enum": [
+            "measured",
+            "estimated",
+            "configured",
+            "simulated"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "Quality": {
+          "description": "Fitness of an observation or derived value for operational use.",
+          "enum": [
+            "valid",
+            "degraded",
+            "stale",
+            "missing",
+            "invalid"
+          ],
+          "title": "Quality",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+      "properties": {
+        "ahead_of_rival_weight": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Weighted share of scenarios that finished ahead.",
+          "title": "Ahead Of Rival Weight"
+        },
+        "checkpoint_id": {
+          "minLength": 1,
+          "title": "Checkpoint Id",
+          "type": "string"
+        },
+        "elapsed_time_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntervalValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gap_to_reference_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntervalValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "own_energy_j": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntervalValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "progress_m": {
+          "minimum": 0.0,
+          "title": "Progress M",
+          "type": "number"
+        },
+        "scenario_count": {
+          "description": "Scenarios that reached this checkpoint.",
+          "minimum": 0,
+          "title": "Scenario Count",
+          "type": "integer"
+        },
+        "weight_covered": {
+          "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Weight Covered",
+          "type": "number"
+        }
+      },
+      "required": [
+        "checkpoint_id",
+        "progress_m",
+        "scenario_count",
+        "weight_covered"
+      ],
+      "title": "OutcomeRange",
       "type": "object"
     },
     "OutcomeRecord": {
@@ -21820,10 +22195,12 @@
     "FeatureManifest",
     "FeatureSummary",
     "HealthResponse",
+    "LearnedContribution",
     "LifecycleTransition",
     "ModelListResponse",
     "ModelManifest",
     "OperatorEvent",
+    "OutcomeRange",
     "OutcomeRecord",
     "PlanningResult",
     "QualityEvent",

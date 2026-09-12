@@ -66,7 +66,14 @@ from .planner import (
     build_recommendation,
     plan,
 )
-from .rollout import PlanningWorld, RolloutEvidence, SegmentController, rollout_candidate
+from .rollout import (
+    FORECASTER_VERSION,
+    PlanningWorld,
+    ProbabilityCalibration,
+    RolloutEvidence,
+    SegmentController,
+    rollout_candidate,
+)
 from .scenarios import (
     PlanScenario,
     RivalScenarioView,
@@ -99,6 +106,7 @@ from .surrogate import SurrogateWeights, build_weights, cvar, scenario_losses
 
 __all__ = [
     "DEFAULT_DEADLINE_S",
+    "FORECASTER_VERSION",
     "TEMPLATES",
     "ActivePlan",
     "AllocationSolution",
@@ -116,6 +124,7 @@ __all__ = [
     "PlanScenario",
     "PlannerConfig",
     "PlanningWorld",
+    "ProbabilityCalibration",
     "RivalScenarioView",
     "RolloutEvidence",
     "ScenarioEnsembleView",

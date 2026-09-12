@@ -24,8 +24,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ..paths import Paths
-from .config import EnvConfig, SacConfig, load_env_config, load_sac_config
+from ..feature_manifest import ACTION_SIZE
+from ..paths import Paths, sha256_json
+from .config import (
+    EnvConfig,
+    SacConfig,
+    load_env_config,
+    load_sac_config,
+    load_value_config,
+)
 from .packaging import PackagedBundle, PackagingError, package_checkpoint
 from .train_sac import TrainingResult, TrainingStatus, benchmark_throughput, resume, smoke_run, train
 
@@ -213,3 +220,211 @@ def run_throughput_benchmark(
     settings = load_env_config(resolve_config_id(env_config_id, "env-v1"))
     measured = benchmark_throughput(settings, transitions=transitions, scenario_id=scenario_id, seed=seed)
     return {"job": "throughput", "env_config": settings.revision, **measured}
+
+
+def _named_policy(kind: str, seed: int) -> tuple[Any, str]:
+    """A frozen controller for dataset collection, named in the record.
+
+    An ensemble or a calibrator fitted under one controller is not valid under
+    another, so the identity is returned alongside the callable and travels into
+    every report and bundle.
+    """
+    import numpy as np
+
+    if kind == "held-neutral":
+
+        def hold(_observation: Any) -> Any:
+            return np.zeros(ACTION_SIZE, dtype=np.float32)
+
+        return hold, "held-neutral/action-zero"
+    if kind == "uniform-random":
+        rng = np.random.default_rng(seed)
+
+        def uniform(_observation: Any) -> Any:
+            return rng.uniform(-1.0, 1.0, size=ACTION_SIZE).astype(np.float32)
+
+        return uniform, f"uniform-random/seed{seed}"
+    raise ValueError(f"unknown collection policy {kind!r}; expected 'held-neutral' or 'uniform-random'")
+
+
+def run_value_fit(
+    *,
+    env_config_id: str | Path | None = None,
+    value_config_id: str | Path | None = None,
+    episodes: int = 12,
+    seed: int = 0,
+    scenario_id: str | None = None,
+    policy: str = "held-neutral",
+    tuning_fraction: float = 0.3,
+    max_steps: int | None = None,
+    output: Path | None = None,
+) -> dict[str, Any]:
+    """Collect complete episodes and fit the continuation-return ensemble.
+
+    The split is by episode, never by row: adjacent cutoffs of one episode are
+    the same trajectory, and splitting between them would imply an independent
+    generalisation the data cannot support. ``fit_ensemble`` enforces this and
+    refuses incomplete episodes outright.
+    """
+    from .dataset import collect_continuation_samples
+    from .reward import load_reward_manifest
+    from .value import fit_ensemble
+
+    settings = load_env_config(resolve_config_id(env_config_id, "env-v1"))
+    value_settings = load_value_config(resolve_config_id(value_config_id, "value-v1"))
+    reward = load_reward_manifest(settings.objective_id)
+    callable_policy, policy_identity = _named_policy(policy, seed)
+
+    collection = collect_continuation_samples(
+        settings,
+        policy=callable_policy,
+        policy_identity=policy_identity,
+        episodes=episodes,
+        gamma=reward.gamma,
+        seed=seed,
+        scenario_id=scenario_id,
+        max_steps=max_steps,
+    )
+    payload: dict[str, Any] = {
+        "job": "fit-value",
+        "env_config": settings.revision,
+        "value_config": value_settings.revision,
+        "value_config_hash": value_settings.content_hash,
+        "gamma": reward.gamma,
+        "reward_revision": reward.revision,
+        "collection": collection.as_dict(),
+    }
+    complete = [sample for sample in collection.samples if sample.complete_episode]
+    episode_ids = {sample.episode_id for sample in complete}
+    if len(episode_ids) < 2:
+        payload["status"] = "unavailable"
+        payload["detail"] = (
+            f"{len(episode_ids)} complete episode(s) collected; an episode-level train/tuning "
+            "split needs at least two, and a fit on fewer would report its own training error"
+        )
+        _write(payload, output)
+        return payload
+
+    ensemble, report = fit_ensemble(
+        complete,
+        value_settings,
+        return_definition_hash=sha256_json(
+            {
+                "kind": "ordinary_discounted_continuation_return",
+                "gamma": reward.gamma,
+                "reward_revision": reward.revision,
+                "policy_identity": policy_identity,
+                "environment_version": settings.environment_version,
+            }
+        ),
+        seed=seed,
+        tuning_fraction=tuning_fraction,
+    )
+    payload["status"] = "completed"
+    payload["bundle_id"] = ensemble.bundle_id
+    payload["support_thresholds"] = ensemble.support.model_dump(mode="json")
+    payload["fit_report"] = report.as_dict()
+    payload["observed"] = {
+        "overall": report.overall.as_dict(),
+        "groups": [group.as_dict() for group in report.groups],
+    }
+    payload["caveat"] = (
+        "these are observed errors on a tuning split of a bounded collection under one frozen "
+        "controller. They are not a held-out generalisation claim, and the support thresholds "
+        "shipped in value-v1 are declared placeholders rather than values derived from "
+        "calibration data."
+    )
+    _write(payload, output)
+    return payload
+
+
+def run_calibration_fit(
+    *,
+    env_config_id: str | Path | None = None,
+    episodes: int = 16,
+    seed: int = 0,
+    scenario_id: str | None = None,
+    policy: str = "held-neutral",
+    planner_deadline_s: float = 5.0,
+    min_support: int = 30,
+    holdout_fraction: float = 0.3,
+    max_steps: int | None = None,
+    output: Path | None = None,
+) -> dict[str, Any]:
+    """Collect forecast/realisation pairs and fit the probability calibrator.
+
+    Returns ``status='unavailable'`` with its reason whenever no map could be
+    fitted, which is the expected outcome of a small collection: a monotone map
+    through a handful of points reproduces them exactly and says nothing about
+    the next forecast.
+    """
+    from .calibration import fit_calibrator
+    from .dataset import collect_calibration_samples, rollout_enabled_config
+
+    base = load_env_config(resolve_config_id(env_config_id, "env-v1"))
+    settings = rollout_enabled_config(base, planner_deadline_s=planner_deadline_s)
+    callable_policy, policy_identity = _named_policy(policy, seed)
+
+    collection = collect_calibration_samples(
+        settings,
+        policy=callable_policy,
+        policy_identity=policy_identity,
+        episodes=episodes,
+        seed=seed,
+        scenario_id=scenario_id,
+        max_steps=max_steps,
+    )
+    payload: dict[str, Any] = {
+        "job": "fit-calibration",
+        "env_config": settings.revision,
+        "environment_version": settings.environment_version,
+        "operational_planner_deadline_s": base.planner_deadline_s,
+        "collection": collection.as_dict(),
+    }
+    episode_ids = {sample.episode_id for sample in collection.samples}
+    if len(episode_ids) < 2:
+        payload["status"] = "unavailable"
+        payload["detail"] = (
+            f"{len(collection.samples)} labelled sample(s) across {len(episode_ids)} episode(s); "
+            "a held-out calibration split needs at least two episodes, and a calibrator scored "
+            "on the episodes it was fitted on reports its own training error"
+        )
+        _write(payload, output)
+        return payload
+
+    fit = fit_calibrator(
+        collection.samples,
+        forecaster_version=collection.forecaster_version,
+        seed=seed,
+        holdout_fraction=holdout_fraction,
+        min_support=min_support,
+    )
+    payload["fit"] = fit.as_dict()
+    payload["status"] = "completed" if fit.calibrator is not None else "unavailable"
+    if fit.calibrator is None:
+        payload["detail"] = (
+            "no event could be calibrated; every event is listed in `fit.refusals` with its "
+            "reason and stays published as an uncalibrated raw frequency"
+        )
+    payload["caveat"] = (
+        "the calibrator was fitted under one frozen controller and one scenario selection, at a "
+        "raised planner deadline so re-simulation could complete. It is not frozen before a "
+        "final test, so serving reports its output as uncalibrated until an operator freezes it."
+    )
+    _write(payload, output)
+    return payload
+
+
+def _write(payload: dict[str, Any], output: Path | None) -> None:
+    """Write the record beside the run when a path was given."""
+    if output is None:
+        return
+    import json
+
+    Path(output).parent.mkdir(parents=True, exist_ok=True)
+    Path(output).write_text(
+        json.dumps(payload, indent=2, sort_keys=True, default=str) + "\n", encoding="utf-8"
+    )
+
+
+__all__ += ["run_calibration_fit", "run_value_fit"]

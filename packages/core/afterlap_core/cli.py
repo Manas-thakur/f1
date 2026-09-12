@@ -237,6 +237,74 @@ def throughput(
     )
 
 
+@app.command("fit-value")
+def fit_value(
+    env_config: Annotated[str, typer.Option(help="Environment configuration id, or a path.")] = "env-v1",
+    value_config: Annotated[str, typer.Option(help="Value configuration id, or a path.")] = "value-v1",
+    episodes: Annotated[int, typer.Option(help="Complete episodes to collect.")] = 12,
+    seed: Annotated[int, typer.Option(help="Collection and fitting seed.")] = 0,
+    scenario: Annotated[str | None, typer.Option(help="Restrict collection to one scenario id.")] = None,
+    policy: Annotated[str, typer.Option(help="held-neutral | uniform-random")] = "held-neutral",
+    output: Annotated[Path | None, typer.Option(help="Write the fit record here.")] = None,
+) -> None:
+    """Fit the continuation-return ensemble on complete simulator episodes.
+
+    The train/tuning split is by episode. A collection with fewer than two
+    complete episodes reports unavailable rather than fitting on one.
+    """
+    from .learning.jobs import run_value_fit
+
+    payload = run_value_fit(
+        env_config_id=env_config,
+        value_config_id=value_config,
+        episodes=episodes,
+        seed=seed,
+        scenario_id=scenario,
+        policy=policy,
+        output=output,
+    )
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    if payload["status"] != "completed":
+        raise typer.Exit(code=2)
+
+
+@app.command("fit-calibration")
+def fit_calibration(
+    env_config: Annotated[str, typer.Option(help="Environment configuration id, or a path.")] = "env-v1",
+    episodes: Annotated[int, typer.Option(help="Complete episodes to collect.")] = 16,
+    seed: Annotated[int, typer.Option(help="Collection and fitting seed.")] = 0,
+    scenario: Annotated[str | None, typer.Option(help="Restrict collection to one scenario id.")] = None,
+    policy: Annotated[str, typer.Option(help="held-neutral | uniform-random")] = "held-neutral",
+    planner_deadline_s: Annotated[
+        float, typer.Option(help="Deadline for collection; the operational budget is recorded too.")
+    ] = 5.0,
+    min_support: Annotated[int, typer.Option(help="Minimum labelled samples per event.")] = 30,
+    output: Annotated[Path | None, typer.Option(help="Write the fit record here.")] = None,
+) -> None:
+    """Fit the probability calibrator on forecast/realisation pairs.
+
+    Re-simulation is enabled for collection, which changes the environment
+    revision, and the deadline is raised so the ensemble can finish: collecting
+    only the decisions that fit the operational 200 ms budget would keep a
+    biased sample of the easy cases. Both values are recorded on the report.
+    """
+    from .learning.jobs import run_calibration_fit
+
+    payload = run_calibration_fit(
+        env_config_id=env_config,
+        episodes=episodes,
+        seed=seed,
+        scenario_id=scenario,
+        policy=policy,
+        planner_deadline_s=planner_deadline_s,
+        min_support=min_support,
+        output=output,
+    )
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    if payload["status"] != "completed":
+        raise typer.Exit(code=2)
+
+
 @app.command()
 def evaluate(
     candidate: Annotated[str, typer.Option(help="Candidate name, or 'baseline'.")] = "baseline",
