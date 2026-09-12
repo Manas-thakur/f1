@@ -68,7 +68,7 @@ ENERGY_FEATURE_HASH = ENERGY_V1.content_hash()
 
 def _check(bundle, *, feature_hash=ENERGY_FEATURE_HASH, rule_family=RULE_FAMILY):
     return check_model_compatibility(
-        requested_model_hash="sha256:requested",
+        requested_model_hash="sha256:c6a91ee7f93b091b009a611956b9c0a9b414e4ee111666cdf3e87e2271defa79",
         bundle=bundle,
         expected_feature_hash=feature_hash,
         expected_rule_family=rule_family,
@@ -123,7 +123,7 @@ def test_the_two_defects_no_longer_compound():
     Previously this produced ``enabled=True``.
     """
     decision = check_model_compatibility(
-        requested_model_hash="sha256:requested",
+        requested_model_hash="sha256:c6a91ee7f93b091b009a611956b9c0a9b414e4ee111666cdf3e87e2271defa79",
         bundle=_bundle(feature_schema_hash="sha256:" + "9" * 64),
         expected_feature_hash=None,
         expected_rule_family=None,
@@ -151,7 +151,7 @@ def test_no_bundle_is_the_baseline_path_not_a_mismatch():
 
 def test_a_requested_but_unloaded_bundle_is_a_mismatch():
     decision = check_model_compatibility(
-        requested_model_hash="sha256:missing",
+        requested_model_hash="sha256:ffa63583dfa6706b87d284b86b0d693a161e4840aad2c5cf6b5d27c3b9621f7d",
         bundle=None,
         expected_feature_hash=ENERGY_V1.content_hash(),
         expected_rule_family=RULE_FAMILY,
