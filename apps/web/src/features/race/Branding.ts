@@ -7,10 +7,10 @@ import type { CircuitMap } from './types';
 import { trackPose } from './worldGeometry';
 
 const BAND_CENTRE_M = 9;
-const BAND_HALF_M = 1.6;
+const BAND_HALF_M = 1.85;
 const PAINT_HEIGHT_M = 0.018;
-const DECAL_GAP_M = 44;
-const MAX_DECAL_M = 26;
+const DECAL_GAP_M = 26;
+const MAX_DECAL_M = 30;
 const TESSELLATION_M = 1.2;
 const MAX_EDGE_RATIO = 2.1;
 const MIN_EDGE_SCALE = 0.24;
@@ -236,7 +236,7 @@ export class Branding extends THREE.Group {
       const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
         map: source.texture,
         transparent: true,
-        opacity: 0.94,
+        opacity: 1,
         alphaTest: 0.02,
         depthWrite: false,
         roughness: 0.92,

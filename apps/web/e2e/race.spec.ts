@@ -371,3 +371,23 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await expect(hud).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('trackside branding paints the run-off strips and rebuilds on a circuit change', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/race');
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  const decals = async () => Number(await scene.getAttribute('data-branding-decals'));
+  await expect(page.getByRole('button', { name: 'Chase', exact: true })).toBeEnabled();
+  await expect.poll(decals).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monaco');
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await expect(page.getByLabel('Live circuit')).toContainText('MONACO');
+  await expect.poll(decals).toBeGreaterThan(0);
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await page.getByRole('button', { name: 'Full circuit', exact: true }).click();
+  await page.screenshot({ path: test.info().outputPath('trackside-branding.png') });
+  expect(errors).toEqual([]);
+});
