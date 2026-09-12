@@ -44,7 +44,7 @@ class RaceSession:
             environment=self.weather,
             event_limits=EventEnergyLimits.race_2026(),
             wake=WakeModel() if self.settings.wake else None,
-            ignore_contacts=self.settings.contact_mode == "ignore",
+            ignore_contacts=False,
         )
         self.simulator.world.policies.clear()
         self.overrides: dict[str, DriverAction] = {}
@@ -74,7 +74,7 @@ class RaceSession:
                     width_m,
                     traits.preferred_line_m,
                 ),
-                ignore_collisions=self.settings.contact_mode == "ignore",
+                ignore_collisions=False,
                 overtake_in_corners=self.settings.racing_line.overtake_in_corners,
             )
         self.tyres = {}

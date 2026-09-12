@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { RaceMotion, rankedCar } from '../src/features/race/motion';
+import { RaceMotion, rankedCar, separateCarPoses } from '../src/features/race/motion';
 import { ribbon, trackPose } from '../src/features/race/worldGeometry';
 import type { RaceFrame } from '../src/features/race/types';
 
@@ -100,6 +100,26 @@ test('pausing drains the observation buffer instead of teleporting the view forw
   expect(Math.min(...steps)).toBeGreaterThanOrEqual(0);
   expect(Math.max(...steps)).toBeLessThan(typical * 1.5);
   expect(after.at(-1)).toBeCloseTo(observed * speed);
+});
+
+test('rendered cars keep body clearance until the passing lane is clear', () => {
+  const blocked = separateCarPoses(new Map([
+    ['leader', { progress: 100, lateral: 0 }],
+    ['follower', { progress: 98, lateral: 0.4 }],
+  ]));
+  expect((blocked.get('leader')?.progress ?? 0) - (blocked.get('follower')?.progress ?? 0))
+    .toBeGreaterThanOrEqual(5.4);
+  const passing = separateCarPoses(new Map([
+    ['leader', { progress: 100, lateral: 0 }],
+    ['follower', { progress: 101, lateral: 2.5 }],
+  ]));
+  expect(passing.get('follower')?.progress).toBe(101);
+  const retainedOrder = separateCarPoses(new Map([
+    ['leader', { progress: 99, lateral: 0 }],
+    ['follower', { progress: 101, lateral: 0.4 }],
+  ]), new Map([['leader', 100], ['follower', 98]]));
+  expect((retainedOrder.get('leader')?.progress ?? 0)
+    - (retainedOrder.get('follower')?.progress ?? 0)).toBeGreaterThanOrEqual(5.4);
 });
 
 test('pit phases follow the rendered pit-lane lateral path', () => {

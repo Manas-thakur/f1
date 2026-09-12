@@ -1,3 +1,5 @@
+import pytest
+
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceSession, RaceSettings
 from afterlap_core.race.settings import StorylineSettings
@@ -89,3 +91,15 @@ def test_pit_stop_overrides_direct_boost_control():
     action = session._requested_action(session.observations()["car-01"])
     assert action.label == "pit_service"
     assert action.profile == DeploymentProfile.HARVEST
+
+
+@pytest.mark.parametrize("mode", ["attack", "push", "surge"])
+def test_storyline_pace_never_overrides_collision_braking(mode):
+    session = RaceSession(RaceSettings(cars=1))
+    session.storyline.beats["car-01"].mode = mode
+    action, _ = session.storyline.direct(
+        "car-01",
+        session.observations()["car-01"],
+        DriverAction(acceleration_ceiling_mps2=-12),
+    )
+    assert action.acceleration_ceiling_mps2 == -12
