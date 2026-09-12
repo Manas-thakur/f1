@@ -6,6 +6,8 @@ import pytest
 
 from afterlap_contracts import DeploymentProfile, Provenance, Quality
 from afterlap_core.race import RaceSession, RaceSettings
+from afterlap_core.race.control import DriverControl
+from afterlap_core.race.environment import encode_control
 from afterlap_core.race.racecraft import Racecraft
 from afterlap_core.race.variability import DriverTraits, RaceWeather, Variability
 from afterlap_core.rng import StreamRegistry
@@ -269,7 +271,7 @@ def test_arbitrary_supported_steps_hold_one_second_and_decision_cadence():
     for dt in (0.005, 0.007, 0.01, 0.02):
         env = RaceEnv(RaceSettings(cars=1, dt_s=dt, variability=Variability(preset="baseline")))
         env.reset(seed=4)
-        env.step(0)
+        env.step(encode_control(DriverControl(mode="automatic")))
         assert env.session.simulator.session_time_s == pytest.approx(1)
         assert env.session.next_decision_s == pytest.approx(1)
         progress.append(env.session.simulator.world.cars["car-01"].progress_m)
