@@ -5,23 +5,22 @@ import { VIDEO } from "./theme";
 const track = (frame: number, at: readonly number[], to: readonly number[]): number =>
   interpolate(frame, at, to, { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-export const ownX = (frame: number): number => track(frame, [0, 900], [0, 300]);
+export const ownX = (frame: number): number => -track(frame, [0, 900], [0, 430]);
 
 export const rivalX = (frame: number): number =>
-  track(frame, [0, 900], [13, 313]) - track(frame, [630, 810], [0, 30]);
+  ownX(frame) - 16 + track(frame, [620, 800], [0, 34]);
 
-export const ownZ = (frame: number): number => track(frame, [640, 730, 810], [3.4, 1.0, -3.2]);
+export const ownZ = (frame: number): number => track(frame, [630, 730, 800], [3.6, 1.1, -3.4]);
 
-export const rivalZ = (): number => -3.2;
+export const rivalZ = (): number => -3.4;
 
-const CAM_KEYS = [0, 180, 330, 520, 660, 780, 900] as const;
-const HEIGHT = [70, 70, 60, 64, 44, 38, 54] as const;
-const BACK = [-23, -23, -19, -21, -15, -13, -17] as const;
-const FOV = [0.62, 0.62, 0.7, 0.66, 0.82, 0.86, 0.72] as const;
-const LEAD = [2, 2, 8, 20, 6, 5, 3] as const;
+const CAM_KEYS = [0, 340, 660, 900] as const;
+const HEIGHT = [27, 25, 22, 24] as const;
+const BACK = [-11, -10, -8.5, -9.5] as const;
+const FOV = [0.72, 0.72, 0.76, 0.74] as const;
 
 export const cameraAt = (frame: number): Camera => {
-  const focus = (ownX(frame) + rivalX(frame)) / 2 - track(frame, CAM_KEYS, LEAD);
+  const focus = (ownX(frame) + rivalX(frame)) / 2 + 2;
   return {
     eye: [focus, track(frame, CAM_KEYS, HEIGHT), track(frame, CAM_KEYS, BACK)],
     target: [focus, 0, 0],

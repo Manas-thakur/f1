@@ -5,7 +5,7 @@ import { anchor } from "../three/anchor";
 import { fade } from "../motion";
 import { FONT, T } from "../theme";
 
-const SLOPE = 0.24;
+const SLOPE = 0.23;
 
 type Band = {
   readonly id: string;
@@ -17,17 +17,17 @@ type Band = {
 };
 
 const BANDS: readonly Band[] = [
-  { id: "attack", label: "ATTACK", from: 3, to: 12, color: T.bad, at: 505 },
-  { id: "prepare", label: "PREPARE", from: 12, to: 21, color: T.accent, at: 525 },
-  { id: "defend", label: "DEFEND", from: 21, to: 30, color: T.aqua, at: 545 },
-  { id: "recover", label: "RECOVER", from: 30, to: 40, color: T.good, at: 565 },
+  { id: "attack", label: "ATTACK", from: 2, to: 7.5, color: T.bad, at: 505 },
+  { id: "prepare", label: "PREPARE", from: 7.5, to: 13, color: T.accent, at: 525 },
+  { id: "defend", label: "DEFEND", from: 13, to: 18.5, color: T.aqua, at: 545 },
+  { id: "recover", label: "RECOVER", from: 18.5, to: 24, color: T.good, at: 565 },
 ];
 
 const wedge = (originX: number, from: number, to: number): readonly Vec3[] => [
-  ground(originX + from, -from * SLOPE),
-  ground(originX + to, -to * SLOPE),
-  ground(originX + to, to * SLOPE),
-  ground(originX + from, from * SLOPE),
+  ground(originX - from, -from * SLOPE),
+  ground(originX - to, -to * SLOPE),
+  ground(originX - to, to * SLOPE),
+  ground(originX - from, from * SLOPE),
 ];
 
 export type CorridorProps = {
@@ -72,7 +72,7 @@ export const CorridorLabels = ({
       const a = fade(frame, b.at + 6, b.at + 26, 648, 672);
       if (a <= 0) return null;
       const mid = (b.from + b.to) / 2;
-      const p = anchor(camera, originX + mid, 0);
+      const p = anchor(camera, originX - mid, 0);
       const on = frame <= 600 || b.id === "prepare";
       return (
         <div
@@ -84,7 +84,7 @@ export const CorridorLabels = ({
             width: 320,
             textAlign: "center",
             fontFamily: FONT.body,
-            fontSize: 23,
+            fontSize: 30,
             letterSpacing: "0.06em",
             color: b.color,
             opacity: a * (on ? 1 : 0.35),

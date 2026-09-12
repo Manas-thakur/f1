@@ -10,9 +10,9 @@ export type StepProps = {
 export const Step = ({ n, title, note, opacity }: StepProps) => (
   <div style={{ position: "absolute", left: 88, top: 72, opacity }}>
     <div style={{ display: "flex", alignItems: "baseline", gap: 20 }}>
-      <span style={{ fontFamily: FONT.mono, fontSize: 19, color: T.muted }}>{n}</span>
-      <span style={{ fontFamily: FONT.body, fontSize: 30, color: T.ink }}>{title}</span>
+      <span style={{ fontFamily: FONT.mono, fontSize: 24, color: T.muted }}>{n}</span>
+      <span style={{ fontFamily: FONT.body, fontSize: 44, color: T.ink }}>{title}</span>
     </div>
-    <div style={{ fontFamily: FONT.body, fontSize: 21, color: T.muted, marginTop: 6 }}>{note}</div>
+    <div style={{ fontFamily: FONT.body, fontSize: 28, color: T.muted, marginTop: 10 }}>{note}</div>
   </div>
 );
