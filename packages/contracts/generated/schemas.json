@@ -19,7 +19,9 @@
           "title": "Expected Lease Revision"
         },
         "operator_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Operator Id",
           "type": "string"
         },
@@ -2275,13 +2277,16 @@
           "description": "One branch of a paired experiment.",
           "properties": {
             "controller": {
+              "maxLength": 128,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
               "title": "Controller",
               "type": "string"
             },
             "description": {
               "anyOf": [
                 {
+                  "maxLength": 500,
                   "type": "string"
                 },
                 {
@@ -2294,6 +2299,9 @@
             "model_bundle_id": {
               "anyOf": [
                 {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
                   "type": "string"
                 },
                 {
@@ -2304,7 +2312,9 @@
               "title": "Model Bundle Id"
             },
             "treatment_id": {
+              "maxLength": 128,
               "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
               "title": "Treatment Id",
               "type": "string"
             }
@@ -2322,24 +2332,32 @@
       "properties": {
         "evaluation_horizon_s": {
           "exclusiveMinimum": 0.0,
+          "maximum": 3600.0,
           "title": "Evaluation Horizon S",
           "type": "number"
         },
         "evaluator_version": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Evaluator Version",
           "type": "string"
         },
         "seeds": {
           "items": {
+            "maximum": 4294967295,
+            "minimum": 0,
             "type": "integer"
           },
+          "maxItems": 64,
           "minItems": 1,
           "title": "Seeds",
           "type": "array"
         },
         "snapshot_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Snapshot Id",
           "type": "string"
         },
@@ -2347,6 +2365,7 @@
           "items": {
             "$ref": "#/$defs/TreatmentSpec"
           },
+          "maxItems": 16,
           "minItems": 1,
           "title": "Treatments",
           "type": "array"
@@ -2512,7 +2531,9 @@
           "type": "string"
         },
         "session_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Session Id",
           "type": "string"
         },
@@ -2556,6 +2577,7 @@
         "conditions_id": {
           "anyOf": [
             {
+              "maxLength": 128,
               "pattern": "^[a-z0-9-]+$",
               "type": "string"
             },
@@ -2570,6 +2592,7 @@
         "event_id": {
           "anyOf": [
             {
+              "maxLength": 128,
               "pattern": "^[a-z0-9-]+$",
               "type": "string"
             },
@@ -2583,6 +2606,7 @@
         "label": {
           "anyOf": [
             {
+              "maxLength": 120,
               "type": "string"
             },
             {
@@ -2598,6 +2622,9 @@
         "model_bundle_id": {
           "anyOf": [
             {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
               "type": "string"
             },
             {
@@ -2608,16 +2635,21 @@
           "title": "Model Bundle Id"
         },
         "ruleset_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Ruleset Id",
           "type": "string"
         },
         "scenario_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Scenario Id",
           "type": "string"
         },
         "seed": {
+          "maximum": 4294967295,
           "minimum": 0,
           "title": "Seed",
           "type": "integer"
@@ -2625,6 +2657,7 @@
         "track_id": {
           "anyOf": [
             {
+              "maxLength": 128,
               "pattern": "^[a-z0-9-]+$",
               "type": "string"
             },
@@ -6069,7 +6102,9 @@
           "type": "number"
         },
         "operator_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Operator Id",
           "type": "string"
         },
@@ -6079,6 +6114,9 @@
         "recommendation_id": {
           "anyOf": [
             {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
               "type": "string"
             },
             {
@@ -10844,7 +10882,9 @@
           "type": "integer"
         },
         "operator_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Operator Id",
           "type": "string"
         },
@@ -13527,7 +13567,9 @@
           "$ref": "#/$defs/SessionCommandKind"
         },
         "operator_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Operator Id",
           "type": "string"
         },
@@ -13535,6 +13577,7 @@
           "anyOf": [
             {
               "exclusiveMinimum": 0.0,
+              "maximum": 60.0,
               "type": "number"
             },
             {

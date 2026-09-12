@@ -106,7 +106,7 @@ def perform_runtime_request(
             "headers": {str(key).lower(): str(value) for key, value in (reply.get("headers") or {}).items()},
             "body": reply.get("body"),
         }
-    except (OSError, ConnectionError, json.JSONDecodeError) as exc:
+    except (OSError, ConnectionError, ValueError) as exc:
         return {
             "status": 503,
             "headers": {"content-type": "application/json"},
@@ -202,7 +202,7 @@ def _serve_connection(conn: socket.socket, plane: Any) -> None:
                     write_message(conn, {"kind": "envelope", "data": frame})
             else:
                 write_message(conn, {"kind": "error", "message": f"unknown kind {kind!r}"})
-    except (OSError, ConnectionError):
+    except (OSError, ConnectionError, ValueError):
         return
     finally:
         conn.close()

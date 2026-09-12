@@ -257,3 +257,14 @@ class TestFootprintGeometry:
         geometry = geometry_for(load_track(track_id))
         assert geometry.closure_residual_m < 0.5
         assert abs(geometry.closure_heading_residual_rad) < 1.0e-3
+
+
+@pytest.mark.parametrize("duration", [float("inf"), float("nan"), float("-inf"), 0.0, -1.0])
+def test_simulator_rejects_non_finite_or_non_positive_step(duration):
+    from afterlap_core.simulation import Simulator, load_bundle
+
+    simulator = Simulator()
+    simulator.reset(load_bundle("two-straight-counterattack"), seed=42)
+    with pytest.raises(ValueError, match="positive duration"):
+        simulator.step(None, duration)
+    assert simulator.session_time_s == 0.0
