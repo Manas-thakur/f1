@@ -12,6 +12,7 @@ from .base import Contract, VersionedContract
 from .enums import (
     ActionCode,
     CalibrationStatus,
+    CheckStatus,
     DeploymentProfile,
     PlanningStatus,
     ReasonCode,
@@ -269,6 +270,61 @@ class Trigger(Contract):
     description: str = Field(min_length=1)
 
 
+class RecommendationAlternative(Contract):
+    """One candidate the planner considered but did not recommend.
+
+    Published so an engineer can see what was rejected and why, rather than
+    being shown a single instruction with no visible competition. It carries the
+    decomposed comparison the objective actually made -- benefit, downside,
+    future energy and switching cost as separate fields -- because a single
+    ``final_score`` delta cannot be argued with.
+
+    ``constraint_status`` is the *independent checker's* verdict, not the
+    planner's self-assessment. A candidate rejected by the checker is a
+    different fact from one that lost on score, and collapsing the two would
+    hide a rules problem behind a preference.
+    """
+
+    plan_id: str = Field(min_length=1)
+    action_code: ActionCode
+    display_text: str = Field(min_length=1)
+    rank: int = Field(ge=1, description="1 is the recommended plan.")
+    selected: bool = False
+    constraint_status: CheckStatus
+    final_score: float | None = Field(
+        default=None, description="Dimensionless objective value; never seconds."
+    )
+    score_delta_vs_selected: float | None = Field(
+        default=None,
+        description=(
+            "This candidate's score minus the selected one's. A plain difference: the sign's "
+            "meaning depends on the producing planner's objective direction, so no better/worse "
+            "reading is implied."
+        ),
+    )
+    expected_utility: float | None = None
+    cvar_loss: float | None = Field(
+        default=None, description="Tail loss at the objective's alpha; the downside term."
+    )
+    terminal_energy_j: float | None = Field(default=None, description="Future energy at the horizon.")
+    switch_count: int | None = Field(default=None, ge=0, description="Instruction changes required.")
+    switching_penalty: float | None = None
+    rejected_reason: str | None = Field(
+        default=None, description="Why this candidate is not the recommendation."
+    )
+    reason_codes: tuple[ReasonCode, ...] = ()
+
+    @model_validator(mode="after")
+    def _selection_is_consistent(self) -> RecommendationAlternative:
+        if self.selected and self.rank != 1:
+            raise ValueError("the selected candidate must be rank 1")
+        if self.selected and self.score_delta_vs_selected not in (None, 0.0):
+            raise ValueError("the selected candidate cannot differ in score from itself")
+        if self.selected and self.constraint_status is not CheckStatus.PASS:
+            raise ValueError("a candidate the independent checker did not pass cannot be the selected one")
+        return self
+
+
 class Recommendation(VersionedContract):
     """The published, lifecycle-managed instruction shown to the engineer.
 
@@ -299,6 +355,22 @@ class Recommendation(VersionedContract):
     constraint_result: ConstraintResult
     learned_contribution_enabled: bool = False
     baseline_identity: str = Field(default="mpc_baseline", min_length=1)
+    outcome_ranges: tuple[OutcomeRange, ...] = Field(
+        default=(), description="Per-checkpoint spread across the scenario ensemble."
+    )
+    alternatives: tuple[RecommendationAlternative, ...] = Field(
+        default=(), description="Candidates considered, ranked, with the selected one at rank 1."
+    )
+    learned: LearnedContribution | None = Field(
+        default=None,
+        description="What a learned model contributed. None means none was offered at all.",
+    )
+    planner_identity: str | None = Field(
+        default=None, description="Which planner produced this, not which one was hoped for."
+    )
+    unavailable_reasons: tuple[str, ...] = Field(
+        default=(), description="Plain-language reasons a capability did not contribute."
+    )
 
     @model_validator(mode="after")
     def _time_ordering(self) -> Recommendation:
@@ -308,6 +380,20 @@ class Recommendation(VersionedContract):
             raise ValueError("recommendation cannot precede its own observation cutoff")
         if self.action_code is not ActionCode.WITHDRAW_ADVICE and self.plan_id is None:
             raise ValueError("an actionable recommendation must reference its plan")
+        if self.learned is not None and self.learned.enabled != self.learned_contribution_enabled:
+            raise ValueError(
+                "learned.enabled disagrees with learned_contribution_enabled; one of the two "
+                "would misreport whether a model contributed"
+            )
+        if self.alternatives:
+            ranks = [alternative.rank for alternative in self.alternatives]
+            if len(set(ranks)) != len(ranks):
+                raise ValueError("two alternatives claim the same rank")
+            selected = [a for a in self.alternatives if a.selected]
+            if len(selected) > 1:
+                raise ValueError("more than one alternative claims to be the selected plan")
+            if selected and self.plan_id is not None and selected[0].plan_id != self.plan_id:
+                raise ValueError("the selected alternative is not the recommendation's own plan")
         return self
 
     def is_expired_at(self, session_time_s: float) -> bool:
@@ -329,6 +415,7 @@ __all__ = [
     "PlanningResult",
     "ProfileSegment",
     "Recommendation",
+    "RecommendationAlternative",
     "ScenarioOutcome",
     "Trigger",
 ]

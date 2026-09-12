@@ -53,6 +53,7 @@ robustness, and the ensemble size is published with the decision.
 from __future__ import annotations
 
 import importlib
+import threading
 import time
 from dataclasses import dataclass
 from functools import lru_cache
@@ -88,7 +89,28 @@ inactive, while still small enough that the constraint stays well scaled.
 _NEUTRAL_RAMP_W = 1.0e9
 """Stand-in for "the pack declares no power-change limit"."""
 
-_SOLVER_CACHE: dict[tuple[int, int, int, float], Any] = {}
+_SOLVER_CACHE_KEY = tuple[int, int, int, float]
+_SOLVER_CACHE_LOCAL = threading.local()
+"""Compiled CasADi problems, cached **per thread**.
+
+A ``nlpsol`` object is a handle onto native IPOPT state and is not safe to call
+from two threads at once: doing so faults the interpreter rather than raising.
+The session runtime plans on worker threads -- ``routes/sessions.py`` dispatches
+``advance`` through ``anyio.to_thread.run_sync`` -- so a process-wide cache put
+one solver handle in the path of concurrent calls.
+
+The cost of thread-locality is one compiled problem per thread per problem
+shape. The cost of sharing was a segmentation fault, so this is the cheaper of
+the two.
+"""
+
+
+def _solver_cache() -> dict[_SOLVER_CACHE_KEY, Any]:
+    cache = getattr(_SOLVER_CACHE_LOCAL, "solvers", None)
+    if cache is None:
+        cache = {}
+        _SOLVER_CACHE_LOCAL.solvers = cache
+    return cache
 
 
 class SolverUnavailable(RuntimeError):
@@ -269,10 +291,11 @@ def _build_problem(casadi: Any, n: int, w: int, config: PlannerConfig) -> Any:
 
 def _solver_for(n: int, w: int, config: PlannerConfig) -> Any:
     key = (n, w, config.solver.max_iterations, config.solver.tolerance)
-    cached = _SOLVER_CACHE.get(key)
+    cache = _solver_cache()
+    cached = cache.get(key)
     if cached is None:
         cached = _build_problem(_casadi(), n, w, config)
-        _SOLVER_CACHE[key] = cached
+        cache[key] = cached
     return cached
 
 

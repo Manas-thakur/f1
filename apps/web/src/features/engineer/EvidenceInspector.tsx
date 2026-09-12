@@ -1,8 +1,11 @@
 import type {
   ConstraintCheck,
   DecisionEvidenceResponse,
+  IntervalValue,
+  LearnedContribution,
   ProbabilityStatement,
   Recommendation,
+  RecommendationAlternative,
   RuleContext,
 } from '@contracts';
 
@@ -29,6 +32,90 @@ export interface EvidenceInspectorProps {
   
   readonly returnFocusTo: string;
 }
+
+function describeLearned(
+  learned: LearnedContribution | null,
+  enabled: boolean,
+): string {
+  if (learned === null) {
+    return enabled ? 'enabled, but no learned record was published' : 'none offered';
+  }
+  if (!learned.enabled) {
+    return `disabled — ${learned.baseline_identity} answered`;
+  }
+  const parts = [`enabled (${learned.bundle_id ?? 'unnamed bundle'})`];
+  if (learned.continuation_value !== null && learned.continuation_value !== undefined) {
+    parts.push(`continuation ${learned.continuation_value.toFixed(3)}`);
+  } else {
+    parts.push(`no continuation value (${learned.support_reason ?? 'out of support'})`);
+  }
+  if (learned.disagreement !== null && learned.disagreement !== undefined) {
+    parts.push(`disagreement ${learned.disagreement.toFixed(3)}`);
+  }
+  return parts.join(' · ');
+}
+
+function describeInterval(interval: IntervalValue | null, unit: string): string {
+  if (interval?.lower === null || interval?.upper === null || interval === null) {
+    return UNAVAILABLE_TEXT;
+  }
+  return `${interval.lower.toFixed(2)}–${interval.upper.toFixed(2)} ${unit}`;
+}
+
+function formatScore(value: number | null | undefined): string {
+  return value === null || value === undefined ? UNAVAILABLE_TEXT : value.toFixed(3);
+}
+
+const ALTERNATIVE_COLUMNS: readonly Column<RecommendationAlternative>[] = [
+  { id: 'rank', header: 'Rank', numeric: true, cell: (row) => String(row.rank) },
+  {
+    id: 'plan',
+    header: 'Plan',
+    cell: (row) => (row.selected ? `${row.display_text} (recommended)` : row.display_text),
+  },
+  {
+    id: 'status',
+    header: 'Checker',
+    cell: (row) => (
+      <StatusBadge label="Checker verdict" tone={checkTone(row.constraint_status)}>
+        {row.constraint_status}
+      </StatusBadge>
+    ),
+  },
+  { id: 'score', header: 'Score', numeric: true, cell: (row) => formatScore(row.final_score) },
+  {
+    id: 'benefit',
+    header: 'Expected utility',
+    numeric: true,
+    cell: (row) => formatScore(row.expected_utility),
+  },
+  {
+    id: 'downside',
+    header: 'Tail loss',
+    numeric: true,
+    cell: (row) => formatScore(row.cvar_loss),
+  },
+  {
+    id: 'energy',
+    header: 'Future energy',
+    numeric: true,
+    cell: (row) => formatChannelValue('battery_energy_j', row.terminal_energy_j ?? null).text,
+  },
+  {
+    id: 'switching',
+    header: 'Switches',
+    numeric: true,
+    cell: (row) =>
+      row.switch_count === null || row.switch_count === undefined
+        ? UNAVAILABLE_TEXT
+        : String(row.switch_count),
+  },
+  {
+    id: 'reason',
+    header: 'Why not recommended',
+    cell: (row) => (row.selected ? '—' : (row.rejected_reason ?? UNAVAILABLE_TEXT)),
+  },
+];
 
 const CHECK_COLUMNS: readonly Column<ConstraintCheck>[] = [
   { id: 'check', header: 'Check', cell: (row) => row.check_id },
@@ -204,7 +291,18 @@ export function EvidenceInspector({
             <dd>{subject.objective_version}</dd>
             <dt>Baseline identity</dt>
             <dd>{subject.baseline_identity ?? 'not recorded'}</dd>
+            <dt>Planner</dt>
+            <dd>{subject.planner_identity ?? 'not recorded'}</dd>
+            <dt>Learned contribution</dt>
+            <dd>{describeLearned(subject.learned ?? null, subject.learned_contribution_enabled ?? false)}</dd>
           </dl>
+
+          {(subject.unavailable_reasons ?? []).length === 0 ? null : (
+            <Notice tone="attention" testId="unavailable-reasons">
+              Capabilities that did not contribute to this decision:{' '}
+              {(subject.unavailable_reasons ?? []).join('; ')}.
+            </Notice>
+          )}
 
           <DataTable
             caption="Independent rule checks"
@@ -249,6 +347,42 @@ export function EvidenceInspector({
 
           <h3>Event forecasts</h3>
           <ProbabilityRows items={subject.probabilities ?? []} />
+
+          <h3>Outcome ranges across the scenario ensemble</h3>
+          {(subject.outcome_ranges ?? []).length === 0 ? (
+            <p className="afterlap-small afterlap-muted">
+              No outcome range was published for this decision. A range needs scenario
+              re-simulation; when it is off the reasons above say so.
+            </p>
+          ) : (
+            <ul className={styles.inlineList} data-testid="outcome-ranges">
+              {(subject.outcome_ranges ?? []).map((range) => (
+                <li key={range.checkpoint_id}>
+                  <span className="afterlap-mono">{range.checkpoint_id}</span> ·{' '}
+                  {range.scenario_count} scenario(s), {(range.weight_covered * 100).toFixed(0)}% of
+                  ensemble weight · elapsed {describeInterval(range.elapsed_time_s ?? null, 's')} ·
+                  energy {describeInterval(range.own_energy_j ?? null, 'J')} · observed spread, not
+                  a quantile
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <h3>Alternatives considered</h3>
+          {(subject.alternatives ?? []).length === 0 ? (
+            <p className="afterlap-small afterlap-muted">
+              No alternative was recorded for this decision.
+            </p>
+          ) : (
+            <DataTable
+              caption="Candidates considered"
+              description="Ranked as the planner ordered them. The constraint status is the independent checker's verdict, not the planner's."
+              columns={ALTERNATIVE_COLUMNS}
+              rows={subject.alternatives ?? []}
+              rowKey={(row) => row.plan_id}
+              emptyArtefact="alternative"
+            />
+          )}
 
           <h3>Rule context at the time of the decision</h3>
           {ruleContext === null ? (

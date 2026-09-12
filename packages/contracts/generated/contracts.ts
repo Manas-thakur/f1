@@ -300,6 +300,21 @@ export interface IntervalValue {
 
 export type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
+export interface LearnedContribution {
+  "enabled": boolean;
+  "bundle_id"?: string | null;
+  "weights_hash"?: string | null;
+  "in_support"?: boolean;
+  "support_reason"?: string | null;
+  "continuation_value"?: number | null;
+  "disagreement"?: number | null;
+  "member_count"?: number | null;
+  "calibrator_id"?: string | null;
+  "calibration_status"?: CalibrationStatus;
+  "baseline_identity": string;
+  "reason_codes"?: Array<ReasonCode>;
+}
+
 export interface ModelManifest {
   "schema_version": "1.0";
   "id": string;
@@ -355,6 +370,17 @@ export interface OperatorEvent {
   "session_time_s": number;
   "sequence": number;
   "resulting_status"?: RecommendationStatus | null;
+}
+
+export interface OutcomeRange {
+  "checkpoint_id": string;
+  "progress_m": number;
+  "scenario_count": number;
+  "weight_covered": number;
+  "elapsed_time_s"?: IntervalValue | null;
+  "gap_to_reference_s"?: IntervalValue | null;
+  "own_energy_j"?: IntervalValue | null;
+  "ahead_of_rival_weight"?: number | null;
 }
 
 export interface OwnCarEstimate {
@@ -467,6 +493,29 @@ export interface Recommendation {
   "constraint_result": ConstraintResult;
   "learned_contribution_enabled"?: boolean;
   "baseline_identity"?: string;
+  "outcome_ranges"?: Array<OutcomeRange>;
+  "alternatives"?: Array<RecommendationAlternative>;
+  "learned"?: LearnedContribution | null;
+  "planner_identity"?: string | null;
+  "unavailable_reasons"?: Array<string>;
+}
+
+export interface RecommendationAlternative {
+  "plan_id": string;
+  "action_code": ActionCode;
+  "display_text": string;
+  "rank": number;
+  "selected"?: boolean;
+  "constraint_status": CheckStatus;
+  "final_score"?: number | null;
+  "score_delta_vs_selected"?: number | null;
+  "expected_utility"?: number | null;
+  "cvar_loss"?: number | null;
+  "terminal_energy_j"?: number | null;
+  "switch_count"?: number | null;
+  "switching_penalty"?: number | null;
+  "rejected_reason"?: string | null;
+  "reason_codes"?: Array<ReasonCode>;
 }
 
 export type RecommendationStatus = "proposed" | "selected" | "communicated" | "executing" | "completed" | "rejected" | "expired" | "invalidated";
@@ -837,32 +886,6 @@ export interface QualityEvent {
   "channels"?: Array<ChannelQuality>;
   "capability_states"?: Record<string, CapabilityState>;
   "message"?: string | null;
-}
-
-export interface OutcomeRange {
-  "checkpoint_id": string;
-  "progress_m": number;
-  "scenario_count": number;
-  "weight_covered": number;
-  "elapsed_time_s"?: IntervalValue | null;
-  "gap_to_reference_s"?: IntervalValue | null;
-  "own_energy_j"?: IntervalValue | null;
-  "ahead_of_rival_weight"?: number | null;
-}
-
-export interface LearnedContribution {
-  "enabled": boolean;
-  "bundle_id"?: string | null;
-  "weights_hash"?: string | null;
-  "in_support"?: boolean;
-  "support_reason"?: string | null;
-  "continuation_value"?: number | null;
-  "disagreement"?: number | null;
-  "member_count"?: number | null;
-  "calibrator_id"?: string | null;
-  "calibration_status"?: CalibrationStatus;
-  "baseline_identity": string;
-  "reason_codes"?: Array<ReasonCode>;
 }
 
 export interface PlanningResult {

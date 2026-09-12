@@ -50,6 +50,7 @@ from .planning import (
     OutcomeRange,
     PlanningResult,
     Recommendation,
+    RecommendationAlternative,
 )
 from .requests import (
     AcquireLeaseRequest,
@@ -101,6 +102,7 @@ EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     LearnedContribution,
     PlanningResult,
     Recommendation,
+    RecommendationAlternative,
     ControlLease,
     OperatorEvent,
     SessionCommand,

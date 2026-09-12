@@ -151,6 +151,14 @@ class RolloutEvidence:
 
     calibrator_id: str | None = None
 
+    belief_clamps: tuple[str, ...] = field(default_factory=tuple)
+    """Energy beliefs the simulator could not represent, and what was used instead.
+
+    Published rather than swallowed: a rollout evaluated at a clamped energy is
+    weaker evidence than one evaluated at the belief, and an engineer reading the
+    outcome ranges needs to know which they are looking at.
+    """
+
     outcome_ranges: tuple[OutcomeRange, ...] = field(default_factory=tuple)
     """The per-checkpoint spread across the ensemble, for publication.
 
@@ -208,16 +216,63 @@ class SegmentController:
         return DriverAction(profile=self._fallback, label="plan:outside_corridor")
 
 
+def _battery_window(world: PlanningWorld, car_id: str) -> tuple[float, float] | None:
+    """The car's declared operating window, or ``None`` when it is unknown."""
+    car = world.bundle.car_configs.get(car_id)
+    if car is None:
+        return None
+    low = getattr(car, "battery_energy_min_j", None)
+    high = getattr(car, "battery_energy_max_j", None)
+    if low is None or high is None:
+        return None
+    return float(low.value), float(high.value)
+
+
+def _clamped_energy(
+    world: PlanningWorld, car_id: str, value: float, *, source: str, notes: list[str]
+) -> float:
+    """Place an energy belief inside the window the simulator can represent.
+
+    A belief can sit outside the declared window -- an estimator's own-energy
+    posterior is not constrained by the car document, and the scenario
+    quadrature spans the whole window when the rival's reserve is unidentified.
+    The simulator's energy ledger refuses such a state outright, so writing one
+    into a variant bundle raised out of the rollout and took the whole decision
+    with it.
+
+    Clamping is the conservative treatment: the rollout runs at the nearest
+    representable state instead of not running. It is never silent -- the clamp
+    is recorded and published, because a rollout evaluated at a different energy
+    from the one believed is weaker evidence than one evaluated at the belief.
+    """
+    window = _battery_window(world, car_id)
+    if window is None:
+        return value
+    low, high = window
+    if low <= value <= high:
+        return value
+    clamped = min(max(value, low), high)
+    notes.append(
+        f"{source} energy belief {value:.1f} J is outside the declared window "
+        f"[{low:.1f}, {high:.1f}] J and was clamped to {clamped:.1f} J for the rollout"
+    )
+    return clamped
+
+
 def _variant_bundle(
     world: PlanningWorld,
     estimate: StateEstimate,
     scenario: PlanScenario,
+    notes: list[str],
 ) -> ScenarioBundle:
     """A scenario document placed at the current belief, with this rival hypothesis.
 
     The rival's stored energy and behavioural mode are the sampled quantities.
     Its *policy* still decides from its own observations, so it reacts to what we
     do inside the rollout instead of replaying a recorded trace.
+
+    Energy beliefs are clamped into each car's declared operating window and any
+    clamp is appended to ``notes``; see :func:`_clamped_energy`.
     """
     scenario_config = world.bundle.scenario
     own = estimate.own_car
@@ -231,7 +286,15 @@ def _variant_bundle(
             ),
             "speed_mps": ego_state.speed_mps.model_copy(update={"value": float(own.speed_mps.value or 1.0)}),
             "energy_j": ego_state.energy_j.model_copy(
-                update={"value": float(own.battery_energy_j.value or 0.0)}
+                update={
+                    "value": _clamped_energy(
+                        world,
+                        world.ego_car_id,
+                        float(own.battery_energy_j.value or 0.0),
+                        source="own",
+                        notes=notes,
+                    )
+                }
             ),
             "temperature_k": ego_state.temperature_k.model_copy(
                 update={"value": float(own.battery_temperature_k.value or 300.0)}
@@ -254,7 +317,17 @@ def _variant_bundle(
                 "speed_mps": rival_state.speed_mps.model_copy(
                     update={"value": float(own.speed_mps.value or 1.0)}
                 ),
-                "energy_j": rival_state.energy_j.model_copy(update={"value": scenario.rival_reserve_j}),
+                "energy_j": rival_state.energy_j.model_copy(
+                    update={
+                        "value": _clamped_energy(
+                            world,
+                            rival_id,
+                            float(scenario.rival_reserve_j),
+                            source=f"rival {rival_id}",
+                            notes=notes,
+                        )
+                    }
+                ),
             }
         )
         spec = policies[rival_id]
@@ -313,6 +386,7 @@ def rollout_candidate(
     controller = SegmentController(segments, DeploymentProfile.NEUTRAL)
 
     outcomes: list[ScenarioOutcome] = []
+    belief_clamps: list[str] = []
     pass_weight: dict[str, float] = {}
     ahead_weight: dict[str, float] = {}
     observed_weight: dict[str, float] = {}
@@ -320,7 +394,7 @@ def rollout_candidate(
     total_weight = sum(scenario.weight for scenario in scenarios) or 1.0
 
     for scenario in scenarios:
-        bundle = _variant_bundle(world, estimate, scenario)
+        bundle = _variant_bundle(world, estimate, scenario, belief_clamps)
         simulator = Simulator()
         simulator.reset(bundle, seed=world.seed)
         snapshot = capture_complete_state(simulator)
@@ -435,6 +509,7 @@ def rollout_candidate(
         incomplete_count=incomplete,
         calibration_notes=tuple(dict.fromkeys(notes)),
         calibrator_id=None if calibrator is None else calibrator.calibrator_id,
+        belief_clamps=tuple(dict.fromkeys(belief_clamps)),
         outcome_ranges=outcome_ranges(tuple(outcomes)),
     )
 

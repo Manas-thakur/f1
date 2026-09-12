@@ -188,13 +188,49 @@ class TestPairedRuns:
                 assert outcome.withdrawal_rate is not None
 
     def test_unmerged_controllers_are_unavailable_not_zero(self, smoke_run) -> None:
-        for name in ("mpc_only", "mpc_plus_actor", "mpc_plus_value", "full_system"):
+        """The rows that still cannot run report nothing, never zero.
+
+        ``mpc_only`` is deliberately absent from this list. It became runnable
+        when the planner-backed controller was written, so it is no longer an
+        unavailable stub -- see the test below. The three learned rows remain
+        unavailable because no bundle has been promoted, and the invariant this
+        test protects applies to them unchanged.
+        """
+        for name in ("mpc_plus_actor", "mpc_plus_value", "full_system"):
             runs = smoke_run.for_controller(name)
             assert runs
             assert all(run.status == "unavailable" for run in runs)
             assert all(run.elapsed_time_s is None for run in runs)
             assert all(run.final_energy_j is None for run in runs)
             assert name in smoke_run.unavailable_controllers
+
+    def test_mpc_only_is_no_longer_an_unavailable_stub(self, smoke_run) -> None:
+        """It is runnable now, so the harness must not offer a stub for it.
+
+        A stub left in place for a row that can run would report the row as
+        unmeasured forever, which is the opposite failure from reporting an
+        unmeasured row as zero.
+        """
+        from afterlap_core.evaluation.controllers import COMPARISON_MATRIX
+
+        row = next(r for r in COMPARISON_MATRIX if r.controller_name == "mpc_only")
+        assert row.measurable_today is True
+        assert row.unmeasured_reason is None
+        assert "requires_solver" in row.tags
+        assert "mpc_only" not in {c.name for c in unavailable_matrix_controllers()}
+        assert not smoke_run.for_controller("mpc_only")
+
+    def test_the_learned_rows_name_promotion_not_a_missing_planner(self) -> None:
+        """The reason changed, and the reason is what a reader acts on."""
+        from afterlap_core.evaluation.controllers import COMPARISON_MATRIX
+
+        for name in ("mpc_plus_actor", "mpc_plus_value", "full_system"):
+            row = next(r for r in COMPARISON_MATRIX if r.controller_name == name)
+            assert row.measurable_today is False
+            assert row.unmeasured_reason is not None
+            assert "planner-backed controller exists" in row.unmeasured_reason
+            assert "promoted" in row.unmeasured_reason
+            assert "requires_promoted_bundle" in row.tags
 
     def test_no_baseline_issued_an_inadmissible_profile(self, smoke_run) -> None:
         assert all(outcome.modelled_violations == 0 for outcome in smoke_run.outcomes)
@@ -310,10 +346,15 @@ class TestReport:
             assert entry["seed_count"] == 2
 
     def test_failed_and_missing_runs_are_counted(self, report_bundle) -> None:
+        """Twelve unavailable runs, not sixteen: three unmerged rows, not four.
+
+        ``mpc_only`` became runnable, so the harness is no longer handed a stub
+        for it and its four units are not planned in this fixture at all.
+        """
         population = report_bundle.detail["population"]
         assert population["planned_units"] == 4
         assert population["failed_runs"] == 0
-        assert population["unavailable_runs"] == 16
+        assert population["unavailable_runs"] == 12
         assert population["completed_runs"] == 8
 
     def test_hard_violations_are_listed_individually(self, report_bundle) -> None:

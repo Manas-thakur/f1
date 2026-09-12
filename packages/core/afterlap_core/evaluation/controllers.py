@@ -640,8 +640,8 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         uses_learned_return=False,
         purpose="Core engineering baseline",
         owner="A06",
-        measurable_today=False,
-        unmeasured_reason="the MPC planner is not merged; no candidate exists to evaluate",
+        measurable_today=True,
+        tags=("requires_solver",),
     ),
     MatrixRow(
         controller_name="mpc_plus_actor",
@@ -650,7 +650,11 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         purpose="Proposal contribution",
         owner="A06+A07",
         measurable_today=False,
-        unmeasured_reason="requires both a merged MPC planner and a trained actor; neither exists",
+        unmeasured_reason=(
+            "the planner-backed controller exists; this row needs an approved and promoted "
+            "bundle carrying a trained actor, and no bundle has been promoted"
+        ),
+        tags=("requires_solver", "requires_promoted_bundle"),
     ),
     MatrixRow(
         controller_name="mpc_plus_value",
@@ -659,7 +663,11 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         purpose="Continuation contribution",
         owner="A06+A07",
         measurable_today=False,
-        unmeasured_reason="requires a merged MPC planner and a trained continuation ensemble",
+        unmeasured_reason=(
+            "the planner-backed controller exists; this row needs an approved and promoted "
+            "bundle carrying a fitted continuation ensemble with frozen support thresholds"
+        ),
+        tags=("requires_solver", "requires_promoted_bundle"),
     ),
     MatrixRow(
         controller_name="full_system",
@@ -668,10 +676,26 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         purpose="Combined effect",
         owner="A06+A07",
         measurable_today=False,
-        unmeasured_reason="requires the merged planner and a promoted model bundle",
+        unmeasured_reason=(
+            "the planner-backed controller exists; this row needs an approved and promoted "
+            "bundle carrying both the actor and the continuation ensemble"
+        ),
+        tags=("requires_solver", "requires_promoted_bundle"),
     ),
 )
-"""The matrix from ``SERVING_AND_EVALUATION.md``, annotated with what exists."""
+"""The matrix from ``SERVING_AND_EVALUATION.md``, annotated with what exists.
+
+``measurable_today`` means *this package can build a controller for the row and
+run it*, not that the row has been measured. ``mpc_only`` became measurable when
+``afterlap_core.planning.controllers.PlannerController`` was written; it needs
+the optional solver extra, which the ``requires_solver`` tag records.
+
+The three learned rows stay unmeasurable, and the reason changed. It is no
+longer "the planner is not merged" -- the planner-backed controller exists and
+is ablatable. It is that no bundle has been promoted, so a learned row would be
+the MPC-only row wearing a learned row's name. That is a promotion-protocol
+outcome, not a missing implementation, and it is the honest state to publish.
+"""
 
 
 def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
