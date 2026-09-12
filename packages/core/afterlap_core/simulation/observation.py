@@ -109,7 +109,7 @@ def _known(value: float) -> float | None:
 
 
 def _quantise(value: float, quantum: float) -> float:
-    if quantum <= 0.0:
+    if quantum <= 0.0 or not math.isfinite(value):
         return value
     return round(value / quantum) * quantum
 

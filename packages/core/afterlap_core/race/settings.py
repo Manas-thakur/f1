@@ -8,6 +8,26 @@ from .circuit import default_laps
 from .variability import Variability
 
 
+class StorylineSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    enabled: bool = True
+    event_interval_min_s: float = Field(default=4, ge=0.5, le=120)
+    event_interval_max_s: float = Field(default=16, ge=1, le=300)
+    event_duration_min_s: float = Field(default=1.5, ge=0.5, le=30)
+    event_duration_max_s: float = Field(default=5, ge=1, le=60)
+    pit_stops: bool = True
+    tyre_wear_scale: float = Field(default=1, ge=0, le=10)
+
+    @model_validator(mode="after")
+    def ordered_ranges(self) -> StorylineSettings:
+        if self.event_interval_max_s < self.event_interval_min_s:
+            raise ValueError("maximum storyline interval must not be below the minimum")
+        if self.event_duration_max_s < self.event_duration_min_s:
+            raise ValueError("maximum storyline duration must not be below the minimum")
+        return self
+
+
 class RacingLineSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
@@ -29,6 +49,7 @@ class RaceSettings(BaseModel):
     laps: int = Field(default=52, ge=1, le=80)
     dt_s: float = Field(default=0.01, ge=0.005, le=0.02)
     wetness: float = Field(default=0.0, ge=0.0, le=1.0)
+    weather: Literal["sunny", "rainy"] = "sunny"
     temperature_k: float = Field(default=303.15, ge=273.15, le=323.15)
     wind_mps: float = Field(default=0.0, ge=-20, le=20)
     wake: bool = True
@@ -36,6 +57,7 @@ class RaceSettings(BaseModel):
     contact_mode: Literal["ignore", "terminate"] = "ignore"
 
     variability: Variability = Field(default_factory=Variability)
+    storyline: StorylineSettings = Field(default_factory=StorylineSettings)
     racing_line: RacingLineSettings = Field(default_factory=RacingLineSettings)
 
     @model_validator(mode="before")

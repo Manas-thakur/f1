@@ -78,6 +78,6 @@ BMS actions remain battery-only. A future hierarchical tactical environment shou
 | Rain films, drainage, rubber line and marbles | Current wetness is a dimensionless hypothesis | Fit surface response against friction measurements and separate drainage from grip |
 | Full multi-car aero superposition | No measured wake maps | Validate two-car sweeps first, then test bounded composition against multi-car data |
 | Bias, dropouts, driver mistakes and attention process | Existing keyed sensor noise and command delay suffice for initial isolation | Add measured sensor availability traces and version their configuration; keep actor masks intact |
-| Pit strategy, crashes and vehicle recovery | Unsupported plant states and event rules | Define collision response and pit geometry before adding rewards or control authority |
+| Surveyed pit strategy, crashes and vehicle recovery | Current pit timing, compounds and lane are synthetic; collision response remains unsupported | Validate pit geometry and tyre data, then define damage and recovery states |
 
 The existing combined tyre envelope, battery thermal response, regeneration and numerical checks remain active. No placeholder settings are counted as implemented mechanisms.

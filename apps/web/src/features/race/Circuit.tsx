@@ -196,7 +196,16 @@ export function Circuit() {
           <span>{frame?.status === 'running' ? `${fps} FPS` : 'RENDER ON DEMAND'}
             {' · '}{mode === 'cockpit' ? 'FIRST PERSON' : mode.toUpperCase()}</span>
           <span>PACE {frame?.playback_rate?.toFixed(2) ?? '…'}× · TARGET {frame?.requested_rate ?? 1}×</span>
+          <span>{frame?.settings.weather === 'rainy' ? '☂ RAIN' : '☀ SUN'}</span>
         </div>
+        {car && car.tyres.phase !== 'track' && <div className={styles.pitOverlay} role="status">
+          <small>PIT LANE · {car?.tyres.phase.toUpperCase()}</small>
+          <strong>{car?.tyres.phase === 'service'
+            ? `${car.tyres.service_remaining_s.toFixed(1)}s`
+            : car?.tyres.phase === 'entry' ? 'BOX THIS LAP' : 'REJOINING'}</strong>
+          <span>{car?.tyres.compound.toUpperCase()} → {car?.tyres.phase === 'exit'
+            ? car.tyres.compound.toUpperCase() : 'NEW SET'}</span>
+        </div>}
         {classification && <Classification />}
         {(connectionError ?? frame?.failure ?? !connected) && <div className={styles.connectionAlert} role="status">
           {connectionError ?? frame?.failure ?? 'Connecting to the race runtime…'}
@@ -230,7 +239,8 @@ export function Circuit() {
               <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
               <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>
             </div>
-            <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} · {frame?.status.toUpperCase()}</span>
+            <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} ·{' '}
+              {car?.tyres.phase === 'track' ? frame?.status.toUpperCase() : `PIT ${car?.tyres.phase.toUpperCase()}`}</span>
           </div>
           <div className={styles.hudSpeed}>
             <strong>{speed === undefined ? 'N/A' : (speed * 3.6).toFixed(0)}</strong>

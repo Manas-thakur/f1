@@ -499,6 +499,7 @@ class Simulator:
             )
         else:
             grip_multipliers = world.environment.grip_multiplier_array(samples, world.race.session_time_s)
+        grip_multipliers = grip_multipliers * world.cars[car_id].tyre_grip_multiplier
         brake_decel = float(car.max_brake_force_n.value) / float(car.mass_kg.value)
         if isinstance(track, TrackConfig):
             return track.preview_speed(
@@ -550,7 +551,9 @@ class Simulator:
 
         curvature = track.curvature_at(s_m)
         grade = track.grade_at(s_m)
-        grip_multiplier = environment.grip_multiplier(s_m, session_time_s)
+        grip_multiplier = (
+            environment.grip_multiplier(s_m, session_time_s) * world.cars[car_id].tyre_grip_multiplier
+        )
         mu = track.mu_at(s_m) * grip_multiplier
         heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
         air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))

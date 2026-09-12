@@ -8,8 +8,10 @@ import { Branding } from './Branding';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
 import { Minimap } from './Minimap';
+import { PitLane } from './PitLane';
 import { RaceMotion } from './motion';
 import type { CircuitMap, RaceFrame } from './types';
+import { WeatherEffects } from './WeatherEffects';
 import { box, createCar, foliageTexture, ribbon, spinWheels, surfaceTexture, trackPose } from './worldGeometry';
 
 export type CameraMode = 'chase' | 'cockpit' | 'orbit' | 'track';
@@ -38,6 +40,8 @@ export class RaceWorld {
   private readonly motion = new RaceMotion();
   private readonly minimap: Minimap;
   private readonly surroundings: Scenery;
+  private readonly pitLane: PitLane;
+  private readonly weatherEffects = new WeatherEffects();
   private readonly branding: Branding;
   private mapCanvas: HTMLCanvasElement | null = null;
   private readonly lastFollowPosition = new THREE.Vector3();
@@ -100,6 +104,8 @@ export class RaceWorld {
     this.sun.shadow.normalBias = 0.035;
     this.scene.add(this.sun, this.sun.target);
     this.buildTrack();
+    this.pitLane = new PitLane(map);
+    this.scene.add(this.pitLane, this.weatherEffects);
     this.branding = new Branding(map,
       Math.min(this.renderer.capabilities.getMaxAnisotropy(), 16), () => { this.dirty = true; });
     this.scene.add(this.branding);
@@ -268,6 +274,10 @@ export class RaceWorld {
       this.motion.push(frame, performance.now());
     }
     this.frame = frame;
+    this.weatherEffects.setWeather(frame.settings.weather);
+    this.host.dataset['weather'] = frame.settings.weather;
+    this.host.dataset['pitCars'] = frame.cars.filter((car) => car.tyres.phase !== 'track')
+      .map((car) => car.id).join(',');
     this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
@@ -297,6 +307,10 @@ export class RaceWorld {
       if (boost) {
         boost.visible = energyMode(car) === 'BOOST' && car.finish_time_s === null;
         boost.scale.z = Math.max(0.25, Math.min(1, (car.channels['electrical_power_w'] ?? 0) / 350000));
+      }
+      const tyreRing: unknown = model.userData['tyreRingMaterial'];
+      if (tyreRing instanceof THREE.MeshStandardMaterial) {
+        tyreRing.color.set(car.tyres.sidewall);
       }
       model.visible = car.channels['s_m'] !== undefined;
     }
@@ -412,6 +426,9 @@ export class RaceWorld {
     if (this.disposed) {
       return;
     }
+    if (this.frame) {
+      this.pitLane.update(this.frame, performance.now() / 1000);
+    }
     const renderedPoses = this.motion.sample(performance.now());
     for (const [id, model] of this.cars) {
       const pose = renderedPoses.get(id);
@@ -470,6 +487,7 @@ export class RaceWorld {
     }
     this.dirty = false;
     this.surroundings.update(performance.now() / 1000, this.camera.position, this.highQuality);
+    this.weatherEffects.update(performance.now() / 1000, car?.visible ? car.position : this.center);
     this.renderer.render(this.scene, this.camera);
     if (this.mapCanvas) {
       this.minimap.draw(this.mapCanvas, this.cars, this.selected);

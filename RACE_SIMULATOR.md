@@ -23,9 +23,9 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 ## Controls
 
-Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, wake effects, contact handling, and seeded racing-line behavior. Every circuit offers its sourced 2026 Grand Prix lap count as the default and a custom option from 1 through 80 laps. Changing the circuit updates the preset before reset. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
+Race control selects circuit, seed, car count, lap count, episode time limit, visual weather, wetness, temperature, wind, wake effects, contact handling, seeded racing-line behavior, storylines, pit stops, and tyre wear. Every circuit offers its sourced 2026 Grand Prix lap count as the default and a custom option from 1 through 80 laps. Changing the circuit updates the preset before reset. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
 
-Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode uses persistent observation-driven pass intention, clearance prediction and bounded acceleration/lateral requests; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. The same controls are available to scripts and policies through `DriverControl` and the normalized `RaceEnv` action.
+Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode uses persistent observation-driven pass intention, per-car corner lines and bounded acceleration/lateral requests. Contact is ignored by default and can be switched to episode termination. The same controls are available to scripts and policies through `DriverControl` and the normalized `RaceEnv` action.
 
 Animation uses a shared simulation-time playback cursor with a short telemetry buffer, rather than restarting movement on each packet. Observed speed smooths small position-noise corrections; monotone interpolation avoids backwards motion and overshoot between forward-moving samples. All cars and following cameras use that same cursor, and stalled connections hold at the newest available sample. These display estimates do not change physics, classification, exported telemetry or learning observations. The car meshes fit the assumed two-metre physical width.
 
@@ -60,21 +60,21 @@ Internal units are metres, seconds, kilograms, joules, watts and kelvin. Display
 | Motion | Float64 midpoint RK2, normally 0.01 s; numerical tests also exercise other step sizes |
 | Engine and transmission | Speed-dependent power map, transmission efficiency and torque-limited low-speed force |
 | Aerodynamics | Quadratic drag and downforce; synthetic low-drag mode scales drag area by 0.82 and downforce area by 0.75 |
-| Tyres | Combined longitudinal/lateral friction envelope, curvature-dependent speed and backward braking preview |
+| Tyres | Combined force envelope, curvature preview, seeded compounds, distance/utilization wear, grip loss, and automatic changes |
 | Brakes | Friction-force ceiling, available tyre force and regenerative blending |
 | Battery | Actual deployed/recovered energy, conversion losses, auxiliary load, upper/lower energy saturation |
 | Thermal response | Lumped heat capacity and heat rejection, temperature-based electrical derating |
 | Weather | Constant ambient temperature, ideal-gas density, evolving synthetic wetting/drying, periodic surface patches and smooth correlated wind |
 | Traffic | Observation-driven following, seeded periodic corner lines, corner passing, and bounded wake effects based on physical periodic proximity |
-| Outcomes | Shared finish-line crossing, time ordering, attempted/completed/retained passes, optional footprint contact abort |
+| Outcomes | Shared finish-line crossing, time ordering, passing, pit service, dry-compound and 90% classification checks, optional contact abort |
 
 Battery power creates wheel force through the drivetrain. Harvesting requires mechanical braking energy; it is not a free recharge button. The low-drag tradeoff also enters the corner-speed preview. Wake-enabled preview uses a conservative downforce-loss bound rather than planning a corner with free-air grip. Braking preview respects the mechanical brake ceiling.
 
-The battery and tyre coefficients are modelling assumptions, not measured cell chemistry or rubber characteristics. This is a reduced model: no CFD, suspension dynamics, tyre temperature/wear, fuel burn, pit stops, gearbox shifts, crash damage, aquaplaning or event-certified active-aero zones. Lateral motion is a bounded line-tracking approximation rather than a full multibody vehicle. Speeds above 300 km/h are possible where the configured power, drag and geometry allow them; no track is forced to reach a target speed.
+The battery and tyre coefficients are modelling assumptions, not measured cell chemistry or rubber characteristics. This is a reduced model: no CFD, suspension dynamics, tyre temperature, fuel burn, gearbox shifts, crash damage, aquaplaning or event-certified active-aero zones. Pit entry, service and exit are synthetic states with a rendered lane and crew, not surveyed pit geometry. Lateral motion is a bounded line-tracking approximation rather than a full multibody vehicle. Speeds above 300 km/h are possible where the configured power, drag and geometry allow them; no track is forced to reach a target speed.
 
-## Learning contract: race-control-v1
+## Learning contract: race-control-v2
 
-This environment exposes the `race-control-v1` observation and action contract. Trained policies must use this exact contract.
+This environment exposes the `race-control-v2` observation and action contract. Trained policies must use this exact contract.
 
 `RaceEnv.reset(seed=...)` returns `(observation, info)`. `step(action)` returns `(next_observation, reward, terminated, truncated, info)`. One action is held for one simulated second, subdivided into physics steps. Automatic driver decisions update every 0.1 simulated seconds and include an execution delay.
 
@@ -92,7 +92,7 @@ Rival battery truth and future weather do not enter the actor's features or diag
 
 The action is an eight-value float32 vector bounded to [-1, 1]. Its fields are driver authority, deployment profile, pace scale, lateral target, low-drag mode, pedal mode, throttle, and brake. Automatic authority retains observation-driven racecraft and applies the chosen battery profile. Direct authority applies every remaining field. Automatic pedal mode lets the physical speed controller follow the pace request; manual pedal mode applies throttle and brake. The generator records field order, bounds, decoded control, and deployment profile order in every manifest and transition. Use `encode_control` and `decode_action` instead of duplicating the mapping.
 
-Reward is negative elapsed seconds, minus 0.1 when the requested control changes. On finishing, subtract 30 times positions lost from first. Physical contact or an unsupported lateral envelope incurs a 20,000-unit terminal penalty. This exceeds the bounded episode's possible running and position costs so deliberately crashing cannot avoid a larger cost. There is no repeatable per-pass bonus. A time limit is a truncation, never a race finish; PPO can bootstrap the final observation. Software errors raise and must not be relabelled as racing outcomes.
+Reward is negative elapsed seconds, minus 0.1 when the requested control changes. On finishing, subtract 30 times positions lost from first. An unsupported lateral envelope incurs a 20,000-unit terminal penalty, as does contact when termination mode is selected. There is no repeatable per-pass bonus. A time limit is a truncation, never a race finish; PPO can bootstrap the final observation. Software errors raise and must not be relabelled as racing outcomes.
 
 ## Generate a dataset
 
@@ -135,7 +135,7 @@ The default 20-car reference engine is CPU intensive. The UI reports observed pl
 
 ## Physics v2 configuration and evidence
 
-See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The action contract is `race-control-v1`; model behavior is `race-physics-v3`. The battery observation/action contract remains `race-bms-v1`, while the browser uses the direct control contract. An extra delayed own grip channel supports automatic racecraft and operator telemetry. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Policies created for earlier contracts must be retrained.
+See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The action contract is `race-control-v2`; model behavior is `race-physics-v4`. The battery observation/action contract remains `race-bms-v1`, while the browser uses the direct control contract. An extra delayed own grip channel supports automatic racecraft and operator telemetry. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Policies created for earlier contracts must be retrained.
 
 For precise experiments, use `--settings file.json` with generate, train or evaluate. The entire settings file takes precedence over individual scenario flags, including seed. Use nested feature scales to disable variation groups or supply individual driver traits. Weather phases, target wetness, driver traits, initial states and sensor parameters are included in manifests, not actor observations. `catalogue` prints circuit lap presets. `schema` prints the complete race settings, driver control, and RL action contracts. `evaluate --driver-action action.json` applies the same direct control model used by the browser without requiring it.
 

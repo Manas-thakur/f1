@@ -51,11 +51,17 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
         laps: Number(data.get('laps')),
         dt_s: 0.01,
         wetness: Number(data.get('wetness')),
+        weather: data.get('weather'),
         temperature_k: Number(data.get('temperature')) + 273.15,
         wind_mps: Number(data.get('wind')),
         time_limit_s: Number(data.get('duration')),
         wake: data.get('wake') === 'on',
         contact_mode: data.get('contact_mode'),
+        storyline: {
+          enabled: data.get('storylines') === 'on',
+          pit_stops: data.get('pit-stops') === 'on',
+          tyre_wear_scale: Number(data.get('tyre-wear')),
+        },
       },
     });
   }
@@ -125,6 +131,14 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
         <input name="duration" type="number" min="1" max="14400" required defaultValue={frame.settings.time_limit_s} />
       </label>
       <label>
+        Weather
+        <select aria-label="Weather" name="weather" defaultValue={frame.settings.weather}>
+          <option value="sunny">Sunny</option>
+          <option value="rainy">Rainy</option>
+        </select>
+        <span>Visual race-day conditions.</span>
+      </label>
+      <label>
         Wetness (0 dry, 1 wet)
         <input name="wetness" type="number" min="0" max="1" step="0.1" defaultValue={frame.settings.wetness} required />
       </label>
@@ -147,6 +161,19 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
           <option value="ignore">Ignore overlaps</option>
           <option value="terminate">End race on contact</option>
         </select>
+      </label>
+      <label className={styles.checkbox}>
+        <input name="storylines" type="checkbox" defaultChecked={frame.settings.storyline.enabled} />{' '}
+        Random storylines
+      </label>
+      <label className={styles.checkbox}>
+        <input name="pit-stops" type="checkbox" defaultChecked={frame.settings.storyline.pit_stops} />{' '}
+        Automatic pit stops
+      </label>
+      <label>
+        Tire wear scale
+        <input name="tyre-wear" type="number" min="0" max="10" step="0.1"
+          defaultValue={frame.settings.storyline.tyre_wear_scale} required />
       </label>
       <details className={styles.wide}>
         <summary>Racing lines</summary>

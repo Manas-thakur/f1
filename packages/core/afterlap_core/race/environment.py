@@ -117,7 +117,7 @@ class RaceEnv(gym.Env):
         settings = self.settings.model_copy(update={"seed": effective})
         self.session = RaceSession(settings)
         self.previous_control = None
-        return encode(self.session), {"environment_version": "race-control-v1"}
+        return encode(self.session), {"environment_version": "race-control-v2"}
 
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self.session is None or self.session.done or "car-01" in self.session.finishes:
@@ -150,10 +150,12 @@ class RaceEnv(gym.Env):
             reward -= 30 * (position - 1)
         self.previous_control = control
         info = {
-            "environment_version": "race-control-v1",
+            "environment_version": "race-control-v2",
             "elapsed_s": elapsed,
             "finish_position": position,
             "failure": session.failure,
             "requested_control": control.model_dump(mode="json"),
+            "boost_evaluation": session.storyline.confusion.payload(),
+            "tyres": session.tyres["car-01"].payload(session._visual_lateral("car-01")),
         }
         return encode(session), float(reward), finished or failed, session.status == "truncated", info
