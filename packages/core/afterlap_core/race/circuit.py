@@ -17,7 +17,7 @@ def assumed(value: float, unit: str) -> Parameter:
 
 def catalogue() -> list[dict[str, Any]]:
     return [
-        {key: value for key, value in json.loads(path.read_text()).items() if key != "points"}
+        {key: value for key, value in json.loads(path.read_text(encoding="utf-8")).items() if key != "points"}
         for path in sorted((Paths.default().configs / "race-circuits").glob("*.json"))
     ]
 
@@ -27,7 +27,7 @@ def circuit(circuit_id: str, wetness: float = 0.0) -> tuple[TrackConfig, dict[st
     if circuit_id not in {entry["id"] for entry in catalogue()}:
         raise ValueError(f"unknown circuit: {circuit_id}")
     path = Paths.default().configs / "race-circuits" / f"{circuit_id}.json"
-    metadata = json.loads(path.read_text())
+    metadata = json.loads(path.read_text(encoding="utf-8"))
     points = np.asarray(metadata["points"], dtype=np.float64)
     if points.ndim != 2 or points.shape[1] != 2 or not np.isfinite(points).all():
         raise ValueError("circuit needs finite two-dimensional coordinates")
