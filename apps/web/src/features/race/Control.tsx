@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { SubmitEvent } from 'react';
 
 import { useRace } from './Connection';
+import { DecisionTelemetry } from './Decision';
 import { Telemetry } from './RacePanels';
 import styles from './race.module.css';
 import type { CircuitSummary, RaceFrame } from './types';
@@ -375,6 +376,7 @@ export function Control() {
             from the generator.
           </p>
         </section>
+        <DecisionTelemetry />
         <Telemetry />
         <details className={styles.panel}><summary>About the circuit scene</summary>
           <p>Circuit artwork: ROY Jules, CC BY 4.0, via Crowdflow.
