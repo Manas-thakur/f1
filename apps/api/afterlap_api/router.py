@@ -255,15 +255,15 @@ async def invoke(plane: Any, incoming: Incoming) -> Outgoing:
     except Exception as exc:
         return _finish(request, exception_outgoing(request, exc))
     finally:
-        _release_session(db_cm, committed)
-        _release_session(command_cm, committed)
+        _release_session(db_cm, committed=committed)
+        _release_session(command_cm, committed=committed)
 
 
 def _reject(message: str) -> None:
     raise LifecycleError(ErrorCode.VALIDATION_FAILED, message)
 
 
-def _release_session(gen: Any, committed: bool) -> None:
+def _release_session(gen: Any, *, committed: bool) -> None:
     if gen is None:
         return
     if committed:

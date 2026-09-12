@@ -815,7 +815,7 @@ def _assemble(
                 f"{change.car_id or 'empty'}; that slot's history was reset"
             )
 
-    overall = _overall_quality(channels, capability, state.own.residual_alarm)
+    overall = _overall_quality(channels, capability=capability, residual_alarm=state.own.residual_alarm)
     quality = EstimateQuality(
         overall=overall,
         channels=channels,
@@ -889,7 +889,9 @@ def _channel_qualities(state: EstimatorState, context: EstimationContext) -> tup
     return tuple(entries)
 
 
-def _overall_quality(channels: tuple[ChannelQuality, ...], capability: bool, residual_alarm: bool) -> Quality:
+def _overall_quality(
+    channels: tuple[ChannelQuality, ...], *, capability: bool, residual_alarm: bool
+) -> Quality:
     order = [Quality.VALID, Quality.DEGRADED, Quality.STALE, Quality.INVALID, Quality.MISSING]
     worst = Quality.VALID
     for entry in channels:

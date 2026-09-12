@@ -221,7 +221,7 @@ def run_command_loop(commands: _Queue, results: _Queue, config: WorkerConfig) ->
             continue
         result, runtime, finished = _execute(command, runtime, config)
         try:
-            results.put(result, True, RESULT_PUT_TIMEOUT_S)
+            results.put(result, block=True, timeout=RESULT_PUT_TIMEOUT_S)
         except queue_module.Full:
             logger.exception(
                 "session worker %s dropped the result for %s: the result queue stayed full for %.0f s",
@@ -485,7 +485,7 @@ class SessionWorkerHandle:
         if not self.alive:
             raise WorkerUnavailable(self.exit_detail)
         try:
-            self._commands.put(command, False)
+            self._commands.put(command, block=False)
         except queue_module.Full as exc:
             raise WorkerBusy(
                 "the session worker command queue is full; back off rather than buffering commands"
@@ -540,7 +540,7 @@ class SessionWorkerHandle:
         if process is not None:
             if process.is_alive():
                 with contextlib.suppress(queue_module.Full):
-                    self._commands.put(None, False)
+                    self._commands.put(None, block=False)
                 process.join(timeout_s)
             if process.is_alive():
                 process.terminate()

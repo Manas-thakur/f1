@@ -92,12 +92,19 @@ select = [
     "C4",
     "DTZ",
     "T10",
+    "T20",
     "EM",
+    "EXE",
     "FA",
+    "FBT",
+    "INP",
+    "INT",
     "ISC",
     "ICN",
     "LOG",
     "G",
+    "NPY",
+    "PGH",
     "PIE",
     "PYI",
     "PT",
@@ -106,6 +113,7 @@ select = [
     "RET",
     "SLF",
     "SIM",
+    "SLOT",
     "TID",
     "TC",
     "ARG",
@@ -117,15 +125,14 @@ select = [
     "FURB",
     "RUF",
     "ERA",
+    "BLE",
+    "YTT",
     "C90",
 ]
 ignore = [
     "COM812",
     "ISC001",
-    "B008",
-    "RUF012",
     "ANN401",
-    "PLR0913",
     "PLR2004",
     "TRY003",
     "EM101",
@@ -133,28 +140,13 @@ ignore = [
     "TC001",
     "TC002",
     "TC003",
-    "TC006",
     "TID252",
     "PLC0415",
-    "S101",
-    "S105",
-    "S106",
-    "S110",
-    "S112",
-    "S310",
-    "S608",
     "N818",
-    "ARG001",
-    "ARG002",
-    "ARG005",
-    "PERF401",
-    "PTH105",
-    "SLF001",
-    "PLW0603",
-    "TRY300",
+    "S101",
     "TRY004",
-    "PT012",
-    "PT019",
+    "TRY300",
+    "PERF401",
 ]
 preview = false
 
@@ -171,28 +163,82 @@ force-single-line = false
 combine-as-imports = true
 
 [tool.ruff.lint.mccabe]
-max-complexity = 40
+max-complexity = 20
 
 [tool.ruff.lint.pylint]
 max-args = 12
-max-branches = 24
-max-returns = 12
-max-statements = 120
+max-branches = 18
+max-returns = 10
+max-statements = 100
 
 [tool.ruff.lint.per-file-ignores]
-"apps/api/afterlap_api/router.py" = ["PLR0912"]
-"packages/application/afterlap_application/process_runtime.py" = ["PLR0911"]
-"packages/contracts/afterlap_contracts/schema_export.py" = ["PLR0911"]
-"packages/core/afterlap_core/learning/promotion.py" = ["PLR0912"]
-"packages/core/afterlap_core/tracks/compile.py" = ["PLR0912"]
-"scripts/acceptance_real_circuit.py" = ["PLR0915"]
-"tests/backend/test_vertical_slice.py" = ["PLR0915"]
+"apps/api/afterlap_api/cli.py" = ["FBT001", "FBT002"]
+"apps/api/afterlap_api/migrations/**/*.py" = ["INP001"]
+"apps/api/afterlap_api/observability.py" = ["PLW0603"]
+"apps/api/afterlap_api/router.py" = ["BLE001", "C901", "PLR0912", "PLW0603"]
+"apps/api/afterlap_api/session/baseline_planner.py" = ["ARG002"]
+"apps/api/afterlap_api/session/publisher.py" = ["BLE001"]
+"apps/api/afterlap_api/session/recorder.py" = ["ARG002", "BLE001"]
+"packages/application/afterlap_application/process_runtime.py" = ["FBT001", "PLR0911"]
+"packages/contracts/afterlap_contracts/enums.py" = ["S105"]
+"packages/contracts/afterlap_contracts/registry.py" = ["S106"]
+"packages/contracts/afterlap_contracts/schema_export.py" = ["PLR0911", "PLR0912", "T201"]
+"packages/core/afterlap_core/cli.py" = ["FBT001", "FBT002"]
+"packages/core/afterlap_core/conditions/field.py" = ["ARG002"]
+"packages/core/afterlap_core/data/replay.py" = ["S106"]
+"packages/core/afterlap_core/diagnostics.py" = ["BLE001", "PLW0603"]
+"packages/core/afterlap_core/evaluation/harness.py" = ["BLE001"]
+"packages/core/afterlap_core/learning/bridge.py" = ["ARG002"]
+"packages/core/afterlap_core/learning/callbacks.py" = ["PLR0912"]
+"packages/core/afterlap_core/learning/checkpoints.py" = ["NPY002", "PLR0913"]
+"packages/core/afterlap_core/learning/features.py" = ["FBT003"]
+"packages/core/afterlap_core/learning/promotion.py" = ["C901", "PLR0912"]
+"packages/core/afterlap_core/learning/serving.py" = ["PLR0913"]
+"packages/core/afterlap_core/learning/train_sac.py" = ["BLE001", "NPY002", "PLR0913"]
 "packages/core/afterlap_core/paths.py" = ["SIM115"]
-"tests/**/*.py" = ["S101", "PLR2004", "ANN001", "ANN201", "ANN202", "ANN002", "ANN003", "ANN204", "PT018", "PT011", "E402"]
+"packages/core/afterlap_core/planning/planner.py" = ["PLR0911", "PLR0912", "PLR0913"]
+"packages/core/afterlap_core/planning/rollout.py" = ["S105"]
+"packages/core/afterlap_core/simulation/energy_limits.py" = ["ARG002"]
+"packages/core/afterlap_core/simulation/overtake.py" = ["S105"]
+"packages/core/afterlap_core/simulation/track_source.py" = ["ARG002", "SLF001"]
+"packages/core/afterlap_core/tracks/cli.py" = ["FBT001", "FBT002"]
+"packages/core/afterlap_core/tracks/compile.py" = ["C901", "PLR0912", "PLR0915"]
+"packages/infrastructure/afterlap_infrastructure/persistence/repository.py" = ["ARG001"]
+"docs/tools/**/*.py" = ["ARG002", "BLE001", "INP001", "S110", "T201"]
 "scripts/**/*.py" = ["T201"]
-"scripts/check_no_comments.py" = ["C901", "PLR0912", "T201"]
-"scripts/demo.py" = ["PLR0915", "T201"]
-"docs/tools/**/*.py" = ["T201", "S110"]
+"scripts/acceptance_real_circuit.py" = ["BLE001", "FBT001", "FBT003", "PLR0915"]
+"scripts/audit.py" = ["S310", "S603", "S607"]
+"scripts/batch_worker_main.py" = ["BLE001", "SLF001"]
+"scripts/check_no_comments.py" = ["C901", "PLR0912"]
+"scripts/demo.py" = ["FBT001", "FBT003", "PLR0915"]
+"scripts/release_bundle.py" = ["BLE001", "S608"]
+"tests/**/*.py" = [
+    "ANN001",
+    "ANN002",
+    "ANN003",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ARG001",
+    "ARG002",
+    "ARG005",
+    "BLE001",
+    "E402",
+    "FBT001",
+    "FBT003",
+    "INP001",
+    "PLR2004",
+    "PT011",
+    "PT012",
+    "PT018",
+    "PT019",
+    "S101",
+    "S105",
+    "SLF001",
+    "T201",
+]
+"tests/backend/test_vertical_slice.py" = ["PLR0915"]
+"tests/estimation/conftest.py" = ["PLR0913"]
 "workers/**/*.py" = ["T201"]
 
 [tool.mypy]

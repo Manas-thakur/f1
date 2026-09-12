@@ -324,26 +324,30 @@ class ContinuationEnsemble:
     def score(self, encoded: EncodedObservation) -> ContinuationScore:
         """Evaluate one encoded observation with the frozen support gates."""
         if encoded.feature_hash != self._feature_hash:
-            return ContinuationScore(0.0, 0.0, False, SupportReason.FEATURE_HASH_MISMATCH)
+            return ContinuationScore(0.0, 0.0, in_support=False, reason=SupportReason.FEATURE_HASH_MISMATCH)
         if encoded.clip_fraction > self._support.max_clip_fraction:
-            return ContinuationScore(0.0, 0.0, False, SupportReason.CLIP_FRACTION_EXCEEDED)
+            return ContinuationScore(0.0, 0.0, in_support=False, reason=SupportReason.CLIP_FRACTION_EXCEEDED)
         if encoded.known_mask_fraction < self._support.min_known_mask_fraction:
-            return ContinuationScore(0.0, 0.0, False, SupportReason.KNOWN_MASK_TOO_LOW)
+            return ContinuationScore(0.0, 0.0, in_support=False, reason=SupportReason.KNOWN_MASK_TOO_LOW)
 
         mean, spread = self.predict(encoded.observation)
         value = float(mean[0])
         disagreement = float(spread[0])
         if not (math.isfinite(value) and math.isfinite(disagreement)):
-            return ContinuationScore(0.0, 0.0, False, SupportReason.NON_FINITE_OUTPUT)
+            return ContinuationScore(0.0, 0.0, in_support=False, reason=SupportReason.NON_FINITE_OUTPUT)
         if disagreement > self._support.max_ensemble_disagreement:
-            return ContinuationScore(value, disagreement, False, SupportReason.DISAGREEMENT_EXCEEDED)
+            return ContinuationScore(
+                value, disagreement, in_support=False, reason=SupportReason.DISAGREEMENT_EXCEEDED
+            )
         with torch.inference_mode():
             tensor = torch.from_numpy(encoded.observation.reshape(1, -1))
             members = tuple(
                 float(self._scaler.inverse(np.asarray(member(tensor).item(), dtype=np.float64)))
                 for member in self._members
             )
-        return ContinuationScore(value, disagreement, True, SupportReason.IN_SUPPORT, members)
+        return ContinuationScore(
+            value, disagreement, in_support=True, reason=SupportReason.IN_SUPPORT, member_values=members
+        )
 
     def state_dicts(self) -> list[dict[str, torch.Tensor]]:
         return [member.state_dict() for member in self._members]

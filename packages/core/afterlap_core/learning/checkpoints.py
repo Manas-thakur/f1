@@ -18,6 +18,7 @@ evaluation from the same seed on the same machine.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import platform
@@ -134,18 +135,14 @@ class CheckpointManifest:
 
 def _library_versions() -> dict[str, str]:
     versions = {"python": platform.python_version(), "numpy": np.__version__, "torch": torch.__version__}
-    try:  # pragma: no cover - optional
+    with contextlib.suppress(ImportError):  # pragma: no cover - optional
         import stable_baselines3
 
         versions["stable_baselines3"] = stable_baselines3.__version__
-    except Exception:  # pragma: no cover
-        pass
-    try:  # pragma: no cover
+    with contextlib.suppress(ImportError):  # pragma: no cover - optional
         import gymnasium
 
         versions["gymnasium"] = gymnasium.__version__
-    except Exception:  # pragma: no cover
-        pass
     return versions
 
 
@@ -210,9 +207,9 @@ def save_checkpoint(
 
         if directory.exists():
             retired = directory.with_name(f"{directory.name}.retired-{os.getpid()}")
-            os.replace(directory, retired)
+            directory.replace(retired)
             shutil.rmtree(retired, ignore_errors=True)
-        os.replace(staging, directory)
+        staging.replace(directory)
     except BaseException:
         shutil.rmtree(staging, ignore_errors=True)
         raise

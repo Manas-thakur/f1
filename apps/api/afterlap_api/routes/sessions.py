@@ -299,8 +299,8 @@ async def create_session(
     request: Request,
     payload: CreateSessionRequest,
     db: CommandDbSession,
-    operator_id: OperatorId,
-    idempotency_key: IdempotencyKey,
+    _operator_id: OperatorId,
+    _idempotency_key: IdempotencyKey,
 ) -> CreateSessionResponse:
     factory = getattr(request.app.state, "session_factory", None)
     if factory is None:
@@ -404,7 +404,7 @@ async def take_lease(
     session_id: str,
     payload: AcquireLeaseRequest,
     db: CommandDbSession,
-    idempotency_key: IdempotencyKey,
+    _idempotency_key: IdempotencyKey,
 ) -> AcquireLeaseResponse:
     row = _session_row(db, session_id)
     lease = acquire_lease(
@@ -433,7 +433,7 @@ async def run_command(
     session_id: str,
     payload: SessionCommandRequest,
     db: CommandDbSession,
-    idempotency_key: IdempotencyKey,
+    _idempotency_key: IdempotencyKey,
 ) -> SessionCommandResponse:
     """Start, pause, resume, stop or step a session.
 
@@ -589,7 +589,7 @@ async def driver_action(
     session_id: str,
     payload: DriverActionRequest,
     db: CommandDbSession,
-    idempotency_key: IdempotencyKey,
+    _idempotency_key: IdempotencyKey,
 ) -> DriverActionResponse:
     row = _session_row(db, session_id)
     manifest = _manifest_of(db, row)
@@ -620,7 +620,7 @@ async def create_snapshot(
     session_id: str,
     payload: CreateSnapshotRequest,
     db: CommandDbSession,
-    idempotency_key: IdempotencyKey,
+    _idempotency_key: IdempotencyKey,
 ) -> CreateSnapshotResponse:
     row = _session_row(db, session_id)
     runtime = _registry(request).get(session_id)

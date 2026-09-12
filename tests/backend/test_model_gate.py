@@ -63,7 +63,10 @@ def _approved(**overrides) -> ModelManifest:
     )
 
 
-def _check(bundle, *, feature_hash=ENERGY_V1.content_hash(), rule_family=RULE_FAMILY):
+ENERGY_FEATURE_HASH = ENERGY_V1.content_hash()
+
+
+def _check(bundle, *, feature_hash=ENERGY_FEATURE_HASH, rule_family=RULE_FAMILY):
     return check_model_compatibility(
         requested_model_hash="sha256:requested",
         bundle=bundle,

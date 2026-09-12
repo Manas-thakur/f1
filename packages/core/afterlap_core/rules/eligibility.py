@@ -176,7 +176,7 @@ class EligibilityMachine:
         for crossing in self._crossings_in(t0, t1, progress0, progress1):
             self.crossings.append(crossing)
             if crossing.kind == "detection":
-                applied.append(self._apply_detection(crossing, gap_condition_met))
+                applied.append(self._apply_detection(crossing, gap_condition_met=gap_condition_met))
             else:
                 applied.append(self._apply_activation(crossing))
         return tuple(applied)
@@ -186,7 +186,7 @@ class EligibilityMachine:
         return transition
 
     def _apply_detection(
-        self, crossing: LineCrossing, gap_condition_met: bool | None
+        self, crossing: LineCrossing, *, gap_condition_met: bool | None
     ) -> EligibilityTransition:
         previous = self.state
         if gap_condition_met is None:

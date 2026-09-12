@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from afterlap_contracts import (
     CapabilityState,
@@ -381,7 +381,7 @@ class SessionRecorder:
             payload=dict(payload["payload"]),
         )
 
-    _REPLAY: dict[str, Callable[[SessionRecorder, OrmSession, dict[str, Any], float], None]] = {
+    _REPLAY: ClassVar[dict[str, Callable[[SessionRecorder, OrmSession, dict[str, Any], float], None]]] = {
         "store_decision": _replay_decision,
         "record_execution": _replay_execution,
         "invalidate_outstanding": _replay_invalidate,
