@@ -37,6 +37,15 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
       settings: {
         circuit: data.get('circuit'),
         variability: { preset: data.get('variability') },
+        racing_line: {
+          enabled: data.get('racing_line') === 'on',
+          corner_strength: Number(data.get('corner_strength')),
+          randomness: Number(data.get('line_randomness')),
+          wander_m: Number(data.get('line_wander_m')),
+          lookahead_m: Number(data.get('line_lookahead_m')),
+          smoothing_m: Number(data.get('line_smoothing_m')),
+          overtake_in_corners: data.get('corner_overtakes') === 'on',
+        },
         seed: Number(data.get('seed')),
         cars: Number(data.get('cars')),
         laps: Number(data.get('laps')),
@@ -47,6 +56,7 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
         wind_mps: Number(data.get('wind')),
         time_limit_s: Number(data.get('duration')),
         wake: data.get('wake') === 'on',
+        contact_mode: data.get('contact_mode'),
         storyline: {
           enabled: data.get('storylines') === 'on',
           pit_stops: data.get('pit-stops') === 'on',
@@ -145,6 +155,13 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
         <input name="wake" type="checkbox" defaultChecked={frame.settings.wake} />{' '}
         Wake interactions
       </label>
+      <label>
+        Contact handling
+        <select name="contact_mode" defaultValue={frame.settings.contact_mode}>
+          <option value="ignore">Ignore overlaps</option>
+          <option value="terminate">End race on contact</option>
+        </select>
+      </label>
       <label className={styles.checkbox}>
         <input name="storylines" type="checkbox" defaultChecked={frame.settings.storyline.enabled} />{' '}
         Random storylines
@@ -158,6 +175,29 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
         <input name="tyre-wear" type="number" min="0" max="10" step="0.1"
           defaultValue={frame.settings.storyline.tyre_wear_scale} required />
       </label>
+      <details className={styles.wide}>
+        <summary>Racing lines</summary>
+        <div className={styles.form}>
+          <label className={styles.checkbox}>
+            <input name="racing_line" type="checkbox" defaultChecked={frame.settings.racing_line.enabled} />{' '}
+            Dynamic corner lines
+          </label>
+          <label className={styles.checkbox}>
+            <input name="corner_overtakes" type="checkbox"
+              defaultChecked={frame.settings.racing_line.overtake_in_corners} />{' '}
+            Allow corner overtakes
+          </label>
+          {([
+            ['corner_strength', 'Corner width use', 0, 1, frame.settings.racing_line.corner_strength],
+            ['line_randomness', 'Line randomness', 0, 1, frame.settings.racing_line.randomness],
+            ['line_wander_m', 'Random wander (m)', 0, 2, frame.settings.racing_line.wander_m],
+            ['line_lookahead_m', 'Corner lookahead (m)', 10, 200, frame.settings.racing_line.lookahead_m],
+            ['line_smoothing_m', 'Transition smoothing (m)', 5, 100, frame.settings.racing_line.smoothing_m],
+          ] as const).map(([name, label, min, max, value]) => <label key={name}>{label}
+            <input name={name} type="number" min={min} max={max} step="any" required defaultValue={value} />
+          </label>)}
+        </div>
+      </details>
       <button type="submit" className={styles.primary} disabled={!connected}>
         Reset race
       </button>

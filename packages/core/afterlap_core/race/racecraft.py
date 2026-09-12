@@ -7,6 +7,7 @@ from afterlap_contracts import DeploymentProfile
 from ..simulation.observation import Observation
 from ..simulation.policies import DriverAction
 from ..simulation.track_source import TrackSource
+from .racing_line import RacingLine
 from .variability import DriverTraits
 
 
@@ -23,6 +24,9 @@ class Racecraft:
     last_time_s: float = -0.1
     length_m: float = 5.6
     width_m: float = 2
+    racing_line: RacingLine | None = None
+    ignore_collisions: bool = False
+    overtake_in_corners: bool = False
 
     def transition(self, state: str, now: float) -> None:
         if self.state != state:
@@ -46,6 +50,8 @@ class Racecraft:
     def clear(
         self, rivals: list[dict[str, float | str]], own_d: float, target: float, horizon: float
     ) -> bool:
+        if self.ignore_collisions:
+            return True
         for rival in rivals:
             gap = float(rival["relative_progress_m"])
             future = gap + float(rival["relative_speed_mps"]) * horizon
@@ -74,6 +80,11 @@ class Racecraft:
         width = min(track.width_at(progress + speed * t) for t in (0, horizon / 2, horizon))
         limit = max(0, width / 2 - self.width_m / 2 - self.traits.clearance_m)
         desired = self.lane if self.goal is None else self.goal
+        preferred = (
+            self.traits.preferred_line_m
+            if self.racing_line is None
+            else self.racing_line.target_at(progress + speed * self.traits.reaction_s)
+        )
         if target is not None and self.state in {"committed", "alongside"}:
             gap = float(target["relative_progress_m"])
             if gap < -clearance:
@@ -86,7 +97,10 @@ class Racecraft:
                     and abs(own_d - desired) < 0.3
                     and float(target["relative_speed_mps"]) > 0.5
                 )
-                or abs(desired - float(target["lateral_d_m"])) < self.width_m + self.traits.clearance_m
+                or (
+                    not self.ignore_collisions
+                    and abs(desired - float(target["lateral_d_m"])) < self.width_m + self.traits.clearance_m
+                )
                 or not self.clear(
                     [rival for rival in rivals if rival["car_id"] != self.rival_id], own_d, desired, 0.7
                 )
@@ -96,7 +110,7 @@ class Racecraft:
             self.transition("aborting", now)
         if self.state in {"aborting", "returning"}:
             desired = own_d
-            preferred = max(-limit, min(limit, self.traits.preferred_line_m))
+            preferred = max(-limit, min(limit, preferred))
             if self.clear(rivals, own_d, preferred, horizon):
                 desired = preferred
                 if abs(own_d - preferred) < 0.2:
@@ -116,7 +130,7 @@ class Racecraft:
                 closing = -float(target["relative_speed_mps"])
                 self.transition("following", now)
                 grip = float(observation.channels.get("grip_multiplier", 0.55))
-                feasible = all(
+                feasible = self.overtake_in_corners or all(
                     speed * speed * abs(track.curvature_at(progress + speed * t)) < 0.7 * 9.80665 * grip
                     for t in (0, horizon / 2, horizon)
                 )
@@ -130,9 +144,7 @@ class Racecraft:
                         > self.width_m + self.traits.clearance_m + 0.3
                     ):
                         sides.insert(0, own_d)
-                    sides.sort(
-                        key=lambda lane: abs(lane - own_d) + 0.2 * abs(lane - self.traits.preferred_line_m)
-                    )
+                    sides.sort(key=lambda lane: abs(lane - own_d) + 0.2 * abs(lane - preferred))
                     for lane in sides:
                         move_time = abs(lane - own_d) / self.traits.lateral_rate_mps + self.traits.reaction_s
                         if (
@@ -150,8 +162,10 @@ class Racecraft:
                     -self.length_m - speed * self.traits.headway_s < float(rival["relative_progress_m"]) < 0
                     for rival in rivals
                 )
-                if not pressured and self.clear(rivals, own_d, self.traits.preferred_line_m, horizon):
-                    desired = self.traits.preferred_line_m
+                if (self.ignore_collisions or not pressured) and self.clear(
+                    rivals, own_d, preferred, horizon
+                ):
+                    desired = preferred
         self.goal = desired
         delta = self.traits.lateral_rate_mps * dt
         self.lane = max(-limit, min(limit, self.lane + max(-delta, min(delta, desired - self.lane))))
@@ -168,7 +182,7 @@ class Racecraft:
         own_d = observation.get("lateral_d_m")
         desired_a = 4.0
         emergency = False
-        for rival in rivals:
+        for rival in () if self.ignore_collisions else rivals:
             gap = float(rival["relative_progress_m"])
             if gap <= 0 or abs(float(rival["lateral_d_m"]) - own_d) > self.width_m + self.traits.clearance_m:
                 continue

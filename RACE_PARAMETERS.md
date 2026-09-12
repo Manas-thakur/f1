@@ -68,3 +68,7 @@ uv run python scripts/race_benchmark.py --settings scenario.json --output benchm
 Output files for generation and diagnostics are exclusive-create. Policy sidecars record the exact implementation hash and contract. Keep policy and sidecar together, with the source revision and experiment settings.
 
 Omitting `laps` selects the chosen circuit's sourced Grand Prix distance. An explicit `laps` value from 1 through 80 always overrides that preset. Run `uv run python scripts/race.py catalogue` for machine-readable circuit defaults and `uv run python scripts/race.py schema` for the complete settings, direct control, and normalized RL action schemas.
+
+## Racing line controls
+
+`contact_mode` defaults to `ignore`, allowing cars to overlap without ending the episode. Set it to `terminate` to retain footprint-based contact failure. The nested `racing_line` settings control each car's seeded, periodic path: `enabled`, `corner_strength` from 0 to 1, `randomness` from 0 to 1, `wander_m` from 0 to 2, `lookahead_m` from 10 to 200, `smoothing_m` from 5 to 100, and `overtake_in_corners`. The generated line remains inside the usable track corridor and is included in the replay manifest.

@@ -28,6 +28,18 @@ class StorylineSettings(BaseModel):
         return self
 
 
+class RacingLineSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    enabled: bool = True
+    corner_strength: float = Field(default=0.9, ge=0, le=1)
+    randomness: float = Field(default=0.7, ge=0, le=1)
+    wander_m: float = Field(default=0.8, ge=0, le=2)
+    lookahead_m: float = Field(default=65, ge=10, le=200)
+    smoothing_m: float = Field(default=30, ge=5, le=100)
+    overtake_in_corners: bool = True
+
+
 class RaceSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
@@ -42,9 +54,11 @@ class RaceSettings(BaseModel):
     wind_mps: float = Field(default=0.0, ge=-20, le=20)
     wake: bool = True
     time_limit_s: float = Field(default=1800, ge=1, le=14400)
+    contact_mode: Literal["ignore", "terminate"] = "ignore"
 
     variability: Variability = Field(default_factory=Variability)
     storyline: StorylineSettings = Field(default_factory=StorylineSettings)
+    racing_line: RacingLineSettings = Field(default_factory=RacingLineSettings)
 
     @model_validator(mode="before")
     @classmethod

@@ -73,7 +73,17 @@ def test_generate_accepts_every_top_level_race_setting(monkeypatch, tmp_path):
         "temperature_k": 290.0,
         "wind_mps": -4.0,
         "wake": False,
+        "contact_mode": "ignore",
         "time_limit_s": 1.0,
+        "racing_line": {
+            "enabled": True,
+            "corner_strength": 0.9,
+            "randomness": 0.7,
+            "wander_m": 0.8,
+            "lookahead_m": 65.0,
+            "smoothing_m": 30.0,
+            "overtake_in_corners": True,
+        },
         "variability": {
             "preset": "stress",
             "driver_scale": 1.0,

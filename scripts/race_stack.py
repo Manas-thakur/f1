@@ -36,6 +36,14 @@ def main() -> None:
     web_port = int(os.environ.get("RACE_WEB_PORT", "18760"))
     simulator_port = int(os.environ.get("RACE_SIM_PORT", "18761"))
     check_ports((web_port, simulator_port))
+    server_command = [sys.executable, "scripts/race.py", "serve", "--port", str(simulator_port)]
+    button_gpio = os.environ.get("AFTERLAP_BUTTON_GPIO")
+    if button_gpio:
+        server_command.extend(("--button-gpio", button_gpio))
+    race_origin = os.environ.get("AFTERLAP_RACE_ORIGIN")
+    if race_origin:
+        server_command.extend(("--origin", race_origin))
+    web_host = os.environ.get("AFTERLAP_WEB_HOST", "127.0.0.1")
 
     def stop(signum: int, frame: object) -> None:
         raise KeyboardInterrupt
@@ -44,14 +52,14 @@ def main() -> None:
     try:
         children.append(
             subprocess.Popen(
-                [sys.executable, "scripts/race.py", "serve", "--port", str(simulator_port)],
+                server_command,
                 cwd=ROOT,
                 start_new_session=True,
             )
         )
         children.append(
             subprocess.Popen(
-                [bun, "x", "next", "dev", "--hostname", "127.0.0.1", "--port", str(web_port)],
+                [bun, "x", "next", "dev", "--hostname", web_host, "--port", str(web_port)],
                 cwd=ROOT / "apps/web",
                 env={**os.environ, "AFTERLAP_RACE_UPSTREAM": f"http://127.0.0.1:{simulator_port}"},
                 start_new_session=True,

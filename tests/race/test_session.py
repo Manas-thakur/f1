@@ -118,13 +118,30 @@ def test_time_limit_is_truncation_and_cannot_step_after_done():
 
 
 def test_contact_ends_episode_without_a_pass_reward():
-    session = RaceSession(RaceSettings(cars=2))
+    session = RaceSession(RaceSettings(cars=2, contact_mode="terminate"))
     a, b = session.simulator.world.cars.values()
     b.progress_m, b.s_m, b.lateral_d_m = a.progress_m, a.s_m, a.lateral_d_m
     session.advance(0.01)
     assert session.status == "failed"
     assert "contact" in session.failure
     assert session.finishes == {}
+
+
+def test_default_race_ignores_contact_and_completes_overlapping_pass():
+    session = RaceSession(RaceSettings(cars=2))
+    simulator = session.simulator
+    a, b = simulator.world.cars.values()
+    a.lateral_d_m = b.lateral_d_m = 0
+    for delta in (-20, 0, 20):
+        a.progress_m = b.progress_m + delta
+        a.s_m = a.progress_m % session.track.length
+        simulator.detect_geometry_events()
+    assert session.failure is None
+    assert session.status == "paused"
+    assert any(
+        event.kind == "completed_pass" and event.overtaking_car_id == a.car_id
+        for event in simulator.world.passes
+    )
 
 
 def test_finish_requires_crossing_the_shared_line():

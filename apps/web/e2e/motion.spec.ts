@@ -14,10 +14,12 @@ function frame(time: number, progress: number, status = 'running', generation = 
       enforced: {}, session_limits: {}, limitations: 'test fixture' },
     settings: { circuit: 'test', seed: 1, cars: 1, laps: 3, dt_s: 0.01,
       wetness: 0, weather: 'sunny', temperature_k: 300, wind_mps: 0, wake: false,
-      variability: { preset: 'mild' }, time_limit_s: 100,
+      contact_mode: 'ignore', variability: { preset: 'mild' }, time_limit_s: 100,
       storyline: { enabled: true, pit_stops: true, tyre_wear_scale: 1,
         event_interval_min_s: 4, event_interval_max_s: 16,
-        event_duration_min_s: 1.5, event_duration_max_s: 5 } },
+        event_duration_min_s: 1.5, event_duration_max_s: 5 },
+      racing_line: { enabled: true, corner_strength: 0.9, randomness: 0.7, wander_m: 0.8,
+        lookahead_m: 65, smoothing_m: 30, overtake_in_corners: true } },
     circuit_map: { id: 'test', name: 'Test', length_m: 1000,
       points: [[0, 0], [100, 0], [100, 100], [0, 100]] },
     cars: [{ id: 'car-01', channels: { s_m: progress % 1000, progress_m: progress },
@@ -33,10 +35,19 @@ function frame(time: number, progress: number, status = 'running', generation = 
 test('motion interpolates continuously without easing at each received point', () => {
   const motion = new RaceMotion();
   for (let i = 0; i < 5; i++) {
-    motion.push(frame(i * 0.1, i * 10), i * 150);
+    const update = frame(i * 0.1, i * 10);
+    const car = update.cars[0];
+    if (car) {
+      car.channels['lateral_d_m'] = i;
+      car.channels['speed_mps'] = 100;
+    }
+    motion.push(update, i * 150);
   }
-  const positions = [600, 630, 660, 690, 720].map((now) => motion.sample(now).get('car-01')?.progress);
+  const poses = [600, 630, 660, 690, 720].map((now) => motion.sample(now).get('car-01'));
+  const positions = poses.map((pose) => pose?.progress);
+  const lateral = poses.map((pose) => pose?.lateral);
   positions.forEach((position, i) => expect(position).toBeCloseTo(15 + i * 2));
+  lateral.forEach((position, i) => expect(position).toBeCloseTo(1.5 + i * 0.2));
   expect(motion.sample(5000).get('car-01')?.progress).toBe(40);
 });
 
@@ -122,6 +133,7 @@ test('track position and direction stay continuous across artwork nodes', () => 
   const after = trackPose(map, 250.001);
   expect(before.position.distanceTo(after.position)).toBeLessThan(0.01);
   expect(Math.abs(before.yaw - after.yaw)).toBeLessThan(0.001);
+  expect(trackPose(map, 100, 0, 0.1).yaw).not.toBeCloseTo(trackPose(map, 100, 0).yaw);
 });
 
 test('camera switching wraps through the current race order', () => {
