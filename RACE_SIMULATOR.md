@@ -33,6 +33,30 @@ Save checkpoint captures simulator state, random streams, pending driver command
 
 The telemetry download contains at most the most recent 200 frames observed by that browser. It is labelled as a bounded telemetry sample. Use the headless generator for complete learning transitions.
 
+## Car telemetry display
+
+`/tel/{car_id}` renders a single car's steering-wheel display for an 800 by 480 panel, for example [car-01](http://127.0.0.1:18760/tel/car-01). The page fits that 800 by 480 artwork to the viewport at a single scale factor and centres it, so a narrower or taller screen letterboxes rather than reflowing. On an exactly 800 by 480 display it renders at scale one. The same display appears at reduced scale in the bottom-right corner of `/race`, following the car the camera is watching, with the car-switch control docked above it; the Telemetry button and the `T` key toggle it. It replaces the older speed and battery corner readout, which now appears only on views too small to hold the panel. Both instances read the same delayed observations over the existing `/race/socket` connection, so the small overlay and the standalone panel always show the same car state.
+
+The display's Start control sends the same start and pause commands as the race transport. It is disabled once the episode is finished, failed or truncated, because a completed race must be reset before it can run again.
+
+Every readout comes from a delayed simulated observation channel:
+
+| Display element | Source |
+| --- | --- |
+| Position, field size, gaps to the cars ahead and behind | Classification order and each car's own `progress_m` and `speed_mps` |
+| Lap and lap count | `lap` channel and the configured race length |
+| Lap progress segments | `s_m` over the circuit length |
+| Lap time, best lap, delta | Browser-side interpolation of `progress_m` crossings; the delta compares elapsed time against the best lap at the same lap distance |
+| Speed dial and reading | `speed_mps` on a 360 km/h scale |
+| Electrical power and deployment profile | `electrical_power_w` and the delivered profile |
+| Energy store, deployed and recharged | `battery_energy_j` inside the car's usable window, `deployed_this_lap_j`, `recharge_this_lap_j` |
+| Deployment mode pill | `electrical_power_w` and `boost_active` |
+| Throttle and brake | `applied_throttle` and `applied_brake` |
+| Grip, battery temperature, lateral offset, acceleration | `grip_multiplier`, `battery_temperature_k`, `lateral_d_m`, `acceleration_mps2` |
+| Flag pill | The observation's race-control flags, the session status and the car's finish |
+
+The reduced model has no gearbox, engine speed, tyre temperature or fuel load, so the display carries no such readouts. The four corner gauges report the observed car state listed above rather than tyre corners. Any channel the simulator has not delivered reads as unavailable dashes, never as zero. Lap times, the delta and the gaps are browser-side derivations from delayed observations, not separate simulator measurements, and they inherit that delay and the sensor noise and quantisation applied to the underlying channels.
+
 ## Circuits and provenance
 
 The 23 circuit layouts come from Crowdflow revision `c6b8c37c7d82fb48edb2d0f2ccc2fc0d07881791`. Each input retains its source URL, SHA-256, upstream geometry identity and the project's circuit-length record. Geometry attribution and licensing are in [configs/race-circuits/ATTRIBUTION.md](configs/race-circuits/ATTRIBUTION.md).
@@ -88,7 +112,7 @@ The actor receives 40 float32 values: 20 normalized features followed by their 2
 | 17-19 | Nearest behind car's same three channels | Same scales |
 | 20-39 | Known masks in the same order | 0 or 1 |
 
-Rival battery truth and future weather do not enter the actor's features or diagnostic info. The operator can inspect every car's own delayed simulated sensors, but those multi-car operator payloads are not the training observation.
+Rival battery truth and future weather do not enter the actor's features or diagnostic info. The operator can inspect every car's own delayed simulated sensors, but those multi-car operator payloads are not the training observation. Own observations also carry the applied throttle and brake fractions as delayed pedal-position sensors for operator telemetry. The actor's 20 features are unchanged, so `race-control-v2` is unaffected and trained policies do not need retraining for them.
 
 The action is an eight-value float32 vector bounded to [-1, 1]. Its fields are driver authority, deployment profile, pace scale, lateral target, low-drag mode, pedal mode, throttle, and brake. Automatic authority retains observation-driven racecraft and applies the chosen battery profile. Direct authority applies every remaining field. Automatic pedal mode lets the physical speed controller follow the pace request; manual pedal mode applies throttle and brake. The generator records field order, bounds, decoded control, and deployment profile order in every manifest and transition. Use `encode_control` and `decode_action` instead of duplicating the mapping.
 
@@ -129,13 +153,13 @@ References: [Gymnasium environment API](https://gymnasium.farama.org/api/env/), 
 
 `make race-check` runs race and numerical tests, targeted Python lint/types, and frontend lint/types. `make race-browser-check` starts an isolated app on ports 18860/18861 and refuses to reuse another server and exercises its live controls in Chromium. `bun run build` checks the complete Next.js production build.
 
-Tests cover all 23 imported layouts, 20-car setup, deterministic delayed-command restore, energy balance, masked observations, rival-energy isolation, finish versus timeout, contact abort, command validation and real WebSocket exchanges. A live browser test checks circuit changes, start/pause, stepping, checkpoint restore, driver commands, telemetry download and mobile overflow.
+Tests cover all 23 imported layouts, 20-car setup, deterministic delayed-command restore, energy balance, masked observations, rival-energy isolation, finish versus timeout, contact abort, command validation and real WebSocket exchanges. A live browser test checks circuit changes, start/pause, stepping, checkpoint restore, driver commands, telemetry download and mobile overflow. Separate tests cover the browser-side lap timing, best-lap delta and gap derivations, the unavailable-channel behaviour of the car display, and the live `/tel/{car_id}` panel starting a race and scaling to its display.
 
 The default 20-car reference engine is CPU intensive. The UI reports observed playback pace separately from rendering FPS. A requested playback rate above available compute does not reduce physics accuracy or skip steps. Long RL runs should measure throughput before choosing episode counts; vectorized environments can distribute separate episodes across available CPU cores.
 
 ## Physics v2 configuration and evidence
 
-See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The action contract is `race-control-v2`; model behavior is `race-physics-v4`. The battery observation/action contract remains `race-bms-v1`, while the browser uses the direct control contract. An extra delayed own grip channel supports automatic racecraft and operator telemetry. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Policies created for earlier contracts must be retrained.
+See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The action contract is `race-control-v2`; model behavior is `race-physics-v4`. The battery observation/action contract remains `race-bms-v1`, while the browser uses the direct control contract. An extra delayed own grip channel supports automatic racecraft and operator telemetry, alongside delayed applied throttle and brake channels used only by operator displays. Operator frames also publish the current race-control flags. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Policies created for earlier contracts must be retrained.
 
 For precise experiments, use `--settings file.json` with generate, train or evaluate. The entire settings file takes precedence over individual scenario flags, including seed. Use nested feature scales to disable variation groups or supply individual driver traits. Weather phases, target wetness, driver traits, initial states and sensor parameters are included in manifests, not actor observations. `catalogue` prints circuit lap presets. `schema` prints the complete race settings, driver control, and RL action contracts. `evaluate --driver-action action.json` applies the same direct control model used by the browser without requiring it.
 

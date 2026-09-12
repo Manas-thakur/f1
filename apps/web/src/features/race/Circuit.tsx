@@ -7,6 +7,7 @@ import { BatteryHud } from './Energy';
 import { rankedCar } from './motion';
 import { Classification, Transport } from './RacePanels';
 import { ControlDrawer } from './ControlDrawer';
+import { TelemetryOverlay } from '../telemetry/Overlay';
 import { useRace } from './Connection';
 import type { CameraMode, GraphicsQuality, RaceWorld } from './RaceWorld';
 import styles from './race.module.css';
@@ -28,6 +29,7 @@ export function Circuit() {
   const toolbar = useRef<HTMLDivElement>(null);
   const minimapCanvas = useRef<HTMLCanvasElement>(null);
   const [showMap, setShowMap] = useState(true);
+  const [showTelemetry, setShowTelemetry] = useState(true);
   const panel = useRef<HTMLElement>(null);
   const world = useRef<RaceWorld | null>(null);
   const latest = useRef({ frame, selected, select });
@@ -121,6 +123,8 @@ export function Circuit() {
         switchCar(event.key === 'ArrowUp' ? -1 : 1);
       } else if (event.key.toLowerCase() === 'm') {
         setShowMap((visible) => !visible);
+      } else if (event.key.toLowerCase() === 't') {
+        setShowTelemetry((visible) => !visible);
       }
     };
     window.addEventListener('keydown', keyboard);
@@ -240,6 +244,7 @@ export function Circuit() {
           </div>
         </div>}
         {classification && <Classification />}
+        <TelemetryOverlay carId={selected} visible={showTelemetry} />
         {(connectionError ?? frame?.failure ?? !connected) && <div className={styles.connectionAlert} role="status">
           {connectionError ?? frame?.failure ?? 'Connecting to the race runtime…'}
         </div>}
@@ -248,6 +253,8 @@ export function Circuit() {
           <button type="button" aria-label="Zoom out" onClick={() => world.current?.zoom(1.2)}>−</button>
           <button type="button" onClick={() => world.current?.setMode('chase')}>Reset view</button>
           <button type="button" aria-pressed={showMap} onClick={() => setShowMap(!showMap)}>Minimap</button>
+          <button type="button" aria-pressed={showTelemetry}
+            onClick={() => setShowTelemetry(!showTelemetry)}>Telemetry</button>
           <button type="button" aria-pressed={classification} onClick={() => setClassification(!classification)}>Classification</button>
           <button type="button" aria-expanded={help} onClick={() => setHelp(!help)}>Controls</button>
         </div>
@@ -257,7 +264,7 @@ export function Circuit() {
           <p>Scroll or pinch to zoom · Two fingers to pan</p>
           <p>Click a car to inspect · Double-click to orbit the selected car</p>
           <p>Focus the scene: 1–4 cameras · + / − zoom (also ⌘ / Ctrl) · F fit circuit</p>
-          <p>↑ car ahead · ↓ car behind · Circular race order · M minimap</p>
+          <p>↑ car ahead · ↓ car behind · Circular race order · M minimap · T telemetry</p>
           <p>Dragging releases chase. Reset view resumes it.</p>
         </div>}
         <div className={styles.minimap} hidden={!showMap}>
@@ -266,12 +273,16 @@ export function Circuit() {
             aria-label={`Circuit minimap tracking ${selected}`} role="img" />
           <small>{selected.toUpperCase()} · P{car ? (frame?.cars.indexOf(car) ?? 0) + 1 : '?'}</small>
         </div>
+        <div className={styles.followDock}>
+          <small>FOLLOWING</small>
+          <strong>{selected.toUpperCase()}</strong>
+          <div className={styles.carSwitch}>
+            <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
+            <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>
+          </div>
+        </div>
         <div className={styles.worldHud}>
           <div><small>FOLLOWING</small><strong>{selected.toUpperCase()}</strong>
-            <div className={styles.carSwitch}>
-              <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
-              <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>
-            </div>
             <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} ·{' '}
               {car?.tyres.phase === 'track' ? frame?.status.toUpperCase() : `PIT ${car?.tyres.phase.toUpperCase()}`}</span>
           </div>

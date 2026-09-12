@@ -1024,6 +1024,8 @@ class Simulator:
                     "lap": float(state.lap),
                     "lateral_d_m": state.lateral_d_m,
                     "acceleration_mps2": state.acceleration_mps2,
+                    "applied_throttle": state.applied_throttle,
+                    "applied_brake": state.applied_brake,
                     "battery_energy_j": state.battery_energy_j,
                     "battery_temperature_k": state.battery_temperature_k,
                     "recharge_this_lap_j": state.recharge_ledger_this_lap_j,

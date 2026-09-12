@@ -106,6 +106,7 @@ export interface RaceFrame {
   type: 'frame';
   generation: number;
   settings: RaceSettings;
+  flags?: string[];
   time_s: number;
   steps: number;
   status: string;
