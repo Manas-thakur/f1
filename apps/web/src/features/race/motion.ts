@@ -4,6 +4,7 @@ export interface MotionPose {
   progress: number;
   lateral: number;
   speed?: number;
+  lateralRate?: number;
 }
 
 interface Sample {
@@ -56,6 +57,7 @@ export class RaceMotion {
         continue;
       }
       const old = previous?.poses.get(car.id);
+      const before = this.samples.at(-2)?.poses.get(car.id);
       let unwrapped = car.channels['progress_m'] !== undefined || !old ? progress
         : old.progress + ((progress - old.progress + this.length * 1.5) % this.length) - this.length / 2;
       const speed = car.channels['speed_mps'];
@@ -67,7 +69,14 @@ export class RaceMotion {
           unwrapped = Math.max(old.progress, prediction + correction);
         }
       }
-      poses.set(car.id, { progress: unwrapped, lateral: car.channels['lateral_d_m'] ?? 0,
+      const lateral = car.channels['lateral_d_m'] ?? 0;
+      const dt = previous ? time - previous.time : 0;
+      const lateralRate = old && dt > 0 ? (lateral - old.lateral) / dt : 0;
+      if (old && before && previous) {
+        const centredDt = time - (this.samples.at(-2)?.time ?? time);
+        old.lateralRate = centredDt > 0 ? (lateral - before.lateral) / centredDt : lateralRate;
+      }
+      poses.set(car.id, { progress: unwrapped, lateral, lateralRate,
         ...(speed === undefined ? {} : { speed: Math.max(0, speed) }) });
     }
     if (!poses.size) {
@@ -126,7 +135,24 @@ export class RaceMotion {
           + (t ** 3 - 2 * t ** 2 + t) * v0 / scale
           + (-2 * t ** 3 + 3 * t ** 2) * destination.progress + (t ** 3 - t ** 2) * v1 / scale;
       }
-      result.set(id, { progress, lateral: origin.lateral + (destination.lateral - origin.lateral) * t });
+      const deltaLateral = destination.lateral - origin.lateral;
+      const m0 = (origin.lateralRate ?? deltaLateral / duration) * duration;
+      const m1 = (destination.lateralRate ?? deltaLateral / duration) * duration;
+      const lateral = Math.max(Math.min(origin.lateral, destination.lateral), Math.min(
+        Math.max(origin.lateral, destination.lateral),
+        (2 * t ** 3 - 3 * t ** 2 + 1) * origin.lateral
+          + (t ** 3 - 2 * t ** 2 + t) * m0
+          + (-2 * t ** 3 + 3 * t ** 2) * destination.lateral + (t ** 3 - t ** 2) * m1,
+      ));
+      const lateralRate = (
+        (6 * t ** 2 - 6 * t) * origin.lateral
+        + (3 * t ** 2 - 4 * t + 1) * m0
+        + (-6 * t ** 2 + 6 * t) * destination.lateral
+        + (3 * t ** 2 - 2 * t) * m1
+      ) / duration;
+      const speed = origin.speed === undefined || destination.speed === undefined
+        ? undefined : origin.speed + (destination.speed - origin.speed) * t;
+      result.set(id, { progress, lateral, lateralRate, ...(speed === undefined ? {} : { speed }) });
     }
     return result;
   }

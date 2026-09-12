@@ -27,7 +27,7 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 ## Controls
 
-Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. Every circuit offers its sourced 2026 Grand Prix lap count as the default and a custom option from 1 through 80 laps. Changing the circuit updates the preset before reset. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
+Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, wake effects, contact handling, and seeded racing-line behavior. Every circuit offers its sourced 2026 Grand Prix lap count as the default and a custom option from 1 through 80 laps. Changing the circuit updates the preset before reset. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
 
 Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode uses persistent observation-driven pass intention, clearance prediction and bounded acceleration/lateral requests; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. The same controls are available to scripts and policies through `DriverControl` and the normalized `RaceEnv` action.
 
@@ -59,8 +59,8 @@ Internal units are metres, seconds, kilograms, joules, watts and kelvin. Display
 | Battery | Actual deployed/recovered energy, conversion losses, auxiliary load, upper/lower energy saturation |
 | Thermal response | Lumped heat capacity and heat rejection, temperature-based electrical derating |
 | Weather | Constant ambient temperature, ideal-gas density, evolving synthetic wetting/drying, periodic surface patches and smooth correlated wind |
-| Traffic | Observation-driven following/lane choice, bounded wake drag/downforce changes based on physical periodic proximity, footprint contact detection |
-| Outcomes | Shared finish-line crossing, time ordering, attempted/completed/retained passes, explicit unsupported-contact abort |
+| Traffic | Observation-driven following, seeded periodic corner lines, corner passing, and bounded wake effects based on physical periodic proximity |
+| Outcomes | Shared finish-line crossing, time ordering, attempted/completed/retained passes, optional footprint contact abort |
 
 Battery power creates wheel force through the drivetrain. Harvesting requires mechanical braking energy; it is not a free recharge button. The low-drag tradeoff also enters the corner-speed preview. Wake-enabled preview uses a conservative downforce-loss bound rather than planning a corner with free-air grip. Braking preview respects the mechanical brake ceiling.
 

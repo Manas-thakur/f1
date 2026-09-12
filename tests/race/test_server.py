@@ -8,7 +8,7 @@ from websockets.asyncio.server import serve
 from websockets.exceptions import InvalidStatus
 
 from afterlap_api.race_server import Command, RaceServer, allowed_origins
-from afterlap_core.race import RaceSession, RaceSettings
+from afterlap_core.race import RaceSession, RaceSettings, RacingLineSettings
 from afterlap_core.simulation.physics import tractive_force
 
 
@@ -26,6 +26,18 @@ def test_controls_validate_bounds_and_require_checkpoint():
     runtime.apply(Command(id="4", operation="step"))
     runtime.apply(Command(id="5", operation="restore"))
     assert runtime.session.simulator.session_time_s == 0
+
+
+def test_server_starts_with_script_supplied_racing_line_settings():
+    settings = RaceSettings(
+        circuit="monza",
+        cars=3,
+        contact_mode="terminate",
+        racing_line=RacingLineSettings(randomness=0.2, corner_strength=0.6),
+    )
+    runtime = RaceServer(settings)
+    assert runtime.session.settings == settings
+    assert runtime.session.frame()["settings"]["racing_line"]["randomness"] == 0.2
 
 
 def test_button_press_is_published_in_the_frame():

@@ -26,6 +26,7 @@ def experiment(seed: int, case: str, duration: float, dt: float = 0.01) -> dict[
         dt_s=dt,
         time_limit_s=duration,
         wake=case != "no-wake",
+        contact_mode="terminate",
     )
     start = time.perf_counter()
     session = RaceSession(settings)
@@ -55,7 +56,12 @@ def experiment(seed: int, case: str, duration: float, dt: float = 0.01) -> dict[
     )
     bundle = world.bundle.model_copy(update={"scenario": scenario, "car_configs": cars})
     session.bundle = bundle
-    session.simulator.reset(bundle, environment=StaticEnvironment(), wake=session.simulator.wake_model)
+    session.simulator.reset(
+        bundle,
+        environment=StaticEnvironment(),
+        wake=session.simulator.wake_model,
+        ignore_contacts=session.settings.contact_mode == "ignore",
+    )
     world = session.simulator.world
     world.policies.clear()
     session.lanes = {car: initial[car].lateral_d_m.value for car in world.cars}
