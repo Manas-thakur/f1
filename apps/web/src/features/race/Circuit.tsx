@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 import { BatteryHud } from './Energy';
 import { rankedCar } from './motion';
@@ -138,8 +139,14 @@ export function Circuit() {
   };
   const car = frame?.cars.find((item) => item.id === selected);
   const speed = car?.channels['speed_mps'];
+  const wetness = frame?.settings.wetness ?? 0;
+  const weather = wetness >= 0.7 ? 'HEAVY RAIN' : wetness >= 0.35 ? 'WET TRACK'
+    : wetness > 0.08 ? 'LIGHT RAIN' : 'DRY';
+  const speedStyle = {
+    '--speed-angle': `${Math.min(290, Math.max(0, (speed ?? 0) * 3.6 / 360 * 290))}deg`,
+  } as CSSProperties;
   return (
-    <section ref={panel} className={styles.mapPanel} aria-label="Live circuit">
+    <section ref={panel} className={styles.mapPanel} aria-label="Live circuit" data-weather={weather}>
       <div className={styles.sceneWrap} style={{ width: `calc(100% - ${dockWidth}px)` }}>
       <div ref={toolbar} className={styles.mapTools}>
         <button type="button" aria-label="Race controls" aria-expanded={settings} onClick={() => setSettings(!settings)}>☰</button>
@@ -198,6 +205,13 @@ export function Circuit() {
             {' · '}{mode === 'cockpit' ? 'FIRST PERSON' : mode.toUpperCase()}</span>
           <span>PACE {frame?.playback_rate?.toFixed(2) ?? '…'}× · TARGET {frame?.requested_rate ?? 1}×</span>
         </div>
+        <div className={styles.weatherStrip}>
+          <span className={styles.weatherPulse} data-wet={wetness > 0.08} />
+          <strong>{weather}</strong>
+          <span>TRACK {Math.round(wetness * 100)}%</span>
+          <span>{frame ? `${(frame.settings.temperature_k - 273.15).toFixed(0)}°C` : 'N/A'}</span>
+          <span>WIND {frame ? Math.abs(frame.settings.wind_mps).toFixed(1) : 'N/A'} M/S</span>
+        </div>
         {classification && <Classification />}
         {(connectionError ?? frame?.failure ?? !connected) && <div className={styles.connectionAlert} role="status">
           {connectionError ?? frame?.failure ?? 'Connecting to the race runtime…'}
@@ -233,7 +247,7 @@ export function Circuit() {
             </div>
             <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} · {frame?.status.toUpperCase()}</span>
           </div>
-          <div className={styles.hudSpeed}>
+          <div className={styles.hudSpeed} style={speedStyle}>
             <strong>{speed === undefined ? 'N/A' : (speed * 3.6).toFixed(0)}</strong>
             <small>KM/H</small></div>
           <BatteryHud />

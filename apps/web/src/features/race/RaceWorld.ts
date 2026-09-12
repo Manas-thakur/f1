@@ -311,6 +311,7 @@ export class RaceWorld {
     }
     this.frame = frame;
     this.atmosphere.setWeather(frame.settings);
+    this.surroundings.setWind(frame.settings.wind_mps);
     if (this.scene.fog instanceof THREE.FogExp2) {
       this.scene.fog.density = 0.00022 + frame.settings.wetness * 0.0011;
     }
@@ -336,6 +337,17 @@ export class RaceWorld {
           boost.add(streak);
         }
         model.add(boost);
+        const spray = new THREE.Group();
+        spray.name = 'wet-spray';
+        for (const side of [-1, 1]) {
+          const mist = new THREE.Mesh(new THREE.ConeGeometry(0.72, 5.5, 12, 1, true),
+            new THREE.MeshBasicMaterial({ color: '#d9e2e5', transparent: true, opacity: 0.12,
+              depthWrite: false, side: THREE.DoubleSide }));
+          mist.rotation.x = -Math.PI / 2;
+          mist.position.set(side * 0.72, 0.65, -3.9);
+          spray.add(mist);
+        }
+        model.add(spray);
         this.cars.set(car.id, model);
         this.scene.add(model);
       }
@@ -344,6 +356,8 @@ export class RaceWorld {
         boost.visible = energyMode(car) === 'BOOST' && car.finish_time_s === null;
         boost.scale.z = Math.max(0.25, Math.min(1, (car.channels['electrical_power_w'] ?? 0) / 350000));
       }
+      model.userData['speedMps'] = car.channels['speed_mps'] ?? 0;
+      model.userData['wetness'] = frame.settings.wetness;
       model.visible = car.channels['s_m'] !== undefined;
     }
   }
@@ -389,6 +403,7 @@ export class RaceWorld {
     this.ambientOcclusion.enabled = this.quality === 'ultra';
     this.bloom.enabled = this.quality === 'ultra';
     this.antialias.enabled = this.quality === 'ultra';
+    this.atmosphere.setQuality(this.quality);
   }
 
   get graphicsQuality() {
@@ -482,11 +497,21 @@ export class RaceWorld {
     }
     const car = this.cars.get(this.selected);
     if (car?.visible) {
+      const speed = Number(car.userData['speedMps'] ?? 0);
+      if (this.mode === 'chase' || this.mode === 'cockpit') {
+        const targetFov = this.mode === 'cockpit' ? 80 + Math.min(8, speed * 0.07)
+          : 56 + Math.min(10, speed * 0.09);
+        const nextFov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 0.06);
+        if (Math.abs(nextFov - this.camera.fov) > 0.01) {
+          this.camera.fov = nextFov;
+          this.camera.updateProjectionMatrix();
+        }
+      }
       if (this.mode === 'chase' || this.mode === 'cockpit') {
         const cockpit = this.mode === 'cockpit';
-        const offset = new THREE.Vector3(cockpit ? 0 : 0.7, cockpit ? 0.86 : 5.1 * this.distance,
-          cockpit ? -0.02 : -13 * this.distance).applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y);
-        const target = new THREE.Vector3(0, cockpit ? 0.86 : 0.9, cockpit ? 30 : 8)
+        const offset = new THREE.Vector3(cockpit ? 0 : 0.42, cockpit ? 0.86 : 3.15 * this.distance,
+          cockpit ? -0.02 : -9.6 * this.distance).applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y);
+        const target = new THREE.Vector3(0, cockpit ? 0.86 : 0.78, cockpit ? 30 : 11)
           .applyAxisAngle(new THREE.Vector3(0, 1, 0), car.rotation.y).add(car.position);
         this.camera.position.copy(car.position).add(offset);
         this.controls.target.copy(target);
@@ -525,6 +550,22 @@ export class RaceWorld {
       return;
     }
     this.dirty = false;
+    for (const model of this.cars.values()) {
+      const spray = model.getObjectByName('wet-spray');
+      if (!spray) {
+        continue;
+      }
+      const speed = Number(model.userData['speedMps'] ?? 0);
+      const wetness = Number(model.userData['wetness'] ?? 0);
+      spray.visible = model.visible && wetness > 0.18 && speed > 12;
+      const intensity = Math.min(1.6, wetness * speed / 34);
+      spray.scale.set(0.65 + intensity * 0.45, 0.65 + intensity * 0.45, 0.6 + intensity);
+      for (const child of spray.children) {
+        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
+          child.material.opacity = 0.035 + intensity * 0.1;
+        }
+      }
+    }
     const time = performance.now() / 1000;
     this.surroundings.update(time, this.camera.position, this.quality !== 'performance');
     this.atmosphere.update(time, this.camera.position);

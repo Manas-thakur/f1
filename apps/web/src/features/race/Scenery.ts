@@ -23,6 +23,7 @@ export class Scenery extends THREE.Group {
   private readonly simpleHead = new THREE.SphereGeometry(0.12, 10, 8);
   private treeSource: THREE.Group | null = null;
   private readonly controller = new AbortController();
+  private wind = 0;
 
   constructor(private readonly map: CircuitMap, private readonly profile: SceneryProfile,
     private readonly invalidate: () => void) {
@@ -490,6 +491,7 @@ export class Scenery extends THREE.Group {
       tree.visible = high && Boolean(p && p.distanceTo(camera) < 180);
       if (p) {
         tree.position.copy(p);
+        tree.rotation.z = Math.sin(time * 0.85 + i * 1.7) * Math.min(0.075, Math.abs(this.wind) * 0.005);
       }
     }
     for (const { group, arms, head, count } of this.crowd) {
@@ -511,6 +513,10 @@ export class Scenery extends THREE.Group {
       arms.instanceMatrix.needsUpdate = true;
       arms.userData['posed'] = true;
     }
+  }
+
+  setWind(wind: number) {
+    this.wind = wind;
   }
 
   private disposeTree() {

@@ -78,11 +78,16 @@ function body(material: THREE.Material, sections: [number, number, number, numbe
 export function createCar(index: number) {
   const group = new THREE.Group();
   const paint = new THREE.MeshPhysicalMaterial({
-    color: LIVERIES[index % LIVERIES.length] ?? '#e5383b', metalness: 0.55, roughness: 0.25, clearcoat: 1,
+    color: LIVERIES[index % LIVERIES.length] ?? '#e5383b', metalness: 0.62, roughness: 0.2,
+    clearcoat: 1, clearcoatRoughness: 0.07, sheen: 0.22, sheenColor: '#ffffff', iridescence: 0.08,
   });
-  const carbon = new THREE.MeshStandardMaterial({ color: '#151a20', roughness: 0.65, metalness: 0.25 });
-  const rubber = new THREE.MeshStandardMaterial({ color: '#151619', roughness: 0.92 });
+  const carbon = new THREE.MeshPhysicalMaterial({ color: '#101419', roughness: 0.46, metalness: 0.34,
+    clearcoat: 0.25, clearcoatRoughness: 0.32 });
+  const rubber = new THREE.MeshPhysicalMaterial({ color: '#111214', roughness: 0.88, sheen: 0.12,
+    sheenColor: '#59616a' });
   const alloy = new THREE.MeshStandardMaterial({ color: '#555d66', metalness: 0.95, roughness: 0.27 });
+  const brake = new THREE.MeshStandardMaterial({ color: '#343a3e', metalness: 0.9, roughness: 0.32 });
+  const caliper = new THREE.MeshStandardMaterial({ color: '#d53a24', metalness: 0.55, roughness: 0.28 });
   const stripe = new THREE.MeshStandardMaterial({ color: '#e6e8e7', roughness: 0.35 });
   box(group, carbon, [1.65, 0.1, 3.45], [0, 0.19, -0.2]);
   group.add(body(paint, [
@@ -109,6 +114,11 @@ export function createCar(index: number) {
       hub.rotation.z = Math.PI / 2;
       hub.position.copy(wheel.position);
       group.add(hub);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.41, 32), brake);
+      disc.rotation.z = Math.PI / 2;
+      disc.position.copy(wheel.position);
+      group.add(disc);
+      box(group, caliper, [0.075, 0.18, 0.1], [side * 1.13, 0.43, z - 0.12]);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.012, 6, 32),
         new THREE.MeshStandardMaterial({ color: '#e4bb3b', roughness: 0.8 }));
       ring.rotation.y = Math.PI / 2;
@@ -129,8 +139,22 @@ export function createCar(index: number) {
   for (let i = 0; i < 3; i++) {
     box(group, i === 2 ? paint : carbon, [1.96, 0.045, 0.19], [0, 0.2 + i * 0.05, 2.3 - i * 0.2]);
   }
+  for (const side of [-1, 1]) {
+    for (let fin = 0; fin < 4; fin++) {
+      const diffuser = box(group, carbon, [0.035, 0.34 + fin * 0.04, 0.72],
+        [side * (0.23 + fin * 0.16), 0.21, -2.12]);
+      diffuser.scale.set(1, 0.45, 0.62);
+      diffuser.rotation.x = -0.13;
+    }
+    const mirror = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 10), paint);
+    mirror.scale.set(1.5, 0.65, 0.72);
+    mirror.position.set(side * 0.63, 0.82, 0.06);
+    mirror.castShadow = true;
+    group.add(mirror);
+  }
   box(group, carbon, [1.6, 0.07, 0.62], [0, 1.06, -2.15]);
   box(group, paint, [1.6, 0.08, 0.15], [0, 1.13, -2.42]);
+  box(group, carbon, [1.78, 0.055, 0.2], [0, 0.96, -2.25]);
   box(group, stripe, [0.07, 0.025, 1.25], [0, 0.52, 1.06]);
   const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.27, 20, 12), carbon);
   cockpit.scale.set(1, 0.5, 1.5);
@@ -142,6 +166,19 @@ export function createCar(index: number) {
   const visor = new THREE.Mesh(new THREE.SphereGeometry(0.174, 24, 12, 0, Math.PI * 2, 1, 0.6), carbon);
   visor.position.copy(helmet.position);
   group.add(visor);
+  const intake = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.055, 8, 24), carbon);
+  intake.rotation.x = Math.PI / 2;
+  intake.position.set(0, 1.02, -0.83);
+  intake.scale.set(0.9, 1, 1.15);
+  group.add(intake);
+  const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.35, 12), alloy);
+  exhaust.rotation.x = Math.PI / 2;
+  exhaust.position.set(0, 0.62, -2.31);
+  group.add(exhaust);
+  const rainLight = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.09, 0.06),
+    new THREE.MeshStandardMaterial({ color: '#ff2338', emissive: '#ff001f', emissiveIntensity: 4 }));
+  rainLight.position.set(0, 0.48, -2.53);
+  group.add(rainLight);
   const numberCanvas = document.createElement('canvas');
   numberCanvas.width = 128;
   numberCanvas.height = 64;

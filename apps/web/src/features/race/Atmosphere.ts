@@ -23,6 +23,8 @@ export class Atmosphere extends THREE.Group {
   private readonly wetMaterials: THREE.MeshPhysicalMaterial[];
   private wetness = 0;
   private wind = 0;
+  private quality: 'ultra' | 'high' | 'performance' = 'ultra';
+  private lastRainUpdate = 0;
 
   constructor(map: CircuitMap, center: THREE.Vector3, span: number,
     wetMaterials: THREE.MeshPhysicalMaterial[], night: boolean) {
@@ -106,13 +108,23 @@ export class Atmosphere extends THREE.Group {
     cloudMaterial.opacity = 0.42 + this.wetness * 0.42;
   }
 
+  setQuality(quality: 'ultra' | 'high' | 'performance') {
+    this.quality = quality;
+    const drops = quality === 'ultra' ? 2800 : quality === 'high' ? 1500 : 450;
+    this.rain.geometry.setDrawRange(0, drops * 2);
+    this.clouds.count = quality === 'performance' ? 32 : quality === 'high' ? 58 : 85;
+  }
+
   update(time: number, camera: THREE.Vector3) {
     this.cameraPosition.copy(camera);
-    if (this.rain.visible) {
+    const rainInterval = this.quality === 'ultra' ? 1 / 45 : this.quality === 'high' ? 1 / 30 : 1 / 18;
+    if (this.rain.visible && time - this.lastRainUpdate >= rainInterval) {
+      this.lastRainUpdate = time;
       const positions = this.rainPositions.array as Float32Array;
+      const limit = Math.min(positions.length, this.rain.geometry.drawRange.count * 3);
       const fall = time * (48 + this.wetness * 42);
       const drift = time * this.wind * 0.65;
-      for (let i = 0; i < positions.length; i += 6) {
+      for (let i = 0; i < limit; i += 6) {
         const baseX = this.rainOrigins[i] ?? 0;
         const baseY = this.rainOrigins[i + 1] ?? 0;
         const baseZ = this.rainOrigins[i + 2] ?? 0;
