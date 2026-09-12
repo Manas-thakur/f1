@@ -34,7 +34,7 @@ ports and drives it. Nothing in it is a mock.
 | `uv audit`, `bun audit` | pass, 0 advisories (was 34) |
 | `zizmor` on `.github/workflows` | pass, 0 findings (was 40) |
 | `ruff format --check`, `ruff check` | pass, 51 rule families |
-| `mypy` (strict, 326 files) | pass |
+| `mypy` (strict, 329 files) | pass |
 | comment policy, docs package, schema drift | pass |
 | `afterlap_core.cli doctor` | pass, 1 optional capability absent |
 | `pytest` (full suite, no deselection) | pass, 1 541 tests |
@@ -231,6 +231,22 @@ are worth naming because a reader would otherwise assume they were laziness:
 
 Forty-four per-file exemptions replace what were blanket ignores, so a new file
 inherits the strict floor rather than the historical one.
+
+### Python: mypy
+
+`workers/` was excluded from type checking entirely, and eight script modules
+carried `ignore_errors = true`. Both are gone: mypy now covers 329 files
+instead of 326, and the eight modules turned out to need two fixes between
+them — a `Runbook._current` field that was never declared, and one untyped
+SQLAlchemy call that gets a local pragma.
+
+The test-suite exemption list drops from sixteen error codes to seven. Nine
+were costing nothing at all; removing them found a fixture annotated
+`Iterator[Path]` that returns a `Path`, a `type: ignore` naming the wrong code,
+and two missing annotations. The seven that remain — `arg-type`,
+`attr-defined`, `union-attr`, `operator`, `var-annotated`, `unreachable`,
+`comparison-overlap` — cost 231 errors between them and are the deliberate
+looseness of a suite that constructs invalid values on purpose.
 
 ### TypeScript: Biome
 

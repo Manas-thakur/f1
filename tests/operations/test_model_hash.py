@@ -51,11 +51,15 @@ from .conftest import RULE_PACK_ID, actionable
 if TYPE_CHECKING:
     from pathlib import Path
 
+    import torch as torch_types
+else:
+    torch_types = torch
+
 RULE_FAMILY = RULE_PACK_ID
 REWARD_REVISION = "objective-v1"
 
 
-def _actor_state() -> dict[str, torch.Tensor]:
+def _actor_state() -> dict[str, torch_types.Tensor]:
     """A small, deterministic state dict. Not a trained model and not claimed to be."""
     generator = torch.Generator().manual_seed(11)
     return {

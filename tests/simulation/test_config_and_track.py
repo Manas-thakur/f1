@@ -203,7 +203,7 @@ class TestBundleValidation:
         bundle = build_bundle()
         assert isinstance(bundle, ScenarioBundle)
         with pytest.raises(ValidationError):
-            bundle.scenario = None  # type: ignore[misc]
+            bundle.scenario = None  # type: ignore[assignment, misc]
 
 
 class TestFootprintGeometry:

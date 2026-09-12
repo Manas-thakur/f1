@@ -36,7 +36,6 @@ from afterlap_core.learning.features import (
 from afterlap_core.learning.reward import load_reward_manifest
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from pathlib import Path
 
 TRACK_LENGTH_M = 5_200.0
@@ -253,7 +252,7 @@ def estimate_with(
 
 
 @pytest.fixture
-def bundle_dir(tmp_path: Path) -> Iterator[Path]:
+def bundle_dir(tmp_path: Path) -> Path:
     directory = tmp_path / "bundle"
     directory.mkdir()
     return directory

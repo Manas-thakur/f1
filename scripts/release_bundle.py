@@ -202,7 +202,11 @@ def schema(staging: Path) -> Section:
     out.mkdir(parents=True, exist_ok=True)
 
     written: dict[str, str] = {}
-    for label, dialect in (("postgresql", postgresql.dialect()), ("sqlite", sqlite.dialect())):
+    dialects: tuple[tuple[str, Any], ...] = (
+        ("postgresql", postgresql.dialect()),  # type: ignore[no-untyped-call]
+        ("sqlite", sqlite.dialect()),  # type: ignore[no-untyped-call]
+    )
+    for label, dialect in dialects:
         statements = [
             str(CreateTable(table).compile(dialect=dialect)).strip() + ";"
             for table in Base.metadata.sorted_tables

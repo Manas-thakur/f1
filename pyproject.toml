@@ -243,8 +243,8 @@ max-statements = 100
 
 [tool.mypy]
 python_version = "3.12"
-files = ["packages", "apps/api", "scripts", "tests", "docs/tools/validate_package.py"]
-exclude = ["packages/contracts/generated", "apps/web", "docs/deck", "docs/tools/complete_package.py", "docs/tools/revise_design.py", "workers/", ".venv/"]
+files = ["packages", "apps/api", "scripts", "tests", "workers", "docs/tools/validate_package.py"]
+exclude = ["packages/contracts/generated", "apps/web", "docs/deck", "docs/tools/complete_package.py", "docs/tools/revise_design.py", ".venv/"]
 explicit_package_bases = true
 mypy_path = "packages/application:packages/contracts:packages/core:packages/infrastructure:apps/api:scripts"
 namespace_packages = true
@@ -302,10 +302,6 @@ module = ["afterlap_contracts.fixtures", "afterlap_contracts.schema_export"]
 disable_error_code = ["arg-type", "return-value", "no-any-return"]
 
 [[tool.mypy.overrides]]
-module = ["demo", "release_bundle", "batch_worker_main", "doctor", "migrate", "afterlap_ops.*", "batch_worker", "session_worker"]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_decorators = false
 disallow_untyped_defs = false
@@ -317,17 +313,8 @@ disable_error_code = [
     "arg-type",
     "attr-defined",
     "union-attr",
-    "no-any-return",
     "operator",
-    "type-arg",
-    "name-defined",
-    "no-untyped-def",
     "var-annotated",
     "unreachable",
     "comparison-overlap",
-    "assignment",
-    "return-value",
-    "misc",
-    "no-untyped-call",
-    "index",
 ]

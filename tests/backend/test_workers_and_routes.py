@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from workers.batch_worker import (
@@ -443,7 +444,7 @@ def test_batch_worker_uses_controller_names_instead_of_display_labels(client, tm
                 session_time_s=1.0,
             )
         )
-    payload = {
+    payload: dict[str, Any] = {
         "snapshot_id": "snap-controller-mapping",
         "treatments": [
             {"treatment_id": "reference", "controller": "legal_fixed_schedule"},

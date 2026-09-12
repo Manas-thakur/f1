@@ -80,15 +80,22 @@ class Runbook:
     verbose: bool = True
     steps: list[dict[str, Any]] = field(default_factory=list)
     started: float = field(default_factory=time.monotonic)
+    _current: dict[str, Any] = field(default_factory=dict)
 
     def step(self, number: int, title: str) -> None:
-        self._current = {"step": number, "title": title, "observations": [], "at_s": None}
+        self._current = {
+            "step": number,
+            "title": title,
+            "observations": [],
+            "at_s": None,
+        }
         self.steps.append(self._current)
         if self.verbose:
             print(f"\n--- step {number}: {title}", flush=True)
 
     def observe(self, label: str, value: Any) -> Any:
-        self._current["observations"].append({label: value})
+        observations: list[dict[str, Any]] = self._current["observations"]
+        observations.append({label: value})
         if self.verbose:
             print(f"    {label}: {value}", flush=True)
         return value
