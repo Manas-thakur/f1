@@ -1,60 +1,50 @@
 import type { ReactNode } from "react";
-import { AbsoluteFill, Sequence } from "remotion";
-import { loadFont as loadDisplay } from "@remotion/google-fonts/Oswald";
-import { loadFont as loadCaption } from "@remotion/google-fonts/Poppins";
-import { Plate } from "./Plate";
-import { BEATS } from "./timeline";
-import { PALETTE } from "./theme";
-import { Caption } from "./ui/Caption";
-import { Microtext } from "./ui/Microtext";
-import { Scrim } from "./ui/Scrim";
-import { AttackChip } from "./shots/AttackChip";
-import { Corridor } from "./shots/Corridor";
-import { Decision } from "./shots/Decision";
-import { DurableChip } from "./shots/DurableChip";
-import { EnergyDebt } from "./shots/EnergyDebt";
-import { Logo } from "./shots/Logo";
-import { RuleMask } from "./shots/RuleMask";
-import { Title } from "./shots/Title";
-import { WaitGhost } from "./shots/WaitGhost";
+import { AbsoluteFill, Easing, Sequence, interpolate, useCurrentFrame } from "remotion";
+import { FADE, SCENES } from "./timeline";
+import { EASE_IN_OUT, T } from "./theme";
+import { Candidates } from "./shots/Candidates";
+import { Close } from "./shots/Close";
+import { Observe } from "./shots/Observe";
+import { Open } from "./shots/Open";
+import { Outcome } from "./shots/Outcome";
+import { Recommend } from "./shots/Recommend";
+import { RuleCheck } from "./shots/RuleCheck";
 
-loadDisplay();
-loadCaption();
+const ease = Easing.bezier(...EASE_IN_OUT);
 
-const OVERLAYS: Record<string, () => ReactNode> = {
-  title: Title,
-  debt: EnergyDebt,
-  mask: RuleMask,
-  corridor: Corridor,
-  decision: Decision,
-  waitGhost: WaitGhost,
-  attackChip: AttackChip,
-  durable: DurableChip,
-  logo: Logo,
+const SCENE_VIEWS: Record<string, () => ReactNode> = {
+  open: Open,
+  observe: Observe,
+  rules: RuleCheck,
+  candidates: Candidates,
+  recommend: Recommend,
+  outcome: Outcome,
+  close: Close,
+};
+
+const Fade = ({ duration, children }: { duration: number; children: ReactNode }) => {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(
+    frame,
+    [0, FADE, duration - FADE, duration],
+    [0, 1, 1, 0],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: ease },
+  );
+  return <AbsoluteFill style={{ opacity }}>{children}</AbsoluteFill>;
 };
 
 export const Promo = () => (
-  <AbsoluteFill style={{ backgroundColor: PALETTE.ink }}>
-    <Plate />
-
-    <Sequence from={120} durationInFrames={812} layout="none">
-      <Scrim left={0} top={790} width={1920} height={290} strength={0.7} blur={22} shape="linear" />
-    </Sequence>
-
-    {BEATS.map((b) => {
-      const Overlay = OVERLAYS[b.id];
-      if (!Overlay) return null;
+  <AbsoluteFill style={{ backgroundColor: T.paper }}>
+    {SCENES.map((s) => {
+      const View = SCENE_VIEWS[s.id];
+      if (!View) return null;
       return (
-        <Sequence key={b.id} from={b.from} durationInFrames={b.durationInFrames} layout="none">
-          <Overlay />
+        <Sequence key={s.id} from={s.from} durationInFrames={s.durationInFrames} layout="none">
+          <Fade duration={s.durationInFrames}>
+            <View />
+          </Fade>
         </Sequence>
       );
     })}
-
-    <Sequence from={323} durationInFrames={619} layout="none">
-      <Microtext />
-    </Sequence>
-
-    <Caption />
   </AbsoluteFill>
 );

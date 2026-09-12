@@ -36,9 +36,11 @@ camera was solved against half-heights measured off the reference frames:
 Ground ellipses, the ground-plane HUD and the rule-mask billboard use the same
 projector, so their perspective stays consistent with the wedges.
 
-## Plate
+## Theme
 
-`public/plate.mp4` is the reference footage. It carries the original overlays
-baked in, so `Plate.tsx` runs a per-beat grade (desaturate, darken, raise
-contrast) and each rebuilt element sits on a blurred scrim that hides the
-original underneath it. Scrim strength is the knob to touch if a ghost shows.
+Colours, fonts and spacing come from `docs/design/mockups/tokens.css`:
+paper `#eef0f2`, surface `#ffffff`, ink `#20282f`, blue `#155dc1` for selection,
+purple `#8855a6` for the reference series, green `#207247` for pass. Segoe UI for
+text, Consolas for numerals. Transitions use the `--ease-in-out` curve and are
+sequential: a scene fades to paper before the next fades in, so two scenes are
+never legible at once.

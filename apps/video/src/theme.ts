@@ -2,34 +2,40 @@ export const VIDEO = {
   width: 1920,
   height: 1080,
   fps: 30,
-  durationInFrames: 942,
+  durationInFrames: 900,
 } as const;
 
-export const PALETTE = {
-  ink: "#05070a",
-  paper: "#ffffff",
-  attack: "#ff3327",
-  attackDeep: "#c2140d",
-  delay: "#e6eef1",
-  defend: "#42cfdb",
-  defendDeep: "#0d7f8e",
-  recharge: "#e9a92c",
-  rechargeDeep: "#8d5a17",
-  amber: "#f0a41e",
-  green: "#54df59",
-  greenDeep: "#1d7a26",
-  rail: "#cfe0dc",
-  mute: "rgba(255,255,255,0.62)",
-  panel: "rgba(14,17,20,0.74)",
-  panelEdge: "rgba(255,255,255,0.18)",
-  chip: "rgba(196,205,210,0.34)",
+export const T = {
+  paper: "#eef0f2",
+  surface: "#ffffff",
+  raised: "#e7ebef",
+  rule: "#cbd1d7",
+  ink: "#20282f",
+  muted: "#56616c",
+  accent: "#155dc1",
+  aqua: "#8855a6",
+  good: "#207247",
+  bad: "#b32b32",
+  soft: "#e6edf7",
+  track: "#b8c1c9",
+  well: "#20282f",
 } as const;
-
-export const SCALE = VIDEO.width / 848;
-
-export const px = (value: number): number => value * SCALE;
 
 export const FONT = {
-  display: "Oswald",
-  caption: "Poppins",
+  body: "'Segoe UI', Arial, sans-serif",
+  mono: "Consolas, 'Courier New', monospace",
 } as const;
+
+export const S = {
+  s1: 4,
+  s2: 8,
+  s3: 12,
+  s4: 16,
+  s6: 24,
+  s8: 32,
+  s12: 48,
+  s16: 64,
+} as const;
+
+export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
+export const EASE_IN_OUT = [0.65, 0, 0.35, 1] as const;
