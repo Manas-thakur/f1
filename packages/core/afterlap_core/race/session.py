@@ -166,7 +166,7 @@ class RaceSession:
                 self.finishes[car_id] = self.simulator.session_time_s - min(h, overshoot_s)
 
     def frame(self) -> dict[str, Any]:
-        observations = self.observations()
+        observations = self.simulator.observe(include_rivals=False)
         cars = []
         for car_id, observation in observations.items():
             channels = dict(observation.channels)

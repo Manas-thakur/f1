@@ -53,6 +53,8 @@ class EnvironmentField(Protocol):
 
     def grip_multiplier(self, s_m: float, session_time_s: float) -> float: ...
 
+    def grip_multiplier_array(self, s_m: np.ndarray, session_time_s: float) -> np.ndarray: ...
+
     @property
     def describes(self) -> str: ...
 
@@ -67,6 +69,9 @@ class StaticEnvironment:
 
     def grip_multiplier(self, s_m: float, session_time_s: float) -> float:
         return 1.0
+
+    def grip_multiplier_array(self, s_m: np.ndarray, session_time_s: float) -> np.ndarray:
+        return np.asarray([self.grip_multiplier(float(s), session_time_s) for s in s_m])
 
     @property
     def describes(self) -> str:

@@ -1,8 +1,8 @@
 # Race simulator
 
-Simulator development targets `simulator`, independently of `main`. Work in feature worktrees, make checkpoint commits and open pull requests targeting `simulator`. CI runs for these pull requests and branch pushes. Do not merge this physics change without separate authorization.
+All simulator code is maintained on the `simulator` branch, independently of `main`. Develop in feature branches and open pull requests targeting `simulator`. CI runs on each push and includes the live race and forwarded connection browser checks.
 
-The race lab runs a deterministic physics engine with a seeded field of up to 20 cars. A separate Python process owns the race. Next.js and Bun provide `/race` and `/race/control`, and receive delayed simulated observations over WebSockets. The browser never advances physics.
+The race lab runs a deterministic physics engine with a seeded field of up to 20 cars. A separate Python process owns the race. Next.js and Bun provide the single `/race` view, and receive delayed simulated observations over WebSockets. The browser never advances physics.
 
 ## Start
 
@@ -13,7 +13,7 @@ make install
 make race
 ```
 
-Open [the circuit view](http://127.0.0.1:18760/race) or [race control](http://127.0.0.1:18760/race/control). Press Start race. Ctrl+C stops the processes started by this command.
+Open [the race view](http://127.0.0.1:18760/race). The hamburger opens docked settings; Float allows dragging and resizing them. `/race/control` redirects to `/race`. Press Start race. Ctrl+C stops the processes started by this command.
 
 Use either native `make race` or Docker, since they share ports. If switching from Docker to native, run `make race-down` first. The native launcher checks both ports before starting either service and reports conflicts without stopping existing processes.
 
@@ -23,9 +23,11 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 ## Controls
 
-Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. Compute rate reports simulated seconds per computation second, not guaranteed real-time throughput.
+Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
 
 Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode uses persistent observation-driven pass intention, clearance prediction and bounded acceleration/lateral requests; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. BMS training changes only the battery profile while retaining the automatic driving policy.
+
+Animation uses a shared simulation-time playback cursor with a short telemetry buffer, rather than restarting movement on each packet. Observed speed smooths small position-noise corrections; monotone interpolation avoids backwards motion and overshoot between forward-moving samples. All cars and following cameras use that same cursor, and stalled connections hold at the newest available sample. These display estimates do not change physics, classification, exported telemetry or learning observations. The car meshes fit the assumed two-metre physical width.
 
 Save checkpoint captures simulator state, random streams, pending driver commands, observation buffers, control overrides, driver traits, interaction state, scheduled decision time, finish classifications and episode counters. Restore returns to this state and pauses. Reset or restore changes the UI generation so old plotted history is discarded.
 
@@ -119,8 +121,7 @@ References: [Gymnasium environment API](https://gymnasium.farama.org/api/env/), 
 
 Tests cover all 23 imported layouts, 20-car setup, deterministic delayed-command restore, energy balance, masked observations, rival-energy isolation, finish versus timeout, contact abort, command validation and real WebSocket exchanges. A live browser test checks circuit changes, start/pause, stepping, checkpoint restore, driver commands, telemetry download and mobile overflow.
 
-The default 20-car reference engine is CPU intensive. The UI reports its actual computation rate. A requested playback rate above available compute does not reduce physics accuracy or skip steps. Long RL runs should measure throughput before choosing episode counts; vectorized environments can distribute separate episodes across available CPU cores.
-
+The default 20-car reference engine is CPU intensive. The UI reports observed playback pace separately from rendering FPS. A requested playback rate above available compute does not reduce physics accuracy or skip steps. Long RL runs should measure throughput before choosing episode counts; vectorized environments can distribute separate episodes across available CPU cores.
 
 ## Physics v2 configuration and evidence
 

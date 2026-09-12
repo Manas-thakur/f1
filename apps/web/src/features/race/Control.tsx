@@ -4,13 +4,20 @@ import { useState } from 'react';
 import type { SubmitEvent } from 'react';
 
 import { useRace } from './Connection';
-import { Transport } from './RaceView';
+import { Telemetry } from './RacePanels';
 import styles from './race.module.css';
 
 export function Control() {
   const { frame, circuits, send, connected, selected, select, history } = useRace();
   const [profile, setProfile] = useState('neutral');
   const [manual, setManual] = useState(false);
+  if (!frame) {
+    return (
+      <div className={styles.controlContent}>
+        <p role="status" className={styles.caption}>Loading race settings…</p>
+      </div>
+    );
+  }
   function reset(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -57,15 +64,7 @@ export function Control() {
     URL.revokeObjectURL(url);
   }
   return (
-    <main className={styles.main}>
-      <div className={styles.heading}>
-        <div>
-          <p>EXPERIMENT SETUP</p>
-          <h1>Race control</h1>
-        </div>
-        <span>Seeded scenarios · shared engine · headless training</span>
-      </div>
-      <Transport />
+    <div className={styles.controlContent}>
       <div className={styles.controlGrid}>
         <section className={styles.panel}>
           <h2>Configure a race</h2>
@@ -305,20 +304,15 @@ export function Control() {
             from the generator.
           </p>
         </section>
-        <section className={styles.panel}>
-          <h2>Headless generator</h2>
-          <p className={styles.caption}>
-            Run seeded episodes without opening a browser. Each record has the observation, action,
-            reward, next observation and termination flags.
-          </p>
-          <pre>make race-generate CIRCUIT=monza SEED=42</pre>
-          <pre>make race-train CIRCUIT=monza STEPS=10000</pre>
-          <p className={styles.caption}>
-            Independent training interface: race-bms-v1. Training does not promote or deploy a
-            model.
-          </p>
-        </section>
+        <Telemetry />
+        <details className={styles.panel}><summary>About the circuit scene</summary>
+          <p>Circuit artwork: ROY Jules, CC BY 4.0, via Crowdflow.
+            Scenery is an interpretation of reference material, not surveyed geometry.</p>
+          <p>Landscape models and textures: Poly Haven, CC0. Spectator geometry: MakeHuman Community, CC0.</p>
+          <p>Physics and vehicle parameters are experimental.
+            Research notes and asset sources are included in the repository.</p>
+        </details>
       </div>
-    </main>
+    </div>
   );
 }

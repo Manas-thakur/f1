@@ -12,7 +12,8 @@ from ..rng import KeyedRandom, StreamRegistry
 from ..timebase import EventPriority, EventQueue, SessionClock, crossing_time, laps_and_s
 from . import physics
 from .battery import EnergyLedger, LedgerPlan, SaturationEvent
-from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, load_bundle
+from .braking import braking_speed
+from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, TrackConfig, load_bundle
 from .energy_limits import ElectricalLimits, EventEnergyLimits
 from .observation import Observation, observe
 from .overtake import OvertakeTracker
@@ -46,14 +47,7 @@ _PREVIEW_OFFSETS = np.unique(
 )
 
 
-_PREVIEW_OFFSETS_LIST: list[float] = _PREVIEW_OFFSETS.tolist()
-_MAX_MODELLED_SPEED_MPS = 130.0
-
-
 _CORNER_GRIP_SHARE = 0.95
-
-
-_BRAKING_SAFETY_MARGIN = 0.97
 
 
 DEPLOY_FRACTION: dict[DeploymentProfile, float] = {
@@ -333,10 +327,14 @@ class Simulator:
         return self.world.race.session_time_s
 
     def observe(
-        self, sensor_config: ObservationConfig | None = None, car_id: str | None = None
+        self,
+        sensor_config: ObservationConfig | None = None,
+        car_id: str | None = None,
+        *,
+        include_rivals: bool = True,
     ) -> dict[str, Observation]:
 
-        return observe(self.world, sensor_config or self.sensor_config, car_id)
+        return observe(self.world, sensor_config or self.sensor_config, car_id, include_rivals=include_rivals)
 
     def snapshot(self) -> dict[str, Any]:
         return self.world.capture_complete_state()
@@ -477,8 +475,6 @@ class Simulator:
         track = world.track
         car = world.car_configs[car_id]
         samples = s_m + _PREVIEW_OFFSETS
-        curvature = np.abs(track.curvature_array(samples))
-        mu = track.mu_array(samples) * _CORNER_GRIP_SHARE
         low_drag = world.active_actions[car_id].low_drag
         factor = car.downforce_factor_inv_m * (0.75 if low_drag else 1.0)
         if self._wake is not None:
@@ -487,46 +483,39 @@ class Simulator:
             s_m, world.race.session_time_s, float(car.air_density_kgpm3.value)
         )
         factor *= rho / float(car.air_density_kgpm3.value)
-        mu *= np.asarray(
-            [
-                getattr(world.environment, "preview_grip", world.environment.grip_multiplier)(
-                    float(sample), world.race.session_time_s
-                )
-                for sample in samples
-            ]
+        preview_array = getattr(world.environment, "preview_grip_array", None)
+        preview_scalar = getattr(world.environment, "preview_grip", None)
+        if preview_array is not None:
+            grip_multipliers = preview_array(samples, world.race.session_time_s)
+        elif preview_scalar is not None:
+            grip_multipliers = np.asarray(
+                [preview_scalar(float(sample), world.race.session_time_s) for sample in samples]
+            )
+        else:
+            grip_multipliers = world.environment.grip_multiplier_array(samples, world.race.session_time_s)
+        brake_decel = float(car.max_brake_force_n.value) / float(car.mass_kg.value)
+        if isinstance(track, TrackConfig):
+            return track.preview_speed(
+                samples,
+                grip_multipliers,
+                _CORNER_GRIP_SHARE,
+                _PREVIEW_OFFSETS,
+                factor,
+                braking_fraction,
+                brake_decel,
+            )
+        curvature = np.abs(track.curvature_array(samples))
+        mu = track.mu_array(samples) * _CORNER_GRIP_SHARE * grip_multipliers
+        return float(
+            braking_speed(
+                curvature,
+                mu,
+                _PREVIEW_OFFSETS,
+                factor,
+                braking_fraction,
+                brake_decel,
+            )
         )
-        denominator = curvature - mu * factor
-        corner_limit = np.where(
-            denominator > 0.0,
-            np.sqrt(mu * physics.GRAVITY_MPS2 / np.where(denominator > 0.0, denominator, 1.0)),
-            _MAX_MODELLED_SPEED_MPS,
-        )
-        corner_limit = np.minimum(corner_limit, _MAX_MODELLED_SPEED_MPS)
-
-        limits = corner_limit.tolist()
-        curvatures = curvature.tolist()
-        grips = mu.tolist()
-        offsets = _PREVIEW_OFFSETS_LIST
-
-        def available_decel(grip: float, curvature_at: float, at_speed: float) -> float:
-            envelope_a = grip * (physics.GRAVITY_MPS2 + factor * at_speed * at_speed)
-            lateral_a = at_speed * at_speed * curvature_at
-            spare = envelope_a * envelope_a - lateral_a * lateral_a
-            if spare <= 0.0:
-                return 0.0
-            tyre_decel = braking_fraction * math.sqrt(spare)
-            brake_decel = float(car.max_brake_force_n.value) / float(car.mass_kg.value)
-            return _BRAKING_SAFETY_MARGIN * min(tyre_decel, brake_decel)
-
-        speed = limits[-1]
-        for index in range(len(limits) - 2, -1, -1):
-            distance = offsets[index + 1] - offsets[index]
-            exit_decel = available_decel(grips[index + 1], curvatures[index + 1], speed)
-            predicted = math.sqrt(speed * speed + 2.0 * exit_decel * distance)
-            entry_decel = available_decel(grips[index], curvatures[index], predicted)
-            decel = min(exit_decel, entry_decel)
-            speed = min(limits[index], math.sqrt(speed * speed + 2.0 * decel * distance))
-        return speed
 
     def _evaluate(
         self,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 from conftest import build_bundle
 
 from afterlap_contracts import DeploymentProfile
@@ -21,6 +22,9 @@ class _Wet:
 
     def grip_multiplier(self, s_m, session_time_s):
         return 0.7
+
+    def grip_multiplier_array(self, s_m, session_time_s):
+        return np.full_like(s_m, 0.7)
 
     @property
     def describes(self) -> str:

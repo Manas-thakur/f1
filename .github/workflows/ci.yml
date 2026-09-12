@@ -2,9 +2,9 @@ name: simulator
 
 on:
   push:
-    branches: [simulator]
+    branches: [simulator, "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   pull_request:
-    branches: [simulator]
+    branches: [simulator, "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   workflow_dispatch:
 
 concurrency:
@@ -53,7 +53,7 @@ jobs:
       - name: Install
         run: |
           uv sync --frozen --all-packages
-          bun install --frozen-lockfile
+          bun install --frozen-lockfile || bun install --frozen-lockfile
       - name: Lint and types
         run: |
           bun run lint

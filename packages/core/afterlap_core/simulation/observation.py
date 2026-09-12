@@ -127,6 +127,8 @@ def observe(
     world: WorldState,
     sensor_config: ObservationConfig,
     car_id: str | None = None,
+    *,
+    include_rivals: bool = True,
 ) -> dict[str, Observation]:
 
     now = world.race.session_time_s
@@ -171,7 +173,7 @@ def observe(
             channels[channel] = _quantise(value, quanta.get(channel, 0.0))
 
         rivals: list[MappingProxyType] = []
-        for other in sorted(sample.cars):
+        for other in sorted(sample.cars) if include_rivals else ():
             if other == target:
                 continue
             other_truth = sample.cars[other]

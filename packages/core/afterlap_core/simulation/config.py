@@ -11,6 +11,7 @@ from afterlap_contracts import DeploymentProfile, Provenance
 
 from ..config import ConfigDocument, Parameter, load_config
 from ..paths import Paths
+from .braking import sample_track, track_braking_speed
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -70,12 +71,7 @@ class _TrackTables:
 
     def evaluate(self, table: np.ndarray, s_m: np.ndarray) -> np.ndarray:
 
-        s = np.asarray(s_m, dtype=np.float64) % self.length_m
-        index = np.clip(np.searchsorted(self.s, s, side="right") - 1, 0, len(self.s) - 2)
-        span = self.s[index + 1] - self.s[index]
-        t = np.where(span > 0.0, (s - self.s[index]) / np.where(span > 0.0, span, 1.0), 0.0)
-        weight = t * t * (3.0 - 2.0 * t)
-        return table[index] + weight * (table[index + 1] - table[index])
+        return sample_track(table, self.s, np.asarray(s_m, dtype=np.float64), self.length_m)
 
     def evaluate_scalar(self, values: list[float], s_m: float) -> float:
 
@@ -161,6 +157,33 @@ class TrackConfig(ConfigDocument):
     def curvature_array(self, s_m: np.ndarray) -> np.ndarray:
         tables = _tables_for(self)
         return np.asarray(tables.evaluate(tables.curvature, s_m), dtype=np.float64)
+
+    def preview_speed(
+        self,
+        positions: np.ndarray,
+        grip_multipliers: np.ndarray,
+        grip_share: float,
+        offsets: np.ndarray,
+        factor: float,
+        braking_fraction: float,
+        brake_decel: float,
+    ) -> float:
+        tables = _tables_for(self)
+        return float(
+            track_braking_speed(
+                tables.curvature,
+                tables.mu,
+                tables.s,
+                tables.length_m,
+                positions,
+                grip_multipliers,
+                grip_share,
+                offsets,
+                factor,
+                braking_fraction,
+                brake_decel,
+            )
+        )
 
     def mu_array(self, s_m: np.ndarray) -> np.ndarray:
         tables = _tables_for(self)

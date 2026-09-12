@@ -1,6 +1,6 @@
 # Simulator working agreement
 
-This repository tree contains only the standalone race simulator. Keep development on `simulator`, push checkpoint commits directly, and keep CI green. Do not open pull requests or merge this branch into `main`.
+This repository tree contains only the standalone race simulator. Develop on feature branches from `simulator`, make checkpoint commits, and open pull requests targeting `simulator`. Keep CI green. Do not merge simulator work into `main`.
 
 - Python 3.12 with uv, Bun 1.3 with Next.js.
 - SI units internally, display conversions at the UI boundary.
