@@ -107,6 +107,7 @@ class DriverAction:
     throttle: float | None = None
     brake: float | None = None
     harvest_request: float = 1.0
+    low_drag: bool = False
     issued_at_s: float = 0.0
     label: str = ""
 

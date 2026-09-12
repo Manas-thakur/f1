@@ -603,7 +603,8 @@ class Simulator:
         samples = s_m + _PREVIEW_OFFSETS
         curvature = np.abs(track.curvature_array(samples))
         mu = track.mu_array(samples) * _CORNER_GRIP_SHARE
-        factor = car.downforce_factor_inv_m
+        low_drag = world.active_actions[car_id].low_drag
+        factor = car.downforce_factor_inv_m * (0.75 if low_drag else 1.0)
         denominator = curvature - mu * factor
         corner_limit = np.where(
             denominator > 0.0,
@@ -670,12 +671,18 @@ class Simulator:
         wake_effect = self._wake_effect_for(car_id, progress_m, lateral_d_m, speed)
         self._wake_effects[car_id] = wake_effect
 
-        down_n = physics.downforce(rho, wake_effect.downforce_multiplier * float(car.cla_m2.value), air_speed)
+        aero_down = 0.75 if action.low_drag else 1.0
+        aero_drag = 0.82 if action.low_drag else 1.0
+        down_n = physics.downforce(
+            rho, aero_down * wake_effect.downforce_multiplier * float(car.cla_m2.value), air_speed
+        )
         envelope_n = physics.traction_limit(mass, physics.GRAVITY_MPS2, mu, down_n)
         lateral_demand_n = mass * speed * speed * abs(curvature)
         long_envelope_n = physics.longitudinal_envelope(envelope_n, min(lateral_demand_n, envelope_n))
 
-        drag_n = physics.drag_force(rho, wake_effect.drag_multiplier * float(car.cda_m2.value), air_speed)
+        drag_n = physics.drag_force(
+            rho, aero_drag * wake_effect.drag_multiplier * float(car.cda_m2.value), air_speed
+        )
         roll_n = physics.rolling_force(mass, physics.GRAVITY_MPS2, float(car.crr.value), grade)
         grade_n = physics.grade_force(mass, physics.GRAVITY_MPS2, grade)
 
