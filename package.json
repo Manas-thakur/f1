@@ -4,14 +4,23 @@
   "private": true,
   "description": "AFTERLAP web workspace. Next.js serves pages and /api/v1; Python is invoked as a CLI.",
   "packageManager": "bun@1.3.14",
-  "workspaces": ["apps/web"],
-  "trustedDependencies": ["esbuild"],
+  "workspaces": [
+    "apps/web"
+  ],
+  "trustedDependencies": [
+    "esbuild"
+  ],
   "scripts": {
     "typecheck": "bun run --filter @afterlap/web typecheck",
     "test": "bun run --filter @afterlap/web test",
     "build": "bun run --filter @afterlap/web build",
     "test:e2e": "bun run --filter @afterlap/web test:e2e",
     "e2e:install": "bun run --filter @afterlap/web e2e:install",
-    "lint": "bun run --filter @afterlap/web lint"
+    "lint": "bun run lint:biome && bun run --filter @afterlap/web lint",
+    "lint:biome": "biome check . --error-on-warnings",
+    "test:live": "bun run --filter @afterlap/web test:live"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13"
   }
 }

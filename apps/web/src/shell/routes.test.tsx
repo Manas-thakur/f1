@@ -280,13 +280,13 @@ describe('settings route', () => {
     renderAt('/settings');
 
     await user.click(screen.getByRole('radio', { name: /Compact/ }));
-    await waitFor(() => expect(document.documentElement.dataset['density']).toBe('compact'));
+    await waitFor(() => expect(document.documentElement.dataset.density).toBe('compact'));
 
     await user.click(screen.getByRole('radio', { name: /Reduce motion/ }));
-    await waitFor(() => expect(document.documentElement.dataset['motion']).toBe('reduce'));
+    await waitFor(() => expect(document.documentElement.dataset.motion).toBe('reduce'));
 
     await user.click(screen.getByRole('radio', { name: /Follow the operating system/ }));
-    await waitFor(() => expect(document.documentElement.dataset['motion']).toBeUndefined());
+    await waitFor(() => expect(document.documentElement.dataset.motion).toBeUndefined());
   });
 
   it('opens the sample inspector and returns focus to its invoking control', async () => {

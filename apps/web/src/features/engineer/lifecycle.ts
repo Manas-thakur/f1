@@ -289,7 +289,6 @@ function detailFor(
         : 'This recommendation can no longer be acted on.';
     case 'degraded':
       return input.quality.reason ?? 'At least one contributing source is degraded.';
-    case 'healthy':
     default:
       return 'Sources are within their expected update periods.';
   }

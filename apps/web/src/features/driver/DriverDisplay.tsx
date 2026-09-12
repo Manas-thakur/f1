@@ -82,6 +82,7 @@ export function DriverDisplay({
   const lastUpdateRef = useRef<number>(Date.now());
   const [watchdogExpired, setWatchdogExpired] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset watchdog on stream updates
   useEffect(() => {
     lastUpdateRef.current = Date.now();
     setWatchdogExpired(false);

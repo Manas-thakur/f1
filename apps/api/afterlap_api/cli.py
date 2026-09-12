@@ -242,7 +242,11 @@ def request_command(
         typer.Option("--in-process", help="Handle the call in this process instead of attaching to serve."),
     ] = False,
 ) -> None:
-    payload = body.encode("utf-8") if body is not None else None
+    payload = (
+        sys.stdin.buffer.read(65_537) if body == "-" else body.encode("utf-8") if body is not None else None
+    )
+    if payload is not None and len(payload) > 65_536:
+        raise typer.BadParameter("request body exceeds 64 KiB")
     headers = _header_pairs(header or [])
     mapped = _query_map(query)
     if in_process:

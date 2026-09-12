@@ -35,7 +35,7 @@ const SNAPSHOT_REFERENCE = {
 function handlers(overrides: readonly [string, RouteHandler][] = []) {
   return [
     ...overrides,
-    ['/sessions/' + SESSION_ID + '/snapshots', () => ({ status: 201, body: SNAPSHOT_REFERENCE })],
+    [`/sessions/${SESSION_ID}/snapshots`, () => ({ status: 201, body: SNAPSHOT_REFERENCE })],
     ['/snapshot', () => ({ body: SESSION_SNAPSHOT })],
     ['/rulesets/', () => ({ body: { manifest: RULE_MANIFEST } })],
     ['/models', () => ({ body: { models: [CANDIDATE_MODEL] } })],

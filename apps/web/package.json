@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "e2e:install": "playwright install --with-deps chromium",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:live": "playwright test --config playwright.live.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.23",

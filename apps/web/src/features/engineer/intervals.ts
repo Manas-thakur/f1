@@ -52,7 +52,6 @@ export function describeInterval(
         optimistic: false,
         caveat: 'Declared by the producing estimator as a confidence interval.',
       };
-    case 'physical_bounds':
     default:
       return {
         kindText: 'physical bounds',

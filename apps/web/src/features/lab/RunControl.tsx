@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ApiError, SessionCommandKind, SessionMode } from '@contracts';
 
-import { apiClient, type ApiClient } from '@/api/client';
+import { apiClient, newIdempotencyKey, type ApiClient } from '@/api/client';
 import { commandKeys, runCommand } from '@/api/commands';
-import { guidanceFor } from '@/api/errors';
+import { guidanceFor, toApiError } from '@/api/errors';
 import { Button, Field, Notice, Panel, StatusBadge } from '@/components';
 import { useSessionStore } from '@/state/sessionStore';
 import { CONSOLE_OPERATOR_ID } from '@/shell/operator';
 import styles from '@/styles/workspace.module.css';
-
 
 export const PACING_OPTIONS = [0.25, 0.5, 1, 2, 4] as const;
 export type Pacing = (typeof PACING_OPTIONS)[number];
@@ -34,8 +33,9 @@ const COMMANDS: readonly { kind: SessionCommandKind; label: string }[] = [
   { kind: 'stop', label: 'Stop' },
 ];
 
-
 export function RunControl({ sessionId, mode, client = apiClient, refresh }: RunControlProps) {
+  const lease = useSessionStore((s) => s.server.lease);
+  const [acquiring, setAcquiring] = useState(false);
   const status = useSessionStore((s) => s.server.status);
   const revision = useSessionStore((s) => s.server.revision);
   const [pending, setPending] = useState<SessionCommandKind | null>(null);
@@ -46,7 +46,28 @@ export function RunControl({ sessionId, mode, client = apiClient, refresh }: Run
 
   const simulation = mode === 'simulation';
   const stepSeconds = Number(stepDuration);
-  const stepValid = Number.isFinite(stepSeconds) && stepSeconds > 0;
+  const stepValid = Number.isFinite(stepSeconds) && stepSeconds > 0 && stepSeconds <= 60;
+
+  const acquire = async (): Promise<void> => {
+    setAcquiring(true);
+    setError(null);
+    try {
+      await client.acquireLease(
+        sessionId,
+        {
+          operator_id: CONSOLE_OPERATOR_ID,
+          ttl_s: 3600,
+          ...(lease === null ? {} : { expected_lease_revision: lease.revision }),
+        },
+        { idempotencyKey: newIdempotencyKey() },
+      );
+      await refresh();
+    } catch (caught) {
+      setError(toApiError(caught, 'control lease unavailable'));
+    } finally {
+      setAcquiring(false);
+    }
+  };
 
   const send = useCallback(
     async (kind: SessionCommandKind) => {
@@ -84,7 +105,6 @@ export function RunControl({ sessionId, mode, client = apiClient, refresh }: Run
     [client, refresh, sessionId, stepSeconds, stepValid],
   );
 
-
   const sendRef = useRef(send);
   sendRef.current = send;
   useEffect(() => {
@@ -112,15 +132,16 @@ export function RunControl({ sessionId, mode, client = apiClient, refresh }: Run
       </div>
 
       <div className={styles.controlRow}>
+        <Button state={acquiring ? 'pending' : 'default'} onClick={() => void acquire()}>
+          {lease?.operator_id === CONSOLE_OPERATOR_ID ? 'Renew control' : 'Acquire control'}
+        </Button>
         {COMMANDS.map(({ kind, label }) => (
           <Button
             key={kind}
             variant={kind === 'start' ? 'primary' : kind === 'stop' ? 'danger' : 'default'}
             state={pending === kind ? 'pending' : simulation ? 'default' : 'disabled'}
             pendingLabel="Sending…"
-            {...(simulation || pending === kind
-              ? {}
-              : { disabledReason: disabledReason ?? 'unavailable' })}
+            {...(simulation || pending === kind ? {} : { disabledReason: disabledReason ?? 'unavailable' })}
             onClick={() => void send(kind)}
           >
             {label}
@@ -133,11 +154,12 @@ export function RunControl({ sessionId, mode, client = apiClient, refresh }: Run
           label="Simulated step duration"
           hint="Seconds of simulated time consumed by one step command."
           state={stepValid ? 'default' : 'error'}
-          errorMessage="Step duration must be a positive number of seconds."
+          errorMessage="Step duration must be greater than zero and at most 60 seconds."
         >
           <input
             type="number"
             min="0.01"
+            max="60"
             step="0.01"
             value={stepDuration}
             onChange={(event) => setStepDuration(event.target.value)}

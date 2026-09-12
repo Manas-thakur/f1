@@ -1,0 +1,112 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "apps/web/src/**",
+      "apps/web/e2e/**",
+      "apps/web/*.ts",
+      "package.json",
+      "apps/web/package.json",
+      "biome.json",
+      "!!**/next-env.d.ts",
+      "apps/web/e2e-live/**"
+    ]
+  },
+  "formatter": {
+    "enabled": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 110
+  },
+  "assist": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noConsole": "error",
+        "noDoubleEquals": "error",
+        "noDebugger": "error",
+        "noArrayIndexKey": "error"
+      },
+      "style": {
+        "noNonNullAssertion": "error",
+        "useConst": "error",
+        "useImportType": "error",
+        "useBlockStatements": "error"
+      },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "useExhaustiveDependencies": "error"
+      },
+      "preset": "recommended",
+      "complexity": {
+        "useLiteralKeys": "error",
+        "noUselessSwitchCase": "error"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always"
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.json"],
+      "formatter": {
+        "enabled": true
+      }
+    },
+    {
+      "includes": [
+        "apps/web/e2e-live/**",
+        "apps/web/playwright.live.config.ts",
+        "apps/web/src/server/**",
+        "apps/web/src/app/api/v1/sessions/*/stream/route.ts"
+      ],
+      "formatter": {
+        "enabled": true
+      }
+    },
+    {
+      "includes": ["apps/web/src/styles/base.css", "apps/web/src/shell/shell.module.css"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noImportantStyles": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/styles/workspace.module.css", "apps/web/src/shell/shell.module.css"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDescendingSpecificity": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/web/src/components/DataTable.tsx", "apps/web/src/components/charts/ChartFrame.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noNoninteractiveTabindex": "off"
+          }
+        }
+      }
+    }
+  ]
+}
