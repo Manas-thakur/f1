@@ -20,6 +20,8 @@ OWN_CHANNELS: tuple[str, ...] = (
     "lap",
     "lateral_d_m",
     "acceleration_mps2",
+    "applied_throttle",
+    "applied_brake",
     "battery_energy_j",
     "battery_temperature_k",
     "recharge_this_lap_j",
