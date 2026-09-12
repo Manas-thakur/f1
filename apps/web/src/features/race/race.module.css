@@ -159,6 +159,8 @@
 .trainingMetrics text { fill: #9fb1b9; font: 8px monospace; }
 .rewardLine { stroke: #d4ef9a; }
 .recallLine { stroke: #76dff4; }
+.rewardPoint { fill: #d4ef9a; }
+.recallPoint { fill: #76dff4; }
 .trainingSummary { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 10px 0; }
 .trainingSummary span { border: 1px solid #ffffff14; border-radius: 5px; padding: 7px; color: #9fb1b9; font: 9px monospace; }
 .trainingSummary b { display: block; color: #edf3ef; font-size: 13px; }

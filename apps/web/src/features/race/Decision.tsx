@@ -7,17 +7,22 @@ function percent(value: number) {
   return `${(value * 100).toFixed(0)}%`;
 }
 
-function chartPath(values: number[], width: number, height: number) {
+function chartPoints(values: number[], width: number, height: number) {
   if (!values.length) {
-    return '';
+    return [];
   }
   const low = Math.min(...values);
   const high = Math.max(...values);
   const span = Math.max(1e-9, high - low);
-  return values.map((value, index) => {
-    const x = values.length === 1 ? width / 2 : index / (values.length - 1) * width;
-    const y = height - (value - low) / span * (height - 10) - 5;
-    return `${index ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
+  return values.map((value, index) => ({
+    x: values.length === 1 ? width / 2 : index / (values.length - 1) * width,
+    y: height - (value - low) / span * (height - 10) - 5,
+  }));
+}
+
+function chartPath(points: { x: number; y: number }[]) {
+  return points.map((point, index) => {
+    return `${index ? 'L' : 'M'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`;
   }).join(' ');
 }
 
@@ -26,8 +31,10 @@ export function DecisionTelemetry() {
   const recommendation = frame?.recommendations[selected];
   const metrics = frame?.training_metrics;
   const history = metrics?.history ?? [];
-  const rewardPath = chartPath(history.map((cycle) => cycle.mean_reward), 300, 75);
-  const recallPath = chartPath(history.map((cycle) => cycle.overtake_opportunity_recall), 300, 75);
+  const rewardPoints = chartPoints(history.map((cycle) => cycle.mean_reward), 300, 75);
+  const recallPoints = chartPoints(history.map((cycle) => cycle.overtake_opportunity_recall), 300, 75);
+  const rewardPath = chartPath(rewardPoints);
+  const recallPath = chartPath(recallPoints);
   return <section className={`${styles.panel} ${styles.decisionPanel}`}>
     <h2>Energy decision engine</h2>
     <div className={styles.recommendationHeader}>
@@ -79,6 +86,10 @@ export function DecisionTelemetry() {
         <svg viewBox="0 0 300 90" role="img" aria-label="Evaluation reward and overtake opportunity recall by training cycle">
           <path d={rewardPath} className={styles.rewardLine} />
           <path d={recallPath} className={styles.recallLine} />
+          {rewardPoints.map((point, index) => <circle key={`reward-${index}`}
+            cx={point.x} cy={point.y} r="2.5" className={styles.rewardPoint} />)}
+          {recallPoints.map((point, index) => <circle key={`recall-${index}`}
+            cx={point.x} cy={point.y} r="2.5" className={styles.recallPoint} />)}
           <text x="5" y="12">reward</text><text x="245" y="12">recall</text>
         </svg>
         <dl className={styles.telemetryGrid}>
