@@ -99,7 +99,7 @@ describe('approvalIsSupported', () => {
     expect(
       approvalIsSupported({
         ...UNSUPPORTED_APPROVED_MODEL,
-        benchmark_report_hash: 'sha256:report',
+        benchmark_report_hash: 'sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917',
       }),
     ).toBe(true);
   });

@@ -840,7 +840,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -1458,6 +1460,9 @@
         "arrays_sha256": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -1497,6 +1502,9 @@
           "type": "string"
         },
         "package_hash": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
           "title": "Package Hash",
           "type": "string"
         },
@@ -1617,6 +1625,9 @@
             "content_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -1824,6 +1835,9 @@
         "content_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -2198,7 +2212,9 @@
           "type": "array"
         },
         "ruleset_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Ruleset Hash",
           "type": "string"
         },
@@ -2423,7 +2439,9 @@
               "type": "string"
             },
             "manifest_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Manifest Hash",
               "type": "string"
             },
@@ -2442,6 +2460,9 @@
             "report_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -3118,7 +3139,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -3832,6 +3855,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -3893,7 +3919,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -4131,6 +4159,9 @@
             "event_pack_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -4151,7 +4182,9 @@
               "type": "number"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -4423,6 +4456,9 @@
           "properties": {
             "car_hashes": {
               "additionalProperties": {
+                "maxLength": 71,
+                "minLength": 71,
+                "pattern": "^sha256:[0-9a-f]{64}$",
                 "type": "string"
               },
               "minProperties": 1,
@@ -4432,6 +4468,9 @@
             "conditions_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -4473,6 +4512,9 @@
             "event_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -4517,6 +4559,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -4527,12 +4572,16 @@
               "title": "Model Hash"
             },
             "objective_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Objective Hash",
               "type": "string"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -4572,7 +4621,9 @@
               "type": "boolean"
             },
             "track_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Track Hash",
               "type": "string"
             },
@@ -4591,6 +4642,9 @@
             "track_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -4733,6 +4787,7 @@
               "type": "number"
             },
             "status": {
+              "maxLength": 64,
               "minLength": 1,
               "title": "Status",
               "type": "string"
@@ -5035,7 +5090,9 @@
               "type": "number"
             },
             "snapshot_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Snapshot Hash",
               "type": "string"
             },
@@ -5323,7 +5380,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -5768,6 +5827,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -5829,7 +5891,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -6389,7 +6453,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -6727,6 +6793,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -6788,7 +6857,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -7064,12 +7135,18 @@
         "fia_document_hashes": {
           "default": [],
           "items": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
             "type": "string"
           },
           "title": "Fia Document Hashes",
           "type": "array"
         },
         "overlay_hash": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Overlay Hash",
           "type": "string"
         },
@@ -7086,6 +7163,9 @@
           "type": "integer"
         },
         "ruleset_hash": {
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Ruleset Hash",
           "type": "string"
         },
@@ -7306,7 +7386,9 @@
           "type": "string"
         },
         "manifest_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Manifest Hash",
           "type": "string"
         },
@@ -7325,6 +7407,9 @@
         "report_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -7422,6 +7507,9 @@
         },
         "opponent_policy_hashes": {
           "additionalProperties": {
+            "maxLength": 71,
+            "minLength": 71,
+            "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
           },
           "title": "Opponent Policy Hashes",
@@ -7433,7 +7521,9 @@
           "type": "string"
         },
         "snapshot_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Snapshot Hash",
           "type": "string"
         },
@@ -7503,7 +7593,9 @@
               "type": "string"
             },
             "manifest_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Manifest Hash",
               "type": "string"
             },
@@ -7522,6 +7614,9 @@
             "report_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -7628,12 +7723,17 @@
           "type": "string"
         },
         "export_id": {
+          "maxLength": 128,
           "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]*$",
           "title": "Export Id",
           "type": "string"
         },
         "hashes": {
           "additionalProperties": {
+            "maxLength": 71,
+            "minLength": 71,
+            "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
           },
           "title": "Hashes",
@@ -7847,6 +7947,7 @@
       "properties": {
         "detail": {
           "additionalProperties": {
+            "maxLength": 512,
             "type": "string"
           },
           "title": "Detail",
@@ -7988,6 +8089,9 @@
             },
             "artifact_hashes": {
               "additionalProperties": {
+                "maxLength": 71,
+                "minLength": 71,
+                "pattern": "^sha256:[0-9a-f]{64}$",
                 "type": "string"
               },
               "title": "Artifact Hashes",
@@ -7996,6 +8100,9 @@
             "benchmark_report_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -8023,7 +8130,9 @@
               "type": "string"
             },
             "feature_schema_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Feature Schema Hash",
               "type": "string"
             },
@@ -8054,6 +8163,9 @@
             "normalizer_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -8088,6 +8200,9 @@
             "ruleset_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -8142,6 +8257,9 @@
             },
             "track_package_hashes": {
               "additionalProperties": {
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$",
                 "type": "string"
               },
               "description": "Per-circuit compiled package hash the bundle trained against. Recompiled geometry under the same circuit id is different dynamics, so a hash that disagrees disables the learned contribution even when the id matches.",
@@ -8163,6 +8281,9 @@
             "training_data_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -8173,7 +8294,9 @@
               "title": "Training Data Hash"
             },
             "weights_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Weights Hash",
               "type": "string"
             }
@@ -8478,6 +8601,9 @@
         },
         "artifact_hashes": {
           "additionalProperties": {
+            "maxLength": 71,
+            "minLength": 71,
+            "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
           },
           "title": "Artifact Hashes",
@@ -8486,6 +8612,9 @@
         "benchmark_report_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -8513,7 +8642,9 @@
           "type": "string"
         },
         "feature_schema_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Feature Schema Hash",
           "type": "string"
         },
@@ -8544,6 +8675,9 @@
         "normalizer_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -8578,6 +8712,9 @@
         "ruleset_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -8632,6 +8769,9 @@
         },
         "track_package_hashes": {
           "additionalProperties": {
+            "maxLength": 64,
+            "minLength": 64,
+            "pattern": "^[0-9a-f]{64}$",
             "type": "string"
           },
           "description": "Per-circuit compiled package hash the bundle trained against. Recompiled geometry under the same circuit id is different dynamics, so a hash that disagrees disables the learned contribution even when the id matches.",
@@ -8653,6 +8793,9 @@
         "training_data_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -8663,7 +8806,9 @@
           "title": "Training Data Hash"
         },
         "weights_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Weights Hash",
           "type": "string"
         }
@@ -9358,7 +9503,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -10387,7 +10534,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -10752,6 +10901,9 @@
         "model_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -10813,7 +10965,9 @@
           "type": "integer"
         },
         "ruleset_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Ruleset Hash",
           "type": "string"
         },
@@ -11173,7 +11327,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -11486,6 +11642,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -11547,7 +11706,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -12126,6 +12287,9 @@
         "event_pack_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -12146,7 +12310,9 @@
           "type": "number"
         },
         "ruleset_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Ruleset Hash",
           "type": "string"
         },
@@ -13178,6 +13344,9 @@
             "track_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -13428,6 +13597,9 @@
         "track_package_hash": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -13624,6 +13796,7 @@
           "type": "integer"
         },
         "status": {
+          "maxLength": 64,
           "minLength": 1,
           "title": "Status",
           "type": "string"
@@ -13697,6 +13870,7 @@
               "title": "Scenario Id"
             },
             "status": {
+              "maxLength": 64,
               "minLength": 1,
               "title": "Status",
               "type": "string"
@@ -13724,6 +13898,8 @@
         "next_cursor": {
           "anyOf": [
             {
+              "maxLength": 512,
+              "minLength": 1,
               "type": "string"
             },
             {
@@ -13848,6 +14024,9 @@
       "properties": {
         "car_hashes": {
           "additionalProperties": {
+            "maxLength": 71,
+            "minLength": 71,
+            "pattern": "^sha256:[0-9a-f]{64}$",
             "type": "string"
           },
           "minProperties": 1,
@@ -13857,6 +14036,9 @@
         "conditions_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -13898,6 +14080,9 @@
         "event_package_hash": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -13942,6 +14127,9 @@
         "model_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -13952,12 +14140,16 @@
           "title": "Model Hash"
         },
         "objective_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Objective Hash",
           "type": "string"
         },
         "ruleset_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Ruleset Hash",
           "type": "string"
         },
@@ -13997,7 +14189,9 @@
           "type": "boolean"
         },
         "track_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Track Hash",
           "type": "string"
         },
@@ -14016,6 +14210,9 @@
         "track_package_hash": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -14491,7 +14688,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -15205,6 +15404,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -15266,7 +15468,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -15504,6 +15708,9 @@
             "event_pack_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -15524,7 +15731,9 @@
               "type": "number"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -15796,6 +16005,9 @@
           "properties": {
             "car_hashes": {
               "additionalProperties": {
+                "maxLength": 71,
+                "minLength": 71,
+                "pattern": "^sha256:[0-9a-f]{64}$",
                 "type": "string"
               },
               "minProperties": 1,
@@ -15805,6 +16017,9 @@
             "conditions_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -15846,6 +16061,9 @@
             "event_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -15890,6 +16108,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -15900,12 +16121,16 @@
               "title": "Model Hash"
             },
             "objective_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Objective Hash",
               "type": "string"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -15945,7 +16170,9 @@
               "type": "boolean"
             },
             "track_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Track Hash",
               "type": "string"
             },
@@ -15964,6 +16191,9 @@
             "track_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -16318,6 +16548,7 @@
           "type": "number"
         },
         "status": {
+          "maxLength": 64,
           "minLength": 1,
           "title": "Status",
           "type": "string"
@@ -16396,6 +16627,7 @@
           "title": "Scenario Id"
         },
         "status": {
+          "maxLength": 64,
           "minLength": 1,
           "title": "Status",
           "type": "string"
@@ -16449,7 +16681,9 @@
           "type": "number"
         },
         "snapshot_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Snapshot Hash",
           "type": "string"
         },
@@ -16593,6 +16827,9 @@
         "sha256": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -17802,7 +18039,9 @@
               "type": "array"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -18764,6 +19003,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -18825,7 +19067,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -19109,6 +19353,9 @@
             "event_pack_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -19129,7 +19376,9 @@
               "type": "number"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -19428,6 +19677,9 @@
           "properties": {
             "car_hashes": {
               "additionalProperties": {
+                "maxLength": 71,
+                "minLength": 71,
+                "pattern": "^sha256:[0-9a-f]{64}$",
                 "type": "string"
               },
               "minProperties": 1,
@@ -19437,6 +19689,9 @@
             "conditions_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -19478,6 +19733,9 @@
             "event_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -19522,6 +19780,9 @@
             "model_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -19532,12 +19793,16 @@
               "title": "Model Hash"
             },
             "objective_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Objective Hash",
               "type": "string"
             },
             "ruleset_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -19577,7 +19842,9 @@
               "type": "boolean"
             },
             "track_hash": {
-              "minLength": 1,
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Track Hash",
               "type": "string"
             },
@@ -19596,6 +19863,9 @@
             "track_package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -19738,6 +20008,7 @@
               "type": "number"
             },
             "status": {
+              "maxLength": 64,
               "minLength": 1,
               "title": "Status",
               "type": "string"
@@ -20305,7 +20576,9 @@
           "type": "string"
         },
         "chunk_hash": {
-          "minLength": 1,
+          "maxLength": 71,
+          "minLength": 71,
+          "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Chunk Hash",
           "type": "string"
         },
@@ -20503,12 +20776,18 @@
             "fia_document_hashes": {
               "default": [],
               "items": {
+                "maxLength": 64,
+                "minLength": 64,
+                "pattern": "^[0-9a-f]{64}$",
                 "type": "string"
               },
               "title": "Fia Document Hashes",
               "type": "array"
             },
             "overlay_hash": {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Overlay Hash",
               "type": "string"
             },
@@ -20525,6 +20804,9 @@
               "type": "integer"
             },
             "ruleset_hash": {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "title": "Ruleset Hash",
               "type": "string"
             },
@@ -20632,6 +20914,9 @@
             "sha256": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -20684,6 +20969,9 @@
             "arrays_sha256": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -20828,6 +21116,9 @@
             "official_length_sha256": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -20857,6 +21148,9 @@
             "package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -21120,6 +21414,9 @@
             "arrays_sha256": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -21264,6 +21561,9 @@
             "official_length_sha256": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -21293,6 +21593,9 @@
             "package_hash": {
               "anyOf": [
                 {
+                  "maxLength": 64,
+                  "minLength": 64,
+                  "pattern": "^[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -21471,6 +21774,9 @@
         "arrays_sha256": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -21615,6 +21921,9 @@
         "official_length_sha256": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -21644,6 +21953,9 @@
         "package_hash": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "minLength": 64,
+              "pattern": "^[0-9a-f]{64}$",
               "type": "string"
             },
             {

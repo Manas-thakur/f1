@@ -7,6 +7,7 @@ measurement, and nothing here may be presented as one.
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from typing import Final
 
@@ -72,10 +73,22 @@ from .rules import (
 from .session import RuntimeCapabilities, SessionManifest, SessionSnapshot
 from .telemetry import ChannelQuality, SourceCapability, TelemetryEvent
 
+
+def fixture_hash(label: str) -> str:
+    """A correctly shaped digest of a fixture label.
+
+    Fixtures need digests that are stable, readable in a failure message and
+    the right shape for :data:`~afterlap_contracts.ContentHash`. Hashing the
+    label gives all three; a literal like ``sha256:test-loop`` gave only the
+    second.
+    """
+    return f"sha256:{hashlib.sha256(label.encode('utf-8')).hexdigest()}"
+
+
 FIXTURE_SESSION_ID: Final[str] = "synthetic-battle-001"
 FIXTURE_CAR_ID: Final[str] = "car-01"
 FIXTURE_RIVAL_ID: Final[str] = "car-07"
-FIXTURE_RULESET_HASH: Final[str] = "sha256:synthetic-pack-v1"
+FIXTURE_RULESET_HASH: Final[str] = fixture_hash("synthetic-pack-v1")
 FIXTURE_CREATED_AT: Final[datetime] = datetime(2026, 9, 8, 12, 0, 0, tzinfo=UTC)
 SYNTHETIC_NOTICE: Final[str] = (
     "Synthetic fixture. Not measured telemetry, not a calibrated car, not evidence of performance."
@@ -730,10 +743,13 @@ def session_manifest(*, mode: SessionMode = SessionMode.SIMULATION) -> SessionMa
         schema_version=SCHEMA_VERSION,
         id=FIXTURE_SESSION_ID,
         mode=mode,
-        track_hash="sha256:test-loop",
-        car_hashes={FIXTURE_CAR_ID: "sha256:synthetic-car", FIXTURE_RIVAL_ID: "sha256:synthetic-car"},
+        track_hash=fixture_hash("test-loop"),
+        car_hashes={
+            FIXTURE_CAR_ID: fixture_hash("synthetic-car"),
+            FIXTURE_RIVAL_ID: fixture_hash("synthetic-car"),
+        },
         ruleset_hash=FIXTURE_RULESET_HASH,
-        objective_hash="sha256:objective-v1",
+        objective_hash=fixture_hash("objective-v1"),
         seed=42,
         created_at=FIXTURE_CREATED_AT,
         source_capabilities=(source_capability(mode=mode),),
@@ -806,6 +822,7 @@ __all__ = [
     "constraint_result",
     "control_lease",
     "execution_event",
+    "fixture_hash",
     "minimal_feature_manifest",
     "operator_event",
     "outcome_record",

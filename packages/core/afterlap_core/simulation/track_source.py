@@ -173,8 +173,15 @@ class CompiledTrackSource:
 
     @property
     def config_hash(self) -> str:
-        """The package hash: geometry, sources and validation together."""
-        return self._package.package_hash or self._package.content_hash()
+        """The package hash: geometry, sources and validation together.
+
+        ``TrackPackage`` stores its own digest bare, without an algorithm
+        prefix, because that is the value written into the package file. Every
+        other digest a session manifest carries is ``sha256:<hex>``, and
+        ``config_hash`` is one of them, so the prefix is added here rather than
+        letting one field hold two encodings.
+        """
+        return f"sha256:{self._package.package_hash or self._package.content_hash()}"
 
     @property
     def checkpoint_ids(self) -> tuple[str, ...]:

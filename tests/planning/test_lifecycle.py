@@ -39,7 +39,7 @@ def _passing_result() -> ConstraintResult:
         schema_version=SCHEMA_VERSION,
         status=CheckStatus.PASS,
         checks=(ConstraintCheck(check_id="power_ceiling", status=CheckStatus.PASS, margin=1.0, unit="W"),),
-        ruleset_hash="sha256:test",
+        ruleset_hash="sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         checked_at_s=12.0,
         checker_version="test",
     )
@@ -93,7 +93,7 @@ def test_a_marginal_improvement_does_not_switch_the_instruction(config, objectiv
         action_code=ActionCode.MAINTAIN,
         selected_at_s=0.0,
         expires_at_s=100.0,
-        ruleset_hash="sha256:test",
+        ruleset_hash="sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         final_score=10.0,
         head_profile=DeploymentProfile.NEUTRAL,
     )
@@ -118,7 +118,7 @@ def test_a_clear_improvement_after_the_dwell_does_switch(config, objective):
         action_code=ActionCode.MAINTAIN,
         selected_at_s=0.0,
         expires_at_s=100.0,
-        ruleset_hash="sha256:test",
+        ruleset_hash="sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         final_score=10.0,
         head_profile=DeploymentProfile.NEUTRAL,
     )
@@ -138,7 +138,7 @@ def test_minimum_dwell_holds_a_clear_improvement(config, objective):
         action_code=ActionCode.MAINTAIN,
         selected_at_s=10.0,
         expires_at_s=100.0,
-        ruleset_hash="sha256:test",
+        ruleset_hash="sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         final_score=10.0,
         head_profile=DeploymentProfile.NEUTRAL,
     )
@@ -162,7 +162,7 @@ def test_invalidation_overrides_the_minimum_dwell(config, objective):
         action_code=ActionCode.MAINTAIN,
         selected_at_s=10.0,
         expires_at_s=100.0,
-        ruleset_hash="sha256:old-pack",
+        ruleset_hash="sha256:ba1f901674fe78051274115463e06e9b2410eb4beb1a99039c1c17225dd7b586",
         final_score=10.0,
         head_profile=DeploymentProfile.NEUTRAL,
     )
@@ -184,13 +184,15 @@ def test_invalidation_overrides_the_minimum_dwell(config, objective):
 def test_a_rule_pack_change_switches_the_instruction_end_to_end(manifest, config, world):
     """The planner detects the hash change and replans inside the dwell."""
     estimate = estimate_with()
-    context = context_with(ruleset_hash="sha256:new-pack")
+    context = context_with(
+        ruleset_hash="sha256:330439706dad7fad552ad835a8509d6ecff101f7489e389e1da121e65b2bdf7c"
+    )
     current = ActivePlan(
         plan_id="plan-maintain-r4",
         action_code=ActionCode.MAINTAIN,
         selected_at_s=estimate.created_at_s - 0.5,
         expires_at_s=estimate.created_at_s + 100.0,
-        ruleset_hash="sha256:previous-pack",
+        ruleset_hash="sha256:5f4a17f8038c6a0f90d5ff3fd751d490c0c89a76a6754debdce211b49b6868a2",
         final_score=0.0,
         head_profile=DeploymentProfile.NEUTRAL,
     )

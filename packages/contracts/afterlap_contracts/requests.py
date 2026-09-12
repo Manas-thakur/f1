@@ -12,7 +12,7 @@ from typing import Annotated, Self
 
 from pydantic import ConfigDict, Field, model_validator
 
-from .base import Contract
+from .base import ContentHash, Contract
 from .enums import DeploymentProfile, JobStatus, OperatorAction, SessionCommandKind, SessionMode
 from .lifecycle import ControlLease, ExecutionEvent, OperatorEvent
 from .models import ExperimentJob, ModelManifest
@@ -53,7 +53,7 @@ class CreateSessionResponse(Contract):
 
 class SessionListResponse(Contract):
     sessions: tuple[SessionSummary, ...] = ()
-    next_cursor: str | None = None
+    next_cursor: str | None = Field(default=None, min_length=1, max_length=512)
 
 
 class AcquireLeaseRequest(RequestContract):
@@ -77,7 +77,7 @@ class SessionCommandResponse(Contract):
     accepted: bool
     revision: int = Field(ge=0)
     sequence: int = Field(ge=0)
-    status: str = Field(min_length=1)
+    status: str = Field(min_length=1, max_length=64)
 
 
 class RecommendationActionRequest(RequestContract):
@@ -185,7 +185,7 @@ class CreateExportRequest(RequestContract):
 
 
 class ExportJobResponse(Contract):
-    export_id: str = Field(min_length=1)
+    export_id: Identifier
     status: JobStatus
     path: str | None = Field(
         default=None,
@@ -195,7 +195,7 @@ class ExportJobResponse(Contract):
             "machine rather than the artefact."
         ),
     )
-    hashes: dict[str, str] = Field(default_factory=dict)
+    hashes: dict[str, ContentHash] = Field(default_factory=dict)
     synthetic: bool = True
     created_at: datetime
 
@@ -204,7 +204,7 @@ class HealthResponse(Contract):
     """Liveness proves the loop runs. Readiness proves capabilities exist."""
 
     status: str = Field(pattern="^(live|ready|not_ready)$")
-    detail: dict[str, str] = Field(default_factory=dict)
+    detail: dict[str, Annotated[str, Field(max_length=512)]] = Field(default_factory=dict)
 
 
 class DecisionEvidenceResponse(Contract):

@@ -141,7 +141,9 @@ def test_deadline_expiry_keeps_a_still_valid_current_plan(estimate, context, man
     assert result.status is PlanningStatus.DEADLINE_EXCEEDED
     assert build_recommendation(result, estimate, context, config=config, current_plan=current) is None
 
-    stale = replace(current, ruleset_hash="sha256:some-other-pack")
+    stale = replace(
+        current, ruleset_hash="sha256:ea3534c46b928b07966f5eb6a98ba71adda8051670abac635aaf8fd6b2df4416"
+    )
     withdrawn = build_recommendation(result, estimate, context, config=config, current_plan=stale)
     assert withdrawn is not None
     assert withdrawn.action_code is ActionCode.WITHDRAW_ADVICE
@@ -217,19 +219,21 @@ def test_a_rule_pack_change_invalidates_an_outstanding_plan(manifest, config, wo
     so only the invalidation can be responsible for the switch.
     """
     estimate = estimate_with()
-    context = context_with(ruleset_hash="sha256:pack-v2")
+    context = context_with(
+        ruleset_hash="sha256:b51b865cbceb83d7dc8d82edaef4c923e035ba4ca6e4bb1684ba5e8e9a1d3812"
+    )
     outstanding = ActivePlan(
         plan_id="plan-maintain-r4",
         action_code=ActionCode.MAINTAIN,
         selected_at_s=estimate.created_at_s - 0.2,
         expires_at_s=estimate.created_at_s + 60.0,
-        ruleset_hash="sha256:pack-v1",
+        ruleset_hash="sha256:621d94e635418c7f9adde0f69f132d8a7ead3ea43cd41418276982fdf09a0b5c",
         final_score=0.0,
         head_profile=DeploymentProfile.NEUTRAL,
     )
     unchanged = plan(
         estimate,
-        context_with(ruleset_hash="sha256:pack-v1"),
+        context_with(ruleset_hash="sha256:621d94e635418c7f9adde0f69f132d8a7ead3ea43cd41418276982fdf09a0b5c"),
         None,
         5.0,
         manifest=manifest,

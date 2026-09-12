@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .base import Contract, VersionedContract
+from .base import ContentHash, Contract, VersionedContract
 from .enums import (
     ActionCode,
     DeploymentProfile,
@@ -209,8 +209,8 @@ class Recommendation(VersionedContract):
     valid_from_s: float = Field(ge=0.0)
     expires_at_s: float = Field(gt=0.0)
     observation_cutoff_s: float = Field(ge=0.0)
-    ruleset_hash: str = Field(min_length=1)
-    model_hash: str | None = None
+    ruleset_hash: ContentHash
+    model_hash: ContentHash | None = None
     objective_version: str = Field(min_length=1)
     reason_codes: tuple[ReasonCode, ...] = ()
     outcomes: tuple[CheckpointOutcome, ...] = ()

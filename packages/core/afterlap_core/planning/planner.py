@@ -469,7 +469,9 @@ def plan(
         solution = entry.solution
         terms = entry.terms
         constraint_result = check_plan(
-            _probe_plan(candidate_id, action_code, estimate, segments, terms),
+            _probe_plan(
+                candidate_id, action_code, estimate, segments, terms, rule_context.ruleset_hash
+            ),
             checker_state,
             rule_context,
             manifest=manifest_,
@@ -659,12 +661,18 @@ def _probe_plan(
     estimate: StateEstimate,
     segments: tuple[ProfileSegment, ...],
     terms: ObjectiveTerms,
+    ruleset_hash: str,
 ) -> CandidatePlan:
     """A minimal plan record handed to the checker.
 
     The checker reads only the segments and never the planner's own solver
     status or self-assessment, so this record deliberately carries an
     ``unknown`` constraint result: the verdict is the checker's to produce.
+
+    ``ruleset_hash`` is the pack this candidate was built against, which is a
+    known fact even before the check runs. It used to be the literal string
+    ``"pending"``, which put a value in a digest field that no digest
+    comparison could ever match.
     """
     return CandidatePlan(
         schema_version=SCHEMA_VERSION,
@@ -683,7 +691,7 @@ def _probe_plan(
                     detail="this candidate has not been through the independent checker",
                 ),
             ),
-            ruleset_hash="pending",
+            ruleset_hash=ruleset_hash,
             checked_at_s=estimate.cutoff_s,
             checker_version=CHECKER_VERSION,
         ),

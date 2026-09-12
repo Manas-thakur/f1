@@ -318,16 +318,16 @@ export const SESSION_SNAPSHOT = {
   },
   "manifest": {
     "car_hashes": {
-      "car-01": "sha256:synthetic-car",
-      "car-07": "sha256:synthetic-car"
+      "car-01": "sha256:abb29d0e2ba76d3d9f203078ec4442a416838a3b493b6ae046fc810676602ea5",
+      "car-07": "sha256:abb29d0e2ba76d3d9f203078ec4442a416838a3b493b6ae046fc810676602ea5"
     },
     "created_at": "2026-09-08T12:00:00Z",
     "id": "synthetic-battle-001",
     "label": "Synthetic counterattack fixture",
     "mode": "simulation",
     "model_hash": null,
-    "objective_hash": "sha256:objective-v1",
-    "ruleset_hash": "sha256:synthetic-pack-v1",
+    "objective_hash": "sha256:b10f2c6ab53e39a7bef8b24a5bad7075d8bd83044b16e1c9ddca664fd25ee855",
+    "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
     "scenario_id": "two-straight-counterattack",
     "schema_version": "1.0",
     "seed": 42,
@@ -373,7 +373,7 @@ export const SESSION_SNAPSHOT = {
       }
     ],
     "synthetic": true,
-    "track_hash": "sha256:test-loop"
+    "track_hash": "sha256:61ee43b3c8ac030796fe9c25cbf45393902b73a63cd71d9f9a279693d6f5f2fe"
   },
   "recommendation": {
     "action_code": "attack",
@@ -407,7 +407,7 @@ export const SESSION_SNAPSHOT = {
           "unit": "J"
         }
       ],
-      "ruleset_hash": "sha256:synthetic-pack-v1",
+      "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
       "schema_version": "1.0",
       "status": "pass",
       "unresolved_conditions": []
@@ -447,7 +447,7 @@ export const SESSION_SNAPSHOT = {
     ],
     "reason_codes": [],
     "revision": 1,
-    "ruleset_hash": "sha256:synthetic-pack-v1",
+    "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
     "schema_version": "1.0",
     "session_id": "synthetic-battle-001",
     "state_revision": 4,
@@ -489,7 +489,7 @@ export const SESSION_SNAPSHOT = {
     "event_pack_hash": null,
     "progress_m": 1950.0,
     "resolved_at_s": 12.2,
-    "ruleset_hash": "sha256:synthetic-pack-v1",
+    "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
     "schema_version": "1.0",
     "season_revision": "synthetic-2026-r0",
     "session_id": "synthetic-battle-001",
@@ -821,7 +821,7 @@ export const RECOMMENDATION = {
         "unit": "J"
       }
     ],
-    "ruleset_hash": "sha256:synthetic-pack-v1",
+    "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
     "schema_version": "1.0",
     "status": "pass",
     "unresolved_conditions": []
@@ -861,7 +861,7 @@ export const RECOMMENDATION = {
   ],
   "reason_codes": [],
   "revision": 1,
-  "ruleset_hash": "sha256:synthetic-pack-v1",
+  "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
   "schema_version": "1.0",
   "session_id": "synthetic-battle-001",
   "state_revision": 4,
@@ -903,7 +903,7 @@ export const RULE_CONTEXT = {
   "event_pack_hash": null,
   "progress_m": 1950.0,
   "resolved_at_s": 12.2,
-  "ruleset_hash": "sha256:synthetic-pack-v1",
+  "ruleset_hash": "sha256:1e323a4f39ae61b15f4202eb53f79c957a26317c6632bf71d1efd1429d41acce",
   "schema_version": "1.0",
   "season_revision": "synthetic-2026-r0",
   "session_id": "synthetic-battle-001",
