@@ -1,0 +1,136 @@
+id: test-loop
+synthetic: true
+description: "Synthetic 5200 m closed loop with a mix of straights, medium corners and a hairpin."
+geometry_provenance: synthetic_sketch
+lateral_geometry_surveyed: false
+length_m: {value: 5200.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 100.0}
+timing_line_s_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, note: "Start/finish line; lap counters reset here."}
+segments:
+  - s_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 800.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 900.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: -0.0177942, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.01, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 13.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.48, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1050.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: -0.0177942, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.01, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 13.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.48, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1150.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1500.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: -0.015, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1600.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.005, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: -0.015, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.46, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1800.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.005, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.46, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1900.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 2100.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 2400.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 2500.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: -0.0051883, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.02, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 13.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.47, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 2700.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: -0.0051883, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.02, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 13.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.47, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 2800.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3200.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: -0.02, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3300.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: -0.02, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: -0.01, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 12.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.42, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3400.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: -0.02, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 12.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.42, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3480.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.48, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3500.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 4200.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 4300.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0050547, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.49, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 4600.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0050547, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 14.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.49, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 4700.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 15.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+checkpoints:
+  - id: attack-exit
+    s_m: {value: 2100.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Exit of the first overtaking straight."
+  - id: counterattack-exit
+    s_m: {value: 3500.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Exit of the hairpin, where a counterattack resolves."
+  - id: sector-1
+    s_m: {value: 1500.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Intermediate reference point."
+  - id: sector-3
+    s_m: {value: 4700.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Intermediate reference point."

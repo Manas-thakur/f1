@@ -1,0 +1,58 @@
+id: test-oval
+synthetic: true
+description: "Synthetic 4000 m oval: two equal straights joined by two 180-degree constant-radius corners."
+geometry_provenance: synthetic_sketch
+lateral_geometry_surveyed: false
+length_m: {value: 4000.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 100.0}
+timing_line_s_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, note: "Start/finish line; lap counters reset here."}
+segments:
+  - s_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1484.4691, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1544.4691, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0068966, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 1940.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0068966, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 2000.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3484.4691, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3544.4691, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0068966, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+  - s_m: {value: 3940.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    curvature_inv_m: {value: 0.0068966, unit: "1/m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    grade_rad: {value: 0.0, unit: "rad", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    width_m: {value: 16.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 6.0}
+    mu: {value: 1.5, unit: "1", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption, lower_bound: 0.3, upper_bound: 2.5}
+checkpoints:
+  - id: oval-exit-1
+    s_m: {value: 2100.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Exit of the first constant-radius corner."
+  - id: oval-exit-2
+    s_m: {value: 100.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Exit of the second constant-radius corner."
+  - id: oval-mid-straight
+    s_m: {value: 2700.0, unit: "m", source: "synthetic:afterlap-track-sketch-v1", verification: synthetic_assumption}
+    description: "Middle of the back straight."

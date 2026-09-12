@@ -1,0 +1,61 @@
+id: loop-regen-disabled
+synthetic: true
+description: "Validation case: regeneration is physically disabled, so braking must not recharge the battery under any profile."
+track_id: test-loop
+ego_car_id: own
+rule_pack: synthetic-pack-v1-unreviewed
+status_note: "Synthetic fixture; the physics is executable but uncalibrated."
+seed: 11
+duration_s: {value: 30.0, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "Scenario length used by the default run loop."}
+cars:
+  own: synthetic-2026-no-regen
+  rival: synthetic-2026-no-regen
+initial_states:
+  own:
+    progress_m: {value: 800.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    speed_mps: {value: 80.0, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    energy_j: {value: 2000000.0, unit: "J", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    temperature_k: {value: 305.15, unit: "K", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0}
+    lateral_d_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption}
+    profile: harvest
+  rival:
+    progress_m: {value: 1200.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    speed_mps: {value: 60.0, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    energy_j: {value: 2000000.0, unit: "J", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    temperature_k: {value: 305.15, unit: "K", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0}
+    lateral_d_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption}
+    profile: harvest
+drivers:
+  own:
+    reaction_delay_mean_s: {value: 0.35, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Mean human execution delay."}
+    reaction_delay_std_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Spread of the execution delay."}
+    execution_jitter_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Additional timing jitter."}
+    line_tracking_gain: {value: 2.5, unit: "1/s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "First-order lateral line-tracking gain."}
+    braking_envelope_fraction: {value: 0.92, unit: "1", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, upper_bound: 1.0, note: "Fraction of the tyre envelope the driver uses under braking."}
+  rival:
+    reaction_delay_mean_s: {value: 0.35, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Mean human execution delay."}
+    reaction_delay_std_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Spread of the execution delay."}
+    execution_jitter_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Additional timing jitter."}
+    line_tracking_gain: {value: 2.5, unit: "1/s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "First-order lateral line-tracking gain."}
+    braking_envelope_fraction: {value: 0.92, unit: "1", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, upper_bound: 1.0, note: "Fraction of the tyre envelope the driver uses under braking."}
+opponent_policies:
+  rival:
+    kind: conserve
+    params: {}
+observation:
+  delay_s: {value: 0.1, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "End-to-end observation delay before a controller sees a value."}
+  noise_sigma:
+    speed_mps: {value: 0.15, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Speed channel 1-sigma noise."}
+    progress_m: {value: 0.5, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Progress channel 1-sigma noise."}
+    gap_s: {value: 0.02, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Derived gap 1-sigma noise."}
+    relative_progress_m: {value: 0.4, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Relative progress 1-sigma noise."}
+  quantisation:
+    speed_mps: {value: 0.01, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Reported speed resolution."}
+    gap_s: {value: 0.001, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Reported gap resolution."}
+  expose_rival_energy: false
+  energy_channel_available: true
+  energy_provenance: simulated
+  noise_time_bin_s: {value: 0.01, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 1e-06, note: "Physical time bin that keys exogenous noise draws."}
+evaluation_checkpoints:
+  - attack-exit
+gap_ahead_s: {value: 5.0, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Declared initial spacing; validated against the initial states."}

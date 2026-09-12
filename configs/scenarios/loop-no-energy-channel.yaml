@@ -1,0 +1,64 @@
+id: loop-no-energy-channel
+synthetic: true
+description: "Held-out case: the own-car energy channel is unavailable, so a controller must operate without any stored-energy measurement."
+track_id: test-loop
+ego_car_id: own
+rule_pack: synthetic-pack-v1-unreviewed
+status_note: "Synthetic fixture; the physics is executable but uncalibrated."
+seed: 101
+duration_s: {value: 45.0, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "Scenario length used by the default run loop."}
+cars:
+  own: synthetic-2026
+  rival: synthetic-2026
+initial_states:
+  own:
+    progress_m: {value: 1900.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    speed_mps: {value: 72.0, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    energy_j: {value: 1600000.0, unit: "J", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    temperature_k: {value: 316.15, unit: "K", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0}
+    lateral_d_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption}
+    profile: neutral
+  rival:
+    progress_m: {value: 1972.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    speed_mps: {value: 72.0, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    energy_j: {value: 1200000.0, unit: "J", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0}
+    temperature_k: {value: 318.15, unit: "K", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 200.0}
+    lateral_d_m: {value: 0.0, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption}
+    profile: neutral
+drivers:
+  own:
+    reaction_delay_mean_s: {value: 0.35, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Mean human execution delay."}
+    reaction_delay_std_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Spread of the execution delay."}
+    execution_jitter_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Additional timing jitter."}
+    line_tracking_gain: {value: 2.5, unit: "1/s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "First-order lateral line-tracking gain."}
+    braking_envelope_fraction: {value: 0.92, unit: "1", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, upper_bound: 1.0, note: "Fraction of the tyre envelope the driver uses under braking."}
+  rival:
+    reaction_delay_mean_s: {value: 0.35, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Mean human execution delay."}
+    reaction_delay_std_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Spread of the execution delay."}
+    execution_jitter_s: {value: 0.0, unit: "s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Additional timing jitter."}
+    line_tracking_gain: {value: 2.5, unit: "1/s", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, note: "First-order lateral line-tracking gain."}
+    braking_envelope_fraction: {value: 0.92, unit: "1", source: "synthetic:afterlap-driver-sketch-v1", verification: synthetic_assumption, lower_bound: 0.1, upper_bound: 1.0, note: "Fraction of the tyre envelope the driver uses under braking."}
+opponent_policies:
+  rival:
+    kind: conserve
+    params:
+      reserve_energy_j: {value: 1400000.0, unit: "J", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, note: "Rival is rebuilding a reserve."}
+observation:
+  delay_s: {value: 0.15, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "End-to-end observation delay before a controller sees a value."}
+  noise_sigma:
+    speed_mps: {value: 0.15, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Speed channel 1-sigma noise."}
+    progress_m: {value: 0.5, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Progress channel 1-sigma noise."}
+    gap_s: {value: 0.02, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Derived gap 1-sigma noise."}
+    relative_progress_m: {value: 0.4, unit: "m", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Relative progress 1-sigma noise."}
+  quantisation:
+    speed_mps: {value: 0.01, unit: "m/s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Reported speed resolution."}
+    gap_s: {value: 0.001, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Reported gap resolution."}
+  expose_rival_energy: false
+  energy_channel_available: false
+  energy_provenance: simulated
+  noise_time_bin_s: {value: 0.01, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 1e-06, note: "Physical time bin that keys exogenous noise draws."}
+evaluation_checkpoints:
+  - counterattack-exit
+  - sector-3
+retention_checkpoint_id: sector-3
+gap_ahead_s: {value: 1.0, unit: "s", source: "synthetic:afterlap-scenario-sketch-v1", verification: synthetic_assumption, lower_bound: 0.0, note: "Declared initial spacing; validated against the initial states."}
