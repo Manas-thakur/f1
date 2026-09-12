@@ -119,7 +119,7 @@
   background: var(--well);
   border: 1px solid var(--well-rule);
   border-radius: var(--radius);
-  padding: var(--s3);
+  padding: var(--s2);
   min-width: 0;
 }
 

@@ -632,38 +632,33 @@ car, track and rule pack is an invented fixture. Nothing in this bundle is
 evidence of physics fidelity, latency on your hardware, calibration, or
 comparative performance.
 
-## Option A — Docker Compose (the packaged product)
+## Option A: Make (the packaged product)
 
 ```
 cd source
-cp infra/.env.example infra/.env
-# set AFTERLAP_DB_PASSWORD in infra/.env — there is no default
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-
-docker compose -f infra/docker-compose.yml --env-file infra/.env up --build
+make up
 ```
 
-Then open http://127.0.0.1:8080. The API is at http://127.0.0.1:8010 and
-PostgreSQL is on 127.0.0.1:5433. All three bind loopback only.
+`make env` writes `infra/.env` with a generated password if it is missing.
+`make up` builds the images and starts PostgreSQL, the Python runtime, the
+batch worker and Next.js through `ac` (Apple container). On Linux, `make
+compose-up` is the docker compose equivalent of the same ports.
 
-The `migrate` service runs the Alembic upgrade to head and the API waits for it
-to succeed. `docker compose down` stops everything; `docker compose down -v`
-also discards the four named volumes (`afterlap-db`, `afterlap-artifacts`,
-`afterlap-trajectories`, `afterlap-models`).
+Then open http://127.0.0.1:18473. The API is at http://127.0.0.1:19284 and
+PostgreSQL is on 127.0.0.1:17539. All three bind loopback only.
 
-## Option B — from source, no containers
+`make down` stops the containers. `ac afterlap down -v` also discards named
+volumes. `make demo` runs the closed-loop runbook against the web origin.
+
+## Option B: from source, no containers
 
 ```
 cd source
-uv sync --frozen --all-packages --all-extras
-uv run python -m afterlap_core.cli doctor        # must report contracts, numerics, storage available
-
-AFTERLAP_ENV=development uv run python -m afterlap_api.cli serve \\
-    --host 127.0.0.1 --port 8000
-
-# second terminal
-cd apps/web && bun install --frozen-lockfile && bun run dev
+make dev
 ```
+
+That starts PostgreSQL via `ac`, then the native Python runtime on 19284 and
+Next.js on 18473. `make stop-dev` leaves postgres running.
 
 The API creates its schema on startup, so no separate migration step is needed
 for the SQLite development store.
@@ -671,7 +666,7 @@ for the SQLite development store.
 ## Verify it works, without a browser
 
 ```
-uv run python scripts/demo.py --base-url http://127.0.0.1:3000 --json demo-report.json
+uv run python scripts/demo.py --base-url http://127.0.0.1:18473 --json demo-report.json
 ```
 
 That executes the demonstration runbook against the live server: create a

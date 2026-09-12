@@ -16,6 +16,9 @@ This repository is `Manas-thakur/f1` on GitHub.
 ## Commands
 
 ```
+make up
+make demo
+
 uv sync --frozen --all-packages
 uv run python -m afterlap_core.cli doctor
 uv run python -m afterlap_api.cli serve

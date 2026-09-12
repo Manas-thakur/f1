@@ -27,6 +27,20 @@ export interface CliResult {
   readonly code: number;
 }
 
+export function runtimeListen(): { host: string; port: string } {
+  const fromUrl = process.env.AFTERLAP_RUNTIME_URL;
+  if (fromUrl !== undefined && fromUrl !== '') {
+    try {
+      const parsed = new URL(fromUrl);
+      const port = parsed.port === '' ? (process.env.AFTERLAP_PORT ?? '8000') : parsed.port;
+      return { host: '127.0.0.1', port };
+    } catch {
+      return { host: '127.0.0.1', port: process.env.AFTERLAP_PORT ?? '8000' };
+    }
+  }
+  return { host: '127.0.0.1', port: process.env.AFTERLAP_PORT ?? '8000' };
+}
+
 export function pythonCli(): { command: string; prefix: string[] } {
   const override = process.env.AFTERLAP_PYTHON;
   if (override !== undefined && override !== '') {
@@ -123,7 +137,8 @@ export async function ensurePythonRuntime(): Promise<void> {
       return;
     }
     const { command, prefix } = pythonCli();
-    const child = spawn(command, [...prefix, 'serve', '--host', '127.0.0.1', '--port', '8000'], {
+    const listen = runtimeListen();
+    const child = spawn(command, [...prefix, 'serve', '--host', listen.host, '--port', listen.port], {
       cwd: repoRoot(),
       env: process.env,
       stdio: 'ignore',
