@@ -80,3 +80,13 @@ def test_invalid_advances_are_rejected(value):
     session = RaceSession(RaceSettings(cars=1))
     with pytest.raises(ValueError):
         session.advance(value)
+
+
+def test_traffic_braking_cannot_weaken_corner_braking():
+    session = RaceSession(RaceSettings(circuit="monza", cars=1))
+    simulator = session.simulator
+    position, speed = 3330, 56.5
+    floor, _ = simulator._evaluate("car-01", position, speed, -2.5, DriverAction(brake_floor=0.1), 0.01, None)
+    manual, _ = simulator._evaluate("car-01", position, speed, -2.5, DriverAction(brake=0.1), 0.01, None)
+    assert floor.acceleration_mps2 < manual.acceleration_mps2 - 5
+    assert floor.acceleration_mps2 < -10

@@ -733,6 +733,9 @@ class Simulator:
                 throttle = 0.0
                 brake = min(1.0, -required_n / max_brake_n) if max_brake_n > 0.0 else 0.0
 
+        if action.brake_floor > 0.0:
+            brake = max(brake, action.brake_floor)
+            throttle = 0.0
         brake_force_n = brake * max_brake_n
         mechanical_brake_w = brake_force_n * speed
 

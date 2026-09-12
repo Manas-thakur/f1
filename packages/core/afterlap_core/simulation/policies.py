@@ -108,6 +108,7 @@ class DriverAction:
     brake: float | None = None
     harvest_request: float = 1.0
     low_drag: bool = False
+    brake_floor: float = 0.0
     issued_at_s: float = 0.0
     label: str = ""
 
@@ -117,6 +118,8 @@ class DriverAction:
                 f"pace_scale {self.pace_scale} is outside the bounded preference range "
                 f"[{MIN_PACE_SCALE}, {MAX_PACE_SCALE}]; aggressiveness may not exceed the envelope"
             )
+        if not 0.0 <= self.brake_floor <= 1.0:
+            raise ValueError("brake_floor is a fraction in [0, 1]")
         if not 0.0 <= self.harvest_request <= 1.0:
             raise ValueError("harvest_request is a fraction in [0, 1]")
         if self.throttle is not None and not 0.0 <= self.throttle <= 1.0:

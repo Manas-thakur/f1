@@ -74,7 +74,6 @@ class RaceSession:
                     lane = candidate
         self.lanes[car_id] = lane
         brake = None
-        throttle = None
         own_speed = observation.channels.get("speed_mps", 0)
         obstacles = [
             rival
@@ -88,7 +87,6 @@ class RaceSession:
             safe_gap = 12 + 0.5 * own_speed
             acceleration = (obstacle["speed_mps"] - own_speed) / 0.5 + (gap - safe_gap) * 0.8
             if acceleration < 0:
-                throttle = 0.0
                 brake = min(1.0, -acceleration / 12)
         if observation.channels.get("battery_energy_j", 0) < 6e5:
             profile = DeploymentProfile.HARVEST
@@ -101,8 +99,7 @@ class RaceSession:
             pace_scale=0.90 + (int(car_id[-2:]) % 5) * 0.01,
             target_lateral_d_m=lane,
             low_drag=straight and brake is None,
-            throttle=throttle,
-            brake=brake,
+            brake_floor=brake or 0.0,
         )
 
     def advance(self, duration_s: float = 0.1) -> None:
