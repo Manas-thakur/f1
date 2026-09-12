@@ -23,7 +23,7 @@ Held-out seeds 101/202/303 each pass the live pass/abort regression tests. Accep
 
 Twelve two-car cases cross Monza/Silverstone, seeds 101/202/303 and initial wetness 0/0.8 with a 30 s wetting/drying constant and broad training variation. Final runs all reach the 30 s time limit without contact or envelope failure. They are all reported as truncated. An earlier four-case contact failure exposed the leader returning into close rear pressure; a line-holding regression now protects that behavior.
 
-A 20-car Monza field reaches its 10 s limit without contact, recording two completed passes. This short full-field check does not establish whole-race contact reliability. A deterministic baseline single-car Monza race finishes one lap in 119.44 simulated seconds without an unsupported failure. That time is a synthetic geometry result, not a calibrated real-circuit lap time.
+A 20-car Monza field reaches its 10 s limit without contact, recording eight completed passes. This short full-field check does not establish whole-race contact reliability. A deterministic baseline single-car Monza race finishes one lap in 119.44 simulated seconds without an unsupported failure. That time is a synthetic geometry result, not a calibrated real-circuit lap time.
 
 Unit and numerical tests cover missing observations, pressure, unavailable sides, a third-car blocker, overlap through a corner, aborts, returning, a legitimate repass, retained position, local lapped traffic, shared finish crossing, low energy, wet grip, wind direction, finite configuration, energy limits and checkpoint replay. The cadence test exercises 0.005, 0.007, 0.01 and 0.02 s steps, requiring an exact one-second BMS action interval. The physical invariant suite retains its previous tolerances.
 
@@ -34,7 +34,7 @@ Contact still terminates the episode. Large disturbances, difficult geometry and
 | Measurement | Reference | Revised |
 | --- | --- | --- |
 | 2 cars, Monza, seed 42, dt 0.01, 10 simulated s | 2.56-3.04 wall s | 1.82-3.05 wall s |
-| 20 cars, same scenario specification, 10 simulated s | 70.09 wall s | 49.63 wall s |
+| 20 cars, same scenario specification, 10 simulated s | 70.09 wall s | 46.38 wall s |
 | Cold session reset | 0.07-0.15 s | 0.03-0.16 s |
 | PPO, one car, 8 s episodes, 128 transitions | 11 transitions/s | 10-11 transitions/s |
 
