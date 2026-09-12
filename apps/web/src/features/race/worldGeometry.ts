@@ -5,7 +5,7 @@ import type { CircuitMap } from './types';
 
 export const LIVERIES = ['#e5383b', '#26b7a5', '#ff981f', '#368af5', '#ecebe5'];
 
-export function trackPose(map: CircuitMap, progress: number, lateral = 0) {
+function trackPosition(map: CircuitMap, progress: number, lateral: number) {
   const t = (((progress / map.length_m) % 1) + 1) % 1 * map.points.length;
   const i = Math.floor(t);
   const a = map.points[i] ?? [0, 0];
@@ -24,10 +24,15 @@ export function trackPose(map: CircuitMap, progress: number, lateral = 0) {
   const [x, dx] = axis(0);
   const [z, dz] = axis(1);
   const length = Math.hypot(dx, dz) || 1;
-  return {
-    position: new THREE.Vector3(x - lateral * dz / length, 0, z + lateral * dx / length),
-    yaw: Math.atan2(dx, dz),
-  };
+  return new THREE.Vector3(x - lateral * dz / length, 0, z + lateral * dx / length);
+}
+
+export function trackPose(map: CircuitMap, progress: number, lateral = 0, lateralSlope = 0) {
+  const delta = Math.max(0.1, Math.min(1, map.length_m / map.points.length * 0.02));
+  const position = trackPosition(map, progress, lateral);
+  const before = trackPosition(map, progress - delta, lateral - lateralSlope * delta);
+  const after = trackPosition(map, progress + delta, lateral + lateralSlope * delta);
+  return { position, yaw: Math.atan2(after.x - before.x, after.z - before.z) };
 }
 
 export function box(
