@@ -10,7 +10,7 @@ local stack definition, and the CI workflow.
 **Verdict.** The product works end to end. A session created in the browser
 runs through observation, estimation, legal planning, engineer selection,
 driver execution, snapshot, paired experiment and export, and every artefact it
-produces carries provenance. The audit found and fixed fourteen defects, none of
+produces carries provenance. The audit found and fixed fifteen defects, none of
 which produced a wrong recommendation, and most of which were the same shape:
 a value that nothing was checking, because nothing could.
 
@@ -42,7 +42,7 @@ ports and drives it. Nothing in it is a mock.
 | `pytest` (full suite, no deselection) | pass, 1 779 tests |
 | `biome check --error-on-warnings` | pass, 391 rules over 166 files |
 | `eslint`, `tsc --noEmit` | pass |
-| `vitest` | pass, 359 tests |
+| `vitest` | pass, 367 tests |
 | `next build` | pass, no warnings |
 | Playwright, fixture-driven | pass, 166 tests |
 | `afterlap_core.cli simulate` | pass, 30 s closed loop |
@@ -287,7 +287,24 @@ which is a different thing. The test now asserts that git does not track it and
 that `.gitignore` covers it, which is the property that actually protects the
 password, and which holds whether or not the developer has started the stack.
 
-### 2.14 The browser audit's own evidence did not show the feature working
+### 2.14 The session id reached a process boundary unvalidated
+
+`GET /api/v1/sessions/[sessionId]/stream` validated `after_sequence` and then
+handed `sessionId` straight to `spawn` as a positional argument of
+`afterlap_api.cli stream`. Typer parses a positional that begins with `-` as an
+option, so a request for `/api/v1/sessions/--after-sequence/stream` produced a
+CLI usage error, a child that exited non-zero, and a stream that closed with no
+explanation. Next decodes percent-escapes before the route sees the segment, so
+`%2D%2D…` reaches it as `--`.
+
+Not an injection — there is no shell, and `spawn` passes an argument vector —
+but an unchecked value crossing a process boundary, and a confusing empty
+stream where a `400` belongs. The route now checks the id against the same
+pattern `Identifier` declares in the contracts and refuses anything else, and
+the argument vector puts `--` before the id so a future id can never be read as
+an option. Seven malformed ids are regression-tested.
+
+### 2.15 The browser audit's own evidence did not show the feature working
 
 The driver screenshot fired the instant the route loaded, so the saved artefact
 showed `NO INSTRUCTION`, `mode unknown` and a connecting stream — the empty
@@ -390,9 +407,10 @@ production build is now warning-free.
 | `tests/operations/test_worker_heartbeat.py` | the worker heartbeat lands under the configured artefact root, not the default |
 | `tests/operations/test_audit_runner.py` | the audit stops at the first failed gate, records the exit code, kills its live processes when a later gate fails, never reports an interrupt as a pass, and runs the three supply-chain gates |
 | `tests/api/test_coordinator_cli.py` | eleven malformed `simulate` inputs are refused before anything runs and print nothing readable as a result |
+| `apps/web/src/server/stream.test.ts` | seven malformed session ids are refused with a 400 and never reach `spawn`, and the id is passed after an argument terminator |
 | `apps/web/e2e-live/workflow.spec.ts` | the experiment report names both controllers; replay and the sessions list render for the created session; the stream is open on return to the console; five reference surfaces render without a page error |
 
-The suite is 1 779 Python tests, 359 Vitest tests, 166 fixture-driven browser
+The suite is 1 779 Python tests, 367 Vitest tests, 166 fixture-driven browser
 tests and 16 live browser tests. Nothing is deselected. CI previously ran
 `pytest -m "not slow and not torch" --ignore=tests/learning`, which skipped the
 whole learning module — eight files, one of which was failing. It now runs

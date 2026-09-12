@@ -12,26 +12,35 @@ interface RouteContext {
   readonly params: Promise<{ sessionId: string }>;
 }
 
+const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+
+function refuse(message: string): Response {
+  return Response.json(
+    {
+      error: {
+        code: 'validation_failed',
+        message,
+        retryable: false,
+        request_id: 'stream-bridge',
+        details: {},
+      },
+    },
+    { status: 400 },
+  );
+}
+
 export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
   const { sessionId } = await context.params;
+  if (!SESSION_ID.test(sessionId)) {
+    return refuse('session id must match the identifier contract');
+  }
   const after = request.nextUrl.searchParams.get('after_sequence') ?? '0';
   if (!/^\d+$/.test(after) || !Number.isSafeInteger(Number(after))) {
-    return Response.json(
-      {
-        error: {
-          code: 'validation_failed',
-          message: 'after_sequence must be a non-negative safe integer',
-          retryable: false,
-          request_id: 'stream-bridge',
-          details: {},
-        },
-      },
-      { status: 400 },
-    );
+    return refuse('after_sequence must be a non-negative safe integer');
   }
   await ensurePythonRuntime();
   const { command, prefix } = pythonCli();
-  const child = spawn(command, [...prefix, 'stream', sessionId, '--after-sequence', after], {
+  const child = spawn(command, [...prefix, 'stream', '--after-sequence', after, '--', sessionId], {
     cwd: repoRoot(),
     env: process.env,
     stdio: ['ignore', 'pipe', 'pipe'],

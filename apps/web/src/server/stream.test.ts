@@ -42,6 +42,25 @@ describe('event stream bridge lifecycle', () => {
     expect(spawn).not.toHaveBeenCalled();
   });
 
+  it.each(['--after-sequence', '--help', '-v', '../escape', 'has space', '', 'a'.repeat(129)])(
+    'refuses a session id the identifier contract does not allow: %s',
+    async (sessionId) => {
+      const response = await GET(new NextRequest('http://localhost/stream'), {
+        params: Promise.resolve({ sessionId }),
+      });
+      expect(response.status).toBe(400);
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
+
+  it('passes the session id after an argument terminator so it cannot become an option', async () => {
+    const child = new Child();
+    spawn.mockReturnValue(child);
+    await GET(new NextRequest('http://localhost/stream?after_sequence=7'), context);
+    const argv = spawn.mock.calls[0]?.[1] as string[];
+    expect(argv.slice(-4)).toEqual(['--after-sequence', '7', '--', 'test-session']);
+  });
+
   it('closes the child without closing an already cancelled stream', async () => {
     const { child, reader } = await openStream();
     await reader.cancel();
