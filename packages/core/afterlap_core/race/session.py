@@ -101,7 +101,7 @@ class RaceSession:
             self.simulator.world.passes.append(event)
             self.events.append(asdict(event))
         self.lanes[car_id] = action.target_lateral_d_m
-        return replace(action, profile=self.bms_profiles.get(car_id, action.profile))
+        return action
 
     def advance(self, duration_s: float = 0.1) -> None:
         if not math.isfinite(duration_s) or not 0 < duration_s <= 10:
@@ -115,13 +115,16 @@ class RaceSession:
             actions = None
             if self.simulator.session_time_s >= self.next_decision_s - 1e-9:
                 self.next_decision_s += 0.1
-                actions = {
-                    car: replace(
-                        self.overrides[car] if car in self.overrides else self.automatic_action(observation),
+                actions = {}
+                for car, observation in self.observations().items():
+                    action = (
+                        self.overrides[car] if car in self.overrides else self.automatic_action(observation)
+                    )
+                    actions[car] = replace(
+                        action,
+                        profile=self.bms_profiles.get(car, action.profile),
                         issued_at_s=self.simulator.session_time_s,
                     )
-                    for car, observation in self.observations().items()
-                }
             h = min(h, self.next_decision_s - self.simulator.session_time_s)
             report = self.simulator.step(actions, h)
             self.steps += 1

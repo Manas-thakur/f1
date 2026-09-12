@@ -13,6 +13,7 @@ from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 from websockets.typing import Origin
 
+from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceSession, RaceSettings
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
@@ -40,6 +41,7 @@ class RaceServer:
         self.clients: set[asyncio.Queue[str]] = set()
         self.started_at = time.monotonic()
         self.button_gpio: int | None = None
+        self.button_pressed = False
         self.button_press_count = 0
         self.last_button_press_at_s: float | None = None
 
@@ -47,19 +49,35 @@ class RaceServer:
         self.button_gpio = gpio
 
         def pressed() -> None:
-            loop.call_soon_threadsafe(self.record_button_press)
+            loop.call_soon_threadsafe(lambda: asyncio.create_task(self.record_button_press()))
+
+        def released() -> None:
+            loop.call_soon_threadsafe(lambda: asyncio.create_task(self.record_button_release()))
 
         button.when_pressed = pressed
+        button.when_released = released
 
-    def record_button_press(self) -> None:
-        self.button_press_count += 1
-        self.last_button_press_at_s = time.monotonic() - self.started_at
-        self.publish()
+    async def record_button_press(self) -> None:
+        async with self.lock:
+            self.button_pressed = True
+            self.button_press_count += 1
+            self.last_button_press_at_s = time.monotonic() - self.started_at
+            self.session.bms_profiles["car-01"] = DeploymentProfile.OVERTAKE
+            self.publish()
+
+    async def record_button_release(self) -> None:
+        async with self.lock:
+            self.button_pressed = False
+            self.session.bms_profiles.pop("car-01", None)
+            self.publish()
 
     def frame(self) -> str:
+        session_frame = self.session.frame()
+        button_car = next((car for car in session_frame["cars"] if car["id"] == "car-01"), None)
+        boost_engaged = bool(button_car and button_car["channels"].get("boost_active") == 1)
         return json.dumps(
             {
-                **self.session.frame(),
+                **session_frame,
                 "generation": self.generation,
                 "circuit_map": self.session.map,
                 "requested_rate": self.speed,
@@ -68,8 +86,11 @@ class RaceServer:
                 "button_input": {
                     "connected": self.button_gpio is not None,
                     "gpio_bcm": self.button_gpio,
+                    "pressed": self.button_pressed,
                     "press_count": self.button_press_count,
                     "last_press_server_time_s": self.last_button_press_at_s,
+                    "boost_requested": self.button_pressed,
+                    "boost_engaged": boost_engaged,
                 },
             },
             allow_nan=False,
@@ -86,6 +107,8 @@ class RaceServer:
         session = self.session
         if command.operation == "reset":
             self.session = RaceSession(command.settings or RaceSettings())
+            if self.button_pressed:
+                self.session.bms_profiles["car-01"] = DeploymentProfile.OVERTAKE
             self.checkpoint = None
             self.generation += 1
         elif command.operation == "pause":

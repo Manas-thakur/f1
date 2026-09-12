@@ -8,6 +8,7 @@ from websockets.asyncio.server import serve
 from websockets.exceptions import InvalidStatus
 
 from afterlap_api.race_server import Command, RaceServer, allowed_origins
+from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceSession, RaceSettings
 from afterlap_core.simulation.physics import tractive_force
 
@@ -28,15 +29,27 @@ def test_controls_validate_bounds_and_require_checkpoint():
     assert runtime.session.simulator.session_time_s == 0
 
 
-def test_button_press_is_published_in_the_frame():
+@pytest.mark.asyncio
+async def test_button_press_requests_boost_and_release_returns_to_automatic():
     runtime = RaceServer()
     runtime.button_gpio = 17
-    runtime.record_button_press()
+    await runtime.record_button_press()
     frame = json.loads(runtime.frame())
     assert frame["button_input"]["connected"] is True
     assert frame["button_input"]["gpio_bcm"] == 17
+    assert frame["button_input"]["pressed"] is True
     assert frame["button_input"]["press_count"] == 1
     assert frame["button_input"]["last_press_server_time_s"] >= 0
+    assert frame["button_input"]["boost_requested"] is True
+    assert frame["button_input"]["boost_engaged"] is False
+    assert runtime.session.bms_profiles["car-01"] is DeploymentProfile.OVERTAKE
+    runtime.session.advance(0.5)
+    assert json.loads(runtime.frame())["button_input"]["boost_engaged"] is True
+    await runtime.record_button_release()
+    frame = json.loads(runtime.frame())
+    assert frame["button_input"]["pressed"] is False
+    assert frame["button_input"]["boost_requested"] is False
+    assert "car-01" not in runtime.session.bms_profiles
 
 
 @pytest.mark.asyncio

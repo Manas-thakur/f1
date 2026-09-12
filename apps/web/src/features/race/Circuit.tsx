@@ -147,9 +147,11 @@ export function Circuit() {
         <span className={styles.connection} data-socket-url={socketUrl}>{connected ? '● CONNECTED' : '○ DISCONNECTED'}</span>
         <span className={styles.buttonStatus} data-active={Boolean(frame?.button_input?.press_count)}>
           {frame?.button_input?.connected
-            ? frame.button_input.press_count
-              ? `BUTTON RECEIVED #${frame.button_input.press_count}`
-              : `BUTTON READY · GPIO ${frame.button_input.gpio_bcm}`
+            ? frame.button_input.boost_engaged
+              ? `BOOST ENGAGED · PRESS #${frame.button_input.press_count}`
+              : frame.button_input.boost_requested
+                ? `BOOST REQUESTED · PRESS #${frame.button_input.press_count}`
+                : `BOOST BUTTON READY · GPIO ${frame.button_input.gpio_bcm}`
             : 'BUTTON DISABLED'}
         </span>
         <div className={styles.cameraTabs} role="group" aria-label="Camera view">

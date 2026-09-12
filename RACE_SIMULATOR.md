@@ -15,7 +15,7 @@ make race
 
 Open [the race view](http://127.0.0.1:18760/race). The hamburger opens docked settings; Float allows dragging and resizing them. `/race/control` redirects to `/race`. Press Start race. Ctrl+C stops the processes started by this command.
 
-On a Raspberry Pi, connect a normally-open momentary button between BCM GPIO 17 and ground, then start the stack with `AFTERLAP_BUTTON_GPIO=17 make race`. The input uses the GPIO pull-up and 50 ms software debounce. Every accepted press is broadcast immediately and appears on all connected circuit and control dashboards. This input reports button events only; it does not activate a deployment profile.
+On a Raspberry Pi, connect a normally-open momentary button between BCM GPIO 17 and ground, then start the stack with `AFTERLAP_BUTTON_GPIO=17 make race`. The input uses the GPIO pull-up and 50 ms software debounce. Pressing the button requests the Overtake deployment profile for car 01; releasing it returns battery-profile selection to the underlying automatic or direct driver control. Every transition is broadcast immediately. The dashboard shows Boost requested first and Boost engaged only after delayed simulated telemetry confirms actual electrical deployment. Energy, thermal, tyre and event constraints remain authoritative.
 
 To show the same dashboard on another computer on the local network, set the Pi hostname to `afterlap-pi` and start with `AFTERLAP_BUTTON_GPIO=17 AFTERLAP_WEB_HOST=0.0.0.0 AFTERLAP_RACE_ORIGIN=http://afterlap-pi.local:18760 make race`. Open `http://afterlap-pi.local:18760/race` on the other computer. Only the Next.js dashboard is exposed; the Python simulator remains on loopback behind its WebSocket proxy.
 

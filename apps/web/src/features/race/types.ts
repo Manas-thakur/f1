@@ -55,8 +55,11 @@ export interface RaceFrame {
   button_input?: {
     connected: boolean;
     gpio_bcm: number | null;
+    pressed: boolean;
     press_count: number;
     last_press_server_time_s: number | null;
+    boost_requested: boolean;
+    boost_engaged: boolean;
   };
   circuit_map: CircuitMap;
   events: {

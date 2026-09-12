@@ -37,6 +37,14 @@ def test_boost_consumes_energy_and_replay_preserves_observed_duration():
     assert abs(session.simulator.energy_close_errors()["car-01"]) < 1e-6
 
 
+def test_bms_profile_applies_over_a_direct_driver_control():
+    session = RaceSession(RaceSettings(cars=1))
+    session.control("car-01", DriverAction(profile=DeploymentProfile.CONSERVE, throttle=1, brake=0))
+    session.bms_profiles["car-01"] = DeploymentProfile.OVERTAKE
+    session.advance(0.5)
+    assert session.simulator.world.cars["car-01"].active_profile is DeploymentProfile.OVERTAKE
+
+
 def test_recharge_stops_at_remaining_lap_allowance_and_never_adds_free_energy():
     session = RaceSession(RaceSettings(cars=1))
     ledger = session.simulator.world.ledgers["car-01"]
