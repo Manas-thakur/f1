@@ -1,43 +1,55 @@
-import { basisOf, ground, projectAll, toPointsAttr } from "./camera";
+import { ground } from "./camera";
 import type { Camera } from "./camera";
+import { GroundLine, GroundShape } from "./Ground";
 import { T } from "../theme";
+
+const HALF = 10.5;
 
 export type TrackProps = {
   readonly camera: Camera;
-  readonly from: number;
-  readonly to: number;
-  readonly halfWidth: number;
-  readonly lanes?: number | undefined;
+  readonly centre: number;
+  readonly span?: number | undefined;
 };
 
-export const Track = ({ camera, from, to, halfWidth, lanes }: TrackProps) => {
-  const basis = basisOf(camera);
-  const surface = projectAll(basis, [
-    ground(from, -halfWidth),
-    ground(to, -halfWidth),
-    ground(to, halfWidth),
-    ground(from, halfWidth),
-  ]);
-  if (surface.some((p) => !p.visible)) return null;
-  const n = lanes ?? 0;
+export const Track = ({ camera, centre, span }: TrackProps) => {
+  const reach = span ?? 130;
+  const from = centre - reach;
+  const to = centre + reach;
+  const step = 12;
+  const first = Math.ceil(from / step) * step;
+  const marks: number[] = [];
+  for (let x = first; x <= to; x += step) marks.push(x);
   return (
     <g>
-      <polygon points={toPointsAttr(surface)} fill={T.raised} />
-      <polygon points={toPointsAttr(surface)} fill="none" stroke={T.rule} strokeWidth={2} />
-      {Array.from({ length: n }, (_, i) => {
-        const z = -halfWidth + ((i + 1) * (halfWidth * 2)) / (n + 1);
-        const line = projectAll(basis, [ground(from, z), ground(to, z)]);
-        return (
-          <polyline
-            key={z}
-            points={toPointsAttr(line)}
-            fill="none"
-            stroke={T.track}
-            strokeWidth={1.5}
-            strokeDasharray="16 14"
-          />
-        );
-      })}
+      <GroundShape
+        camera={camera}
+        points={[ground(from, -HALF), ground(to, -HALF), ground(to, HALF), ground(from, HALF)]}
+        fill={T.raised}
+      />
+      <GroundLine camera={camera} x1={from} z1={-HALF} x2={to} z2={-HALF} stroke={T.rule} strokeWidth={2} />
+      <GroundLine camera={camera} x1={from} z1={HALF} x2={to} z2={HALF} stroke={T.rule} strokeWidth={2} />
+      <GroundLine
+        camera={camera}
+        x1={from}
+        z1={0}
+        x2={to}
+        z2={0}
+        stroke={T.track}
+        strokeWidth={1.5}
+        dash="18 16"
+      />
+      {marks.map((x) => (
+        <GroundLine
+          key={x}
+          camera={camera}
+          x1={x}
+          z1={-HALF}
+          x2={x}
+          z2={-HALF + 1.6}
+          stroke={T.track}
+          strokeWidth={1.5}
+        />
+      ))}
     </g>
   );
 };
