@@ -326,14 +326,15 @@ are worth naming because a reader would otherwise assume they were laziness:
   `CapabilityUnavailable`, `ModeNotPermitted`, `WorkerBusy`. Renaming 21
   classes to end in `Error` would lose that and ripple through every caller.
 
-Forty-four per-file exemptions replace what were blanket ignores, so a new file
+Fifty-two per-file exemptions replace what were blanket ignores, so a new file
 inherits the strict floor rather than the historical one.
 
 ### Python: mypy
 
 `workers/` was excluded from type checking entirely, and eight script modules
-carried `ignore_errors = true`. Both are gone: mypy now covers 329 files
-instead of 326, and the eight modules turned out to need two fixes between
+carried `ignore_errors = true`. Both are gone, and with the blanket
+code disable of finding 2.9 removed as well mypy covers 354 files under the
+full strict set. The eight script modules turned out to need two fixes between
 them — a `Runbook._current` field that was never declared, and one untyped
 SQLAlchemy call that gets a local pragma.
 
@@ -383,11 +384,12 @@ production build is now warning-free.
 
 | Suite | What it pins |
 |---|---|
-| `tests/contracts/test_hash_and_length_bounds.py` | 38 digest fields declare a pattern and a fixed length; 10 malformed digests are refused by four contracts; the two encodings refuse each other; every string a client can send is bounded; the count of unbounded server strings cannot grow |
+| `tests/contracts/test_hash_and_length_bounds.py` | 39 digest fields declare a pattern and a fixed length; 10 malformed digests are refused by four contracts; the two encodings refuse each other; every string a client can send is bounded; the count of unbounded server strings cannot grow |
 | `tests/backend/test_workers_and_routes.py` | the worker resolves controllers by name, all four runs complete with positive progress, and a learned bundle is refused |
 | `tests/contracts/test_request_boundaries.py` | an experiment manifest refuses a controller list that does not match its treatments |
 | `tests/operations/test_worker_heartbeat.py` | the worker heartbeat lands under the configured artefact root, not the default |
-| `tests/operations/test_audit_runner.py` | the audit stops at the first failed gate, records the exit code, kills its live processes when a later gate fails, and never reports an interrupt as a pass |
+| `tests/operations/test_audit_runner.py` | the audit stops at the first failed gate, records the exit code, kills its live processes when a later gate fails, never reports an interrupt as a pass, and runs the three supply-chain gates |
+| `tests/api/test_coordinator_cli.py` | eleven malformed `simulate` inputs are refused before anything runs and print nothing readable as a result |
 | `apps/web/e2e-live/workflow.spec.ts` | the experiment report names both controllers; replay and the sessions list render for the created session; the stream is open on return to the console; five reference surfaces render without a page error |
 
 The suite is 1 779 Python tests, 359 Vitest tests, 166 fixture-driven browser
