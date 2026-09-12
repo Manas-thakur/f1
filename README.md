@@ -72,7 +72,7 @@ Run repository commands through `uv run` and `bun run`; do not call `.venv/bin/p
 PowerShell, bash and zsh. Paths stored in contracts and API payloads use `/` as the portable separator,
 while filesystem access goes through `pathlib.Path`.
 
-GitHub Actions runs the complete suite on Linux and a portability gate on Windows and macOS. The local packaged stack on macOS is `make up` (Apple container via `ac`). `infra/docker-compose.yml` is the Linux compose catalog. Native Windows remains supported for development, contracts, API, web and lightweight simulation tests.
+GitHub Actions runs the complete suite on Linux and a portability gate on Windows and macOS. The local packaged stack is `make up`, which drives docker compose from `infra/docker-compose.yml`. Native Windows remains supported for development, contracts, API, web and lightweight simulation tests.
 
 
 ## Docs

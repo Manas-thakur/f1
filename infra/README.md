@@ -19,9 +19,10 @@ make up
 ```
 
 `make env` writes `infra/.env` with a generated password. `make up` builds
-images and starts the stack through `ac`. `make demo` runs the closed-loop
-runbook without a browser. `make down` stops containers; `ac afterlap down -v`
-also discards named volumes.
+images and starts the stack through docker compose. `make demo` runs the
+closed-loop runbook without a browser. `make down` stops containers;
+`docker compose -f infra/docker-compose.yml down -v` also discards the named
+volumes.
 
 | Surface | Address |
 |---|---|
@@ -34,20 +35,14 @@ also discards named volumes.
 All five bind `127.0.0.1`. There is no authentication in this release, so
 nothing here may be exposed on a routable interface.
 
-Linux compose, same ports:
-
-```
-make compose-up
-```
-
-Commands, port policy and the `ac` manifest are in
+Commands and port policy are in
 [docs/operations/LOCAL_STACK.md](../docs/operations/LOCAL_STACK.md).
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `../Makefile` | Orchestration: `make up`, `make down`, `make demo`, `make dev` |
+| `../Makefile` | Orchestration over docker compose: `make up`, `make down`, `make demo`, `make dev` |
 | `ports.env` | Committed unique host ports |
 | `docker-compose.yml` | db, migrate, runtime, batch, web; four named volumes; loopback publishes |
 | `api.Dockerfile` | Linux numerical image. Serves the Python runtime, the migration job and the batch worker |
