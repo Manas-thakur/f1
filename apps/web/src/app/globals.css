@@ -1,0 +1,5 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; overflow-x: clip; }
+body { background: #0d131b; color: #e7edf3; font-family: Arial, sans-serif; }
+h1, h2, h3, p, figure { margin: 0; }
+button, input, select { font: inherit; }
