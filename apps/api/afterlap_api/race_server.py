@@ -12,21 +12,9 @@ from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 from websockets.typing import Origin
 
-from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceSession, RaceSettings
 from afterlap_core.race.circuit import catalogue
-from afterlap_core.simulation.policies import DriverAction
-
-
-class CarControl(BaseModel):
-    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-
-    profile: DeploymentProfile = DeploymentProfile.NEUTRAL
-    pace_scale: float = Field(default=0.94, ge=0.7, le=1)
-    throttle: float | None = Field(default=None, ge=0, le=1)
-    brake: float | None = Field(default=None, ge=0, le=1)
-    target_lateral_d_m: float = Field(default=0, ge=-5, le=5)
-    low_drag: bool = False
+from afterlap_core.race.control import DriverControl
 
 
 class Command(BaseModel):
@@ -37,7 +25,7 @@ class Command(BaseModel):
     settings: RaceSettings | None = None
     speed: float = Field(default=1, ge=0.1, le=8)
     car_id: str = Field(default="car-01", pattern=r"^car-[0-9]{2}$")
-    action: CarControl | None = None
+    action: DriverControl | None = None
 
 
 class RaceServer:
@@ -99,7 +87,7 @@ class RaceServer:
         elif command.operation == "speed":
             self.speed = command.speed
         elif command.operation == "control":
-            action = None if command.action is None else DriverAction(**command.action.model_dump())
+            action = None if command.action is None else command.action.driver_action()
             session.control(command.car_id, action)
 
     async def tick(self) -> None:
