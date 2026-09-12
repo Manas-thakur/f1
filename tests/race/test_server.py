@@ -40,6 +40,17 @@ def test_server_starts_with_script_supplied_racing_line_settings():
     assert runtime.session.frame()["settings"]["racing_line"]["randomness"] == 0.2
 
 
+def test_button_press_is_published_in_the_frame():
+    runtime = RaceServer()
+    runtime.button_gpio = 17
+    runtime.record_button_press()
+    frame = json.loads(runtime.frame())
+    assert frame["button_input"]["connected"] is True
+    assert frame["button_input"]["gpio_bcm"] == 17
+    assert frame["button_input"]["press_count"] == 1
+    assert frame["button_input"]["last_press_server_time_s"] >= 0
+
+
 @pytest.mark.asyncio
 async def test_websocket_reset_step_and_errors():
     runtime = RaceServer()

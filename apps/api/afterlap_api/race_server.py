@@ -7,6 +7,7 @@ import re
 import time
 from typing import Any, Literal
 
+from gpiozero import Button
 from pydantic import BaseModel, ConfigDict, Field
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
@@ -37,6 +38,23 @@ class RaceServer:
         self.generation = 0
         self.lock = asyncio.Lock()
         self.clients: set[asyncio.Queue[str]] = set()
+        self.started_at = time.monotonic()
+        self.button_gpio: int | None = None
+        self.button_press_count = 0
+        self.last_button_press_at_s: float | None = None
+
+    def attach_button(self, button: Button, gpio: int, loop: asyncio.AbstractEventLoop) -> None:
+        self.button_gpio = gpio
+
+        def pressed() -> None:
+            loop.call_soon_threadsafe(self.record_button_press)
+
+        button.when_pressed = pressed
+
+    def record_button_press(self) -> None:
+        self.button_press_count += 1
+        self.last_button_press_at_s = time.monotonic() - self.started_at
+        self.publish()
 
     def frame(self) -> str:
         return json.dumps(
@@ -47,6 +65,12 @@ class RaceServer:
                 "requested_rate": self.speed,
                 "actual_rate": self.actual_rate,
                 "has_checkpoint": self.checkpoint is not None,
+                "button_input": {
+                    "connected": self.button_gpio is not None,
+                    "gpio_bcm": self.button_gpio,
+                    "press_count": self.button_press_count,
+                    "last_press_server_time_s": self.last_button_press_at_s,
+                },
             },
             allow_nan=False,
         )
@@ -158,8 +182,20 @@ def allowed_origins(origin: str) -> list[Origin | re.Pattern[str] | None]:
     ]
 
 
-async def run_server(host: str, port: int, origin: str, settings: RaceSettings | None = None) -> None:
+async def run_server(
+    host: str,
+    port: int,
+    origin: str,
+    settings: RaceSettings | None = None,
+    button_gpio: int | None = None,
+) -> None:
     runtime = RaceServer(settings)
+    button = None
+    if button_gpio is not None:
+        if not 0 <= button_gpio <= 27:
+            raise ValueError("button GPIO must be a BCM number between 0 and 27")
+        button = Button(button_gpio, pull_up=True, bounce_time=0.05)
+        runtime.attach_button(button, button_gpio, asyncio.get_running_loop())
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
@@ -170,3 +206,5 @@ async def run_server(host: str, port: int, origin: str, settings: RaceSettings |
         ticker.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await ticker
+        if button is not None:
+            button.close()
