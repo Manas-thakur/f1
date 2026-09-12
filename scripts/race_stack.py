@@ -15,7 +15,10 @@ ROOT = Path(__file__).resolve().parents[1]
 def check_ports(ports: tuple[int, ...] = (18760, 18761)) -> None:
     for port in ports:
         with socket.socket() as listener:
-            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if sys.platform == "win32":
+                listener.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            else:
+                listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 listener.bind(("127.0.0.1", port))
             except OSError:
