@@ -140,7 +140,7 @@ def train_decision_policy(
         if improved:
             best_reward = mean_reward
             best_cycle = cycle
-            model.save(str(output.with_name(f"{output.name}.best")))
+            model.save(str(output.with_name(f"{output.name}.best.zip")))
         history.append(
             {
                 "cycle": cycle,
