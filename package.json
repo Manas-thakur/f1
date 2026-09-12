@@ -12,7 +12,7 @@
     "esbuild"
   ],
   "scripts": {
-    "typecheck": "bun run --filter @afterlap/web typecheck",
+    "typecheck": "bun run --filter @afterlap/web typecheck && bun run --filter @afterlap/video typecheck",
     "test": "bun run --filter @afterlap/web test",
     "build": "bun run --filter @afterlap/web build",
     "test:e2e": "bun run --filter @afterlap/web test:e2e",

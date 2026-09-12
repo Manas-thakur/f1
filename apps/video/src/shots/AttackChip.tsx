@@ -19,12 +19,12 @@ export const AttackChip = () => {
   const jitter = frame > 8 && frame < 16 ? (Math.floor(frame / 2) % 2 === 0 ? 0.62 : 1) : 1;
   return (
     <>
-    <Scrim left={1216} top={54} width={520} height={228} strength={0.24} blur={17} opacity={rise * out} />
+    <Scrim left={1206} top={40} width={600} height={260} strength={0.24} blur={17} opacity={rise * out} />
     <div
       style={{
         position: "absolute",
-        left: 1313,
-        top: 121,
+        left: 1294,
+        top: 104,
         display: "flex",
         alignItems: "center",
         gap: 12,
@@ -40,18 +40,18 @@ export const AttackChip = () => {
         style={{
           fontFamily: FONT.display,
           fontWeight: 700,
-          fontSize: 56,
+          fontSize: 88,
           letterSpacing: "0.015em",
           color: PALETTE.paper,
-          lineHeight: "58px",
+          lineHeight: "90px",
         }}
       >
         ATTACK
       </span>
       <span
         style={{
-          fontSize: 44,
-          lineHeight: "48px",
+          fontSize: 62,
+          lineHeight: "66px",
           color: PALETTE.green,
           opacity: tick,
           transform: `scale(${0.6 + 0.4 * tick})`,

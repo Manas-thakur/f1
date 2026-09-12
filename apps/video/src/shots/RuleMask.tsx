@@ -62,9 +62,9 @@ export const RuleMask = () => {
 
   return (
     <div style={{ position: "absolute", inset: 0, opacity: out }}>
-      <Scrim left={0} top={600} width={1920} height={360} strength={0.3} blur={15} shape="linear" />
-      <Scrim left={540} top={96} width={1160} height={350} strength={0.34} blur={16} />
-      <Scrim left={1200} top={886} width={720} height={112} strength={0.42} blur={13} />
+      <Scrim left={0} top={606} width={1920} height={330} strength={0.24} blur={16} shape="linear" opacity={hud} />
+      <Scrim left={540} top={96} width={1160} height={350} strength={0.3} blur={16} opacity={box} />
+      <Scrim left={1200} top={886} width={720} height={112} strength={0.4} blur={13} opacity={stamp} />
 
       <svg
         width={VIDEO.width}

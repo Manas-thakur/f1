@@ -8,15 +8,15 @@ export const Logo = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const sweep = interpolate(frame, [4, 24], [0, 1], {
+  const sweep = interpolate(frame, [4, 30], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const word = interpolate(frame, [8, 30], [0, 1], {
+  const word = interpolate(frame, [8, 45], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const tagline = interpolate(frame, [22, 38], [0, 1], {
+  const tagline = interpolate(frame, [33, 47], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -37,13 +37,13 @@ export const Logo = () => {
           boxShadow: `0 0 ${52 * spark}px ${26 * spark}px rgba(255,51,39,0.4)`,
         }}
       />
-      <div style={{ position: "absolute", left: 0, right: 0, top: 470, textAlign: "center" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 454, textAlign: "center" }}>
         <div
           style={{
             fontFamily: FONT.caption,
             fontWeight: 300,
-            fontSize: 72,
-            letterSpacing: "0.17em",
+            fontSize: 74,
+            letterSpacing: "0.105em",
             color: PALETTE.paper,
             opacity: word,
             WebkitMaskImage: `linear-gradient(90deg, #000 0%, #000 ${word * 100}%, rgba(0,0,0,0.06) ${
@@ -58,12 +58,12 @@ export const Logo = () => {
         </div>
         <div
           style={{
-            marginTop: 6,
-            marginLeft: 218,
+            marginTop: 4,
+            marginLeft: 234,
             fontFamily: FONT.display,
             fontWeight: 600,
-            fontSize: 52,
-            letterSpacing: "0.035em",
+            fontSize: 50,
+            letterSpacing: "0.03em",
             color: "rgba(255,255,255,0.94)",
             opacity: tagline,
           }}

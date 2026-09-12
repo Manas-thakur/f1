@@ -54,8 +54,8 @@ export const DecisionCard = ({
         style={{
           fontFamily: FONT.display,
           fontWeight: 700,
-          fontSize: 86,
-          lineHeight: "88px",
+          fontSize: 67,
+          lineHeight: "72px",
           marginTop: 4,
           opacity: bodyReveal,
         }}

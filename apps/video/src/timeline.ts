@@ -51,7 +51,7 @@ export const BEATS: readonly Beat[] = [
   beat("decision", 566, 708),
   beat("waitGhost", 699, 719),
   beat("attackChip", 711, 759),
-  beat("durable", 821, 871),
+  beat("durable", 821, 868),
   beat("logo", 867, 942),
 ];
 
@@ -150,7 +150,7 @@ export const CAPTIONS: readonly Caption[] = [
   { frame: 848, word: "is" },
   { frame: 854, word: "too" },
   { frame: 860, word: "high." },
-  { frame: 866, word: "Apex" },
+  { frame: 872, word: "Apex" },
   { frame: 880, word: "Ledger." },
   { frame: 894, word: "Helping" },
   { frame: 906, word: "teams" },

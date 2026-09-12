@@ -28,7 +28,7 @@ export const Decision = () => {
 
   return (
     <div style={{ position: "absolute", inset: 0, opacity: out }}>
-      <Scrim left={744} top={168} width={1176} height={560} strength={0.36} blur={20} opacity={card} />
+      <Scrim left={800} top={216} width={1080} height={470} strength={0.2} blur={22} opacity={card} />
 
       <DecisionCard
         reveal={card}
@@ -36,8 +36,8 @@ export const Decision = () => {
         optionsReveal={options}
         highlight="DELAY"
         style={{
-          left: 812,
-          top: 222,
+          left: 868,
+          top: 266,
           transform: `perspective(2000px) rotateY(-6deg) translateX(${(1 - card) * 34}px)`,
           transformOrigin: "left center",
         }}
@@ -45,8 +45,8 @@ export const Decision = () => {
       <div
         style={{
           position: "absolute",
-          left: 1494,
-          top: 318,
+          left: 1534,
+          top: 330,
           background: "rgba(14,17,20,0.86)",
           backdropFilter: "blur(10px)",
           border: `1px solid ${PALETTE.panelEdge}`,
@@ -63,8 +63,8 @@ export const Decision = () => {
             style={{
               fontFamily: FONT.display,
               fontWeight: 700,
-              fontSize: 50,
-              lineHeight: "48px",
+              fontSize: 46,
+              lineHeight: "51px",
               color: PALETTE.paper,
               letterSpacing: "0.005em",
             }}
