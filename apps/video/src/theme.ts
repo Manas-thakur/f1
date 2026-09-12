@@ -2,40 +2,35 @@ export const VIDEO = {
   width: 1920,
   height: 1080,
   fps: 30,
-  durationInFrames: 900,
+  durationInFrames: 942,
 } as const;
 
-export const T = {
-  paper: "#eef0f2",
-  surface: "#ffffff",
-  raised: "#e7ebef",
-  rule: "#cbd1d7",
-  ink: "#20282f",
-  muted: "#56616c",
-  accent: "#155dc1",
-  aqua: "#8855a6",
-  good: "#207247",
-  bad: "#b32b32",
-  soft: "#e6edf7",
-  track: "#b8c1c9",
-  well: "#20282f",
+export const PALETTE = {
+  ink: "#101418",
+  paper: "#f4f6f8",
+  attack: "#ff858a",
+  attackDeep: "#7d2f33",
+  delay: "#f0c65a",
+  defend: "#8dccf2",
+  defendDeep: "#2a5f7d",
+  recharge: "#8acd9e",
+  rechargeDeep: "#2c5f3f",
+  amber: "#f0c65a",
+  green: "#8acd9e",
+  greenDeep: "#2c5f3f",
+  rail: "#afb9c2",
+  mute: "rgba(244,246,248,0.66)",
+  panel: "rgba(21,28,34,0.82)",
+  panelEdge: "rgba(70,82,93,0.9)",
+  chip: "rgba(70,82,93,0.72)",
 } as const;
+
+export const SCALE = VIDEO.width / 848;
+
+export const px = (value: number): number => value * SCALE;
 
 export const FONT = {
-  body: "'Segoe UI', Arial, sans-serif",
-  mono: "Consolas, 'Courier New', monospace",
+  display: "'Segoe UI', 'Liberation Sans', Arial, sans-serif",
+  caption: "'Segoe UI', 'Liberation Sans', Arial, sans-serif",
+  mono: "Consolas, 'DejaVu Sans Mono', 'Courier New', monospace",
 } as const;
-
-export const S = {
-  s1: 4,
-  s2: 8,
-  s3: 12,
-  s4: 16,
-  s6: 24,
-  s8: 32,
-  s12: 48,
-  s16: 64,
-} as const;
-
-export const EASE_OUT = [0.16, 1, 0.3, 1] as const;
-export const EASE_IN_OUT = [0.65, 0, 0.35, 1] as const;

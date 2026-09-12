@@ -1,86 +1,55 @@
-import { AbsoluteFill, useCurrentFrame } from "remotion";
+import type { ReactNode } from "react";
+import { AbsoluteFill, Sequence } from "remotion";
+import { Plate } from "./Plate";
 import { BEATS } from "./timeline";
-import { cameraAt, fade, ownX, ownZ, rivalX, rivalZ } from "./motion";
-import { anchor } from "./three/anchor";
-import { Car } from "./three/Car";
-import { Track } from "./three/Track";
-import { Corridor, CorridorLabels } from "./shots/Corridor";
-import { RulePack } from "./shots/RulePack";
+import { PALETTE } from "./theme";
+import { Caption } from "./ui/Caption";
+import { Microtext } from "./ui/Microtext";
+import { Scrim } from "./ui/Scrim";
+import { AttackChip } from "./shots/AttackChip";
+import { Corridor } from "./shots/Corridor";
 import { Decision } from "./shots/Decision";
-import { Readout } from "./ui/Callout";
-import { Step } from "./ui/Step";
-import { FONT, T, VIDEO } from "./theme";
+import { DurableChip } from "./shots/DurableChip";
+import { EnergyDebt } from "./shots/EnergyDebt";
+import { Logo } from "./shots/Logo";
+import { RuleMask } from "./shots/RuleMask";
+import { Title } from "./shots/Title";
+import { WaitGhost } from "./shots/WaitGhost";
 
-export const Promo = () => {
-  const frame = useCurrentFrame();
-  const camera = cameraAt(frame);
-  const ox = ownX(frame);
-  const oz = ownZ(frame);
-  const rx = rivalX(frame);
-  const rz = rivalZ();
-  const centre = (ox + rx) / 2;
-
-  const own = anchor(camera, ox, oz);
-  const rival = anchor(camera, rx, rz);
-
-  const ownTag = fade(frame, 60, 90, 316, 344);
-  const rivalTag = fade(frame, 196, 224, 316, 344);
-  const held = fade(frame, 826, 852, 896, 900);
-
-  const beat = BEATS.find((b) => frame >= b.from && frame < b.to) ?? BEATS[0];
-  const stepIn = beat ? fade(frame, beat.from, beat.from + 18, beat.to - 16, beat.to) : 0;
-
-  return (
-    <AbsoluteFill style={{ backgroundColor: T.paper }}>
-      <svg
-        width={VIDEO.width}
-        height={VIDEO.height}
-        viewBox={`0 0 ${VIDEO.width} ${VIDEO.height}`}
-        style={{ position: "absolute", inset: 0 }}
-      >
-        <Track camera={camera} centre={centre} />
-        <Corridor camera={camera} frame={frame} originX={ox} />
-        <Car camera={camera} x={rx} z={rz} fill="#d9c6e6" stroke={T.aqua} />
-        <Car camera={camera} x={ox} z={oz} fill="#bcd4f5" stroke={T.accent} />
-      </svg>
-
-      {beat ? <Step n={beat.n} title={beat.title} note={beat.note} opacity={stepIn} /> : null}
-
-      <Readout
-        x={own.x}
-        y={own.y - 118}
-        label="OWN BATTERY · measured"
-        value="4.12"
-        unit="MJ"
-        opacity={ownTag}
-      />
-      <Readout
-        x={rival.x}
-        y={rival.y - 118}
-        label="RIVAL BATTERY · interval"
-        value="2.4 – 3.0"
-        unit="MJ"
-        opacity={rivalTag}
-        tone={T.aqua}
-      />
-
-      <CorridorLabels camera={camera} frame={frame} originX={ox} />
-      <RulePack frame={frame} />
-      <Decision frame={frame} />
-
-      <div
-        style={{
-          position: "absolute",
-          left: 88,
-          top: 944,
-          fontFamily: FONT.body,
-          fontSize: 34,
-          color: T.good,
-          opacity: held,
-        }}
-      >
-        Position retained at the counterattack checkpoint.
-      </div>
-    </AbsoluteFill>
-  );
+const OVERLAYS: Record<string, () => ReactNode> = {
+  title: Title,
+  debt: EnergyDebt,
+  mask: RuleMask,
+  corridor: Corridor,
+  decision: Decision,
+  waitGhost: WaitGhost,
+  attackChip: AttackChip,
+  durable: DurableChip,
+  logo: Logo,
 };
+
+export const Promo = () => (
+  <AbsoluteFill style={{ backgroundColor: PALETTE.ink }}>
+    <Plate />
+
+    <Sequence from={120} durationInFrames={812} layout="none">
+      <Scrim left={0} top={790} width={1920} height={290} strength={0.7} blur={22} shape="linear" />
+    </Sequence>
+
+    {BEATS.map((b) => {
+      const Overlay = OVERLAYS[b.id];
+      if (!Overlay) return null;
+      return (
+        <Sequence key={b.id} from={b.from} durationInFrames={b.durationInFrames} layout="none">
+          <Overlay />
+        </Sequence>
+      );
+    })}
+
+    <Sequence from={323} durationInFrames={619} layout="none">
+      <Microtext />
+    </Sequence>
+
+    <Caption />
+  </AbsoluteFill>
+);

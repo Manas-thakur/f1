@@ -1,21 +1,39 @@
-import { fade } from "../motion";
-import { FONT, T } from "../theme";
+import { interpolate, useCurrentFrame } from "remotion";
+import { DecisionCard } from "../ui/DecisionCard";
+import { Scrim } from "../ui/Scrim";
 
-export const Decision = ({ frame }: { readonly frame: number }) => {
-  const live = fade(frame, 664, 692, 776, 800);
-  if (live <= 0) return null;
-  const detail = fade(frame, 686, 710, 776, 800);
+export const Decision = () => {
+  const frame = useCurrentFrame();
+  const card = interpolate(frame, [0, 14], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const body = interpolate(frame, [8, 22], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const out = interpolate(frame, [128, 137], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const reframed = frame >= 121;
+  const shift = reframed ? "translate(186px, -206px)" : "translate(0px, 0px)";
+
   return (
-    <div style={{ position: "absolute", left: 88, top: 884, opacity: live }}>
-      <div style={{ fontFamily: FONT.mono, fontSize: 22, color: T.muted, letterSpacing: "0.08em" }}>
-        RECOMMENDATION · proposed
-      </div>
-      <div style={{ fontFamily: FONT.body, fontSize: 56, color: T.accent, marginTop: 4 }}>
-        Prepare attack
-      </div>
-      <div style={{ fontFamily: FONT.body, fontSize: 26, color: T.muted, marginTop: 8, opacity: detail }}>
-        through the counterattack checkpoint · expires in 2.0 s
-      </div>
+    <div style={{ position: "absolute", inset: 0, opacity: out }}>
+      <Scrim left={reframed ? 1074 : 800} top={reframed ? 4 : 216} width={1080} height={470} strength={0.2} blur={22} opacity={card} />
+
+      <DecisionCard
+        reveal={card}
+        bodyReveal={body}
+        style={{
+          left: 868,
+          top: 266,
+          transform: `${shift} perspective(2000px) rotateY(-6deg) translateX(${(1 - card) * 34}px)`,
+          transformOrigin: "left center",
+        }}
+      />
+
     </div>
   );
 };
