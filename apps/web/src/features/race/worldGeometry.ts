@@ -5,7 +5,7 @@ import type { CircuitMap } from './types';
 
 export const LIVERIES = ['#e5383b', '#26b7a5', '#ff981f', '#368af5', '#ecebe5'];
 
-export function trackPose(map: CircuitMap, progress: number, lateral = 0) {
+function trackPosition(map: CircuitMap, progress: number, lateral: number) {
   const t = (((progress / map.length_m) % 1) + 1) % 1 * map.points.length;
   const i = Math.floor(t);
   const a = map.points[i] ?? [0, 0];
@@ -24,10 +24,15 @@ export function trackPose(map: CircuitMap, progress: number, lateral = 0) {
   const [x, dx] = axis(0);
   const [z, dz] = axis(1);
   const length = Math.hypot(dx, dz) || 1;
-  return {
-    position: new THREE.Vector3(x - lateral * dz / length, 0, z + lateral * dx / length),
-    yaw: Math.atan2(dx, dz),
-  };
+  return new THREE.Vector3(x - lateral * dz / length, 0, z + lateral * dx / length);
+}
+
+export function trackPose(map: CircuitMap, progress: number, lateral = 0, lateralSlope = 0) {
+  const delta = Math.max(0.1, Math.min(1, map.length_m / map.points.length * 0.02));
+  const position = trackPosition(map, progress, lateral);
+  const before = trackPosition(map, progress - delta, lateral - lateralSlope * delta);
+  const after = trackPosition(map, progress + delta, lateral + lateralSlope * delta);
+  return { position, yaw: Math.atan2(after.x - before.x, after.z - before.z) };
 }
 
 export function box(
@@ -88,6 +93,8 @@ export function createCar(index: number) {
   const alloy = new THREE.MeshStandardMaterial({ color: '#555d66', metalness: 0.95, roughness: 0.27 });
   const brake = new THREE.MeshStandardMaterial({ color: '#343a3e', metalness: 0.9, roughness: 0.32 });
   const caliper = new THREE.MeshStandardMaterial({ color: '#d53a24', metalness: 0.55, roughness: 0.28 });
+  const tyreRing = new THREE.MeshStandardMaterial({ color: '#e4bb3b', roughness: 0.8 });
+  group.userData['tyreRingMaterial'] = tyreRing;
   const stripe = new THREE.MeshStandardMaterial({ color: '#e6e8e7', roughness: 0.35 });
   box(group, carbon, [1.65, 0.1, 3.45], [0, 0.19, -0.2]);
   group.add(body(paint, [
@@ -120,7 +127,7 @@ export function createCar(index: number) {
       group.add(disc);
       box(group, caliper, [0.075, 0.18, 0.1], [side * 1.13, 0.43, z - 0.12]);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.012, 6, 32),
-        new THREE.MeshStandardMaterial({ color: '#e4bb3b', roughness: 0.8 }));
+        tyreRing);
       ring.rotation.y = Math.PI / 2;
       ring.position.set(side * 1.12, 0.39, z);
       group.add(ring);

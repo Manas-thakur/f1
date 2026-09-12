@@ -4,7 +4,7 @@ import { EnergyTelemetry } from './Energy';
 import { energyMode } from './energyStatus';
 import { useRace } from './Connection';
 import styles from './race.module.css';
-import type { RaceCar } from './types';
+import type { RaceCar, RaceEvent } from './types';
 
 export function number(value: number | undefined, digits = 1) {
   return value === undefined ? 'Unavailable' : value.toFixed(digits);
@@ -16,6 +16,14 @@ function lapNumber(car: RaceCar | undefined, total: number) {
   }
   const completed = car?.channels['lap'];
   return completed === undefined ? undefined : Math.min(total, Math.floor(completed) + 1);
+}
+
+function eventLabel(event: RaceEvent) {
+  const actors = event.overtaking_car_id && event.overtaken_car_id
+    ? `${event.overtaking_car_id} / ${event.overtaken_car_id}`
+    : event.car_id ?? 'race control';
+  const detail = event.mode ?? event.compound ?? '';
+  return `${event.session_time_s.toFixed(1)}s · ${actors} · ${event.kind.replaceAll('_', ' ')}${detail ? ` · ${detail}` : ''}`;
 }
 
 export function Transport() {
@@ -75,7 +83,9 @@ export function Classification() {
         <b>{index + 1}</b><span>{car.id.toUpperCase()}
           <em className={styles.classificationEnergy} data-energy-mode={energyMode(car)}>
             {energyMode(car)}</em></span>
-        <small>{number(car.channels['speed_mps'] === undefined ? undefined : car.channels['speed_mps'] * 3.6, 0)}</small>
+        <small>{frame.status === 'finished'
+          ? car.classified ? `${car.points} PTS` : 'DSQ'
+          : car.tyres.phase === 'service' ? 'PIT' : number(car.channels['speed_mps'] === undefined ? undefined : car.channels['speed_mps'] * 3.6, 0)}</small>
       </button>)}
     </div>
   </aside>;
@@ -95,9 +105,34 @@ export function Telemetry() {
       <dt>Battery</dt><dd>{number(ch['battery_energy_j'] === undefined ? undefined : ch['battery_energy_j'] / 1e6, 2)} MJ</dd>
       <dt>Temperature</dt><dd>{number(ch['battery_temperature_k'] === undefined ? undefined : ch['battery_temperature_k'] - 273.15)} °C</dd>
       <dt>Electrical power</dt><dd>{number(ch['electrical_power_w'] === undefined ? undefined : ch['electrical_power_w'] / 1000, 0)} kW</dd>
+      <dt>Tire compound</dt><dd><span className={styles.tyreDot}
+        style={{ background: car?.tyres.sidewall }}>{car?.tyres.compound.toUpperCase() ?? 'Unavailable'}</span></dd>
+      <dt>Tire condition</dt><dd>{car ? `${(car.tyres.condition * 100).toFixed(0)}%` : 'Unavailable'}</dd>
+      <dt>Grip factor</dt><dd>{car ? car.tyres.grip.toFixed(3) : 'Unavailable'}</dd>
+      <dt>Race phase</dt><dd>{car?.tyres.phase === 'track' ? car.storyline : `pit ${car?.tyres.phase ?? ''}`}</dd>
+      <dt>2026 rules</dt><dd>{car?.regulation_status ?? 'running'}</dd>
     </dl>
     <EnergyTelemetry />
+    <details className={styles.strategyMatrix}><summary>Boost decision matrix</summary>
+      <p>Opportunity is a closing car within 65 m. This is strategy telemetry, not a trained-model result.</p>
+      <dl className={styles.telemetryGrid}>
+        <dt>True positive</dt><dd>{frame?.boost_evaluation.true_positive ?? 0}</dd>
+        <dt>False positive</dt><dd>{frame?.boost_evaluation.false_positive ?? 0}</dd>
+        <dt>False negative</dt><dd>{frame?.boost_evaluation.false_negative ?? 0}</dd>
+        <dt>True negative</dt><dd>{frame?.boost_evaluation.true_negative ?? 0}</dd>
+        <dt>Accuracy</dt><dd>{frame?.boost_evaluation.accuracy === null
+          || frame?.boost_evaluation.accuracy === undefined
+          ? 'Unavailable' : `${(frame.boost_evaluation.accuracy * 100).toFixed(1)}%`}</dd>
+      </dl>
+    </details>
+    <details><summary>FIA 2026 race rules</summary>
+      <p>
+        Enforced in the simulation: qualifying grid order, 80 km/h pit limit, two dry
+        compounds, 90% classification threshold, race points and ERS-K limits.
+      </p>
+      <p>{frame?.regulations.limitations}</p>
+    </details>
     <details><summary>Race events</summary>{frame?.events.slice(-10).reverse().map((event, i) =>
-      <p key={i}>{event.session_time_s.toFixed(1)}s · {event.overtaking_car_id} / {event.overtaken_car_id} · {event.kind.replaceAll('_', ' ')}</p>)}</details>
+      <p key={i}>{eventLabel(event)}</p>)}</details>
   </section>;
 }

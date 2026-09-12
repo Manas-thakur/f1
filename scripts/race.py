@@ -6,7 +6,7 @@ import contextlib
 import json
 from pathlib import Path
 
-from afterlap_core.race import RaceSettings
+from afterlap_core.race import RaceSettings, RacingLineSettings, StorylineSettings
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
 from afterlap_core.race.environment import (
@@ -36,9 +36,21 @@ def main() -> None:
     parser.add_argument("--dt", type=float, default=0.01)
     parser.add_argument("--duration", type=float, default=1800)
     parser.add_argument("--wetness", type=float, default=0)
+    parser.add_argument("--weather", choices=("sunny", "rainy"), default="sunny")
     parser.add_argument("--temperature-k", type=float, default=303.15)
     parser.add_argument("--wind-mps", type=float, default=0)
     parser.add_argument("--wake", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--contact-mode", choices=("ignore", "terminate"), default="ignore")
+    parser.add_argument("--storylines", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--pit-stops", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--tyre-wear-scale", type=float, default=1)
+    parser.add_argument("--racing-line", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--corner-line-strength", type=float, default=0.9)
+    parser.add_argument("--line-randomness", type=float, default=0.7)
+    parser.add_argument("--line-wander-m", type=float, default=0.8)
+    parser.add_argument("--line-lookahead-m", type=float, default=65)
+    parser.add_argument("--line-smoothing-m", type=float, default=30)
+    parser.add_argument("--corner-overtakes", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--steps", type=int, default=10000)
     parser.add_argument("--output", type=Path, default=Path(".afterlap/race/transitions.jsonl"))
     parser.add_argument("--host", default="127.0.0.1")
@@ -64,13 +76,6 @@ def main() -> None:
             )
         )
         return
-    if args.command == "serve":
-        from afterlap_api.race_server import run_server
-
-        print(f"race websocket: ws://{args.host}:{args.port}", flush=True)
-        with contextlib.suppress(KeyboardInterrupt):
-            asyncio.run(run_server(args.host, args.port, args.origin))
-        return
     if args.driver_action and args.command != "evaluate":
         parser.error("--driver-action is only valid for evaluate")
     if args.driver_action and args.policy:
@@ -82,16 +87,46 @@ def main() -> None:
         "dt_s": args.dt,
         "time_limit_s": args.duration,
         "wetness": args.wetness,
+        "weather": args.weather,
         "temperature_k": args.temperature_k,
         "wind_mps": args.wind_mps,
         "wake": args.wake,
+        "contact_mode": args.contact_mode,
         "variability": Variability(preset=args.preset),
+        "storyline": StorylineSettings(
+            enabled=args.storylines,
+            pit_stops=args.pit_stops,
+            tyre_wear_scale=args.tyre_wear_scale,
+        ),
+        "racing_line": RacingLineSettings(
+            enabled=args.racing_line,
+            corner_strength=args.corner_line_strength,
+            randomness=args.line_randomness,
+            wander_m=args.line_wander_m,
+            lookahead_m=args.line_lookahead_m,
+            smoothing_m=args.line_smoothing_m,
+            overtake_in_corners=args.corner_overtakes,
+        ),
     }
     if args.laps is not None:
         settings_payload["laps"] = args.laps
     settings = RaceSettings.model_validate(settings_payload)
     if args.settings:
         settings = RaceSettings.model_validate_json(args.settings.read_text())
+    if args.command == "serve":
+        from afterlap_api.race_server import run_server
+
+        print(f"race websocket: ws://{args.host}:{args.port}", flush=True)
+        with contextlib.suppress(KeyboardInterrupt):
+            asyncio.run(
+                run_server(
+                    args.host,
+                    args.port,
+                    args.origin,
+                    settings=settings,
+                )
+            )
+        return
     env = RaceEnv(settings)
     if args.command == "train":
         from stable_baselines3 import PPO

@@ -38,6 +38,9 @@
 .weatherStrip strong { color: #f2f7f6; font-size: 9px; }
 .weatherPulse { width: 7px; height: 7px; border-radius: 50%; background: #d4ef9a; box-shadow: 0 0 12px #d4ef9a99; }
 .weatherPulse[data-wet='true'] { background: #78d9ff; box-shadow: 0 0 13px #43c7ff; }
+.pitOverlay { position: absolute; z-index: 12; top: 23%; left: 50%; transform: translateX(-50%); min-width: 220px; border: 1px solid #ffffff38; border-top: 3px solid #ef3e43; border-radius: 8px; padding: 12px 18px; background: #0e1822e8; box-shadow: 0 18px 50px #0008; text-align: center; pointer-events: none; }
+.pitOverlay small, .pitOverlay span { display: block; font: 9px monospace; letter-spacing: 1.4px; color: #b9c8ce; }
+.pitOverlay strong { display: block; margin: 5px 0; font: italic 25px Arial, sans-serif; color: #fff; }
 .minimap { position: absolute; z-index: 4; bottom: 30px; left: 16px; width: 185px; padding: 11px; border: 1px solid #dcecff29; border-radius: 7px; background: linear-gradient(145deg, #07131eea, #13232ce5); box-shadow: 0 16px 45px #0007; pointer-events: none; }
 .minimap[hidden] { display: none; }
 .minimap div { display: flex; justify-content: space-between; font: 8px monospace; letter-spacing: 1px; }
@@ -79,6 +82,9 @@
 .actions { display: flex; flex-wrap: wrap; gap: 7px; }
 .telemetryGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; }
 .telemetryGrid dd { margin: 0; text-align: right; font-family: monospace; }
+.tyreDot { display: inline-flex; align-items: center; gap: 5px; color: #e8efef; }
+.tyreDot::before { width: 7px; height: 7px; border-radius: 50%; background: inherit; content: ''; }
+.strategyMatrix { border-top: 1px solid #ffffff24; margin-top: 12px; padding-top: 10px; }
 .panel progress { width: 100%; accent-color: #d4ef9a; }
 @container race-view (max-width: 1000px) {
   .circuitName { max-width: 150px; font-size: 9px; }

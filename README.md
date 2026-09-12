@@ -48,7 +48,7 @@ The renderer uses detailed local car models, multilayer automotive paint, physic
 
 The speedometer reports speed in simulation time. PACE in the scene reports simulation seconds per real second, measured from received frames. For example, a 0.25× pace makes a car reporting 120 km/h cover about 30 km per real hour of viewing. The playback selector requests a target; it cannot make the physics engine compute faster than the available CPU. Twenty cars at 100 Hz can run below real time. Fewer cars reduce the physics workload; Performance graphics reduces browser rendering cost. Neither changes the physical speed measurement.
 
-Rendering uses a short adaptive observation buffer to avoid accelerating and stopping at every packet. Pausing and restoring checkpoints update the view immediately. A network interruption holds the last known position rather than inventing future movement.
+Rendering uses a short adaptive observation buffer to avoid accelerating and stopping at every packet. Pausing plays that buffer out at the current rate and comes to rest on the paused observation, so the view never jumps forward by a buffer length at the moment of the pause. Reset and checkpoint restore discard the buffer and update the view immediately. A network interruption holds the last known position rather than inventing future movement.
 
 All playback buttons, classification, minimap and telemetry stay inside the scene. Classification has its own scroll area. Opening docked settings shrinks the desktop scene; on small screens settings overlay it. The old `/race/control` URL redirects to the single race page.
 

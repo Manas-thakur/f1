@@ -139,7 +139,8 @@ export function Circuit() {
   };
   const car = frame?.cars.find((item) => item.id === selected);
   const speed = car?.channels['speed_mps'];
-  const wetness = frame?.settings.wetness ?? 0;
+  const wetness = frame?.settings.weather === 'rainy'
+    ? Math.max(frame.settings.wetness, 0.72) : frame?.settings.wetness ?? 0;
   const weather = wetness >= 0.7 ? 'HEAVY RAIN' : wetness >= 0.35 ? 'WET TRACK'
     : wetness > 0.08 ? 'LIGHT RAIN' : 'DRY';
   const speedStyle = {
@@ -204,6 +205,7 @@ export function Circuit() {
           <span>{frame?.status === 'running' ? `${fps} FPS` : 'RENDER ON DEMAND'}
             {' · '}{mode === 'cockpit' ? 'FIRST PERSON' : mode.toUpperCase()}</span>
           <span>PACE {frame?.playback_rate?.toFixed(2) ?? '…'}× · TARGET {frame?.requested_rate ?? 1}×</span>
+          <span>{frame?.settings.weather === 'rainy' ? '☂ RAIN' : '☀ SUN'}</span>
         </div>
         <div className={styles.weatherStrip}>
           <span className={styles.weatherPulse} data-wet={wetness > 0.08} />
@@ -212,6 +214,14 @@ export function Circuit() {
           <span>{frame ? `${(frame.settings.temperature_k - 273.15).toFixed(0)}°C` : 'N/A'}</span>
           <span>WIND {frame ? Math.abs(frame.settings.wind_mps).toFixed(1) : 'N/A'} M/S</span>
         </div>
+        {car && car.tyres.phase !== 'track' && <div className={styles.pitOverlay} role="status">
+          <small>PIT LANE · {car?.tyres.phase.toUpperCase()}</small>
+          <strong>{car?.tyres.phase === 'service'
+            ? `${car.tyres.service_remaining_s.toFixed(1)}s`
+            : car?.tyres.phase === 'entry' ? 'BOX THIS LAP' : 'REJOINING'}</strong>
+          <span>{car?.tyres.compound.toUpperCase()} → {car?.tyres.phase === 'exit'
+             ? car.tyres.compound.toUpperCase() : 'NEW SET'}</span>
+        </div>}
         {classification && <Classification />}
         {(connectionError ?? frame?.failure ?? !connected) && <div className={styles.connectionAlert} role="status">
           {connectionError ?? frame?.failure ?? 'Connecting to the race runtime…'}
@@ -245,7 +255,8 @@ export function Circuit() {
               <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
               <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>
             </div>
-            <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} · {frame?.status.toUpperCase()}</span>
+            <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} ·{' '}
+              {car?.tyres.phase === 'track' ? frame?.status.toUpperCase() : `PIT ${car?.tyres.phase.toUpperCase()}`}</span>
           </div>
           <div className={styles.hudSpeed} style={speedStyle}>
             <strong>{speed === undefined ? 'N/A' : (speed * 3.6).toFixed(0)}</strong>

@@ -124,6 +124,7 @@ class Simulator:
         self._wake: WakeModel | None = None
         self._wake_effects: dict[str, WakeEffect] = {}
         self._overtake_trackers: dict[tuple[str, str], OvertakeTracker] = {}
+        self._ignore_contacts = False
 
     def reset(
         self,
@@ -132,6 +133,7 @@ class Simulator:
         environment: EnvironmentField | None = None,
         event_limits: EventEnergyLimits | None = None,
         wake: WakeModel | None = None,
+        ignore_contacts: bool = False,
     ) -> Simulator:
 
         bundle = (
@@ -145,6 +147,7 @@ class Simulator:
         self._wake = wake
         self._wake_effects = {}
         self._overtake_trackers = {}
+        self._ignore_contacts = ignore_contacts
         effective_seed = scenario.seed if seed is None else int(seed)
         world = WorldState(
             bundle=bundle,
@@ -337,10 +340,13 @@ class Simulator:
         return observe(self.world, sensor_config or self.sensor_config, car_id, include_rivals=include_rivals)
 
     def snapshot(self) -> dict[str, Any]:
-        return self.world.capture_complete_state()
+        snapshot = self.world.capture_complete_state()
+        snapshot["ignore_contacts"] = self._ignore_contacts
+        return snapshot
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         self.world.restore(snapshot)
+        self._ignore_contacts = bool(snapshot["ignore_contacts"])
 
     def step(self, driver_actions: dict[str, DriverAction] | None, dt_s: float) -> StepReport:
 
@@ -493,6 +499,7 @@ class Simulator:
             )
         else:
             grip_multipliers = world.environment.grip_multiplier_array(samples, world.race.session_time_s)
+        grip_multipliers = grip_multipliers * world.cars[car_id].tyre_grip_multiplier
         brake_decel = float(car.max_brake_force_n.value) / float(car.mass_kg.value)
         if isinstance(track, TrackConfig):
             return track.preview_speed(
@@ -544,7 +551,9 @@ class Simulator:
 
         curvature = track.curvature_at(s_m)
         grade = track.grade_at(s_m)
-        grip_multiplier = environment.grip_multiplier(s_m, session_time_s)
+        grip_multiplier = (
+            environment.grip_multiplier(s_m, session_time_s) * world.cars[car_id].tyre_grip_multiplier
+        )
         mu = track.mu_at(s_m) * grip_multiplier
         heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
         air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))
@@ -923,7 +932,7 @@ class Simulator:
                 pair.label != "ahead"
                 and not pair.overlapped
                 and abs(delta) < clearance
-                and not self._overlapping(a, b)
+                and (self._ignore_contacts or not self._overlapping(a, b))
             ):
                 pair.overlapped = True
                 record = PassRecord(now, a, b, "longitudinal_overlap")
@@ -931,7 +940,7 @@ class Simulator:
                 report.passes.append(record)
 
             if pair.label != "ahead" and delta > clearance:
-                if self._overlapping(a, b):
+                if not self._ignore_contacts and self._overlapping(a, b):
                     record = PassRecord(
                         session_time_s=now,
                         overtaking_car_id=a,
@@ -987,7 +996,7 @@ class Simulator:
                 continue
             delta = world.cars[a].progress_m - world.cars[b].progress_m
             clearance = self._clearance_m(world.bundle, a, b)
-            retained = delta > clearance and not self._overlapping(a, b)
+            retained = delta > clearance and (self._ignore_contacts or not self._overlapping(a, b))
             pair.retained_evaluated = True
             record = PassRecord(
                 session_time_s=moment,

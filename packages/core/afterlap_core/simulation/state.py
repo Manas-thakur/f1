@@ -52,6 +52,7 @@ class CarState:
     lateral_demand_n: float = 0.0
     lateral_acceleration_mps2: float = 0.0
     tyre_utilisation: float = 0.0
+    tyre_grip_multiplier: float = 1.0
     ice_power_w: float = 0.0
     deploy_power_dc_w: float = 0.0
     harvest_power_dc_w: float = 0.0

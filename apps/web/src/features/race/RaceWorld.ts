@@ -11,9 +11,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 
 import { Atmosphere } from './Atmosphere';
 import { energyMode } from './energyStatus';
+import { Branding } from './Branding';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
 import { Minimap } from './Minimap';
+import { PitLane } from './PitLane';
 import { RaceMotion } from './motion';
 import type { CircuitMap, RaceFrame } from './types';
 import { box, createCar, foliageTexture, ribbon, spinWheels, surfaceDetailTexture,
@@ -54,6 +56,8 @@ export class RaceWorld {
   private readonly atmosphere: Atmosphere;
   private readonly wetMaterials: THREE.MeshPhysicalMaterial[] = [];
   private quality: GraphicsQuality;
+  private readonly pitLane: PitLane;
+  private readonly branding: Branding;
   private mapCanvas: HTMLCanvasElement | null = null;
   private readonly lastFollowPosition = new THREE.Vector3();
   private followedCar: string | null = null;
@@ -121,12 +125,15 @@ export class RaceWorld {
     this.sun.shadow.bias = -0.00015;
     this.scene.add(this.sun, this.sun.target);
     this.buildTrack();
+    this.pitLane = new PitLane(map);
+    this.scene.add(this.pitLane);
+    this.branding = new Branding(map,
+      Math.min(this.renderer.capabilities.getMaxAnisotropy(), 16), () => { this.dirty = true; });
+    this.scene.add(this.branding);
     this.surroundings = new Scenery(map, profile, () => { this.dirty = true; });
     this.scene.add(this.surroundings);
     this.atmosphere = new Atmosphere(map, this.center, this.span, this.wetMaterials, profile.night);
-    this.atmosphere.setWeather({ ...map, circuit: map.id, seed: 0, cars: 0, laps: 0, dt_s: 0,
-      wetness: 0, temperature_k: 293.15, wind_mps: 0, wake: false,
-      variability: { preset: 'baseline' }, time_limit_s: 0 });
+    this.atmosphere.setWeather({ wetness: 0, weather: 'sunny', wind_mps: 0 });
     this.scene.add(this.atmosphere);
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
@@ -315,14 +322,19 @@ export class RaceWorld {
     this.frame = frame;
     this.atmosphere.setWeather(frame.settings);
     this.surroundings.setWind(frame.settings.wind_mps);
-    this.host.dataset['weatherWetness'] = frame.settings.wetness.toFixed(2);
+    const weatherWetness = frame.settings.weather === 'rainy'
+      ? Math.max(frame.settings.wetness, 0.72) : frame.settings.wetness;
+    this.host.dataset['weatherWetness'] = weatherWetness.toFixed(2);
     this.host.dataset['weatherWind'] = frame.settings.wind_mps.toFixed(1);
+    this.host.dataset['weather'] = frame.settings.weather;
+    this.host.dataset['pitCars'] = frame.cars.filter((car) => car.tyres.phase !== 'track')
+      .map((car) => car.id).join(',');
     if (this.scene.fog instanceof THREE.FogExp2) {
-      this.scene.fog.density = 0.00014 + frame.settings.wetness * 0.00038;
+      this.scene.fog.density = 0.00014 + weatherWetness * 0.00038;
     }
     this.renderer.toneMappingExposure = this.night
-      ? THREE.MathUtils.lerp(0.65, 0.56, frame.settings.wetness)
-      : THREE.MathUtils.lerp(0.74, 0.64, frame.settings.wetness);
+      ? THREE.MathUtils.lerp(0.65, 0.56, weatherWetness)
+      : THREE.MathUtils.lerp(0.74, 0.64, weatherWetness);
     this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
@@ -390,8 +402,12 @@ export class RaceWorld {
         boost.scale.z = Math.max(0.25, Math.min(1, (car.channels['electrical_power_w'] ?? 0) / 350000));
       }
       model.userData['speedMps'] = car.channels['speed_mps'] ?? 0;
-      model.userData['wetness'] = frame.settings.wetness;
+      model.userData['wetness'] = weatherWetness;
       model.userData['raceRunning'] = frame.status === 'running';
+      const tyreRing: unknown = model.userData['tyreRingMaterial'];
+      if (tyreRing instanceof THREE.MeshStandardMaterial) {
+        tyreRing.color.set(car.tyres.sidewall);
+      }
       model.visible = car.channels['s_m'] !== undefined;
     }
   }
@@ -519,12 +535,16 @@ export class RaceWorld {
     if (this.disposed) {
       return;
     }
+    if (this.frame) {
+      this.pitLane.update(this.frame, performance.now() / 1000);
+    }
     const renderedPoses = this.motion.sample(performance.now());
     for (const [id, model] of this.cars) {
       const pose = renderedPoses.get(id);
       model.visible = Boolean(pose);
       if (pose) {
-        const location = trackPose(this.map, pose.progress, pose.lateral);
+        const slope = (pose.lateralRate ?? 0) / Math.max(1, pose.speed ?? 0);
+        const location = trackPose(this.map, pose.progress, pose.lateral, slope);
         model.position.copy(location.position);
         model.rotation.y = location.yaw;
         spinWheels(model, pose.progress);
@@ -625,12 +645,14 @@ export class RaceWorld {
     this.host.dataset['cameraTarget'] = this.controls.target.toArray().join(',');
     this.host.dataset['followedPosition'] = car?.visible ? car.position.toArray().join(',') : '';
     this.host.dataset['observedTime'] = String(this.frame?.time_s ?? 0);
+    this.host.dataset['brandingDecals'] = String(this.branding.decalCount);
   };
 
   dispose() {
     this.disposed = true;
     this.renderer.setAnimationLoop(null);
     this.resize.disconnect();
+    this.branding.dispose();
     this.surroundings.dispose();
     this.atmosphere.dispose();
     this.controls.dispose();

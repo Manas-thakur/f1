@@ -114,8 +114,9 @@ export class Atmosphere extends THREE.Group {
     }
   }
 
-  setWeather(settings: RaceSettings) {
-    this.wetness = THREE.MathUtils.clamp(settings.wetness, 0, 1);
+  setWeather(settings: Pick<RaceSettings, 'weather' | 'wetness' | 'wind_mps'>) {
+    const wetness = settings.weather === 'rainy' ? Math.max(settings.wetness, 0.72) : settings.wetness;
+    this.wetness = THREE.MathUtils.clamp(wetness, 0, 1);
     this.wind = settings.wind_mps;
     this.rain.visible = this.wetness > 0.08;
     for (const echo of this.rainEchoes) {

@@ -8,40 +8,111 @@ function frame(time: number, progress: number, status = 'running', generation = 
   return {
     type: 'frame', time_s: time, generation, status, steps: 0, failure: null,
     requested_rate: 1, actual_rate: 1, has_checkpoint: false, events: [],
+    boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
+      accuracy: null, precision: null, recall: null },
+    regulations: { name: 'FIA Formula 1 2026 race subset', effective_issue_dates: {}, sources: {},
+      enforced: {}, session_limits: {}, limitations: 'test fixture' },
     settings: { circuit: 'test', seed: 1, cars: 1, laps: 3, dt_s: 0.01,
-      wetness: 0, temperature_k: 300, wind_mps: 0, wake: false, variability: { preset: 'mild' }, time_limit_s: 100 },
+      wetness: 0, weather: 'sunny', temperature_k: 300, wind_mps: 0, wake: false,
+      contact_mode: 'ignore', variability: { preset: 'mild' }, time_limit_s: 100,
+      storyline: { enabled: true, pit_stops: true, tyre_wear_scale: 1,
+        event_interval_min_s: 4, event_interval_max_s: 16,
+        event_duration_min_s: 1.5, event_duration_max_s: 5 },
+      racing_line: { enabled: true, corner_strength: 0.9, randomness: 0.7, wander_m: 0.8,
+        lookahead_m: 65, smoothing_m: 30, overtake_in_corners: true } },
     circuit_map: { id: 'test', name: 'Test', length_m: 1000,
       points: [[0, 0], [100, 0], [100, 100], [0, 100]] },
     cars: [{ id: 'car-01', channels: { s_m: progress % 1000, progress_m: progress },
-      observed_at_s: time, requested_profile: 'neutral', finish_time_s: null }],
+      observed_at_s: time, requested_profile: 'neutral', finish_time_s: null,
+      qualifying_position: 1, storyline: 'natural', classified: false,
+      regulation_status: 'running', points: 0,
+      tyres: { compound: 'medium', condition: 1, grip: 1, sidewall: '#f0c438', phase: 'track',
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        used_compounds: ['medium'], visual_lateral_m: 0 } }],
   };
 }
 
 test('motion interpolates continuously without easing at each received point', () => {
   const motion = new RaceMotion();
   for (let i = 0; i < 5; i++) {
-    motion.push(frame(i * 0.1, i * 10), i * 150);
+    const update = frame(i * 0.1, i * 10);
+    const car = update.cars[0];
+    if (car) {
+      car.channels['lateral_d_m'] = i;
+      car.channels['speed_mps'] = 100;
+    }
+    motion.push(update, i * 150);
   }
-  const positions = [600, 630, 660, 690, 720].map((now) => motion.sample(now).get('car-01')?.progress);
+  const poses = [600, 630, 660, 690, 720].map((now) => motion.sample(now).get('car-01'));
+  const positions = poses.map((pose) => pose?.progress);
+  const lateral = poses.map((pose) => pose?.lateral);
   positions.forEach((position, i) => expect(position).toBeCloseTo(15 + i * 2));
+  lateral.forEach((position, i) => expect(position).toBeCloseTo(1.5 + i * 0.2));
   expect(motion.sample(5000).get('car-01')?.progress).toBe(40);
 });
 
-test('motion crosses the finish line forwards and resets immediately on pause and restore', () => {
+test('motion crosses the finish line forwards, settles into a pause and restores immediately', () => {
   const motion = new RaceMotion();
   motion.push(frame(1, 995), 0);
   motion.push(frame(1.1, 1005), 150);
   expect(motion.sample(450).get('car-01')?.progress).toBeCloseTo(1000);
   motion.push(frame(1.1, 1005, 'paused'), 460);
-  expect(motion.sample(460).get('car-01')?.progress).toBe(1005);
-  motion.push(frame(0, 5, 'paused', 2), 500);
-  expect(motion.sample(500).get('car-01')?.progress).toBe(5);
+  expect(motion.sample(460).get('car-01')?.progress).toBeLessThan(1001);
+  expect(motion.sample(3000).get('car-01')?.progress).toBe(1005);
+  motion.push(frame(0, 5, 'paused', 2), 3100);
+  expect(motion.sample(3100).get('car-01')?.progress).toBe(5);
   const unknown = frame(0.1, 0, 'paused', 2);
   for (const car of unknown.cars) {
     car.channels = {};
   }
-  motion.push(unknown, 600);
-  expect(motion.sample(600).size).toBe(0);
+  motion.push(unknown, 3200);
+  expect(motion.sample(3200).size).toBe(0);
+});
+
+test('pausing drains the observation buffer instead of teleporting the view forward', () => {
+  const motion = new RaceMotion();
+  const speed = 60;
+  let observed = 0;
+  let now = 0;
+  for (let i = 0; i < 30; i++) {
+    observed = i * 0.1;
+    const update = frame(observed, observed * speed);
+    const car = update.cars[0];
+    if (car) {
+      car.channels['speed_mps'] = speed;
+    }
+    motion.push(update, now);
+    now += 100;
+  }
+  const read = (at: number) => motion.sample(at).get('car-01')?.progress ?? NaN;
+  const running = Array.from({ length: 25 }, (_, i) => read(now - 400 + i * 16));
+  const typical = Math.max(...running.slice(1).map((position, i) => position - (running[i] ?? 0)));
+  expect(typical).toBeGreaterThan(0);
+  const halted = frame(observed, observed * speed, 'paused');
+  const car = halted.cars[0];
+  if (car) {
+    car.channels['speed_mps'] = speed;
+  }
+  const shownBeforePause = read(now);
+  motion.push(halted, now);
+  const after = [shownBeforePause, ...Array.from({ length: 120 }, (_, i) => read(now + i * 16))];
+  const steps = after.slice(1).map((position, i) => position - (after[i] ?? 0));
+  expect(Math.min(...steps)).toBeGreaterThanOrEqual(0);
+  expect(Math.max(...steps)).toBeLessThan(typical * 1.5);
+  expect(after.at(-1)).toBeCloseTo(observed * speed);
+});
+
+test('pit phases follow the rendered pit-lane lateral path', () => {
+  const motion = new RaceMotion();
+  const update = frame(1, 200);
+  const car = update.cars[0];
+  if (car) {
+    car.channels['lateral_d_m'] = 1;
+    car.tyres.phase = 'service';
+    car.tyres.visual_lateral_m = -13;
+  }
+  motion.push(update, 0);
+  expect(motion.sample(0).get('car-01')?.lateral).toBe(-13);
 });
 
 test('arrival jitter does not turn constant motion into packet-sized jumps', () => {
@@ -71,6 +142,11 @@ test('buffer fills before playback and all cars share the same render time', () 
     const update = frame(i * 0.1, i * 10);
     update.cars.push({ id: 'car-02', observed_at_s: i * 0.1,
       requested_profile: 'neutral', finish_time_s: null,
+      qualifying_position: 2, storyline: 'natural', classified: false,
+      regulation_status: 'running', points: 0,
+      tyres: { compound: 'hard', condition: 1, grip: 0.97, sidewall: '#f2f2ed', phase: 'track',
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        used_compounds: ['hard'], visual_lateral_m: 0 },
       channels: { progress_m: i * 10 - 6, lateral_d_m: 0 } });
     motion.push(update, i * 150);
     const poses = motion.sample(i * 150);
@@ -104,6 +180,7 @@ test('track position and direction stay continuous across artwork nodes', () => 
   const after = trackPose(map, 250.001);
   expect(before.position.distanceTo(after.position)).toBeLessThan(0.01);
   expect(Math.abs(before.yaw - after.yaw)).toBeLessThan(0.001);
+  expect(trackPose(map, 100, 0, 0.1).yaw).not.toBeCloseTo(trackPose(map, 100, 0).yaw);
 });
 
 test('camera switching wraps through the current race order', () => {
