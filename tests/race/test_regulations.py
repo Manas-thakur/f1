@@ -53,3 +53,14 @@ def test_pit_lane_limiter_and_dry_compound_classification():
     frame = session.frame()["cars"][0]
     assert frame["classified"] is True
     assert frame["points"] == 25
+
+
+def test_two_stationary_pit_cars_keep_rival_observations_valid():
+    session = RaceSession(RaceSettings(cars=2, laps=1))
+    for car_id, state in session.simulator.world.cars.items():
+        state.speed_mps = 0
+        session.tyres[car_id].phase = "service"
+        session.tyres[car_id].service_remaining_s = 1
+    session.advance(0.2)
+    assert session.status == "paused"
+    assert all(observation.rivals for observation in session.observations().values())
