@@ -2,34 +2,40 @@ import { interpolate } from "remotion";
 import type { Camera } from "./three/camera";
 import { VIDEO } from "./theme";
 
-const track = (frame: number, at: readonly number[], to: readonly number[]): number =>
-  interpolate(frame, at, to, { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+export const at = (frame: number, keys: readonly number[], vals: readonly number[]): number =>
+  interpolate(frame, keys, vals, { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-export const ownX = (frame: number): number => -track(frame, [0, 900], [0, 430]);
+export const fade = (frame: number, a: number, b: number, c: number, d: number): number =>
+  at(frame, [a, b, c, d], [0, 1, 1, 0]);
+
+export const ownX = (frame: number): number => at(frame, [0, 900], [0, 620]);
 
 export const rivalX = (frame: number): number =>
-  ownX(frame) - 16 + track(frame, [620, 800], [0, 34]);
+  ownX(frame) + 15 + at(frame, [640, 790], [0, -26]);
 
-export const ownZ = (frame: number): number => track(frame, [630, 730, 800], [3.6, 1.1, -3.4]);
+export const ownZ = (frame: number): number =>
+  at(frame, [0, 620, 700, 780, 860], [1.55, 1.55, -1.2, -4.6, -4.6]);
 
-export const rivalZ = (): number => -3.4;
+export const rivalZ = (frame: number): number => at(frame, [0, 700, 800], [-1.4, -1.4, 0.4]);
 
-const CAM_KEYS = [0, 340, 660, 900] as const;
-const HEIGHT = [27, 25, 22, 24] as const;
-const BACK = [-11, -10, -8.5, -9.5] as const;
-const FOV = [0.72, 0.72, 0.76, 0.74] as const;
+const KEYS = [0, 180, 420, 600, 700, 820, 900] as const;
+const HEIGHT = [4.4, 4.0, 7.6, 6.2, 3.6, 3.4, 4.8] as const;
+const BACK = [-21, -20, -26, -24, -19, -20, -21] as const;
+const SIDE = [5.4, 5.0, 3.0, 3.6, 5.4, 6.6, 7.2] as const;
+const FOV = [0.62, 0.62, 0.7, 0.66, 0.6, 0.6, 0.64] as const;
 
 export const cameraAt = (frame: number): Camera => {
-  const focus = (ownX(frame) + rivalX(frame)) / 2 + 2;
+  const mid = (ownX(frame) + rivalX(frame)) / 2;
+  const lead = at(frame, [740, 860], [0, 1]);
+  const focus = mid + (ownX(frame) - mid) * lead;
+  const side = at(frame, KEYS, SIDE);
+  const midZ = (ownZ(frame) + rivalZ(frame)) / 2;
   return {
-    eye: [focus, track(frame, CAM_KEYS, HEIGHT), track(frame, CAM_KEYS, BACK)],
-    target: [focus, 0, 0],
-    up: [0, 0, 1],
-    fov: track(frame, CAM_KEYS, FOV),
+    eye: [focus + at(frame, KEYS, BACK), at(frame, KEYS, HEIGHT), side],
+    target: [focus + 8 - 6 * lead, 1.0, midZ * 0.7],
+    up: [0, 1, 0],
+    fov: at(frame, KEYS, FOV),
     width: VIDEO.width,
     height: VIDEO.height,
   };
 };
-
-export const fade = (frame: number, a: number, b: number, c: number, d: number): number =>
-  track(frame, [a, b, c, d], [0, 1, 1, 0]);

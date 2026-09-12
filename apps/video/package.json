@@ -5,16 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts AfterlapPromo out/afterlap-promo.mp4",
+    "render": "remotion render src/index.ts AfterlapPromo out/afterlap-4k.mp4 --crf=14 --concurrency=6",
     "still": "remotion still src/index.ts AfterlapPromo",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@react-three/fiber": "^9.7.0",
     "@remotion/google-fonts": "4.0.523",
     "@remotion/media": "4.0.523",
+    "@remotion/three": "^4.0.523",
+    "@types/three": "^0.186.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "remotion": "4.0.523"
+    "remotion": "4.0.523",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@remotion/cli": "4.0.523",
