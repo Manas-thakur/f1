@@ -303,3 +303,20 @@ def test_live_pass_and_abort_on_held_out_seeds(seed):
     assert aborted["failure"] is None
     assert aborted["events"].get("completed_pass", 0) == 0
     assert aborted["events"].get("aborted_attempt") == 1
+
+
+def test_leader_holds_line_under_pressure_and_follower_keeps_clear_side():
+    leader = Racecraft(DriverTraits(), -2.5)
+    leader.react(sensed(gap=-10, relative=3, lateral=-2.5), Straight())
+    assert leader.lane == -2.5
+    follower = Racecraft(DriverTraits(), 3)
+    follower.react(sensed(gap=30, lateral=3), Straight())
+    assert follower.goal == 3
+
+
+def test_close_grid_does_not_merge_into_approaching_car():
+    session = RaceSession(
+        RaceSettings(circuit="monza", cars=2, seed=303, variability=Variability(preset="training"))
+    )
+    session.advance(3)
+    assert session.failure is None

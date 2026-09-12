@@ -95,6 +95,7 @@ class Racecraft:
         elif self.state in {"committed", "alongside"}:
             self.transition("aborting", now)
         if self.state in {"aborting", "returning"}:
+            desired = own_d
             preferred = max(-limit, min(limit, self.traits.preferred_line_m))
             if self.clear(rivals, own_d, preferred, horizon):
                 desired = preferred
@@ -124,7 +125,14 @@ class Racecraft:
                         float(target["lateral_d_m"]) + side * (self.width_m + self.traits.clearance_m + 0.3)
                         for side in (-1, 1)
                     ]
-                    sides.sort(key=lambda lane: abs(lane - self.traits.preferred_line_m))
+                    if (
+                        abs(own_d - float(target["lateral_d_m"]))
+                        > self.width_m + self.traits.clearance_m + 0.3
+                    ):
+                        sides.insert(0, own_d)
+                    sides.sort(
+                        key=lambda lane: abs(lane - own_d) + 0.2 * abs(lane - self.traits.preferred_line_m)
+                    )
                     for lane in sides:
                         move_time = abs(lane - own_d) / self.traits.lateral_rate_mps + self.traits.reaction_s
                         if (
@@ -136,8 +144,14 @@ class Racecraft:
                             self.rival_id = str(target["car_id"])
                             self.transition("committed", now)
                             break
-            elif self.clear(rivals, own_d, self.traits.preferred_line_m, horizon):
-                desired = self.traits.preferred_line_m
+            else:
+                desired = own_d
+                pressured = any(
+                    -self.length_m - speed * self.traits.headway_s < float(rival["relative_progress_m"]) < 0
+                    for rival in rivals
+                )
+                if not pressured and self.clear(rivals, own_d, self.traits.preferred_line_m, horizon):
+                    desired = self.traits.preferred_line_m
         self.goal = desired
         delta = self.traits.lateral_rate_mps * dt
         self.lane = max(-limit, min(limit, self.lane + max(-delta, min(delta, desired - self.lane))))
