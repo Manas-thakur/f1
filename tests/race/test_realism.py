@@ -101,6 +101,23 @@ def test_braking_zone_and_blocked_sides_prevent_commitment():
     assert driver.lane == 0
 
 
+def test_overlap_mode_allows_seeded_corner_overtakes_through_occupied_space():
+    driver = Racecraft(DriverTraits(), 0, ignore_collisions=True, overtake_in_corners=True)
+    blockers = tuple(
+        {
+            "car_id": str(side),
+            "relative_progress_m": 0,
+            "relative_speed_mps": 0,
+            "lateral_d_m": side * 3,
+            "speed_mps": 30,
+        }
+        for side in (-1, 1)
+    )
+    driver.react(sensed(extra=blockers), Corner())
+    assert driver.state == "committed"
+    assert driver.goal != 0
+
+
 def test_lost_opportunity_aborts_without_cutting_through_rival():
     driver = Racecraft(DriverTraits(), 0)
     driver.react(sensed(), Straight())
@@ -186,6 +203,23 @@ def test_checkpoint_replays_driver_weather_and_sensor_state():
 def test_invalid_variability_rejected(value):
     with pytest.raises(ValueError):
         Variability(surface_scale=value)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("corner_strength", -0.1),
+        ("randomness", 1.1),
+        ("wander_m", float("nan")),
+        ("lookahead_m", 201),
+        ("smoothing_m", 4),
+    ],
+)
+def test_invalid_racing_line_settings_are_rejected(field, value):
+    from afterlap_core.race import RacingLineSettings
+
+    with pytest.raises(ValueError):
+        RacingLineSettings(**{field: value})
 
 
 def test_wetter_conditions_reduce_force_envelope_and_corner_speed():

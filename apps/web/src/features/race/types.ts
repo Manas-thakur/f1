@@ -8,8 +8,20 @@ export interface RaceSettings {
   temperature_k: number;
   wind_mps: number;
   wake: boolean;
+  contact_mode: 'ignore' | 'terminate';
   variability: { preset: 'baseline' | 'mild' | 'training' | 'stress' };
+  racing_line: RacingLineSettings;
   time_limit_s: number;
+}
+
+export interface RacingLineSettings {
+  enabled: boolean;
+  corner_strength: number;
+  randomness: number;
+  wander_m: number;
+  lookahead_m: number;
+  smoothing_m: number;
+  overtake_in_corners: boolean;
 }
 
 export interface CircuitMap {
@@ -52,6 +64,12 @@ export interface RaceFrame {
   actual_rate: number;
   playback_rate?: number;
   has_checkpoint: boolean;
+  button_input?: {
+    connected: boolean;
+    gpio_bcm: number | null;
+    press_count: number;
+    last_press_server_time_s: number | null;
+  };
   circuit_map: CircuitMap;
   events: {
     kind: string;

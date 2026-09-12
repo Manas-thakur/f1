@@ -145,6 +145,13 @@ export function Circuit() {
         <button type="button" aria-label="Race controls" aria-expanded={settings} onClick={() => setSettings(!settings)}>☰</button>
         <span className={styles.circuitName}>{frame?.circuit_map.name.toUpperCase() ?? 'CONNECTING'}</span>
         <span className={styles.connection} data-socket-url={socketUrl}>{connected ? '● CONNECTED' : '○ DISCONNECTED'}</span>
+        <span className={styles.buttonStatus} data-active={Boolean(frame?.button_input?.press_count)}>
+          {frame?.button_input?.connected
+            ? frame.button_input.press_count
+              ? `BUTTON RECEIVED #${frame.button_input.press_count}`
+              : `BUTTON READY · GPIO ${frame.button_input.gpio_bcm}`
+            : 'BUTTON DISABLED'}
+        </span>
         <div className={styles.cameraTabs} role="group" aria-label="Camera view">
           {CAMERAS.map((camera) => (
             <button key={camera.id} type="button" aria-pressed={mode === camera.id}

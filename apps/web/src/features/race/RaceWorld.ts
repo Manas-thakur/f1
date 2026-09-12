@@ -417,7 +417,8 @@ export class RaceWorld {
       const pose = renderedPoses.get(id);
       model.visible = Boolean(pose);
       if (pose) {
-        const location = trackPose(this.map, pose.progress, pose.lateral);
+        const slope = (pose.lateralRate ?? 0) / Math.max(1, pose.speed ?? 0);
+        const location = trackPose(this.map, pose.progress, pose.lateral, slope);
         model.position.copy(location.position);
         model.rotation.y = location.yaw;
         spinWheels(model, pose.progress);
