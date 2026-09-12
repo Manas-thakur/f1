@@ -24,6 +24,7 @@ export class Scenery extends THREE.Group {
   private treeSource: THREE.Group | null = null;
   private readonly controller = new AbortController();
   private wind = 0;
+  private readonly detailMeshes: THREE.Object3D[] = [];
 
   constructor(private readonly map: CircuitMap, private readonly profile: SceneryProfile,
     private readonly invalidate: () => void) {
@@ -252,6 +253,7 @@ export class Scenery extends THREE.Group {
     }
     grass.receiveShadow = true;
     this.add(grass);
+    this.detailMeshes.push(grass);
 
     const shrubCount = Math.min(850, 120 + this.profile.trees);
     const shrubs = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 1),
@@ -269,6 +271,7 @@ export class Scenery extends THREE.Group {
     }
     shrubs.castShadow = shrubs.receiveShadow = true;
     this.add(shrubs);
+    this.detailMeshes.push(shrubs);
   }
 
   private buildTrackLife() {
@@ -484,6 +487,9 @@ export class Scenery extends THREE.Group {
       return;
     }
     this.lastUpdate = time;
+    for (const mesh of this.detailMeshes) {
+      mesh.visible = high;
+    }
     const nearest = [...this.treePositions].sort((a, b) =>
       a.distanceToSquared(camera) - b.distanceToSquared(camera));
     for (const [i, tree] of this.treePool.entries()) {
