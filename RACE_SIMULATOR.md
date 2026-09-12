@@ -15,10 +15,6 @@ make race
 
 Open [the race view](http://127.0.0.1:18760/race). The hamburger opens docked settings; Float allows dragging and resizing them. `/race/control` redirects to `/race`. Press Start race. Ctrl+C stops the processes started by this command.
 
-On a Raspberry Pi, connect a normally-open momentary button between BCM GPIO 17 and ground, then start the stack with `AFTERLAP_BUTTON_GPIO=17 make race`. The input uses the GPIO pull-up and 50 ms software debounce. Every accepted press is broadcast immediately and appears on all connected circuit and control dashboards. This input reports button events only; it does not activate a deployment profile.
-
-To show the same dashboard on another computer on the local network, set the Pi hostname to `afterlap-pi` and start with `AFTERLAP_BUTTON_GPIO=17 AFTERLAP_WEB_HOST=0.0.0.0 AFTERLAP_RACE_ORIGIN=http://afterlap-pi.local:18760 make race`. Open `http://afterlap-pi.local:18760/race` on the other computer. Only the Next.js dashboard is exposed; the Python simulator remains on loopback behind its WebSocket proxy.
-
 Use either native `make race` or Docker, since they share ports. If switching from Docker to native, run `make race-down` first. The native launcher checks both ports before starting either service and reports conflicts without stopping existing processes.
 
 For containers, use `make race-up` and `make race-down`. These create the `afterlap-race` Compose project with loopback ports 18760 and 18761. The race lab does not require a database: episode data is streamed to files and live state stays in the simulation process. Race checkpoints are in memory and are lost when the simulator stops.
@@ -44,6 +40,16 @@ The 23 circuit layouts come from Crowdflow revision `c6b8c37c7d82fb48edb2d0f2ccc
 Crowdflow's outlines are SVG artwork normalized into a synthetic coordinate frame. The importer rescales each closed outline to its registry length, samples every approximately five metres, applies a short periodic smoothing kernel and derives curvature. This creates an executable synthetic scenario with a recognizable circuit shape. It does not create a surveyed circuit or verify its racing line, direction or timing location.
 
 The corridor is an explicitly assumed constant 12 metres. Elevation is assumed flat. The first point is an assumed timing origin. These choices enable local footprint and finish tests but cannot establish real-world passing clearance. Surveyed geometry and separately validated event constraints are required before making real-circuit accuracy claims.
+
+## Trackside branding
+
+The run-off strip either side of the racing surface carries painted sponsor decals. Each decal is cut from the same cubic spline the racing surface uses, sampled at equal arc length along the strip centreline, so a logo bends and stretches with the corner it occupies instead of floating over it as a flat quad. Decals sit 3.7 metres across the 4-metre run-off, up to 30 metres long, and are oriented with the artwork's top edge facing the circuit, the reading direction real painted trackside advertising uses.
+
+Where a corner is tighter than the strip offset the swept quad would fold back on itself. The builder measures each sub-quad's inner and outer edge and drops the whole decal when an edge collapses, reverses or stretches past roughly twice its opposite, so no circuit shows a folded logo. Decals for one slot merge into a single mesh, giving one draw call per sponsor.
+
+Slots are declared in `apps/web/src/features/race/sponsors.ts` and read artwork from [apps/web/public/race-assets/branding](apps/web/public/race-assets/branding). A slot with no file, or an unreadable one, falls back to a wordmark drawn from its label. This repository ships no artwork; files placed there are supplied by the operator.
+
+Branding is decoration on the rendered scene. It carries no simulator state, is not observed by any controller, and does not affect physics, classification or exported telemetry.
 
 ## Physics
 
