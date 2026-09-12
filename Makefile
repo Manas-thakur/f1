@@ -157,3 +157,7 @@ compose-down:
 	  exit 1; \
 	fi
 	docker compose -f infra/docker-compose.yml --env-file "$(ENV_FILE)" down
+
+.PHONY: audit
+audit:
+	uv run --all-groups python scripts/audit.py

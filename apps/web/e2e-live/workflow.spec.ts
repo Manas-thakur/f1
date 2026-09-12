@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
@@ -35,7 +36,7 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
   await page.getByLabel('Seed', { exact: false }).fill('42');
   await page.getByLabel('I acknowledge').check();
   const createdResponse = page.waitForResponse(
-    (response) => response.url().endsWith('/api/v1/sessions') && response.request().method() === 'POST',
+    (item) => item.url().endsWith('/api/v1/sessions') && item.request().method() === 'POST',
   );
   await page.getByRole('button', { name: 'Create session', exact: true }).click();
   const response = await createdResponse;
@@ -99,6 +100,8 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
   await page.getByRole('button', { name: 'Create snapshot', exact: true }).click();
   await expect(page.getByText(/sha256:/).first()).toBeVisible();
   await page.getByLabel('Candidate controller', { exact: false }).fill('legal_greedy_attacker');
+  await page.getByLabel('Disturbance seeds', { exact: false }).fill('42,43');
+  await page.getByLabel('Evaluation horizon', { exact: false }).fill('5');
   const jobResponse = page.waitForResponse(
     (item) => item.url().endsWith('/experiments') && item.request().method() === 'POST',
   );
@@ -114,6 +117,31 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
       { timeout: 180_000, intervals: [1000] },
     )
     .toBe('completed');
+  const output = process.env.AFTERLAP_AUDIT_OUTPUT;
+  if (output !== undefined) {
+    const report = JSON.parse(
+      await readFile(path.join(output, 'artifacts', 'reports', `${job.job.id}.json`), 'utf8'),
+    ) as {
+      controller_ids: Record<string, string>;
+      benchmark: {
+        unavailable_controllers: string[];
+        outcomes: { status: string; final_progress_m: number | null }[];
+        failed_runs: unknown[];
+      };
+    };
+    expect(report.controller_ids).toEqual({
+      reference: 'legal_fixed_schedule',
+      candidate: 'legal_greedy_attacker',
+    });
+    expect(report.benchmark.unavailable_controllers).toEqual([]);
+    expect(report.benchmark.failed_runs).toEqual([]);
+    expect(report.benchmark.outcomes).toHaveLength(4);
+    expect(
+      report.benchmark.outcomes.every(
+        (item) => item.status === 'completed' && item.final_progress_m !== null && item.final_progress_m > 0,
+      ),
+    ).toBe(true);
+  }
   await capture(page, 'lab.png');
   const exported = await post(request, '/exports', { session_id: id, format: 'json' });
   const exportBody = (await exported.json()) as { status: string; hashes: { content: string } };
@@ -121,6 +149,10 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
   expect(exportBody.hashes.content).toMatch(/^sha256:[a-f0-9]{64}$/);
   const scan = await new AxeBuilder({ page }).analyze();
   expect(scan.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+  await page.goto(`/sessions/${id}/replay`);
+  await expect(page.locator('h1')).toBeVisible();
+  await page.goto(`/sessions/${id}/engineer`);
+  await expect(page.getByText('Stream connection:', { exact: true }).locator('..')).toContainText('open');
   expect(errors).toEqual([]);
 });
 
