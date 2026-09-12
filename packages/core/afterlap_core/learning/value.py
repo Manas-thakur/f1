@@ -300,6 +300,17 @@ class ContinuationEnsemble:
         return len(self._members)
 
     @property
+    def members(self) -> tuple[ValueMember, ...]:
+        """The fitted members, for description and parameter counting.
+
+        Read-only by construction: the tuple cannot be extended and each member
+        is already in evaluation mode. Callers that want a value must go through
+        :meth:`predict` or :meth:`score`, which apply the frozen scaler and the
+        support gates.
+        """
+        return self._members
+
+    @property
     def target_scaler(self) -> TargetScaler:
         return self._scaler
 

@@ -23,18 +23,18 @@ a build failure and it is not an error to be worked around.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 from afterlap_contracts import ApprovalStatus, BenchmarkReport, ModelManifest, PromotionPolicy
 
 from ..config import load_config
+from ..feature_manifest import ENERGY_V1
 from ..paths import Paths, sha256_json
 from .serving import DEFAULT_BASELINE_IDENTITY
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 __all__ = [
     "FrozenPromotionPolicy",
@@ -420,3 +420,87 @@ def promote_bundle(
         evaluated_at=report.created_at,
         satisfied_gates=tuple(satisfied),
     )
+
+
+def decide_from_paths(
+    *,
+    bundle_directory: Path,
+    report_path: Path | None = None,
+    evidence_supplied: tuple[str, ...] = (),
+    expected_rule_family: str | None = None,
+    paths: Paths | None = None,
+) -> dict[str, Any]:
+    """Read a bundle and a report off disk and decide, without writing anything.
+
+    This is the operator entry point behind ``afterlap_core.cli promote``. It
+    reads, it decides, and it returns. It does not stamp ``approved`` onto the
+    bundle on disk: recording an approval is a separate deliberate act with an
+    audit trail, and a command that silently rewrote a manifest as a side effect
+    of *asking* whether promotion is warranted would be exactly the automatic
+    promotion ``AGENTS.md`` forbids.
+
+    A missing bundle or an unreadable report is a refusal with its reason, not
+    an exception, because the caller is a CLI whose job is to report why.
+    """
+    directory = Path(bundle_directory)
+    bundle_file = directory / "bundle.json"
+    if not bundle_file.is_file():
+        return _annotate(
+            PromotionDecision(
+                promoted=False,
+                bundle_id=str(directory).replace("\\", "/"),
+                policy_id="unread",
+                policy_hash="unread",
+                baseline_identity=DEFAULT_BASELINE_IDENTITY,
+                refusals=(RefusalCode.REPORT_ABSENT,),
+                detail=(f"{directory} has no bundle.json; there is no candidate to decide about",),
+            ).as_dict(),
+            directory,
+            (),
+        )
+
+    payload = json.loads(bundle_file.read_text(encoding="utf-8"))
+    manifest = ModelManifest.model_validate(payload["model_manifest"])
+
+    report: BenchmarkReport | None = None
+    detail_notes: list[str] = []
+    if report_path is not None:
+        candidate = Path(report_path)
+        if not candidate.is_file():
+            detail_notes.append(f"{candidate} does not exist, so no benchmark evidence was supplied")
+        else:
+            document = json.loads(candidate.read_text(encoding="utf-8"))
+            body = document.get("report", document)
+            try:
+                report = BenchmarkReport.model_validate(body)
+            except Exception as exc:
+                detail_notes.append(f"{candidate} is not a benchmark report: {exc}")
+                report = None
+    else:
+        detail_notes.append("no benchmark report was supplied")
+
+    decision = promote_bundle(
+        manifest,
+        report,
+        paths=paths,
+        expected_feature_hash=ENERGY_V1.content_hash(),
+        expected_rule_family=expected_rule_family,
+        evidence_supplied=evidence_supplied,
+        candidate_path=directory,
+    )
+    return _annotate(decision.as_dict(), directory, tuple(detail_notes))
+
+
+def _annotate(result: dict[str, Any], directory: Path, notes: tuple[str, ...]) -> dict[str, Any]:
+    """Attach the fields every decision carries, refusal or not."""
+    result["detail"] = [*result.get("detail", ()), *notes]
+    result["bundle_directory"] = str(directory).replace("\\", "/")
+    result["recorded_on_disk"] = False
+    result["recording_note"] = (
+        "this decision was not written into the bundle; approval is recorded by a separate "
+        "deliberate act, never as a side effect of evaluating the gates"
+    )
+    return result
+
+
+__all__ += ["decide_from_paths"]

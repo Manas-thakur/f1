@@ -28,20 +28,36 @@ and are computed differently:
 They differ exactly when a pass is completed and then lost again before the
 line, which is the case the greedy-pass test constructs.
 
-Both are reported as weighted scenario frequencies with their sample counts and
-``calibration_status=uncalibrated``: no calibrator exists yet, and a raw
-frequency must never be published as a calibrated probability.
+Both are computed as weighted scenario frequencies with their sample counts.
+What is *published* depends on whether a calibrator was supplied:
+
+* with no calibrator the raw frequency is published under
+  ``calibration_status=uncalibrated``, exactly as before. A raw frequency must
+  never be published as a calibrated probability;
+* with a calibrator that is frozen and covers the event, the calibrated value is
+  published under ``calibration_status=calibrated`` and ``raw_frequency`` keeps
+  the uncalibrated number beside it, so the adjustment is auditable rather than
+  invisible;
+* with a calibrator that refuses -- not frozen, event never fitted, thin
+  support -- the raw frequency is published as uncalibrated and the refusal
+  reason is recorded on the evidence. A refusal degrades the claim, never the
+  number.
+
+The calibrator arrives as a :class:`ProbabilityCalibration` protocol, so this
+module does not import ``afterlap_core.learning``: the same arrangement
+``scoring.ContinuationModel`` already uses for the continuation ensemble.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from afterlap_contracts import (
     CalibrationStatus,
     CheckpointOutcome,
     DeploymentProfile,
+    OutcomeRange,
     ProbabilityStatement,
     ProfileSegment,
     ScenarioOutcome,
@@ -58,6 +74,7 @@ from ..simulation import (
     run_branch,
 )
 from ..simulation.config import resolve_bundle
+from .forecast import outcome_ranges
 
 if TYPE_CHECKING:
     from .config import PlannerConfig
@@ -65,9 +82,18 @@ if TYPE_CHECKING:
     from .segments import PlanFrame
     from .surrogate import SurrogateWeights
 
-__all__ = ["PlanningWorld", "RolloutEvidence", "SegmentController", "rollout_candidate"]
+__all__ = [
+    "FORECASTER_VERSION",
+    "PlanningWorld",
+    "ProbabilityCalibration",
+    "RolloutEvidence",
+    "SegmentController",
+    "rollout_candidate",
+]
 
 _COMPLETED_PASS = "completed_pass"
+FORECASTER_VERSION = "planner-rollout-ensemble-v1"
+"""The ensemble that produces the raw frequency. A calibrator appends its own id."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +141,53 @@ class RolloutEvidence:
     incomplete_count: int
     """Scenarios in which the reference progress was not reached inside the horizon."""
 
+    calibration_notes: tuple[str, ...] = field(default_factory=tuple)
+    """Why a probability was published uncalibrated, when a calibrator was offered.
+
+    Empty when no calibrator was supplied at all: that case is already visible
+    from ``calibration_status`` on every statement, and repeating it here would
+    turn the normal path into a warning.
+    """
+
+    calibrator_id: str | None = None
+
+    belief_clamps: tuple[str, ...] = field(default_factory=tuple)
+    """Energy beliefs the simulator could not represent, and what was used instead.
+
+    Published rather than swallowed: a rollout evaluated at a clamped energy is
+    weaker evidence than one evaluated at the belief, and an engineer reading the
+    outcome ranges needs to know which they are looking at.
+    """
+
+    outcome_ranges: tuple[OutcomeRange, ...] = field(default_factory=tuple)
+    """The per-checkpoint spread across the ensemble, for publication.
+
+    Derived rather than stored twice: it is a reduction of ``outcomes``, kept
+    here so a payload does not have to re-derive it and risk deriving it
+    differently.
+    """
+
+
+@runtime_checkable
+class ProbabilityCalibration(Protocol):
+    """A frozen calibration map from raw ensemble frequency to probability.
+
+    Implemented by ``afterlap_core.learning.calibration.ProbabilityCalibrator``.
+    Declared here as a protocol so the planner never imports the learning
+    package, which is the same boundary ``scoring.ContinuationModel`` keeps for
+    the continuation ensemble.
+    """
+
+    @property
+    def calibrator_id(self) -> str: ...
+
+    def apply(self, event_definition: str, raw_frequency: float) -> Any:
+        """Return an object with ``value``, ``status``, ``detail`` and ``clamped``.
+
+        ``value`` is ``None`` when the calibration could not be applied. It is
+        never zero standing in for unknown.
+        """
+
 
 class SegmentController:
     """Executes a plan: the profile of whatever segment the car is in.
@@ -143,16 +216,63 @@ class SegmentController:
         return DriverAction(profile=self._fallback, label="plan:outside_corridor")
 
 
+def _battery_window(world: PlanningWorld, car_id: str) -> tuple[float, float] | None:
+    """The car's declared operating window, or ``None`` when it is unknown."""
+    car = world.bundle.car_configs.get(car_id)
+    if car is None:
+        return None
+    low = getattr(car, "battery_energy_min_j", None)
+    high = getattr(car, "battery_energy_max_j", None)
+    if low is None or high is None:
+        return None
+    return float(low.value), float(high.value)
+
+
+def _clamped_energy(
+    world: PlanningWorld, car_id: str, value: float, *, source: str, notes: list[str]
+) -> float:
+    """Place an energy belief inside the window the simulator can represent.
+
+    A belief can sit outside the declared window -- an estimator's own-energy
+    posterior is not constrained by the car document, and the scenario
+    quadrature spans the whole window when the rival's reserve is unidentified.
+    The simulator's energy ledger refuses such a state outright, so writing one
+    into a variant bundle raised out of the rollout and took the whole decision
+    with it.
+
+    Clamping is the conservative treatment: the rollout runs at the nearest
+    representable state instead of not running. It is never silent -- the clamp
+    is recorded and published, because a rollout evaluated at a different energy
+    from the one believed is weaker evidence than one evaluated at the belief.
+    """
+    window = _battery_window(world, car_id)
+    if window is None:
+        return value
+    low, high = window
+    if low <= value <= high:
+        return value
+    clamped = min(max(value, low), high)
+    notes.append(
+        f"{source} energy belief {value:.1f} J is outside the declared window "
+        f"[{low:.1f}, {high:.1f}] J and was clamped to {clamped:.1f} J for the rollout"
+    )
+    return clamped
+
+
 def _variant_bundle(
     world: PlanningWorld,
     estimate: StateEstimate,
     scenario: PlanScenario,
+    notes: list[str],
 ) -> ScenarioBundle:
     """A scenario document placed at the current belief, with this rival hypothesis.
 
     The rival's stored energy and behavioural mode are the sampled quantities.
     Its *policy* still decides from its own observations, so it reacts to what we
     do inside the rollout instead of replaying a recorded trace.
+
+    Energy beliefs are clamped into each car's declared operating window and any
+    clamp is appended to ``notes``; see :func:`_clamped_energy`.
     """
     scenario_config = world.bundle.scenario
     own = estimate.own_car
@@ -166,7 +286,15 @@ def _variant_bundle(
             ),
             "speed_mps": ego_state.speed_mps.model_copy(update={"value": float(own.speed_mps.value or 1.0)}),
             "energy_j": ego_state.energy_j.model_copy(
-                update={"value": float(own.battery_energy_j.value or 0.0)}
+                update={
+                    "value": _clamped_energy(
+                        world,
+                        world.ego_car_id,
+                        float(own.battery_energy_j.value or 0.0),
+                        source="own",
+                        notes=notes,
+                    )
+                }
             ),
             "temperature_k": ego_state.temperature_k.model_copy(
                 update={"value": float(own.battery_temperature_k.value or 300.0)}
@@ -189,7 +317,17 @@ def _variant_bundle(
                 "speed_mps": rival_state.speed_mps.model_copy(
                     update={"value": float(own.speed_mps.value or 1.0)}
                 ),
-                "energy_j": rival_state.energy_j.model_copy(update={"value": scenario.rival_reserve_j}),
+                "energy_j": rival_state.energy_j.model_copy(
+                    update={
+                        "value": _clamped_energy(
+                            world,
+                            rival_id,
+                            float(scenario.rival_reserve_j),
+                            source=f"rival {rival_id}",
+                            notes=notes,
+                        )
+                    }
+                ),
             }
         )
         spec = policies[rival_id]
@@ -231,8 +369,14 @@ def rollout_candidate(
     weights: SurrogateWeights,
     *,
     candidate_id: str,
+    calibrator: ProbabilityCalibration | None = None,
 ) -> RolloutEvidence:
-    """Re-simulate ``segments`` across ``scenarios`` with reacting rivals."""
+    """Re-simulate ``segments`` across ``scenarios`` with reacting rivals.
+
+    ``calibrator`` is optional and defaults to absent. With no calibrator the
+    published probabilities are raw weighted frequencies marked uncalibrated,
+    which is what this function did before one existed.
+    """
     if not segments:
         raise ValueError("a rollout needs at least one profile segment")
     horizon_s = float(config.budgets.rollout_horizon_s.value)
@@ -242,6 +386,7 @@ def rollout_candidate(
     controller = SegmentController(segments, DeploymentProfile.NEUTRAL)
 
     outcomes: list[ScenarioOutcome] = []
+    belief_clamps: list[str] = []
     pass_weight: dict[str, float] = {}
     ahead_weight: dict[str, float] = {}
     observed_weight: dict[str, float] = {}
@@ -249,7 +394,7 @@ def rollout_candidate(
     total_weight = sum(scenario.weight for scenario in scenarios) or 1.0
 
     for scenario in scenarios:
-        bundle = _variant_bundle(world, estimate, scenario)
+        bundle = _variant_bundle(world, estimate, scenario, belief_clamps)
         simulator = Simulator()
         simulator.reset(bundle, seed=world.seed)
         snapshot = capture_complete_state(simulator)
@@ -329,6 +474,7 @@ def rollout_candidate(
         )
 
     probabilities: list[ProbabilityStatement] = []
+    notes: list[str] = []
     for checkpoint_id in checkpoint_ids:
         seen = observed_weight.get(checkpoint_id, 0.0)
         if seen <= 0.0:
@@ -342,14 +488,13 @@ def rollout_candidate(
         ):
             frequency = table.get(checkpoint_id, 0.0) / seen
             probabilities.append(
-                ProbabilityStatement(
-                    event_definition=f"{label}(checkpoint={checkpoint_id})",
+                _statement(
+                    label=label,
                     checkpoint_id=checkpoint_id,
-                    value=frequency,
-                    raw_frequency=frequency,
-                    sample_count=samples,
-                    model_version="planner-rollout-ensemble-v1",
-                    calibration_status=CalibrationStatus.UNCALIBRATED,
+                    frequency=frequency,
+                    samples=samples,
+                    calibrator=calibrator,
+                    notes=notes,
                 )
             )
 
@@ -362,4 +507,63 @@ def rollout_candidate(
         step_s=step_s,
         horizon_s=horizon_s,
         incomplete_count=incomplete,
+        calibration_notes=tuple(dict.fromkeys(notes)),
+        calibrator_id=None if calibrator is None else calibrator.calibrator_id,
+        belief_clamps=tuple(dict.fromkeys(belief_clamps)),
+        outcome_ranges=outcome_ranges(tuple(outcomes)),
+    )
+
+
+def _statement(
+    *,
+    label: str,
+    checkpoint_id: str,
+    frequency: float,
+    samples: int,
+    calibrator: ProbabilityCalibration | None,
+    notes: list[str],
+) -> ProbabilityStatement:
+    """Publish one event probability, calibrated only if it really was.
+
+    ``raw_frequency`` always carries the uncalibrated weighted frequency, so a
+    calibrated value can be audited against what the ensemble actually observed.
+    """
+    event_definition = f"{label}(checkpoint={checkpoint_id})"
+    if calibrator is None:
+        return ProbabilityStatement(
+            event_definition=event_definition,
+            checkpoint_id=checkpoint_id,
+            value=frequency,
+            raw_frequency=frequency,
+            sample_count=samples,
+            model_version=FORECASTER_VERSION,
+            calibration_status=CalibrationStatus.UNCALIBRATED,
+        )
+
+    calibrated = calibrator.apply(event_definition, frequency)
+    value = getattr(calibrated, "value", None)
+    if value is None:
+        detail = getattr(calibrated, "detail", "") or getattr(calibrated, "status", "refused")
+        notes.append(f"{event_definition}: published uncalibrated ({detail})")
+        return ProbabilityStatement(
+            event_definition=event_definition,
+            checkpoint_id=checkpoint_id,
+            value=frequency,
+            raw_frequency=frequency,
+            sample_count=samples,
+            model_version=FORECASTER_VERSION,
+            calibration_status=CalibrationStatus.UNCALIBRATED,
+        )
+    if getattr(calibrated, "clamped", False):
+        notes.append(
+            f"{event_definition}: calibrated value clamped to the fitted domain (raw {frequency:.4f})"
+        )
+    return ProbabilityStatement(
+        event_definition=event_definition,
+        checkpoint_id=checkpoint_id,
+        value=float(value),
+        raw_frequency=frequency,
+        sample_count=samples,
+        model_version=f"{FORECASTER_VERSION}+{calibrator.calibrator_id}",
+        calibration_status=CalibrationStatus.CALIBRATED,
     )

@@ -11,6 +11,7 @@
       "apps/web/e2e/**",
       "apps/web/e2e-live/**",
       "apps/web/*.ts",
+      "apps/video/package.json",
       "package.json",
       "apps/web/package.json",
       "biome.json",
@@ -503,7 +504,12 @@
       }
     },
     {
-      "includes": ["apps/web/src/styles/base.css", "apps/web/src/shell/shell.module.css"],
+      "includes": [
+        "apps/web/src/styles/base.css",
+        "apps/web/src/styles/workspace.module.css",
+        "apps/web/src/shell/shell.module.css",
+        "apps/web/src/components/charts/chart.module.css"
+      ],
       "linter": {
         "rules": {
           "complexity": {

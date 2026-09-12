@@ -7,6 +7,7 @@ WORKDIR /src
 
 COPY package.json bun.lock ./
 COPY apps/web/package.json apps/web/
+COPY apps/video/package.json apps/video/
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 

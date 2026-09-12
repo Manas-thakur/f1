@@ -17,6 +17,7 @@ Working product name: **AFTERLAP**. Prepared 8 September 2026. The product helps
 - [Selected technology stack](program/TECH_STACK.md)
 - [Master multi-agent build prompt](program/BUILD_WITH_AGENTS.md)
 - [Detailed ML/RL guide](learning/README.md)
+- [Model registry and reproducibility guide](learning/MODEL_REGISTRY.md)
 - [Current design revision](design/DESIGN_REVISION_02.md)
 - [Browser runtime audit and remediation SOP](operations/BROWSER_RUNTIME_AUDIT_SOP.md)
 - [End-to-end audit of the shipped build](handoffs/END_TO_END_AUDIT.md)

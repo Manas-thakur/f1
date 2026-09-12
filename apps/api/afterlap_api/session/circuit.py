@@ -29,7 +29,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from afterlap_contracts import MINIMUM_READINESS_TO_DRIVE, REAL_CIRCUIT_LABEL, ErrorCode
+from afterlap_contracts import (
+    MINIMUM_READINESS_TO_DRIVE,
+    REAL_CIRCUIT_LABEL,
+    ErrorCode,
+    TrackReadiness,
+)
 from afterlap_core.conditions import ConditionsTape, ConditionsUnavailable, environment_for, load_conditions
 from afterlap_core.config import list_configs
 from afterlap_core.paths import Paths, sha256_json
@@ -92,7 +97,7 @@ class CircuitIdentity:
     track_id: str
     compiled: bool
     track_package_hash: str | None = None
-    track_readiness: str | None = None
+    track_readiness: TrackReadiness | None = None
     geometry_provenance: str | None = None
     corridor_quality: str | None = None
     lateral_geometry_surveyed: bool = False
@@ -123,7 +128,7 @@ class CircuitIdentity:
             "event_package_hash": self.event_package_hash,
             "conditions_id": self.conditions_id,
             "conditions_hash": self.conditions_hash,
-            "track_readiness": self.track_readiness,
+            "track_readiness": None if self.track_readiness is None else self.track_readiness.value,
             "geometry_provenance": self.geometry_provenance,
         }
 
@@ -195,7 +200,7 @@ def resolve_track_package(track_id: str, paths: Paths | None = None) -> TrackPac
             ErrorCode.VALIDATION_FAILED,
             str(exc),
             track_id=track_id,
-            track_readiness=package.validation.status.value,
+            track_readiness=TrackReadiness(package.validation.status.value),
             required_readiness=MINIMUM_READINESS.value,
             track_package_hash=package.package_hash,
         ) from exc
@@ -232,7 +237,7 @@ def describe_track(track: Any, package: TrackPackage | None) -> CircuitIdentity:
         track_id=package.track_id,
         compiled=True,
         track_package_hash=package.package_hash or package.content_hash(),
-        track_readiness=package.validation.status.value,
+        track_readiness=TrackReadiness(package.validation.status.value),
         geometry_provenance=package.geometry.provenance.value,
         corridor_quality=corridor.value,
         lateral_geometry_surveyed=package.lateral_geometry_known,

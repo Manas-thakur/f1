@@ -61,6 +61,7 @@ from ..rules import (
 )
 from .config import PlannerConfig, load_planner_config
 from .enumerator import EnumerationResult, enumerate_intentions
+from .forecast import outcome_ranges
 from .objective import ObjectiveManifest, load_objective
 from .optimiser import (
     AllocationSolution,
@@ -69,7 +70,7 @@ from .optimiser import (
     solve_allocation,
     solver_identity,
 )
-from .rollout import PlanningWorld, RolloutEvidence, rollout_candidate
+from .rollout import PlanningWorld, ProbabilityCalibration, RolloutEvidence, rollout_candidate
 from .scenarios import PlanScenario, ScenarioSample, scenarios_from_estimate
 from .scoring import (
     ActivePlan,
@@ -327,6 +328,7 @@ def plan(
     now_s: float | None = None,
     seed: int = 0,
     rollout_enabled: bool = True,
+    calibrator: ProbabilityCalibration | None = None,
 ) -> PlanningResult:
     """Plan one decision.
 
@@ -339,6 +341,13 @@ def plan(
     ``model_bundle`` is the learned continuation ensemble. With ``None`` — or one
     that reports itself out of support — learned scoring is disabled and the
     result is exactly the baseline.
+
+    ``calibrator`` maps the rollout ensemble's raw event frequencies to
+    calibrated probabilities. With ``None`` the published probabilities are raw
+    frequencies marked uncalibrated, unchanged from before a calibrator existed.
+    A calibrator that refuses an event leaves that event's raw frequency
+    published as uncalibrated and records the refusal on the evidence: a
+    calibration step never changes the number it could not calibrate.
     """
     clock = DeadlineClock.start(deadline)
     settings = config or load_planner_config()
@@ -469,9 +478,7 @@ def plan(
         solution = entry.solution
         terms = entry.terms
         constraint_result = check_plan(
-            _probe_plan(
-                candidate_id, action_code, estimate, segments, terms, rule_context.ruleset_hash
-            ),
+            _probe_plan(candidate_id, action_code, estimate, segments, terms, rule_context.ruleset_hash),
             checker_state,
             rule_context,
             manifest=manifest_,
@@ -498,6 +505,7 @@ def plan(
                 settings,
                 weights,
                 candidate_id=candidate_id,
+                calibrator=calibrator,
             )
             final_terms, outcomes, learned = apply_learned_reranking(
                 terms,
@@ -516,6 +524,10 @@ def plan(
                 step_s=evidence.step_s,
                 horizon_s=evidence.horizon_s,
                 incomplete_count=evidence.incomplete_count,
+                calibration_notes=evidence.calibration_notes,
+                calibrator_id=evidence.calibrator_id,
+                belief_clamps=evidence.belief_clamps,
+                outcome_ranges=outcome_ranges(outcomes),
             )
             reasons.extend(learned.reason_codes)
         elif eligible and not rollout_enabled:

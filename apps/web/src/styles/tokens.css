@@ -12,20 +12,20 @@
 :root {
   color-scheme: light;
 
-  /* --- surfaces: light neutral engineering chrome ---------------------- */
-  --paper: #eef0f2;
-  --surface: #ffffff;
-  --raised: #e7ebef;
-  --sunken: #f3f5f7;
-  --rule: #cbd1d7;
-  --rule-strong: #9aa4ae;
+  /* --- surfaces: cool analysis-software chrome, flatter than a website -- */
+  --paper: #dce1e6;
+  --surface: #eef1f4;
+  --raised: #cdd5db;
+  --sunken: #d3dade;
+  --rule: #b6bfc6;
+  --rule-strong: #8a949d;
 
   /* --- ink ------------------------------------------------------------- */
-  --ink: #20282f;
-  --muted: #56616c;
-  /* 5.67:1 on --surface and 4.96:1 on --paper; the lightest ink that still
+  --ink: #1a222a;
+  --muted: #4b555f;
+  /* 6.1:1 on --surface and 5.3:1 on --paper; the lightest ink that still
      clears WCAG AA for the 11px rail and footer labels. */
-  --faint: #5f6871;
+  --faint: #565f68;
 
   /* --- selection ------------------------------------------------------- */
   --accent: #155dc1;
@@ -50,12 +50,12 @@
   --neutral-badge-rule: #cbd1d7;
 
   /* --- dark trace well (charts read as instruments, not as chrome) ------ */
-  --well: #151c22;
-  --well-raised: #1d262e;
-  --well-rule: #35424d;
+  --well: #0d1216;
+  --well-raised: #161e24;
+  --well-rule: #2e3941;
   --well-ink: #f4f6f8;
   --well-muted: #afb9c2;
-  --well-grid: #2b363f;
+  --well-grid: #222b32;
 
   /* --- channel series identity ----------------------------------------
    * Mirrors afterlap_contracts.registry plot_colour_token. A channel keeps
@@ -91,30 +91,30 @@
   --font-body: Aptos, 'Segoe UI', Arial, sans-serif;
   --font-mono: 'Cascadia Mono', Consolas, monospace;
 
-  --text-body: 14px;
-  --text-secondary: 12px;
-  --text-micro: 11px;
-  --text-h3: 17px;
-  --text-h2: 24px;
-  --text-h1: 29px;
-  --leading-body: 1.55;
-  --leading-heading: 1.15;
+  --text-body: 13px;
+  --text-secondary: 11px;
+  --text-micro: 10px;
+  --text-h3: 15px;
+  --text-h2: 21px;
+  --text-h1: 26px;
+  --leading-body: 1.45;
+  --leading-heading: 1.1;
 
-  /* --- spacing scale: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 -------------- */
+  /* --- spacing scale: tighter than a marketing page, still 4px-based --- */
   --s1: 4px;
-  --s2: 8px;
-  --s3: 12px;
-  --s4: 16px;
-  --s6: 24px;
-  --s8: 32px;
-  --s12: 48px;
-  --s16: 64px;
+  --s2: 6px;
+  --s3: 10px;
+  --s4: 14px;
+  --s6: 20px;
+  --s8: 28px;
+  --s12: 40px;
+  --s16: 56px;
 
-  /* --- geometry -------------------------------------------------------- */
-  --radius-sm: 3px;
-  --radius: 4px;
-  --radius-lg: 6px;
-  --rail-width: 216px;
+  /* --- geometry: 2px radii read as native instrument chrome ------------ */
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-lg: 3px;
+  --rail-width: 184px;
   --content-max: 1680px;
   --reading-max: 72ch;
 
@@ -126,12 +126,12 @@
 
 /* Compact density: the same tokens, tighter spacing. Chosen in /settings. */
 :root[data-density='compact'] {
-  --s3: 8px;
-  --s4: 12px;
-  --s6: 16px;
-  --s8: 24px;
-  --s12: 32px;
-  --s16: 48px;
+  --s3: 6px;
+  --s4: 8px;
+  --s6: 12px;
+  --s8: 18px;
+  --s12: 26px;
+  --s16: 36px;
 }
 
 /*
@@ -141,11 +141,11 @@
  */
 .afterlap-driver-scope {
   color-scheme: dark;
-  --paper: #101418;
-  --surface: #151c22;
-  --raised: #253039;
-  --sunken: #0c1013;
-  --rule: #46525d;
+  --paper: #0c1013;
+  --surface: #12181d;
+  --raised: #212b33;
+  --sunken: #090c0e;
+  --rule: #3d4952;
   --rule-strong: #6d7a86;
   --ink: #f4f6f8;
   --muted: #afb9c2;

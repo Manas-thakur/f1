@@ -539,6 +539,76 @@ class HashCheckedController:
         return self.primary.decide(request)
 
 
+class AblationUnsupported(RuntimeError):
+    """A controller was asked to drop a contribution it cannot drop."""
+
+
+class AblatedController:
+    """One learned contribution removed, with the removal named on every row.
+
+    ``SERVING_AND_EVALUATION.md`` requires the actor and the continuation term
+    to be ablatable separately. A controller opts in by exposing
+    ``without_contribution(target)``; one that does not is recorded as
+    *unavailable* for the ablation rather than run unmodified. Running the
+    unmodified controller would produce a difference of exactly zero and read
+    as evidence that the removed component contributes nothing.
+    """
+
+    def __init__(self, primary: Controller, *, disable: str) -> None:
+        self.primary = primary
+        self.disable = disable
+        factory = getattr(primary, "without_contribution", None)
+        self._ablated: Controller | None = None
+        self._detail = ""
+        if factory is None:
+            self._detail = (
+                f"{primary.name} does not implement without_contribution(), so the "
+                f"{disable!r} contribution cannot be removed and this row is unmeasured"
+            )
+        else:
+            try:
+                self._ablated = factory(disable)
+            except (AblationUnsupported, ValueError) as exc:
+                self._detail = f"{primary.name} refused the {disable!r} ablation: {exc}"
+
+    @property
+    def name(self) -> str:
+        return f"{self.primary.name}+ablate_{self.disable}"
+
+    @property
+    def uses_actor(self) -> bool:
+        if self.disable in {"policy", "all"}:
+            return False
+        return bool(self.primary.uses_actor)
+
+    @property
+    def uses_learned_return(self) -> bool:
+        if self.disable in {"terminal", "all"}:
+            return False
+        return bool(self.primary.uses_learned_return)
+
+    def decide(self, request: ControlRequest) -> ControlDecision:
+        if self._ablated is None:
+            return ControlDecision(
+                controller=self.name,
+                status=PlanningStatus.SOLVER_UNAVAILABLE,
+                action=None,
+                reasons=(ReasonCode.LEARNED_MODEL_DISABLED,),
+                provenance="ablation_unsupported",
+                detail=self._detail,
+            )
+        decision = self._ablated.decide(request)
+        return ControlDecision(
+            controller=self.name,
+            status=decision.status,
+            action=decision.action,
+            reasons=(*decision.reasons, ReasonCode.LEARNED_MODEL_DISABLED),
+            latency_ms=decision.latency_ms,
+            provenance=f"ablated:{self.disable}:{decision.provenance}",
+            detail=decision.detail,
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class MatrixRow:
     """One row of the required comparison matrix, with its build status."""
@@ -576,8 +646,8 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         uses_learned_return=False,
         purpose="Core engineering baseline",
         owner="A06",
-        measurable_today=False,
-        unmeasured_reason="the MPC planner is not merged; no candidate exists to evaluate",
+        measurable_today=True,
+        tags=("requires_solver",),
     ),
     MatrixRow(
         controller_name="mpc_plus_actor",
@@ -586,7 +656,11 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         purpose="Proposal contribution",
         owner="A06+A07",
         measurable_today=False,
-        unmeasured_reason="requires both a merged MPC planner and a trained actor; neither exists",
+        unmeasured_reason=(
+            "the planner-backed controller exists; this row needs an approved and promoted "
+            "bundle carrying a trained actor, and no bundle has been promoted"
+        ),
+        tags=("requires_solver", "requires_promoted_bundle"),
     ),
     MatrixRow(
         controller_name="mpc_plus_value",
@@ -595,7 +669,11 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         purpose="Continuation contribution",
         owner="A06+A07",
         measurable_today=False,
-        unmeasured_reason="requires a merged MPC planner and a trained continuation ensemble",
+        unmeasured_reason=(
+            "the planner-backed controller exists; this row needs an approved and promoted "
+            "bundle carrying a fitted continuation ensemble with frozen support thresholds"
+        ),
+        tags=("requires_solver", "requires_promoted_bundle"),
     ),
     MatrixRow(
         controller_name="full_system",
@@ -604,10 +682,26 @@ COMPARISON_MATRIX: tuple[MatrixRow, ...] = (
         purpose="Combined effect",
         owner="A06+A07",
         measurable_today=False,
-        unmeasured_reason="requires the merged planner and a promoted model bundle",
+        unmeasured_reason=(
+            "the planner-backed controller exists; this row needs an approved and promoted "
+            "bundle carrying both the actor and the continuation ensemble"
+        ),
+        tags=("requires_solver", "requires_promoted_bundle"),
     ),
 )
-"""The matrix from ``SERVING_AND_EVALUATION.md``, annotated with what exists."""
+"""The matrix from ``SERVING_AND_EVALUATION.md``, annotated with what exists.
+
+``measurable_today`` means *this package can build a controller for the row and
+run it*, not that the row has been measured. ``mpc_only`` became measurable when
+``afterlap_core.planning.controllers.PlannerController`` was written; it needs
+the optional solver extra, which the ``requires_solver`` tag records.
+
+The three learned rows stay unmeasurable, and the reason changed. It is no
+longer "the planner is not merged" -- the planner-backed controller exists and
+is ablatable. It is that no bundle has been promoted, so a learned row would be
+the MPC-only row wearing a learned row's name. That is a promotion-protocol
+outcome, not a missing implementation, and it is the honest state to publish.
+"""
 
 
 def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
@@ -625,4 +719,11 @@ def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
     )
 
 
-__all__ += ["COMPARISON_MATRIX", "MatrixRow", "ScheduleEntry", "unavailable_matrix_controllers"]
+__all__ += [
+    "COMPARISON_MATRIX",
+    "AblatedController",
+    "AblationUnsupported",
+    "MatrixRow",
+    "ScheduleEntry",
+    "unavailable_matrix_controllers",
+]

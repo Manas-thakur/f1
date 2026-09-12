@@ -121,6 +121,86 @@ class EnvDiagnostics:
         }
 
 
+COMPLETED_PASS = "completed_pass"
+"""The simulator's own kind label. Must match ``planning.rollout``'s filter."""
+
+
+class EventRealisation:
+    """What actually happened, for the events the planner forecasts.
+
+    A probability forecast is only calibratable against a realisation, and the
+    realisation has to come from the same episode that was forecast. This
+    accumulates the two facts the two published events need: when our car
+    crossed each checkpoint, and when a *completed* pass of a rival was
+    recorded. Both come from ``StepReport``, which is the simulator's public
+    per-step record, not from ``WorldState``.
+
+    ``pass_before`` and ``ahead_at`` are resolved exactly as
+    ``planning.rollout`` defines them, so a forecast and its label mean the same
+    thing. Anything the episode did not reach is ``None`` and is dropped from
+    the calibration set rather than labelled negative: a checkpoint the episode
+    never got to is not evidence that the event failed to happen.
+    """
+
+    __slots__ = ("_ego_crossing_s", "_pass_moments_s", "_rival_crossing_s")
+
+    def __init__(self) -> None:
+        self._ego_crossing_s: dict[str, float] = {}
+        self._rival_crossing_s: dict[str, float] = {}
+        self._pass_moments_s: list[float] = []
+
+    def reset(self) -> None:
+        self._ego_crossing_s.clear()
+        self._rival_crossing_s.clear()
+        self._pass_moments_s.clear()
+
+    def observe(self, report: Any, *, ego_car_id: str) -> None:
+        """Accumulate one step report. Only the first crossing of a line counts.
+
+        A pass counts only when the simulator recorded it as ``completed_pass``
+        by our car, which is the same filter ``planning.rollout`` applies when it
+        computes the forecast. A contact-blocked move is not a pass in either
+        place.
+        """
+        if report is None:
+            return
+        for record in getattr(report, "checkpoints", ()) or ():
+            table = self._ego_crossing_s if record.car_id == ego_car_id else self._rival_crossing_s
+            table.setdefault(record.checkpoint_id, float(record.session_time_s))
+        for record in getattr(report, "passes", ()) or ():
+            if record.kind == COMPLETED_PASS and record.overtaking_car_id == ego_car_id:
+                self._pass_moments_s.append(float(record.session_time_s))
+
+    def pass_before(self, checkpoint_id: str) -> bool | None:
+        """Did we complete a pass at or before crossing this line?"""
+        crossed = self._ego_crossing_s.get(checkpoint_id)
+        if crossed is None:
+            return None
+        return any(moment <= crossed + 1e-9 for moment in self._pass_moments_s)
+
+    def ahead_at(self, checkpoint_id: str) -> bool | None:
+        """Did we cross this line before the rival did?"""
+        crossed = self._ego_crossing_s.get(checkpoint_id)
+        if crossed is None:
+            return None
+        rival = self._rival_crossing_s.get(checkpoint_id)
+        return True if rival is None else crossed < rival
+
+    def resolve(self, event_definition: str, checkpoint_id: str) -> bool | None:
+        if event_definition.startswith("pass_before"):
+            return self.pass_before(checkpoint_id)
+        if event_definition.startswith("ahead_at"):
+            return self.ahead_at(checkpoint_id)
+        return None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "ego_crossings_s": dict(sorted(self._ego_crossing_s.items())),
+            "rival_crossings_s": dict(sorted(self._rival_crossing_s.items())),
+            "completed_pass_moments_s": list(self._pass_moments_s),
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class EpisodeOutcome:
     """Physical outcomes, recorded separately from the dimensionless utility."""
@@ -208,6 +288,7 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._instruction_changes_total = 0
         self._withdrawn_total = 0
         self._diagnostics = EnvDiagnostics()
+        self._realisation = EventRealisation()
         self._closed = False
 
     @property
@@ -297,6 +378,7 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._instruction_changes_total = 0
         self._withdrawn_total = 0
         self._diagnostics = EnvDiagnostics()
+        self._realisation.reset()
 
         settle_s = max(self._config.physics_step_s, float(bundle.scenario.observation.delay_s.value))
         warmup_s = self._warm_up(settle_s)
@@ -480,6 +562,8 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             if self._finished_now():
                 break
             report = self._simulator.step(actions if first else None, step_s)
+            assert self._bundle is not None
+            self._realisation.observe(report, ego_car_id=self._bundle.scenario.ego_car_id)
             first = False
             elapsed += step_s
             remaining -= step_s
@@ -630,6 +714,8 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             "learned_enabled": decoded.learned_enabled and not learned,
             "reason_codes": tuple(code.value for code in chosen.reason_codes),
             "detail": result.detail,
+            "decision_time_s": now_s,
+            "forecasts": _forecasts_of(chosen),
         }
 
     def _can_reuse(self, now_s: float, decoded: DecodedPreferences) -> bool:
@@ -720,6 +806,11 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         )
 
     @property
+    def realisation(self) -> EventRealisation:
+        """What actually happened this episode, for scoring a forecast."""
+        return self._realisation
+
+    @property
     def action_bounds(self) -> ActionBounds | None:
         if self._tick is None:
             return None
@@ -785,3 +876,28 @@ def make_env(
     if seed is not None:
         env.reset(seed=seed)
     return env
+
+
+def _forecasts_of(plan: Any) -> tuple[dict[str, Any], ...]:
+    """The published event probabilities of one plan, as plain data.
+
+    Emitted so a calibration set can pair a forecast with the realisation of the
+    same episode. Empty unless the planner ran with rollouts enabled, because
+    without a re-simulation ensemble there is no frequency to forecast with.
+
+    ``raw_frequency`` is carried separately from ``value``: a calibration set
+    must be fitted on the *uncalibrated* forecast, and fitting it on an already
+    calibrated one would chase its own tail.
+    """
+    return tuple(
+        {
+            "event_definition": statement.event_definition,
+            "checkpoint_id": statement.checkpoint_id,
+            "value": statement.value,
+            "raw_frequency": statement.raw_frequency,
+            "sample_count": statement.sample_count,
+            "model_version": statement.model_version,
+            "calibration_status": statement.calibration_status.value,
+        }
+        for statement in getattr(plan, "probabilities", ()) or ()
+    )

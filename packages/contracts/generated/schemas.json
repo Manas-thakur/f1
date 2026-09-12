@@ -3490,6 +3490,219 @@
           "title": "IntervalValue",
           "type": "object"
         },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
+          "type": "object"
+        },
         "OwnCarEstimate": {
           "additionalProperties": false,
           "description": "Fused belief about the car being advised.\n\nEnergy is nullable: a public-only source cannot observe battery state, and\na missing value must gate precise energy advice rather than be invented.",
@@ -3812,6 +4025,15 @@
             "action_code": {
               "$ref": "#/$defs/ActionCode"
             },
+            "alternatives": {
+              "default": [],
+              "description": "Candidates considered, ranked, with the selected one at rank 1.",
+              "items": {
+                "$ref": "#/$defs/RecommendationAlternative"
+              },
+              "title": "Alternatives",
+              "type": "array"
+            },
             "baseline_identity": {
               "default": "mpc_baseline",
               "minLength": 1,
@@ -3847,6 +4069,18 @@
               "title": "Id",
               "type": "string"
             },
+            "learned": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LearnedContribution"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "What a learned model contributed. None means none was offered at all."
+            },
             "learned_contribution_enabled": {
               "default": false,
               "title": "Learned Contribution Enabled",
@@ -3877,6 +4111,15 @@
               "title": "Observation Cutoff S",
               "type": "number"
             },
+            "outcome_ranges": {
+              "default": [],
+              "description": "Per-checkpoint spread across the scenario ensemble.",
+              "items": {
+                "$ref": "#/$defs/OutcomeRange"
+              },
+              "title": "Outcome Ranges",
+              "type": "array"
+            },
             "outcomes": {
               "default": [],
               "items": {
@@ -3896,6 +4139,19 @@
               ],
               "default": null,
               "title": "Plan Id"
+            },
+            "planner_identity": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Which planner produced this, not which one was hoped for.",
+              "title": "Planner Identity"
             },
             "probabilities": {
               "default": [],
@@ -3946,6 +4202,15 @@
             "trigger": {
               "$ref": "#/$defs/Trigger"
             },
+            "unavailable_reasons": {
+              "default": [],
+              "description": "Plain-language reasons a capability did not contribute.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Unavailable Reasons",
+              "type": "array"
+            },
             "valid_from_s": {
               "minimum": 0.0,
               "title": "Valid From S",
@@ -3972,6 +4237,159 @@
             "constraint_result"
           ],
           "title": "Recommendation",
+          "type": "object"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
           "type": "object"
         },
         "RecommendationStatus": {
@@ -5534,6 +5952,232 @@
           "title": "ExecutionMatch",
           "type": "string"
         },
+        "IntervalValue": {
+          "additionalProperties": false,
+          "description": "A bounded belief about a quantity whose point value is not identified.\n\n``kind`` distinguishes physical bounds from statistical intervals so a\nconsumer never renders a support range as a confidence interval.",
+          "properties": {
+            "age_s": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Age S"
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 1.0,
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Nominal coverage for quantile/confidence kinds.",
+              "title": "Coverage"
+            },
+            "kind": {
+              "enum": [
+                "physical_bounds",
+                "quantile",
+                "confidence_interval"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "lower": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lower"
+            },
+            "observed_at_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Observed At S"
+            },
+            "provenance": {
+              "$ref": "#/$defs/Provenance"
+            },
+            "quality": {
+              "$ref": "#/$defs/Quality",
+              "default": "valid"
+            },
+            "unit": {
+              "minLength": 1,
+              "title": "Unit",
+              "type": "string"
+            },
+            "upper": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Upper"
+            }
+          },
+          "required": [
+            "lower",
+            "upper",
+            "unit",
+            "kind",
+            "provenance"
+          ],
+          "title": "IntervalValue",
+          "type": "object"
+        },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
         "OperatorAction": {
           "description": "Actions an authorised operator can take on a recommendation.",
           "enum": [
@@ -5639,6 +6283,91 @@
             "sequence"
           ],
           "title": "OperatorEvent",
+          "type": "object"
+        },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
           "type": "object"
         },
         "ProbabilityStatement": {
@@ -5752,6 +6481,18 @@
           "title": "Provenance",
           "type": "string"
         },
+        "Quality": {
+          "description": "Fitness of an observation or derived value for operational use.",
+          "enum": [
+            "valid",
+            "degraded",
+            "stale",
+            "missing",
+            "invalid"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
         "ReasonCode": {
           "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
           "enum": [
@@ -5783,6 +6524,15 @@
           "properties": {
             "action_code": {
               "$ref": "#/$defs/ActionCode"
+            },
+            "alternatives": {
+              "default": [],
+              "description": "Candidates considered, ranked, with the selected one at rank 1.",
+              "items": {
+                "$ref": "#/$defs/RecommendationAlternative"
+              },
+              "title": "Alternatives",
+              "type": "array"
             },
             "baseline_identity": {
               "default": "mpc_baseline",
@@ -5819,6 +6569,18 @@
               "title": "Id",
               "type": "string"
             },
+            "learned": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LearnedContribution"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "What a learned model contributed. None means none was offered at all."
+            },
             "learned_contribution_enabled": {
               "default": false,
               "title": "Learned Contribution Enabled",
@@ -5849,6 +6611,15 @@
               "title": "Observation Cutoff S",
               "type": "number"
             },
+            "outcome_ranges": {
+              "default": [],
+              "description": "Per-checkpoint spread across the scenario ensemble.",
+              "items": {
+                "$ref": "#/$defs/OutcomeRange"
+              },
+              "title": "Outcome Ranges",
+              "type": "array"
+            },
             "outcomes": {
               "default": [],
               "items": {
@@ -5868,6 +6639,19 @@
               ],
               "default": null,
               "title": "Plan Id"
+            },
+            "planner_identity": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Which planner produced this, not which one was hoped for.",
+              "title": "Planner Identity"
             },
             "probabilities": {
               "default": [],
@@ -5918,6 +6702,15 @@
             "trigger": {
               "$ref": "#/$defs/Trigger"
             },
+            "unavailable_reasons": {
+              "default": [],
+              "description": "Plain-language reasons a capability did not contribute.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Unavailable Reasons",
+              "type": "array"
+            },
             "valid_from_s": {
               "minimum": 0.0,
               "title": "Valid From S",
@@ -5944,6 +6737,159 @@
             "constraint_result"
           ],
           "title": "Recommendation",
+          "type": "object"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
           "type": "object"
         },
         "RecommendationStatus": {
@@ -6607,6 +7553,317 @@
           "title": "ExecutionMatch",
           "type": "string"
         },
+        "IntervalValue": {
+          "additionalProperties": false,
+          "description": "A bounded belief about a quantity whose point value is not identified.\n\n``kind`` distinguishes physical bounds from statistical intervals so a\nconsumer never renders a support range as a confidence interval.",
+          "properties": {
+            "age_s": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Age S"
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 1.0,
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Nominal coverage for quantile/confidence kinds.",
+              "title": "Coverage"
+            },
+            "kind": {
+              "enum": [
+                "physical_bounds",
+                "quantile",
+                "confidence_interval"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "lower": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lower"
+            },
+            "observed_at_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Observed At S"
+            },
+            "provenance": {
+              "$ref": "#/$defs/Provenance"
+            },
+            "quality": {
+              "$ref": "#/$defs/Quality",
+              "default": "valid"
+            },
+            "unit": {
+              "minLength": 1,
+              "title": "Unit",
+              "type": "string"
+            },
+            "upper": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Upper"
+            }
+          },
+          "required": [
+            "lower",
+            "upper",
+            "unit",
+            "kind",
+            "provenance"
+          ],
+          "title": "IntervalValue",
+          "type": "object"
+        },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
+          "type": "object"
+        },
         "ProbabilityStatement": {
           "additionalProperties": false,
           "description": "A probability that always carries its event definition and calibration state.\n\nAn unavailable probability is ``value=None``; it is never displayed as 0.",
@@ -6718,6 +7975,18 @@
           "title": "Provenance",
           "type": "string"
         },
+        "Quality": {
+          "description": "Fitness of an observation or derived value for operational use.",
+          "enum": [
+            "valid",
+            "degraded",
+            "stale",
+            "missing",
+            "invalid"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
         "ReasonCode": {
           "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
           "enum": [
@@ -6749,6 +8018,15 @@
           "properties": {
             "action_code": {
               "$ref": "#/$defs/ActionCode"
+            },
+            "alternatives": {
+              "default": [],
+              "description": "Candidates considered, ranked, with the selected one at rank 1.",
+              "items": {
+                "$ref": "#/$defs/RecommendationAlternative"
+              },
+              "title": "Alternatives",
+              "type": "array"
             },
             "baseline_identity": {
               "default": "mpc_baseline",
@@ -6785,6 +8063,18 @@
               "title": "Id",
               "type": "string"
             },
+            "learned": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LearnedContribution"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "What a learned model contributed. None means none was offered at all."
+            },
             "learned_contribution_enabled": {
               "default": false,
               "title": "Learned Contribution Enabled",
@@ -6815,6 +8105,15 @@
               "title": "Observation Cutoff S",
               "type": "number"
             },
+            "outcome_ranges": {
+              "default": [],
+              "description": "Per-checkpoint spread across the scenario ensemble.",
+              "items": {
+                "$ref": "#/$defs/OutcomeRange"
+              },
+              "title": "Outcome Ranges",
+              "type": "array"
+            },
             "outcomes": {
               "default": [],
               "items": {
@@ -6834,6 +8133,19 @@
               ],
               "default": null,
               "title": "Plan Id"
+            },
+            "planner_identity": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Which planner produced this, not which one was hoped for.",
+              "title": "Planner Identity"
             },
             "probabilities": {
               "default": [],
@@ -6884,6 +8196,15 @@
             "trigger": {
               "$ref": "#/$defs/Trigger"
             },
+            "unavailable_reasons": {
+              "default": [],
+              "description": "Plain-language reasons a capability did not contribute.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Unavailable Reasons",
+              "type": "array"
+            },
             "valid_from_s": {
               "minimum": 0.0,
               "title": "Valid From S",
@@ -6910,6 +8231,159 @@
             "constraint_result"
           ],
           "title": "Recommendation",
+          "type": "object"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
           "type": "object"
         },
         "RecommendationStatus": {
@@ -7965,6 +9439,172 @@
       "title": "HealthResponse",
       "type": "object"
     },
+    "LearnedContribution": {
+      "$defs": {
+        "CalibrationStatus": {
+          "description": "Whether a probability has been calibrated against held-out outcomes.",
+          "enum": [
+            "uncalibrated",
+            "calibrated",
+            "unavailable"
+          ],
+          "title": "CalibrationStatus",
+          "type": "string"
+        },
+        "ReasonCode": {
+          "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
+          "enum": [
+            "reserve_for_counterattack",
+            "insufficient_execution_lead",
+            "eligibility_unknown",
+            "energy_floor",
+            "small_expected_improvement",
+            "thermal_derate",
+            "recharge_allowance_exhausted",
+            "power_ceiling_exceeded",
+            "rival_energy_unknown",
+            "gap_too_large",
+            "expected_pass_retained",
+            "learned_model_out_of_support",
+            "learned_model_disabled",
+            "baseline_fallback",
+            "own_energy_unavailable",
+            "stale_observations",
+            "solver_timeout",
+            "switch_cost_dominates"
+          ],
+          "title": "ReasonCode",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+      "properties": {
+        "baseline_identity": {
+          "description": "The validated path that answers when this is disabled.",
+          "minLength": 1,
+          "title": "Baseline Identity",
+          "type": "string"
+        },
+        "bundle_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bundle Id"
+        },
+        "calibration_status": {
+          "$ref": "#/$defs/CalibrationStatus",
+          "default": "unavailable"
+        },
+        "calibrator_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibrator Id"
+        },
+        "continuation_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dimensionless continuation return; never seconds.",
+          "title": "Continuation Value"
+        },
+        "disagreement": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disagreement"
+        },
+        "enabled": {
+          "description": "False whenever the validated baseline answered instead.",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "in_support": {
+          "default": false,
+          "title": "In Support",
+          "type": "boolean"
+        },
+        "member_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Member Count"
+        },
+        "reason_codes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "support_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why the learned contribution was or was not in support.",
+          "title": "Support Reason"
+        },
+        "weights_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Weights Hash"
+        }
+      },
+      "required": [
+        "enabled",
+        "baseline_identity"
+      ],
+      "title": "LearnedContribution",
+      "type": "object"
+    },
     "LifecycleTransition": {
       "$defs": {
         "RecommendationStatus": {
@@ -8949,6 +10589,215 @@
         "sequence"
       ],
       "title": "OperatorEvent",
+      "type": "object"
+    },
+    "OutcomeRange": {
+      "$defs": {
+        "IntervalValue": {
+          "additionalProperties": false,
+          "description": "A bounded belief about a quantity whose point value is not identified.\n\n``kind`` distinguishes physical bounds from statistical intervals so a\nconsumer never renders a support range as a confidence interval.",
+          "properties": {
+            "age_s": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Age S"
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 1.0,
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Nominal coverage for quantile/confidence kinds.",
+              "title": "Coverage"
+            },
+            "kind": {
+              "enum": [
+                "physical_bounds",
+                "quantile",
+                "confidence_interval"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "lower": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lower"
+            },
+            "observed_at_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Observed At S"
+            },
+            "provenance": {
+              "$ref": "#/$defs/Provenance"
+            },
+            "quality": {
+              "$ref": "#/$defs/Quality",
+              "default": "valid"
+            },
+            "unit": {
+              "minLength": 1,
+              "title": "Unit",
+              "type": "string"
+            },
+            "upper": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Upper"
+            }
+          },
+          "required": [
+            "lower",
+            "upper",
+            "unit",
+            "kind",
+            "provenance"
+          ],
+          "title": "IntervalValue",
+          "type": "object"
+        },
+        "Provenance": {
+          "description": "Where a numeric value came from. Never omit this next to a number.",
+          "enum": [
+            "measured",
+            "estimated",
+            "configured",
+            "simulated"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "Quality": {
+          "description": "Fitness of an observation or derived value for operational use.",
+          "enum": [
+            "valid",
+            "degraded",
+            "stale",
+            "missing",
+            "invalid"
+          ],
+          "title": "Quality",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+      "properties": {
+        "ahead_of_rival_weight": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Weighted share of scenarios that finished ahead.",
+          "title": "Ahead Of Rival Weight"
+        },
+        "checkpoint_id": {
+          "minLength": 1,
+          "title": "Checkpoint Id",
+          "type": "string"
+        },
+        "elapsed_time_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntervalValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "gap_to_reference_s": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntervalValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "own_energy_j": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IntervalValue"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "progress_m": {
+          "minimum": 0.0,
+          "title": "Progress M",
+          "type": "number"
+        },
+        "scenario_count": {
+          "description": "Scenarios that reached this checkpoint.",
+          "minimum": 0,
+          "title": "Scenario Count",
+          "type": "integer"
+        },
+        "weight_covered": {
+          "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Weight Covered",
+          "type": "number"
+        }
+      },
+      "required": [
+        "checkpoint_id",
+        "progress_m",
+        "scenario_count",
+        "weight_covered"
+      ],
+      "title": "OutcomeRange",
       "type": "object"
     },
     "OutcomeRecord": {
@@ -10567,6 +12416,317 @@
           "title": "ConstraintResult",
           "type": "object"
         },
+        "IntervalValue": {
+          "additionalProperties": false,
+          "description": "A bounded belief about a quantity whose point value is not identified.\n\n``kind`` distinguishes physical bounds from statistical intervals so a\nconsumer never renders a support range as a confidence interval.",
+          "properties": {
+            "age_s": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Age S"
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 1.0,
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Nominal coverage for quantile/confidence kinds.",
+              "title": "Coverage"
+            },
+            "kind": {
+              "enum": [
+                "physical_bounds",
+                "quantile",
+                "confidence_interval"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "lower": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lower"
+            },
+            "observed_at_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Observed At S"
+            },
+            "provenance": {
+              "$ref": "#/$defs/Provenance"
+            },
+            "quality": {
+              "$ref": "#/$defs/Quality",
+              "default": "valid"
+            },
+            "unit": {
+              "minLength": 1,
+              "title": "Unit",
+              "type": "string"
+            },
+            "upper": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Upper"
+            }
+          },
+          "required": [
+            "lower",
+            "upper",
+            "unit",
+            "kind",
+            "provenance"
+          ],
+          "title": "IntervalValue",
+          "type": "object"
+        },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
+          "type": "object"
+        },
         "ProbabilityStatement": {
           "additionalProperties": false,
           "description": "A probability that always carries its event definition and calibration state.\n\nAn unavailable probability is ``value=None``; it is never displayed as 0.",
@@ -10667,6 +12827,29 @@
           "title": "ProbabilityStatement",
           "type": "object"
         },
+        "Provenance": {
+          "description": "Where a numeric value came from. Never omit this next to a number.",
+          "enum": [
+            "measured",
+            "estimated",
+            "configured",
+            "simulated"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "Quality": {
+          "description": "Fitness of an observation or derived value for operational use.",
+          "enum": [
+            "valid",
+            "degraded",
+            "stale",
+            "missing",
+            "invalid"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
         "ReasonCode": {
           "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
           "enum": [
@@ -10691,6 +12874,159 @@
           ],
           "title": "ReasonCode",
           "type": "string"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
+          "type": "object"
         },
         "RecommendationStatus": {
           "description": "Lifecycle of a published recommendation.\n\n``SELECTED`` records a human decision. It is not execution: only an\n``ExecutionEvent`` moves a recommendation to ``EXECUTING``.",
@@ -10858,6 +13194,15 @@
         "action_code": {
           "$ref": "#/$defs/ActionCode"
         },
+        "alternatives": {
+          "default": [],
+          "description": "Candidates considered, ranked, with the selected one at rank 1.",
+          "items": {
+            "$ref": "#/$defs/RecommendationAlternative"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
         "baseline_identity": {
           "default": "mpc_baseline",
           "minLength": 1,
@@ -10893,6 +13238,18 @@
           "title": "Id",
           "type": "string"
         },
+        "learned": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LearnedContribution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What a learned model contributed. None means none was offered at all."
+        },
         "learned_contribution_enabled": {
           "default": false,
           "title": "Learned Contribution Enabled",
@@ -10923,6 +13280,15 @@
           "title": "Observation Cutoff S",
           "type": "number"
         },
+        "outcome_ranges": {
+          "default": [],
+          "description": "Per-checkpoint spread across the scenario ensemble.",
+          "items": {
+            "$ref": "#/$defs/OutcomeRange"
+          },
+          "title": "Outcome Ranges",
+          "type": "array"
+        },
         "outcomes": {
           "default": [],
           "items": {
@@ -10942,6 +13308,19 @@
           ],
           "default": null,
           "title": "Plan Id"
+        },
+        "planner_identity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which planner produced this, not which one was hoped for.",
+          "title": "Planner Identity"
         },
         "probabilities": {
           "default": [],
@@ -10991,6 +13370,15 @@
         },
         "trigger": {
           "$ref": "#/$defs/Trigger"
+        },
+        "unavailable_reasons": {
+          "default": [],
+          "description": "Plain-language reasons a capability did not contribute.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Unavailable Reasons",
+          "type": "array"
         },
         "valid_from_s": {
           "minimum": 0.0,
@@ -11360,6 +13748,232 @@
           "title": "ConstraintResult",
           "type": "object"
         },
+        "IntervalValue": {
+          "additionalProperties": false,
+          "description": "A bounded belief about a quantity whose point value is not identified.\n\n``kind`` distinguishes physical bounds from statistical intervals so a\nconsumer never renders a support range as a confidence interval.",
+          "properties": {
+            "age_s": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Age S"
+            },
+            "coverage": {
+              "anyOf": [
+                {
+                  "exclusiveMaximum": 1.0,
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Nominal coverage for quantile/confidence kinds.",
+              "title": "Coverage"
+            },
+            "kind": {
+              "enum": [
+                "physical_bounds",
+                "quantile",
+                "confidence_interval"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "lower": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lower"
+            },
+            "observed_at_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Observed At S"
+            },
+            "provenance": {
+              "$ref": "#/$defs/Provenance"
+            },
+            "quality": {
+              "$ref": "#/$defs/Quality",
+              "default": "valid"
+            },
+            "unit": {
+              "minLength": 1,
+              "title": "Unit",
+              "type": "string"
+            },
+            "upper": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Upper"
+            }
+          },
+          "required": [
+            "lower",
+            "upper",
+            "unit",
+            "kind",
+            "provenance"
+          ],
+          "title": "IntervalValue",
+          "type": "object"
+        },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
         "OperatorAction": {
           "description": "Actions an authorised operator can take on a recommendation.",
           "enum": [
@@ -11467,6 +14081,91 @@
           "title": "OperatorEvent",
           "type": "object"
         },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
+          "type": "object"
+        },
         "ProbabilityStatement": {
           "additionalProperties": false,
           "description": "A probability that always carries its event definition and calibration state.\n\nAn unavailable probability is ``value=None``; it is never displayed as 0.",
@@ -11567,6 +14266,29 @@
           "title": "ProbabilityStatement",
           "type": "object"
         },
+        "Provenance": {
+          "description": "Where a numeric value came from. Never omit this next to a number.",
+          "enum": [
+            "measured",
+            "estimated",
+            "configured",
+            "simulated"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "Quality": {
+          "description": "Fitness of an observation or derived value for operational use.",
+          "enum": [
+            "valid",
+            "degraded",
+            "stale",
+            "missing",
+            "invalid"
+          ],
+          "title": "Quality",
+          "type": "string"
+        },
         "ReasonCode": {
           "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
           "enum": [
@@ -11598,6 +14320,15 @@
           "properties": {
             "action_code": {
               "$ref": "#/$defs/ActionCode"
+            },
+            "alternatives": {
+              "default": [],
+              "description": "Candidates considered, ranked, with the selected one at rank 1.",
+              "items": {
+                "$ref": "#/$defs/RecommendationAlternative"
+              },
+              "title": "Alternatives",
+              "type": "array"
             },
             "baseline_identity": {
               "default": "mpc_baseline",
@@ -11634,6 +14365,18 @@
               "title": "Id",
               "type": "string"
             },
+            "learned": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LearnedContribution"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "What a learned model contributed. None means none was offered at all."
+            },
             "learned_contribution_enabled": {
               "default": false,
               "title": "Learned Contribution Enabled",
@@ -11664,6 +14407,15 @@
               "title": "Observation Cutoff S",
               "type": "number"
             },
+            "outcome_ranges": {
+              "default": [],
+              "description": "Per-checkpoint spread across the scenario ensemble.",
+              "items": {
+                "$ref": "#/$defs/OutcomeRange"
+              },
+              "title": "Outcome Ranges",
+              "type": "array"
+            },
             "outcomes": {
               "default": [],
               "items": {
@@ -11683,6 +14435,19 @@
               ],
               "default": null,
               "title": "Plan Id"
+            },
+            "planner_identity": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Which planner produced this, not which one was hoped for.",
+              "title": "Planner Identity"
             },
             "probabilities": {
               "default": [],
@@ -11733,6 +14498,15 @@
             "trigger": {
               "$ref": "#/$defs/Trigger"
             },
+            "unavailable_reasons": {
+              "default": [],
+              "description": "Plain-language reasons a capability did not contribute.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Unavailable Reasons",
+              "type": "array"
+            },
             "valid_from_s": {
               "minimum": 0.0,
               "title": "Valid From S",
@@ -11759,6 +14533,159 @@
             "constraint_result"
           ],
           "title": "Recommendation",
+          "type": "object"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
           "type": "object"
         },
         "RecommendationStatus": {
@@ -11935,6 +14862,210 @@
         "operator_event"
       ],
       "title": "RecommendationActionResponse",
+      "type": "object"
+    },
+    "RecommendationAlternative": {
+      "$defs": {
+        "ActionCode": {
+          "description": "Machine action vocabulary. Display wording is a separate template map.",
+          "enum": [
+            "maintain",
+            "prepare_attack",
+            "attack",
+            "defend",
+            "recover",
+            "withdraw_advice"
+          ],
+          "title": "ActionCode",
+          "type": "string"
+        },
+        "CheckStatus": {
+          "description": "Three-valued constraint result. ``UNKNOWN`` is a first-class outcome.",
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ],
+          "title": "CheckStatus",
+          "type": "string"
+        },
+        "ReasonCode": {
+          "description": "Template reason codes attached to recommendations and rejections.\n\nThese label computed differences; they are not free-form generated text.",
+          "enum": [
+            "reserve_for_counterattack",
+            "insufficient_execution_lead",
+            "eligibility_unknown",
+            "energy_floor",
+            "small_expected_improvement",
+            "thermal_derate",
+            "recharge_allowance_exhausted",
+            "power_ceiling_exceeded",
+            "rival_energy_unknown",
+            "gap_too_large",
+            "expected_pass_retained",
+            "learned_model_out_of_support",
+            "learned_model_disabled",
+            "baseline_fallback",
+            "own_energy_unavailable",
+            "stale_observations",
+            "solver_timeout",
+            "switch_cost_dominates"
+          ],
+          "title": "ReasonCode",
+          "type": "string"
+        }
+      },
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties": false,
+      "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+      "properties": {
+        "action_code": {
+          "$ref": "#/$defs/ActionCode"
+        },
+        "constraint_status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "cvar_loss": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tail loss at the objective's alpha; the downside term.",
+          "title": "Cvar Loss"
+        },
+        "display_text": {
+          "minLength": 1,
+          "title": "Display Text",
+          "type": "string"
+        },
+        "expected_utility": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Utility"
+        },
+        "final_score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Dimensionless objective value; never seconds.",
+          "title": "Final Score"
+        },
+        "plan_id": {
+          "minLength": 1,
+          "title": "Plan Id",
+          "type": "string"
+        },
+        "rank": {
+          "description": "1 is the recommended plan.",
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "reason_codes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReasonCode"
+          },
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "rejected_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Why this candidate is not the recommendation.",
+          "title": "Rejected Reason"
+        },
+        "score_delta_vs_selected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+          "title": "Score Delta Vs Selected"
+        },
+        "selected": {
+          "default": false,
+          "title": "Selected",
+          "type": "boolean"
+        },
+        "switch_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Instruction changes required.",
+          "title": "Switch Count"
+        },
+        "switching_penalty": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Switching Penalty"
+        },
+        "terminal_energy_j": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Future energy at the horizon.",
+          "title": "Terminal Energy J"
+        }
+      },
+      "required": [
+        "plan_id",
+        "action_code",
+        "display_text",
+        "rank",
+        "constraint_status"
+      ],
+      "title": "RecommendationAlternative",
       "type": "object"
     },
     "RuleContext": {
@@ -15039,6 +18170,219 @@
           "title": "IntervalValue",
           "type": "object"
         },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
+          "type": "object"
+        },
         "OwnCarEstimate": {
           "additionalProperties": false,
           "description": "Fused belief about the car being advised.\n\nEnergy is nullable: a public-only source cannot observe battery state, and\na missing value must gate precise energy advice rather than be invented.",
@@ -15361,6 +18705,15 @@
             "action_code": {
               "$ref": "#/$defs/ActionCode"
             },
+            "alternatives": {
+              "default": [],
+              "description": "Candidates considered, ranked, with the selected one at rank 1.",
+              "items": {
+                "$ref": "#/$defs/RecommendationAlternative"
+              },
+              "title": "Alternatives",
+              "type": "array"
+            },
             "baseline_identity": {
               "default": "mpc_baseline",
               "minLength": 1,
@@ -15396,6 +18749,18 @@
               "title": "Id",
               "type": "string"
             },
+            "learned": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LearnedContribution"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "What a learned model contributed. None means none was offered at all."
+            },
             "learned_contribution_enabled": {
               "default": false,
               "title": "Learned Contribution Enabled",
@@ -15426,6 +18791,15 @@
               "title": "Observation Cutoff S",
               "type": "number"
             },
+            "outcome_ranges": {
+              "default": [],
+              "description": "Per-checkpoint spread across the scenario ensemble.",
+              "items": {
+                "$ref": "#/$defs/OutcomeRange"
+              },
+              "title": "Outcome Ranges",
+              "type": "array"
+            },
             "outcomes": {
               "default": [],
               "items": {
@@ -15445,6 +18819,19 @@
               ],
               "default": null,
               "title": "Plan Id"
+            },
+            "planner_identity": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Which planner produced this, not which one was hoped for.",
+              "title": "Planner Identity"
             },
             "probabilities": {
               "default": [],
@@ -15495,6 +18882,15 @@
             "trigger": {
               "$ref": "#/$defs/Trigger"
             },
+            "unavailable_reasons": {
+              "default": [],
+              "description": "Plain-language reasons a capability did not contribute.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Unavailable Reasons",
+              "type": "array"
+            },
             "valid_from_s": {
               "minimum": 0.0,
               "title": "Valid From S",
@@ -15521,6 +18917,159 @@
             "constraint_result"
           ],
           "title": "Recommendation",
+          "type": "object"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
           "type": "object"
         },
         "RecommendationStatus": {
@@ -18605,6 +22154,219 @@
           "title": "IntervalValue",
           "type": "object"
         },
+        "LearnedContribution": {
+          "additionalProperties": false,
+          "description": "What a learned model contributed to one decision, and whether it was used.\n\nPublished so an engineer can tell a baseline decision from a learned one\nwithout inferring it from reason codes. ``disagreement`` is carried even\nwhen ``in_support`` is false: a refusal caused by ensemble spread is more\ninformative with the number attached.",
+          "properties": {
+            "baseline_identity": {
+              "description": "The validated path that answers when this is disabled.",
+              "minLength": 1,
+              "title": "Baseline Identity",
+              "type": "string"
+            },
+            "bundle_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Bundle Id"
+            },
+            "calibration_status": {
+              "$ref": "#/$defs/CalibrationStatus",
+              "default": "unavailable"
+            },
+            "calibrator_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Calibrator Id"
+            },
+            "continuation_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless continuation return; never seconds.",
+              "title": "Continuation Value"
+            },
+            "disagreement": {
+              "anyOf": [
+                {
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Disagreement"
+            },
+            "enabled": {
+              "description": "False whenever the validated baseline answered instead.",
+              "title": "Enabled",
+              "type": "boolean"
+            },
+            "in_support": {
+              "default": false,
+              "title": "In Support",
+              "type": "boolean"
+            },
+            "member_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Member Count"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "support_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why the learned contribution was or was not in support.",
+              "title": "Support Reason"
+            },
+            "weights_hash": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Weights Hash"
+            }
+          },
+          "required": [
+            "enabled",
+            "baseline_identity"
+          ],
+          "title": "LearnedContribution",
+          "type": "object"
+        },
+        "OutcomeRange": {
+          "additionalProperties": false,
+          "description": "The spread of one predicted quantity across the scenario ensemble.\n\nA point prediction from a weighted ensemble hides the thing an engineer\nneeds: whether the scenarios agreed. Every field is an ``IntervalValue`` so\nthe interval carries its own ``kind`` and coverage, and a quantity no\nscenario produced is ``None`` rather than a zero-width interval at zero.\n\n``kind`` on each interval is ``physical_bounds``: these are the minimum and\nmaximum actually observed across the sampled scenarios, not a fitted\nquantile and not a confidence interval. Labelling an observed spread as a\nquantile would overstate what an ensemble of a handful of scenarios can say.",
+          "properties": {
+            "ahead_of_rival_weight": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Weighted share of scenarios that finished ahead.",
+              "title": "Ahead Of Rival Weight"
+            },
+            "checkpoint_id": {
+              "minLength": 1,
+              "title": "Checkpoint Id",
+              "type": "string"
+            },
+            "elapsed_time_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "gap_to_reference_s": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "own_energy_j": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/IntervalValue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "progress_m": {
+              "minimum": 0.0,
+              "title": "Progress M",
+              "type": "number"
+            },
+            "scenario_count": {
+              "description": "Scenarios that reached this checkpoint.",
+              "minimum": 0,
+              "title": "Scenario Count",
+              "type": "integer"
+            },
+            "weight_covered": {
+              "description": "Ensemble weight that reached it; below 1.0 means some did not.",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Weight Covered",
+              "type": "number"
+            }
+          },
+          "required": [
+            "checkpoint_id",
+            "progress_m",
+            "scenario_count",
+            "weight_covered"
+          ],
+          "title": "OutcomeRange",
+          "type": "object"
+        },
         "OwnCarEstimate": {
           "additionalProperties": false,
           "description": "Fused belief about the car being advised.\n\nEnergy is nullable: a public-only source cannot observe battery state, and\na missing value must gate precise energy advice rather than be invented.",
@@ -18960,6 +22722,15 @@
             "action_code": {
               "$ref": "#/$defs/ActionCode"
             },
+            "alternatives": {
+              "default": [],
+              "description": "Candidates considered, ranked, with the selected one at rank 1.",
+              "items": {
+                "$ref": "#/$defs/RecommendationAlternative"
+              },
+              "title": "Alternatives",
+              "type": "array"
+            },
             "baseline_identity": {
               "default": "mpc_baseline",
               "minLength": 1,
@@ -18995,6 +22766,18 @@
               "title": "Id",
               "type": "string"
             },
+            "learned": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/LearnedContribution"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "What a learned model contributed. None means none was offered at all."
+            },
             "learned_contribution_enabled": {
               "default": false,
               "title": "Learned Contribution Enabled",
@@ -19025,6 +22808,15 @@
               "title": "Observation Cutoff S",
               "type": "number"
             },
+            "outcome_ranges": {
+              "default": [],
+              "description": "Per-checkpoint spread across the scenario ensemble.",
+              "items": {
+                "$ref": "#/$defs/OutcomeRange"
+              },
+              "title": "Outcome Ranges",
+              "type": "array"
+            },
             "outcomes": {
               "default": [],
               "items": {
@@ -19044,6 +22836,19 @@
               ],
               "default": null,
               "title": "Plan Id"
+            },
+            "planner_identity": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Which planner produced this, not which one was hoped for.",
+              "title": "Planner Identity"
             },
             "probabilities": {
               "default": [],
@@ -19094,6 +22899,15 @@
             "trigger": {
               "$ref": "#/$defs/Trigger"
             },
+            "unavailable_reasons": {
+              "default": [],
+              "description": "Plain-language reasons a capability did not contribute.",
+              "items": {
+                "type": "string"
+              },
+              "title": "Unavailable Reasons",
+              "type": "array"
+            },
             "valid_from_s": {
               "minimum": 0.0,
               "title": "Valid From S",
@@ -19120,6 +22934,159 @@
             "constraint_result"
           ],
           "title": "Recommendation",
+          "type": "object"
+        },
+        "RecommendationAlternative": {
+          "additionalProperties": false,
+          "description": "One candidate the planner considered but did not recommend.\n\nPublished so an engineer can see what was rejected and why, rather than\nbeing shown a single instruction with no visible competition. It carries the\ndecomposed comparison the objective actually made -- benefit, downside,\nfuture energy and switching cost as separate fields -- because a single\n``final_score`` delta cannot be argued with.\n\n``constraint_status`` is the *independent checker's* verdict, not the\nplanner's self-assessment. A candidate rejected by the checker is a\ndifferent fact from one that lost on score, and collapsing the two would\nhide a rules problem behind a preference.",
+          "properties": {
+            "action_code": {
+              "$ref": "#/$defs/ActionCode"
+            },
+            "constraint_status": {
+              "$ref": "#/$defs/CheckStatus"
+            },
+            "cvar_loss": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Tail loss at the objective's alpha; the downside term.",
+              "title": "Cvar Loss"
+            },
+            "display_text": {
+              "minLength": 1,
+              "title": "Display Text",
+              "type": "string"
+            },
+            "expected_utility": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Expected Utility"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Dimensionless objective value; never seconds.",
+              "title": "Final Score"
+            },
+            "plan_id": {
+              "minLength": 1,
+              "title": "Plan Id",
+              "type": "string"
+            },
+            "rank": {
+              "description": "1 is the recommended plan.",
+              "minimum": 1,
+              "title": "Rank",
+              "type": "integer"
+            },
+            "reason_codes": {
+              "default": [],
+              "items": {
+                "$ref": "#/$defs/ReasonCode"
+              },
+              "title": "Reason Codes",
+              "type": "array"
+            },
+            "rejected_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Why this candidate is not the recommendation.",
+              "title": "Rejected Reason"
+            },
+            "score_delta_vs_selected": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "This candidate's score minus the selected one's. A plain difference: the sign's meaning depends on the producing planner's objective direction, so no better/worse reading is implied.",
+              "title": "Score Delta Vs Selected"
+            },
+            "selected": {
+              "default": false,
+              "title": "Selected",
+              "type": "boolean"
+            },
+            "switch_count": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Instruction changes required.",
+              "title": "Switch Count"
+            },
+            "switching_penalty": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Switching Penalty"
+            },
+            "terminal_energy_j": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Future energy at the horizon.",
+              "title": "Terminal Energy J"
+            }
+          },
+          "required": [
+            "plan_id",
+            "action_code",
+            "display_text",
+            "rank",
+            "constraint_status"
+          ],
+          "title": "RecommendationAlternative",
           "type": "object"
         },
         "RecommendationStatus": {
@@ -22184,16 +26151,19 @@
     "FeatureManifest",
     "FeatureSummary",
     "HealthResponse",
+    "LearnedContribution",
     "LifecycleTransition",
     "ModelListResponse",
     "ModelManifest",
     "OperatorEvent",
+    "OutcomeRange",
     "OutcomeRecord",
     "PlanningResult",
     "QualityEvent",
     "Recommendation",
     "RecommendationActionRequest",
     "RecommendationActionResponse",
+    "RecommendationAlternative",
     "RuleContext",
     "RuleManifest",
     "RulesetResponse",

@@ -80,6 +80,10 @@ class TrainingResult:
     failure_detail: str | None = None
     hardware: str = ""
     warning: str = ""
+    evaluation_returns: tuple[float, ...] = ()
+    evaluation_detail: str = ""
+    evaluation_seed: int | None = None
+    evaluation_scenario_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -99,7 +103,18 @@ class TrainingResult:
             "failure_detail": self.failure_detail,
             "hardware": self.hardware,
             "warning": self.warning,
+            "evaluation_returns": list(self.evaluation_returns),
+            "evaluation_detail": self.evaluation_detail,
+            "evaluation_seed": self.evaluation_seed,
+            "evaluation_scenario_id": self.evaluation_scenario_id,
         }
+
+    @property
+    def mean_evaluation_return(self) -> float | None:
+        """The mean deterministic return, or ``None`` when none was measured."""
+        if not self.evaluation_returns:
+            return None
+        return sum(self.evaluation_returns) / len(self.evaluation_returns)
 
 
 SMOKE_WARNING = (
@@ -264,8 +279,18 @@ def train(
     checkpoint_every: int | None = None,
     is_smoke_run: bool = False,
     resume_from: Path | None = None,
+    evaluation_episodes: int = 0,
+    evaluation_seed: int = 101,
+    evaluation_scenario_id: str = "two-straight-counterattack",
 ) -> TrainingResult:
-    """Run one SAC training job and report what actually happened."""
+    """Run one SAC training job and report what actually happened.
+
+    ``evaluation_episodes`` runs :func:`deterministic_evaluation` after the
+    gradient work finishes and records the returns on the result. It defaults
+    to zero because evaluation costs full episodes of simulator time: a caller
+    that wants the number must ask for it and pay for it. Zero is reported as
+    "not run" with its reason, never as a zero return.
+    """
     settings = config or load_env_config()
     sac_config = algorithm or load_sac_config()
     reward = load_reward_manifest(settings.objective_id)
@@ -360,6 +385,36 @@ def train(
 
     completed = int(model.num_timesteps)
     summary = metrics.summary()
+
+    evaluation_returns: tuple[float, ...] = ()
+    evaluation_detail = (
+        "deterministic evaluation was not requested (evaluation_episodes=0)"
+        if evaluation_episodes <= 0
+        else ""
+    )
+    if evaluation_episodes > 0:
+        if status is TrainingStatus.COMPLETED:
+            try:
+                evaluation_returns = tuple(
+                    deterministic_evaluation(
+                        model,
+                        config=settings,
+                        scenario_id=evaluation_scenario_id,
+                        seed=evaluation_seed,
+                        episodes=evaluation_episodes,
+                    )
+                )
+                evaluation_detail = (
+                    f"{evaluation_episodes} deterministic episode(s) on "
+                    f"{evaluation_scenario_id!r} from seed {evaluation_seed}"
+                )
+            except BaseException as exc:
+                evaluation_detail = f"deterministic evaluation failed: {type(exc).__name__}: {exc}"
+        else:
+            evaluation_detail = (
+                f"deterministic evaluation was skipped because training status is {status.value!r}"
+            )
+
     result = TrainingResult(
         status=status,
         run_id=identifier,
@@ -377,6 +432,10 @@ def train(
         failure_detail=failure,
         hardware=_hardware(),
         warning=SMOKE_WARNING if is_smoke_run else "",
+        evaluation_returns=evaluation_returns,
+        evaluation_detail=evaluation_detail,
+        evaluation_seed=evaluation_seed if evaluation_episodes > 0 else None,
+        evaluation_scenario_id=evaluation_scenario_id if evaluation_episodes > 0 else None,
     )
     manifest["status"] = status.value
     manifest["result"] = result.as_dict()

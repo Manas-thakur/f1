@@ -1,14 +1,13 @@
 # Local stack
 
 Start the product from the repository root with Make. The Makefile is the
-orchestration entry point. It writes `infra/.env`, installs the `ac` project
-manifest, builds images, and starts PostgreSQL, the Python runtime, the batch
-worker, and Next.js.
+orchestration entry point. It writes `infra/.env`, builds images, and starts
+PostgreSQL, the Python runtime, the batch worker, and Next.js.
 
-Apple `container` via `ac` is the local runtime on this machine. The Compose
-file under `infra/docker-compose.yml` is the Linux service catalog and uses
-the same host ports. `make compose-up` calls docker compose when `docker` is
-installed; otherwise it tells you to use `make up`.
+Docker compose runs the stack. `infra/docker-compose.yml` is the single
+service catalog, and every Make target is a thin wrapper over
+`docker compose -f infra/docker-compose.yml --env-file infra/.env`. Docker
+with the compose plugin is the only prerequisite beyond `uv` and `bun`.
 
 ## Ports
 
@@ -42,13 +41,17 @@ make down
 `make env` creates `infra/.env` with a generated `AFTERLAP_DB_PASSWORD` when
 the file is missing. There is still no default password in git.
 
-`make up` renders `~/.config/ac/projects/afterlap.json` from the current
-checkout and `infra/.env`, builds `afterlap-api:local` and `afterlap-web:local`,
-then `ac afterlap start`. Services start in order, each gated on `readyCmd`.
+`make up` builds `afterlap/api:local` and `afterlap/web:local`, then runs
+`docker compose up --build --detach --wait`. The database comes up first, the
+migration job runs to completion, and runtime, batch and web follow, each
+gated on its healthcheck.
 
-`make dev` is the native path: PostgreSQL via `ac`, Python and Next.js on the
-host using the same unique ports. `make stop-dev` stops those two processes
-and leaves postgres running.
+Every stack target writes `infra/.env` first, so `make ps`, `make down`,
+`make stop`, `make logs` and `make wait` work on a fresh checkout.
+
+`make dev` is the native path: PostgreSQL in compose, Python and Next.js on
+the host using the same unique ports. `make stop-dev` stops those two
+processes and leaves postgres running.
 
 `make doctor` and `make migrate` wrap the existing Python CLIs.
 
@@ -56,15 +59,14 @@ and leaves postgres running.
 
 | Path | Role |
 |---|---|
-| `Makefile` | Start, stop, logs, demo, native, compose fallback |
+| `Makefile` | Start, stop, logs, demo, native |
 | `infra/ports.env` | Committed host ports |
 | `infra/.env.example` | Password-less template |
-| `infra/docker-compose.yml` | Linux compose catalog, same ports |
-| `scripts/afterlap_ops/stack_manifest.py` | Renders the `ac` project manifest |
+| `infra/docker-compose.yml` | The service catalog: db, migrate, runtime, batch, web |
 
 ## Inter-container reachability
 
-Apple containers do not use Compose DNS names. The rendered `ac` manifest
-points runtime and batch at PostgreSQL, and Next.js at the runtime, through
-`AFTERLAP_AC_GATEWAY` (default `192.168.64.1`) plus the unique host ports.
-Override that gateway in `infra/.env` if the vmnet address differs.
+Compose puts every service on one network and resolves them by service name.
+Runtime and batch reach PostgreSQL at `db:5432` and Next.js reaches the
+runtime at `runtime:8000`, so the host ports above are for you, not for the
+containers.

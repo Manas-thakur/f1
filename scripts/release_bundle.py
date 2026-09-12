@@ -645,13 +645,13 @@ make up
 
 `make env` writes `infra/.env` with a generated password if it is missing.
 `make up` builds the images and starts PostgreSQL, the Python runtime, the
-batch worker and Next.js through `ac` (Apple container). On Linux, `make
-compose-up` is the docker compose equivalent of the same ports.
+batch worker and Next.js through docker compose.
 
 Then open http://127.0.0.1:18473. The API is at http://127.0.0.1:19284 and
 PostgreSQL is on 127.0.0.1:17539. All three bind loopback only.
 
-`make down` stops the containers. `ac afterlap down -v` also discards named
+`make down` stops the containers.
+`docker compose -f infra/docker-compose.yml down -v` also discards the named
 volumes. `make demo` runs the closed-loop runbook against the web origin.
 
 ## Option B: from source, no containers
@@ -661,7 +661,7 @@ cd source
 make dev
 ```
 
-That starts PostgreSQL via `ac`, then the native Python runtime on 19284 and
+That starts PostgreSQL in compose, then the native Python runtime on 19284 and
 Next.js on 18473. `make stop-dev` leaves postgres running.
 
 The API creates its schema on startup, so no separate migration step is needed

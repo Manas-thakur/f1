@@ -67,6 +67,7 @@ DEFAULT_BASELINE_IDENTITY = "mpc-only/planner-v1"
 _BUNDLE_FILE = "bundle.json"
 _ACTOR_FILE = "actor.pt"
 _CARD_FILE = "model_card.md"
+_REPORT_FILE = "training_report.json"
 
 
 class RejectionReason(StrEnum):
@@ -116,6 +117,7 @@ class LoadedBundle:
     support: SupportThresholds | None
     calibrator: dict[str, Any] | None
     model_card: str
+    training_report: dict[str, Any] | None
     library_versions: dict[str, str]
     promotion_policy: PromotionPolicy
     baseline_identity: str
@@ -204,6 +206,7 @@ def write_bundle(
     normalizer: NormalizerManifest | None = None,
     calibrator: dict[str, Any] | None = None,
     model_card: str,
+    training_report: dict[str, Any] | None = None,
     promotion_policy: PromotionPolicy | None = None,
     approval_status: ApprovalStatus = ApprovalStatus.UNEVALUATED,
     benchmark_report_hash: str | None = None,
@@ -260,6 +263,11 @@ def write_bundle(
     card_path = directory / _CARD_FILE
     atomic_write_bytes(card_path, model_card.encode("utf-8"))
     artifacts[_CARD_FILE] = card_path
+
+    if training_report is not None:
+        report_path = directory / _REPORT_FILE
+        atomic_write_json(report_path, training_report)
+        artifacts[_REPORT_FILE] = report_path
 
     hashes = {name: sha256_file(path) for name, path in sorted(artifacts.items())}
 
@@ -439,6 +447,11 @@ def load_bundle(
         support=support,
         calibrator=calibrator,
         model_card=(directory / _CARD_FILE).read_text(encoding="utf-8"),
+        training_report=(
+            json.loads((directory / _REPORT_FILE).read_text(encoding="utf-8"))
+            if (directory / _REPORT_FILE).is_file()
+            else None
+        ),
         library_versions=dict(payload.get("library_versions") or {}),
         promotion_policy=manifest.promotion_policy,
         baseline_identity=str(payload.get("baseline_identity") or baseline_identity),
@@ -454,8 +467,18 @@ def default_model_card(
     continuation_controller: str | None,
     training_status: str,
     limitations: tuple[str, ...] = (),
+    architecture_markdown: str | None = None,
+    observed_metrics: tuple[str, ...] = (),
+    training_code_revision: str | None = None,
+    training_data_hash: str | None = None,
 ) -> str:
-    """A model card that states what the bundle is and is not."""
+    """A model card that states what the bundle is and is not.
+
+    ``architecture_markdown`` and ``observed_metrics`` are rendered verbatim.
+    Both sections state their own absence when nothing was supplied, because a
+    card missing its parameter count or its measured losses is a card a reader
+    would otherwise fill in optimistically.
+    """
     lines = [
         f"# Model card — {bundle_id}",
         "",
@@ -471,10 +494,29 @@ def default_model_card(
         f"- Rule family: `{rule_family}`",
         f"- Reward revision: `{reward_revision}`",
         f"- Continuation controller: `{continuation_controller or 'none'}`",
+        f"- Training code revision: `{training_code_revision or 'not recorded'}`",
+        f"- Training data hash: `{training_data_hash or 'not recorded'}`",
         "",
         "## Training status",
         "",
         training_status,
+        "",
+        "## Architecture and trainable parameters",
+        "",
+        architecture_markdown
+        or (
+            "No architecture was described and no parameter count was recorded for this "
+            "bundle, which is itself a defect."
+        ),
+        "",
+        "## Observed metrics",
+        "",
+        "Every value below was recorded by the run that produced these weights. A metric that",
+        "is absent is stated as absent and is never replaced by a target or a typical value.",
+        "",
+    ]
+    lines.extend(observed_metrics or ("- No metric was recorded, which is itself a defect.",))
+    lines += [
         "",
         "## Intended use",
         "",

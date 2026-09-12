@@ -47,10 +47,34 @@
   min-width: 0;
 }
 
+/* A flush tile column: adjacent panels share a hairline instead of sitting
+   in gapped cards, so the stack reads as one bordered instrument strip. */
 .stack {
   display: grid;
-  gap: var(--s4);
+  gap: 0;
   min-width: 0;
+}
+
+/* !important: a child panel's own radius (primitives.module.css `.panel`) has
+   equal selector specificity, and cross-module cascade order isn't something
+   this rule can rely on. */
+.stack > * {
+  border-radius: 0 !important;
+  min-width: 0;
+}
+
+.stack > *:not(:first-child) {
+  margin-top: -1px;
+}
+
+.stack > *:first-child {
+  border-top-left-radius: var(--radius) !important;
+  border-top-right-radius: var(--radius) !important;
+}
+
+.stack > *:last-child {
+  border-bottom-left-radius: var(--radius) !important;
+  border-bottom-right-radius: var(--radius) !important;
 }
 
 .decisionFlow,
@@ -67,8 +91,8 @@
 
 .decisionFlow li,
 .labFlow li {
-  min-height: 48px;
-  padding: var(--s2) var(--s3);
+  min-height: 36px;
+  padding: var(--s1) var(--s3);
   border-left: 1px solid var(--rule);
   display: flex;
   align-items: center;
@@ -127,14 +151,44 @@
 
 .inspectorColumn {
   position: sticky;
-  top: 62px;
+  top: 44px;
 }
 
+/* A deterministic 2-column flush tile grid: works for a 2-item row (one
+   merged seam) and a 4-item row (a 2x2 tile block with both seams merged)
+   with the same rule, since the seam only depends on column/row parity. */
 .rowPair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-  gap: var(--s4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
   min-width: 0;
+}
+
+.rowPair > * {
+  border-radius: 0 !important;
+  min-width: 0;
+}
+
+.rowPair > *:nth-child(2n) {
+  margin-left: -1px;
+}
+
+.rowPair > *:nth-child(n + 3) {
+  margin-top: -1px;
+}
+
+@media (max-width: 700px) {
+  .rowPair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rowPair > *:nth-child(2n) {
+    margin-left: 0;
+  }
+
+  .rowPair > *:not(:first-child) {
+    margin-top: -1px;
+  }
 }
 
 /* --------------------------------------------------------- the instruction */

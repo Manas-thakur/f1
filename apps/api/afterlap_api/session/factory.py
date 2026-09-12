@@ -25,7 +25,6 @@ from afterlap_contracts import (
     ModelManifest,
     SessionManifest,
     SessionMode,
-    TrackReadiness,
 )
 from afterlap_core.config import load_config
 from afterlap_core.feature_manifest import ENERGY_V1
@@ -35,7 +34,7 @@ from afterlap_core.simulation import ScenarioBundle, load_bundle
 from afterlap_core.simulation.config import ScenarioConfig, load_car, load_scenario, load_track
 
 from ..db import LifecycleError
-from .baseline_planner import BaselinePlanner, Planner
+from .baseline_planner import BASELINE_IDENTITY
 from .circuit import (
     CircuitIdentity,
     describe_track,
@@ -43,8 +42,10 @@ from .circuit import (
     resolve_event,
     resolve_track_package,
 )
+from .learned_planner import build_learned_planner
+from .model_registry import ModelRegistry, discover_bundles, load_prediction_service
 from .observation_source import relational_channels_for, simulator_session_capability
-from .runtime import InProcessSessionRuntime, RuntimeConfig, default_runtime_config
+from .runtime import InProcessSessionRuntime, Planner, RuntimeConfig, default_runtime_config
 
 if TYPE_CHECKING:
     from afterlap_contracts.requests import CreateSessionRequest
@@ -292,11 +293,7 @@ def build_manifest(
         event_id=None if circuit is None else circuit.event_id,
         track_package_hash=None if circuit is None else circuit.track_package_hash,
         event_package_hash=None if circuit is None else circuit.event_package_hash,
-        track_readiness=None
-        if circuit is None
-        else TrackReadiness(circuit.track_readiness)
-        if circuit.track_readiness is not None
-        else None,
+        track_readiness=None if circuit is None else circuit.track_readiness,
         geometry_provenance=None if circuit is None else circuit.geometry_provenance,
         conditions_id=None if circuit is None else circuit.conditions_id,
         conditions_hash=None if circuit is None else circuit.conditions_hash,
@@ -315,13 +312,61 @@ class SessionFactory:
         model_bundles: dict[str, ModelManifest] | None = None,
         objective_id: str = DEFAULT_OBJECTIVE_ID,
         config: RuntimeConfig | None = None,
+        registry: ModelRegistry | None = None,
+        discover_models: bool = True,
     ) -> None:
         self._paths = paths
-        self._planner = planner or BaselinePlanner()
+        self._planner = planner
         self._recorder_factory = recorder_factory
-        self._model_bundles = model_bundles or {}
         self._objective_id = objective_id
         self._config = config
+        self._registry = registry
+        if self._registry is None and discover_models:
+            self._registry = discover_bundles(paths)
+        self._model_bundles = dict(model_bundles or {})
+        if not self._model_bundles and self._registry is not None:
+            self._model_bundles = self._registry.manifests
+
+    @property
+    def registry(self) -> ModelRegistry | None:
+        """What the artefact tree offered, including what it refused and why."""
+        return self._registry
+
+    def _planner_for(
+        self, artefacts: ResolvedArtefacts, config: RuntimeConfig, session_id: str, seed: int
+    ) -> tuple[Planner, tuple[str, ...]]:
+        """One planner per session, because a learned planner carries session state.
+
+        An explicitly supplied planner is used unchanged -- that is how a test
+        or an operator pins a known planner -- and is the only path that reuses
+        one instance across sessions. Otherwise the real MPC planner is built
+        for this session's own scenario, with the learned model attached only
+        when an approved bundle is pinned for it.
+        """
+        if self._planner is not None:
+            return self._planner, ()
+        directory = (
+            None
+            if self._registry is None
+            else self._registry.directory_for(None if artefacts.model is None else artefacts.model.id)
+        )
+        service, reason = load_prediction_service(
+            directory,
+            expected_rule_family=artefacts.pack.manifest.ruleset_id,
+            expected_reward_revision=artefacts.objective_id,
+            baseline_identity=BASELINE_IDENTITY,
+        )
+        planner, note = build_learned_planner(
+            bundle=artefacts.bundle,
+            pack=artefacts.pack,
+            session_id=session_id,
+            prediction=service,
+            seed=seed,
+            plan_validity_s=config.recommendation_validity_s,
+            rollout_enabled=config.planner_rollout_enabled,
+        )
+        notes = tuple(item for item in (reason, note) if item)
+        return planner, notes
 
     @property
     def paths(self) -> Paths | None:
@@ -391,15 +436,17 @@ class SessionFactory:
         recorder: SessionRecorder | None = None
         if self._recorder_factory is not None:
             recorder = self._recorder_factory(manifest.id)
+        planner, planner_notes = self._planner_for(artefacts, config, manifest.id, payload.seed)
         runtime = InProcessSessionRuntime(
             bundle=artefacts.bundle,
             pack=artefacts.pack,
-            planner=self._planner,
+            planner=planner,
             config=config,
             recorder=recorder,
             model_bundle=artefacts.model,
             objective_version=artefacts.objective_id,
             expected_feature_hash=ENERGY_V1.content_hash(),
+            planner_notes=planner_notes,
         )
         runtime.initialise(manifest, artefacts.bundle.scenario.id, payload.seed)
         return runtime
