@@ -39,21 +39,55 @@ test('motion interpolates continuously without easing at each received point', (
   expect(motion.sample(5000).get('car-01')?.progress).toBe(40);
 });
 
-test('motion crosses the finish line forwards and resets immediately on pause and restore', () => {
+test('motion crosses the finish line forwards, settles into a pause and restores immediately', () => {
   const motion = new RaceMotion();
   motion.push(frame(1, 995), 0);
   motion.push(frame(1.1, 1005), 150);
   expect(motion.sample(450).get('car-01')?.progress).toBeCloseTo(1000);
   motion.push(frame(1.1, 1005, 'paused'), 460);
-  expect(motion.sample(460).get('car-01')?.progress).toBe(1005);
-  motion.push(frame(0, 5, 'paused', 2), 500);
-  expect(motion.sample(500).get('car-01')?.progress).toBe(5);
+  expect(motion.sample(460).get('car-01')?.progress).toBeLessThan(1001);
+  expect(motion.sample(3000).get('car-01')?.progress).toBe(1005);
+  motion.push(frame(0, 5, 'paused', 2), 3100);
+  expect(motion.sample(3100).get('car-01')?.progress).toBe(5);
   const unknown = frame(0.1, 0, 'paused', 2);
   for (const car of unknown.cars) {
     car.channels = {};
   }
-  motion.push(unknown, 600);
-  expect(motion.sample(600).size).toBe(0);
+  motion.push(unknown, 3200);
+  expect(motion.sample(3200).size).toBe(0);
+});
+
+test('pausing drains the observation buffer instead of teleporting the view forward', () => {
+  const motion = new RaceMotion();
+  const speed = 60;
+  let observed = 0;
+  let now = 0;
+  for (let i = 0; i < 30; i++) {
+    observed = i * 0.1;
+    const update = frame(observed, observed * speed);
+    const car = update.cars[0];
+    if (car) {
+      car.channels['speed_mps'] = speed;
+    }
+    motion.push(update, now);
+    now += 100;
+  }
+  const read = (at: number) => motion.sample(at).get('car-01')?.progress ?? NaN;
+  const running = Array.from({ length: 25 }, (_, i) => read(now - 400 + i * 16));
+  const typical = Math.max(...running.slice(1).map((position, i) => position - (running[i] ?? 0)));
+  expect(typical).toBeGreaterThan(0);
+  const halted = frame(observed, observed * speed, 'paused');
+  const car = halted.cars[0];
+  if (car) {
+    car.channels['speed_mps'] = speed;
+  }
+  const shownBeforePause = read(now);
+  motion.push(halted, now);
+  const after = [shownBeforePause, ...Array.from({ length: 120 }, (_, i) => read(now + i * 16))];
+  const steps = after.slice(1).map((position, i) => position - (after[i] ?? 0));
+  expect(Math.min(...steps)).toBeGreaterThanOrEqual(0);
+  expect(Math.max(...steps)).toBeLessThan(typical * 1.5);
+  expect(after.at(-1)).toBeCloseTo(observed * speed);
 });
 
 test('arrival jitter does not turn constant motion into packet-sized jumps', () => {

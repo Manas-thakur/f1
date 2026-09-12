@@ -4,6 +4,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 
 import { energyMode } from './energyStatus';
+import { Branding } from './Branding';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
 import { Minimap } from './Minimap';
@@ -37,6 +38,7 @@ export class RaceWorld {
   private readonly motion = new RaceMotion();
   private readonly minimap: Minimap;
   private readonly surroundings: Scenery;
+  private readonly branding: Branding;
   private mapCanvas: HTMLCanvasElement | null = null;
   private readonly lastFollowPosition = new THREE.Vector3();
   private followedCar: string | null = null;
@@ -98,6 +100,9 @@ export class RaceWorld {
     this.sun.shadow.normalBias = 0.035;
     this.scene.add(this.sun, this.sun.target);
     this.buildTrack();
+    this.branding = new Branding(map,
+      Math.min(this.renderer.capabilities.getMaxAnisotropy(), 16), () => { this.dirty = true; });
+    this.scene.add(this.branding);
     this.surroundings = new Scenery(map, profile, () => { this.dirty = true; });
     this.scene.add(this.surroundings);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -482,12 +487,14 @@ export class RaceWorld {
     this.host.dataset['cameraTarget'] = this.controls.target.toArray().join(',');
     this.host.dataset['followedPosition'] = car?.visible ? car.position.toArray().join(',') : '';
     this.host.dataset['observedTime'] = String(this.frame?.time_s ?? 0);
+    this.host.dataset['brandingDecals'] = String(this.branding.decalCount);
   };
 
   dispose() {
     this.disposed = true;
     this.renderer.setAnimationLoop(null);
     this.resize.disconnect();
+    this.branding.dispose();
     this.surroundings.dispose();
     this.controls.dispose();
     this.renderer.domElement.removeEventListener('pointerdown', this.pointerDown);

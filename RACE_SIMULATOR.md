@@ -41,6 +41,16 @@ Crowdflow's outlines are SVG artwork normalized into a synthetic coordinate fram
 
 The corridor is an explicitly assumed constant 12 metres. Elevation is assumed flat. The first point is an assumed timing origin. These choices enable local footprint and finish tests but cannot establish real-world passing clearance. Surveyed geometry and separately validated event constraints are required before making real-circuit accuracy claims.
 
+## Trackside branding
+
+The run-off strip either side of the racing surface carries painted sponsor decals. Each decal is cut from the same cubic spline the racing surface uses, sampled at equal arc length along the strip centreline, so a logo bends and stretches with the corner it occupies instead of floating over it as a flat quad. Decals sit 3.7 metres across the 4-metre run-off, up to 30 metres long, and are oriented with the artwork's top edge facing the circuit, the reading direction real painted trackside advertising uses.
+
+Where a corner is tighter than the strip offset the swept quad would fold back on itself. The builder measures each sub-quad's inner and outer edge and drops the whole decal when an edge collapses, reverses or stretches past roughly twice its opposite, so no circuit shows a folded logo. Decals for one slot merge into a single mesh, giving one draw call per sponsor.
+
+Slots are declared in `apps/web/src/features/race/sponsors.ts` and read artwork from [apps/web/public/race-assets/branding](apps/web/public/race-assets/branding). A slot with no file, or an unreadable one, falls back to a wordmark drawn from its label. This repository ships no artwork; files placed there are supplied by the operator.
+
+Branding is decoration on the rendered scene. It carries no simulator state, is not observed by any controller, and does not affect physics, classification or exported telemetry.
+
 ## Physics
 
 Internal units are metres, seconds, kilograms, joules, watts and kelvin. Display conversions happen at the frontend. Speed and acceleration are consequences of force integration, not independently randomized every frame. Seeded car differences include mass, correlated drag/downforce setup, engine power map, low-speed tractive-force ceiling, initial speed and battery charge. Persistent driver traits use independent named streams. The baseline, mild, training and stress presets control variation, with explicit synthetic provenance.
