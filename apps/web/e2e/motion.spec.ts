@@ -27,7 +27,8 @@ function frame(time: number, progress: number, status = 'running', generation = 
       qualifying_position: 1, storyline: 'natural', classified: false,
       regulation_status: 'running', points: 0,
       tyres: { compound: 'medium', condition: 1, grip: 1, sidewall: '#f0c438', phase: 'track',
-        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, box_progress_m: 0,
+        release_waiting: false, stops: 0,
         used_compounds: ['medium'], visual_lateral_m: 0 } }],
   };
 }
@@ -165,7 +166,8 @@ test('buffer fills before playback and all cars share the same render time', () 
       qualifying_position: 2, storyline: 'natural', classified: false,
       regulation_status: 'running', points: 0,
       tyres: { compound: 'hard', condition: 1, grip: 0.97, sidewall: '#f2f2ed', phase: 'track',
-        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, box_progress_m: 0,
+        release_waiting: false, stops: 0,
         used_compounds: ['hard'], visual_lateral_m: 0 },
       channels: { progress_m: i * 10 - 6, lateral_d_m: 0 } });
     motion.push(update, i * 150);

@@ -39,6 +39,7 @@ export function Circuit() {
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const mapId = frame?.circuit_map.id;
+  const pitCars = frame?.cars.filter((item) => item.tyres.phase !== 'track') ?? [];
 
   useEffect(() => {
     const element = toolbar.current;
@@ -214,13 +215,29 @@ export function Circuit() {
           <span>{frame ? `${(frame.settings.temperature_k - 273.15).toFixed(0)}°C` : 'N/A'}</span>
           <span>WIND {frame ? Math.abs(frame.settings.wind_mps).toFixed(1) : 'N/A'} M/S</span>
         </div>
-        {car && car.tyres.phase !== 'track' && <div className={styles.pitOverlay} role="status">
-          <small>PIT LANE · {car?.tyres.phase.toUpperCase()}</small>
-          <strong>{car?.tyres.phase === 'service'
-            ? `${car.tyres.service_remaining_s.toFixed(1)}s`
-            : car?.tyres.phase === 'entry' ? 'BOX THIS LAP' : 'REJOINING'}</strong>
-          <span>{car?.tyres.compound.toUpperCase()} → {car?.tyres.phase === 'exit'
-             ? car.tyres.compound.toUpperCase() : 'NEW SET'}</span>
+        {pitCars.length > 0 && <div className={styles.pitOverlay} role="status">
+          <div className={styles.pitHeader}>
+            <small>PIT CONTROL</small>
+            <span>{pitCars.length} ACTIVE</span>
+          </div>
+          <div className={styles.pitStatusList}>
+            {pitCars.slice(0, 5).map((pitCar) => {
+              const boxNumber = Number.parseInt(pitCar.id.split('-').at(-1) ?? '0', 10);
+              const phase = pitCar.tyres.phase === 'entry'
+                ? `BOX ${boxNumber} · APPROACH`
+                : pitCar.tyres.phase === 'service'
+                  ? `${pitCar.tyres.service_remaining_s.toFixed(1)}S · SERVICE`
+                  : pitCar.tyres.release_waiting
+                    ? `BOX ${boxNumber} · HOLD`
+                    : 'PIT EXIT · REJOINING';
+              return <div className={styles.pitStatus} key={pitCar.id}
+                data-selected={pitCar.id === selected}>
+                <strong>{pitCar.id.toUpperCase()}</strong>
+                <span>{phase}</span>
+                <small>{pitCar.tyres.compound.toUpperCase()}</small>
+              </div>;
+            })}
+          </div>
         </div>}
         {classification && <Classification />}
         {(connectionError ?? frame?.failure ?? !connected) && <div className={styles.connectionAlert} role="status">

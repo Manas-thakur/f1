@@ -70,6 +70,8 @@ export interface RaceCar {
     requested: boolean;
     service_duration_s: number;
     service_remaining_s: number;
+    box_progress_m: number;
+    release_waiting: boolean;
     stops: number;
     used_compounds: ('hard' | 'medium' | 'soft')[];
     visual_lateral_m: number;
