@@ -320,3 +320,16 @@ def test_close_grid_does_not_merge_into_approaching_car():
     )
     session.advance(3)
     assert session.failure is None
+
+
+def test_initially_close_pair_records_overlap_without_prior_attempt_band_entry():
+    session = RaceSession(RaceSettings(cars=2))
+    sim = session.simulator
+    a, b = sim.world.cars.values()
+    b.progress_m = a.progress_m - 2
+    b.s_m = b.progress_m % session.track.length
+    events = sim.detect_geometry_events()
+    overlap = [event for event in events if event.kind == "longitudinal_overlap"]
+    assert len(overlap) == 1
+    assert overlap[0].overtaking_car_id == b.car_id
+    assert sim.detect_geometry_events() == []

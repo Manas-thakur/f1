@@ -905,7 +905,7 @@ class Simulator:
                     pair.label = "contesting"
 
             if (
-                pair.attempted
+                pair.label != "ahead"
                 and not pair.overlapped
                 and abs(delta) < clearance
                 and not self._overlapping(a, b)

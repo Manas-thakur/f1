@@ -42,7 +42,7 @@ The new reset distributions change actual field trajectories; the throughput com
 
 Generation produced a five-second two-car JSONL dataset with the action mapping, model hash, resolved parameters and masks. A real CPU PPO smoke run collected 128 transitions, optimized, wrote a policy plus sidecar, and successfully reloaded it for evaluation. The evaluation episode was truncated at its eight-second limit. This establishes integration only. It does not establish useful energy strategy or driving skill.
 
-`make race-check` passes 94 tests plus format, lint, strict types, comment checks and frontend checks. `make race-browser-check` passes both live-controls and forwarded-connection tests using isolated ports 18860/18861. The new preset is exercised. `bun run build` passes. Browser rendering logic is unchanged apart from the preset selector; no renderer FPS improvement is claimed or benchmarked. The PR's checks tab is the authoritative remote CI status for its latest commit.
+`make race-check` passes 95 tests plus format, lint, strict types, comment checks and frontend checks. `make race-browser-check` passes both live-controls and forwarded-connection tests using isolated ports 18860/18861. The new preset is exercised. `bun run build` passes. Browser rendering logic is unchanged apart from the preset selector; no renderer FPS improvement is claimed or benchmarked. The PR's checks tab is the authoritative remote CI status for its latest commit.
 
 ## Reproduce and extend
 
