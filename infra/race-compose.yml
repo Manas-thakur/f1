@@ -1,0 +1,30 @@
+name: afterlap-race
+services:
+  simulator:
+    build:
+      context: ..
+      dockerfile: infra/race.Dockerfile
+      target: simulator
+    command: ["python", "scripts/race.py", "serve", "--host", "0.0.0.0"]
+    ports: ["127.0.0.1:18761:18761"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1',18761),2).close()"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
+  web:
+    build:
+      context: ..
+      dockerfile: infra/race.Dockerfile
+      target: web
+    ports: ["127.0.0.1:18760:18760"]
+    depends_on:
+      simulator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:18760/race').then(r=>process.exit(r.ok?0:1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
