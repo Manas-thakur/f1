@@ -24,6 +24,15 @@ from .storyline import StorylineDirector
 from .tyres import TyreState, sample_compound
 from .variability import RaceWeather
 
+PIT_ENTRY_OFFSET_M = 350.0
+PIT_LANE_START_OFFSET_M = 250.0
+PIT_BOX_LAST_OFFSET_M = 42.0
+PIT_BOX_SPACING_M = 9.0
+PIT_TRANSIT_LATERAL_M = -10.5
+PIT_BOX_LATERAL_M = -15.0
+PIT_RELEASE_CLEARANCE_M = 14.0
+PIT_EXIT_DISTANCE_M = 220.0
+
 
 class RaceSession:
     def __init__(self, settings: RaceSettings | None = None) -> None:
@@ -159,16 +168,17 @@ class RaceSession:
             self.events.append(asdict(event))
         if tyre.phase == "entry":
             state = self.simulator.world.cars[car_id]
-            box_s = self._pit_box_s(car_id)
             limit = self.regulations.pit_lane_speed_limit_mps
             if state.s_m < self._pit_lane_start_s:
                 distance = self._pit_lane_start_s - state.s_m
                 braking_distance = max(0, state.speed_mps**2 - limit**2) / 24 + 5
                 ceiling = -12 if distance <= braking_distance else 3
             else:
-                distance = max(0, box_s - state.s_m)
-                stop_distance = state.speed_mps**2 / 24 + 5
-                ceiling = -12 if distance <= stop_distance else (0 if state.speed_mps <= limit else -4)
+                distance = tyre.box_progress_m - state.progress_m
+                target_speed = min(limit, math.sqrt(max(0, 8 * max(0, distance - 0.35))))
+                ceiling = max(-12, min(2.5, (target_speed - state.speed_mps) / 0.4))
+                if self._pit_transit_blocked(car_id):
+                    ceiling = -15
             action = replace(
                 action,
                 profile=DeploymentProfile.HARVEST,
@@ -177,12 +187,10 @@ class RaceSession:
                 label="pit_entry",
             )
         elif tyre.phase == "exit":
-            action = replace(
-                action,
-                pace_scale=min(0.9, action.pace_scale),
-                acceleration_ceiling_mps2=min(3, action.acceleration_ceiling_mps2 or 3),
-                label="pit_exit",
-            )
+            if tyre.release_waiting:
+                action = self._pit_hold_action(car_id, "pit_release_wait")
+            else:
+                action = self._pit_launch_action(car_id)
         else:
             action, event = self.storyline.direct(car_id, observation, action)
             if event is not None:
@@ -200,27 +208,84 @@ class RaceSession:
 
     def _pit_box_s(self, car_id: str) -> float:
         index = int(car_id.rsplit("-", maxsplit=1)[-1]) - 1
-        return self.track.length - 42 - index * 5.5
+        return self.track.length - PIT_BOX_LAST_OFFSET_M - index * PIT_BOX_SPACING_M
 
     @property
     def _pit_lane_start_s(self) -> float:
-        return self.track.length - 250
+        return self.track.length - PIT_LANE_START_OFFSET_M
+
+    def _pit_hold_action(self, car_id: str, label: str) -> DriverAction:
+        return DriverAction(
+            profile=DeploymentProfile.HARVEST,
+            pace_scale=0.7,
+            target_lateral_d_m=self.drivers[car_id].lane,
+            acceleration_ceiling_mps2=-15,
+            brake_floor=1,
+            label=label,
+        )
+
+    def _pit_launch_action(self, car_id: str) -> DriverAction:
+        return DriverAction(
+            profile=DeploymentProfile.CONSERVE,
+            pace_scale=0.8,
+            target_lateral_d_m=self.drivers[car_id].lane,
+            acceleration_ceiling_mps2=3,
+            label="pit_exit",
+        )
+
+    def _apply_pit_action(self, car_id: str, action: DriverAction) -> None:
+        world = self.simulator.world
+        world.action_queues[car_id].clear()
+        world.active_actions[car_id] = action
+        state = world.cars[car_id]
+        state.pending_profile = None
+        state.pending_apply_time_s = None
+        state.active_profile = action.profile
+
+    def _pit_transit_blocked(self, car_id: str) -> bool:
+        own = self.simulator.world.cars[car_id]
+        for other_id, other in self.simulator.world.cars.items():
+            if other_id == car_id or self.tyres[other_id].phase not in {"entry", "exit"}:
+                continue
+            gap = other.progress_m - own.progress_m
+            if 0 < gap < PIT_RELEASE_CLEARANCE_M and not self.tyres[other_id].release_waiting:
+                return True
+        return False
+
+    def _pit_release_clear(self, car_id: str) -> bool:
+        own = self.simulator.world.cars[car_id]
+        for other_id, other in self.simulator.world.cars.items():
+            if other_id == car_id or self.tyres[other_id].phase not in {"entry", "exit"}:
+                continue
+            gap = other.progress_m - own.progress_m
+            other_waiting = self.tyres[other_id].release_waiting
+            if other_waiting and 0 < gap < PIT_RELEASE_CLEARANCE_M:
+                return False
+            if not other_waiting and abs(gap) < PIT_RELEASE_CLEARANCE_M:
+                return False
+        return True
 
     def _visual_lateral(self, car_id: str) -> float:
         tyre = self.tyres[car_id]
         state = self.simulator.world.cars[car_id]
         track_lateral = state.lateral_d_m
-        pit_lateral = -13.0
         if tyre.phase == "entry":
-            start = self.track.length - 350
-            ratio = min(1, max(0, (state.s_m - start) / max(1, self._pit_box_s(car_id) - start)))
-            return track_lateral + (pit_lateral - track_lateral) * ratio
+            start = self.track.length - PIT_ENTRY_OFFSET_M
+            lane_ratio = min(1, max(0, (state.s_m - start) / 80))
+            transit = track_lateral + (PIT_TRANSIT_LATERAL_M - track_lateral) * lane_ratio
+            box_ratio = min(1, max(0, 1 - (tyre.box_progress_m - state.progress_m) / 20))
+            return transit + (PIT_BOX_LATERAL_M - transit) * box_ratio
         if tyre.phase == "service":
-            return pit_lateral
+            return PIT_BOX_LATERAL_M
         if tyre.phase == "exit":
+            if tyre.release_waiting:
+                return PIT_BOX_LATERAL_M
             remaining = max(0, tyre.exit_after_progress_m - state.progress_m)
-            ratio = min(1, remaining / 220)
-            return track_lateral + (pit_lateral - track_lateral) * ratio
+            travelled = max(0, PIT_EXIT_DISTANCE_M - remaining)
+            box_ratio = min(1, travelled / 18)
+            pit_lateral = PIT_BOX_LATERAL_M + (PIT_TRANSIT_LATERAL_M - PIT_BOX_LATERAL_M) * box_ratio
+            track_ratio = min(1, max(0, (travelled - 18) / (PIT_EXIT_DISTANCE_M - 18)))
+            return pit_lateral + (track_lateral - pit_lateral) * track_ratio
         return track_lateral
 
     def _update_tyres(self, h: float) -> None:
@@ -255,12 +320,27 @@ class RaceSession:
                         "session_time_s": now,
                     }
                 )
-            if tyre.phase == "track" and tyre.requested and state.s_m >= self.track.length - 350:
+            if (
+                tyre.phase == "track"
+                and tyre.requested
+                and state.s_m >= self.track.length - PIT_ENTRY_OFFSET_M
+            ):
                 tyre.phase = "entry"
+                tyre.box_progress_m = state.progress_m - state.s_m + self._pit_box_s(car_id)
                 self.events.append({"kind": "pit_entry", "car_id": car_id, "session_time_s": now})
-            elif tyre.phase == "entry" and state.speed_mps <= 0.25:
+            elif (
+                tyre.phase == "entry"
+                and state.progress_m >= tyre.box_progress_m - 0.75
+                and state.speed_mps <= 1
+            ):
+                state.progress_m = tyre.box_progress_m
+                state.s_m = self._pit_box_s(car_id)
+                state.lap = math.floor(state.progress_m / self.track.length)
+                state.speed_mps = 0
+                state.acceleration_mps2 = 0
                 tyre.phase = "service"
                 tyre.service_remaining_s = tyre.service_duration_s
+                self._apply_pit_action(car_id, self._pit_hold_action(car_id, "pit_service"))
                 self.events.append(
                     {
                         "kind": "pit_service_started",
@@ -282,7 +362,7 @@ class RaceSession:
                     tyre.service_duration_s = float(rng.uniform(2, 3))
                     tyre.requested = False
                     tyre.phase = "exit"
-                    tyre.exit_after_progress_m = state.progress_m + 220
+                    tyre.release_waiting = True
                     tyre.stops += 1
                     state.tyre_grip_multiplier = tyre.grip
                     self.events.append(
@@ -293,11 +373,22 @@ class RaceSession:
                             "session_time_s": now,
                         }
                     )
-            elif tyre.phase == "exit" and state.progress_m >= tyre.exit_after_progress_m:
-                tyre.phase = "track"
-                if tyre.compound not in tyre.used_compounds:
-                    tyre.used_compounds.append(tyre.compound)
-                self.events.append({"kind": "pit_exit", "car_id": car_id, "session_time_s": now})
+            elif tyre.phase == "exit":
+                if tyre.release_waiting and self._pit_release_clear(car_id):
+                    tyre.release_waiting = False
+                    tyre.exit_after_progress_m = state.progress_m + PIT_EXIT_DISTANCE_M
+                    self.drivers[car_id].acceleration = 3
+                    self._apply_pit_action(car_id, self._pit_launch_action(car_id))
+                    self.events.append(
+                        {"kind": "pit_release", "car_id": car_id, "session_time_s": now}
+                    )
+                elif not tyre.release_waiting and state.progress_m >= tyre.exit_after_progress_m:
+                    tyre.phase = "track"
+                    if tyre.compound not in tyre.used_compounds:
+                        tyre.used_compounds.append(tyre.compound)
+                    self.events.append(
+                        {"kind": "pit_exit", "car_id": car_id, "session_time_s": now}
+                    )
 
             if (
                 tyre.phase in {"entry", "service", "exit"}
