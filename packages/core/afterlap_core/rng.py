@@ -26,7 +26,7 @@ def derive_seed(*parts: Any) -> int:
     """
     payload = "\x1f".join(repr(p) for p in parts).encode("utf-8")
     digest = hashlib.blake2b(payload, digest_size=8).digest()
-    return struct.unpack("<Q", digest)[0] & _MASK64
+    return int(struct.unpack("<Q", digest)[0] & _MASK64)
 
 
 @dataclass(frozen=True, slots=True)

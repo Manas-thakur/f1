@@ -201,8 +201,6 @@ class MetricsCallback(BaseCallback):
     def _on_rollout_end(self) -> None:
         summary = self.metrics.summary()
         logger = self.logger
-        if logger is None:  # pragma: no cover - SB3 always sets one
-            return
         values = getattr(logger, "name_to_value", {})
         for key in self.TRACKED_LOSSES:
             value = values.get(key)
@@ -223,8 +221,6 @@ class NonFiniteLossGuard(BaseCallback):
 
     def _on_step(self) -> bool:
         logger = self.logger
-        if logger is None:  # pragma: no cover
-            return True
         values = getattr(logger, "name_to_value", {})
         for key in self.WATCHED:
             value = values.get(key)

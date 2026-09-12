@@ -53,7 +53,7 @@ class Settings:
             port=int(os.environ.get("AFTERLAP_PORT", "8000")),
             development_mode=development,
             artifact_root=None if artifact_root is None else Path(artifact_root),
-            session_runtime_backend=backend,
+            session_runtime_backend="process" if backend == "process" else "in_process",
             session_queue_size=int(os.environ.get("AFTERLAP_SESSION_QUEUE_SIZE", "32")),
             session_command_timeout_s=float(os.environ.get("AFTERLAP_SESSION_COMMAND_TIMEOUT_S", "30")),
         )
@@ -85,6 +85,8 @@ class Database:
 
 
 def operator_from_headers(settings: Settings, headers: Headers) -> str:
+    if not settings.development_mode:
+        return settings.bootstrap_operator()
     supplied = headers.get("x-operator-id")
     if supplied:
         return supplied
@@ -93,8 +95,10 @@ def operator_from_headers(settings: Settings, headers: Headers) -> str:
 
 def require_idempotency(headers: Headers) -> str:
     key = headers.get("idempotency-key")
-    if not key:
-        raise LifecycleError(ErrorCode.VALIDATION_FAILED, "this route requires an Idempotency-Key header")
+    if not key or len(key) > 128 or not key.isascii() or not all(32 < ord(char) < 127 for char in key):
+        raise LifecycleError(
+            ErrorCode.VALIDATION_FAILED, "Idempotency-Key must contain 1 to 128 visible ASCII characters"
+        )
     return key
 
 

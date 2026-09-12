@@ -26,7 +26,13 @@ members = [
     "apps/api",
 ]
 
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
 afterlap-application = { workspace = true }
 afterlap-contracts = { workspace = true }
 afterlap-core = { workspace = true }
@@ -145,11 +151,6 @@ ignore = [
     "PTH105",
     "SLF001",
     "PLW0603",
-    "PLR0124",
-    "PLR0911",
-    "PLR0912",
-    "PLR0915",
-    "C901",
     "TRY300",
     "TRY004",
     "PT012",
@@ -179,6 +180,13 @@ max-returns = 12
 max-statements = 120
 
 [tool.ruff.lint.per-file-ignores]
+"apps/api/afterlap_api/router.py" = ["PLR0912"]
+"packages/application/afterlap_application/process_runtime.py" = ["PLR0911"]
+"packages/contracts/afterlap_contracts/schema_export.py" = ["PLR0911"]
+"packages/core/afterlap_core/learning/promotion.py" = ["PLR0912"]
+"packages/core/afterlap_core/tracks/compile.py" = ["PLR0912"]
+"scripts/acceptance_real_circuit.py" = ["PLR0915"]
+"tests/backend/test_vertical_slice.py" = ["PLR0915"]
 "packages/core/afterlap_core/paths.py" = ["SIM115"]
 "tests/**/*.py" = ["S101", "PLR2004", "ANN001", "ANN201", "ANN202", "ANN002", "ANN003", "ANN204", "PT018", "PT011", "E402"]
 "scripts/**/*.py" = ["T201"]
@@ -240,8 +248,7 @@ module = [
     "scipy.*",
     "torch",
     "torch.*",
-    "afterlap_core.runner",
-]
+    ]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -251,26 +258,6 @@ disable_error_code = ["arg-type", "return-value", "no-any-return"]
 [[tool.mypy.overrides]]
 module = ["demo", "release_bundle", "batch_worker_main", "doctor", "migrate", "afterlap_ops.*", "batch_worker", "session_worker"]
 ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = ["afterlap_core.*", "afterlap_api.*"]
-disable_error_code = [
-    "arg-type",
-    "attr-defined",
-    "union-attr",
-    "no-any-return",
-    "operator",
-    "type-arg",
-    "comparison-overlap",
-    "unreachable",
-    "misc",
-    "call-arg",
-    "no-untyped-call",
-    "var-annotated",
-    "index",
-    "assignment",
-    "return-value",
-]
 
 [[tool.mypy.overrides]]
 module = "tests.*"

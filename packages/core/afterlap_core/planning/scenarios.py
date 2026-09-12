@@ -21,6 +21,7 @@ robustness, and the scenario count is published with every decision.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
@@ -164,7 +165,7 @@ def _spread(scenarios: Sequence[PlanScenario]) -> float:
         return 0.0
     mean = sum(s.weight * s.rival_reserve_j for s in scenarios) / total
     variance = sum(s.weight * (s.rival_reserve_j - mean) ** 2 for s in scenarios) / total
-    return variance**0.5
+    return float(variance**0.5)
 
 
 def _energy_nodes(
@@ -279,12 +280,12 @@ def _normal_quantile(probability: float) -> float:
     d = (7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e00, 3.754408661907416e00)
     low, high = 0.02425, 1.0 - 0.02425
     if probability < low:
-        q = (-2.0 * _log(probability)) ** 0.5
+        q = math.sqrt(-2.0 * _log(probability))
         return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
             (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
         )
     if probability > high:
-        q = (-2.0 * _log(1.0 - probability)) ** 0.5
+        q = math.sqrt(-2.0 * _log(1.0 - probability))
         return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
             (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
         )

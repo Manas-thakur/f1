@@ -209,7 +209,7 @@ class CompiledTrackSource:
     def width_array(self, s_m: np.ndarray) -> np.ndarray:
         left = self._centreline._periodic(self._centreline.width_left_m, s_m)
         right = self._centreline._periodic(self._centreline.width_right_m, s_m)
-        return left + right
+        return np.asarray(left + right)
 
     def yaw_at(self, s_m: float) -> float:
         return self._centreline.yaw_at(s_m)

@@ -386,7 +386,10 @@ class LegalFixedSchedule(_LegalBaseline):
 
     def decide(self, request: ControlRequest) -> ControlDecision:
         started = time.perf_counter()
-        latency = lambda: (time.perf_counter() - started) * 1000.0  # noqa: E731
+
+        def latency() -> float:
+            return (time.perf_counter() - started) * 1000.0
+
         gated = self._gate(request, latency())
         if gated is not None:
             return gated
@@ -415,7 +418,10 @@ class LegalGreedyAttacker(_LegalBaseline):
 
     def decide(self, request: ControlRequest) -> ControlDecision:
         started = time.perf_counter()
-        latency = lambda: (time.perf_counter() - started) * 1000.0  # noqa: E731
+
+        def latency() -> float:
+            return (time.perf_counter() - started) * 1000.0
+
         gated = self._gate(request, latency())
         if gated is not None:
             return gated

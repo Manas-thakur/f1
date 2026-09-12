@@ -247,7 +247,7 @@ def sample_scenarios(
     def offsets(energy_now: np.ndarray, pace_now: np.ndarray, mode_now: np.ndarray) -> np.ndarray:
         deploy = np.clip(energy_now / reference, 0.0, 1.0)
         gain = base_speed[mode_now] + rival_context.pressure * pressure_speed[mode_now]
-        return pace_now + deploy * gain
+        return np.asarray(pace_now + deploy * gain)
 
     energy_trace[:, 0] = energy
     offset_trace[:, 0] = offsets(energy, pace, mode)

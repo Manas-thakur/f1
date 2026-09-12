@@ -32,7 +32,7 @@ import json
 import math
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import torch
@@ -168,7 +168,7 @@ class ValueMember(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.net(x).squeeze(-1)
+        return cast("torch.Tensor", self.net(x).squeeze(-1))
 
 
 @dataclass(frozen=True, slots=True)

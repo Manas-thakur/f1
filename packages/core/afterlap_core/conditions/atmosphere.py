@@ -149,7 +149,7 @@ def isa_pressure_pa(altitude_m: float) -> float:
         UNIVERSAL_GAS_CONSTANT_JPMOLK * ISA_LAPSE_RATE_KPM
     )
     base = 1.0 - ISA_LAPSE_RATE_KPM * altitude_m / ISA_SEA_LEVEL_TEMPERATURE_K
-    return ISA_SEA_LEVEL_PRESSURE_PA * base**exponent
+    return float(ISA_SEA_LEVEL_PRESSURE_PA * base**exponent)
 
 
 def isa_temperature_k(altitude_m: float) -> float:

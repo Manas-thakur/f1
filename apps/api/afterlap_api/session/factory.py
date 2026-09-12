@@ -25,6 +25,7 @@ from afterlap_contracts import (
     ModelManifest,
     SessionManifest,
     SessionMode,
+    TrackReadiness,
 )
 from afterlap_core.config import load_config
 from afterlap_core.feature_manifest import ENERGY_V1
@@ -34,7 +35,7 @@ from afterlap_core.simulation import ScenarioBundle, load_bundle
 from afterlap_core.simulation.config import ScenarioConfig, load_car, load_scenario, load_track
 
 from ..db import LifecycleError
-from .baseline_planner import BaselinePlanner
+from .baseline_planner import BaselinePlanner, Planner
 from .circuit import (
     CircuitIdentity,
     describe_track,
@@ -43,7 +44,7 @@ from .circuit import (
     resolve_track_package,
 )
 from .observation_source import relational_channels_for, simulator_session_capability
-from .runtime import InProcessSessionRuntime, Planner, RuntimeConfig, default_runtime_config
+from .runtime import InProcessSessionRuntime, RuntimeConfig, default_runtime_config
 
 if TYPE_CHECKING:
     from afterlap_contracts.requests import CreateSessionRequest
@@ -73,7 +74,7 @@ class ResolvedArtefacts:
 
     @property
     def track_hash(self) -> str:
-        return self.bundle.track.config_hash
+        return str(self.bundle.track.config_hash)
 
     @property
     def car_hashes(self) -> dict[str, str]:
@@ -291,7 +292,11 @@ def build_manifest(
         event_id=None if circuit is None else circuit.event_id,
         track_package_hash=None if circuit is None else circuit.track_package_hash,
         event_package_hash=None if circuit is None else circuit.event_package_hash,
-        track_readiness=None if circuit is None else circuit.track_readiness,
+        track_readiness=None
+        if circuit is None
+        else TrackReadiness(circuit.track_readiness)
+        if circuit.track_readiness is not None
+        else None,
         geometry_provenance=None if circuit is None else circuit.geometry_provenance,
         conditions_id=None if circuit is None else circuit.conditions_id,
         conditions_hash=None if circuit is None else circuit.conditions_hash,

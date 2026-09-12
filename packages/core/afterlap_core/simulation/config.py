@@ -102,7 +102,7 @@ class _TrackTables:
         span = self.s[index + 1] - self.s[index]
         t = np.where(span > 0.0, (s - self.s[index]) / np.where(span > 0.0, span, 1.0), 0.0)
         weight = t * t * (3.0 - 2.0 * t)
-        return table[index] + weight * (table[index + 1] - table[index])
+        return np.asarray(table[index] + weight * (table[index + 1] - table[index]))
 
     def evaluate_scalar(self, values: list[float], s_m: float) -> float:
         """Scalar fast path. Identical arithmetic to :meth:`evaluate`."""

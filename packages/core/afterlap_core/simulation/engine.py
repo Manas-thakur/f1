@@ -633,7 +633,7 @@ class Simulator:
             entry_decel = available_decel(grips[index], curvatures[index], predicted)
             decel = min(exit_decel, entry_decel)
             speed = min(limits[index], math.sqrt(speed * speed + 2.0 * decel * distance))
-        return speed
+        return float(speed)
 
     def _evaluate(
         self,

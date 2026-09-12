@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -249,7 +250,7 @@ class _BasePolicy:
         return f"sha256:{hashlib.sha256(text.encode('utf-8')).hexdigest()}"
 
     def capture(self) -> dict[str, Any]:
-        return json.loads(json.dumps(self.memory, sort_keys=True))
+        return dict(json.loads(json.dumps(self.memory, sort_keys=True)))
 
     def restore(self, memory: dict[str, Any]) -> None:
         self.memory = json.loads(json.dumps(memory, sort_keys=True))
@@ -303,7 +304,7 @@ class _BasePolicy:
         draw = float(rng.normal(0.0, 1.0))
         draw = max(-RESPONSE_JITTER_CLIP, min(RESPONSE_JITTER_CLIP, draw))
         moment = observation.observed_at_s
-        bin_index = int(moment // RESPONSE_BIN_S) if moment == moment else 0
+        bin_index = int(moment // RESPONSE_BIN_S) if math.isfinite(moment) else 0
         if self.memory.get("bias_bin") != bin_index:
             self.memory["bias_bin"] = bin_index
             self.memory["response_bias"] = draw

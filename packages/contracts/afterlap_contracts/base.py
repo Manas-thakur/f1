@@ -13,7 +13,7 @@ from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict
 
-SCHEMA_VERSION: Final[str] = "1.0"
+SCHEMA_VERSION: Final = "1.0"
 """Wire envelope schema version (DOMAIN_MODEL.md, "Version negotiation")."""
 
 CONTRACT_REVISION: Final[int] = 1

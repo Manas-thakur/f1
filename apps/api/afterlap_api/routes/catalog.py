@@ -45,6 +45,7 @@ from afterlap_contracts import (
     SourceSummary,
     TrackDetailResponse,
     TrackListResponse,
+    TrackReadiness,
     TrackSummary,
     ValidationSummary,
 )
@@ -158,7 +159,7 @@ def _summary(
         **base,
         package_present=True,
         package_hash=package.package_hash,
-        readiness=validation.status.value,
+        readiness=TrackReadiness(validation.status.value),
         geometry_provenance=package.geometry.provenance.value,
         corridor_quality=package.geometry.corridor_quality.value,
         lateral_geometry_surveyed=package.lateral_geometry_known,
@@ -261,7 +262,7 @@ async def get_track(request: Request, track_id: str) -> TrackDetailResponse:
     return TrackDetailResponse(
         track=summary,
         validation=ValidationSummary(
-            status=package.validation.status.value,
+            status=TrackReadiness(package.validation.status.value),
             closure_error_m=package.validation.closure_error_m,
             length_error_fraction=package.validation.length_error_fraction,
             official_length_m=package.validation.official_length_m,
@@ -348,7 +349,7 @@ async def get_centreline(
         track_id=track_id,
         package_hash=package.package_hash or package.content_hash(),
         arrays_sha256=package.geometry.arrays_sha256,
-        readiness=package.validation.status.value,
+        readiness=TrackReadiness(package.validation.status.value),
         geometry_provenance=package.geometry.provenance.value,
         corridor_quality=package.geometry.corridor_quality.value,
         length_m=centreline.length_m,
@@ -478,7 +479,7 @@ async def list_scenario_documents(request: Request) -> ScenarioListResponse:
                 duration_s=float(scenario.duration_s.value),
                 seed=scenario.seed,
                 real_circuit=package is not None,
-                track_readiness=None if package is None else package.validation.status.value,
+                track_readiness=None if package is None else TrackReadiness(package.validation.status.value),
                 track_package_hash=None if package is None else package.package_hash,
                 run_label=REAL_CIRCUIT_LABEL if package is not None else None,
                 unavailable_reason=unavailable,

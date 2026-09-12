@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, cast
 
 import anyio.to_thread
 from sqlalchemy import select, update
@@ -87,7 +87,7 @@ def _registry(request: Request) -> RuntimeRegistry:
         raise CapabilityUnavailable(
             "session_runtime", "no session runtime registry is attached to this process"
         )
-    return registry
+    return cast("RuntimeRegistry", registry)
 
 
 def _registry_optional(request: Request) -> RuntimeRegistry | None:

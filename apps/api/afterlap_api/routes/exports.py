@@ -27,7 +27,7 @@ import platform
 import sys
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession
@@ -98,7 +98,9 @@ def _session_row(db: OrmSession, session_id: str) -> Session:
     return row
 
 
-def build_export_body(db: OrmSession, row: Session, start_s: float | None, end_s: float | None) -> dict:
+def build_export_body(
+    db: OrmSession, row: Session, start_s: float | None, end_s: float | None
+) -> dict[str, Any]:
     """Assemble the complete record. Nothing here reads simulator truth."""
     stored = db.get(Manifest, row.manifest_hash)
     if stored is None:
@@ -266,7 +268,7 @@ def build_export_body(db: OrmSession, row: Session, start_s: float | None, end_s
     return redact_mapping(body)
 
 
-def _to_csv(body: dict) -> str:
+def _to_csv(body: dict[str, Any]) -> str:
     """Flat decision log with a units row, for a spreadsheet reader."""
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
@@ -349,7 +351,7 @@ async def create_export(
     )
 
 
-def _write(target: Path, body: dict, fmt: str) -> Path:
+def _write(target: Path, body: dict[str, Any], fmt: str) -> Path:
     if fmt == "json":
         return atomic_write_text(target, json.dumps(body, indent=2, sort_keys=True, default=str) + "\n")
     if fmt == "csv":

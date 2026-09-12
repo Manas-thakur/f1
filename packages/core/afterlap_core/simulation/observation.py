@@ -65,9 +65,9 @@ class Observation:
     car_id: str
     observed_at_s: float
     delivered_at_s: float
-    channels: MappingProxyType
-    rivals: tuple[MappingProxyType, ...]
-    context: MappingProxyType
+    channels: MappingProxyType[str, Any]
+    rivals: tuple[MappingProxyType[str, Any], ...]
+    context: MappingProxyType[str, Any]
     provenance: Provenance
     quality: Quality
 
@@ -83,14 +83,14 @@ class Observation:
             )
         return float(self.channels[channel])
 
-    def rival_ahead(self) -> MappingProxyType | None:
+    def rival_ahead(self) -> MappingProxyType[str, Any] | None:
         """The nearest rival in front, or ``None`` when there is none."""
         ahead = [rival for rival in self.rivals if rival["relative_progress_m"] > 0.0]
         if not ahead:
             return None
         return min(ahead, key=lambda rival: rival["relative_progress_m"])
 
-    def rival_behind(self) -> MappingProxyType | None:
+    def rival_behind(self) -> MappingProxyType[str, Any] | None:
         behind = [rival for rival in self.rivals if rival["relative_progress_m"] < 0.0]
         if not behind:
             return None
@@ -199,7 +199,7 @@ def observe(
             value = raw + _noise(world, target, channel, sample.session_time_s, sigmas.get(channel, 0.0))
             channels[channel] = _quantise(value, quanta.get(channel, 0.0))
 
-        rivals: list[MappingProxyType] = []
+        rivals: list[MappingProxyType[str, Any]] = []
         for other in sorted(sample.cars):
             if other == target:
                 continue
