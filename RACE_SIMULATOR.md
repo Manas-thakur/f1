@@ -149,6 +149,51 @@ For a meaningful experiment:
 
 References: [Gymnasium environment API](https://gymnasium.farama.org/api/env/), [time-limit semantics](https://gymnasium.farama.org/tutorials/gymnasium_basics/handling_time_limits/), [Stable-Baselines3 PPO](https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html), [WebSocket server API](https://websockets.readthedocs.io/en/stable/reference/asyncio/server.html).
 
+## Energy deployment decision engine
+
+The `boost-decision-v1` environment trains a separate PPO policy that selects only the battery deployment profile. Steering, braking, racing-line selection, collision handling and pit strategy remain under the simulator's automatic driver. This separation makes a recommendation safe to reject without transferring vehicle-control authority.
+
+The actor receives 76 float32 values: 38 normalized features and 38 availability masks. The feature set includes delayed own-car speed, acceleration, battery energy and temperature, recharge and deployment totals, grip and lateral position; lap and race phase; wetness, ambient temperature, wind, track grip and width; remaining time; curvature and racing-line targets at five preview distances; and relative progress, speed, gap, lateral position and absolute speed for the nearest car ahead and behind. Missing or delayed values use zero with a zero availability mask.
+
+The five discrete actions are `harvest`, `conserve`, `neutral`, `push` and `overtake`. A rules baseline and a policy-independent guard calculate boost availability, overtake opportunity, target, reward, risk and reward-to-risk ratio from the same delayed observation. The guard blocks deployment under low-energy, thermal, braking, launch or invalid-telemetry conditions even when PPO selects `push`. `overtake` is not exposed as available without event-specific FIA authorization data, so ordinary `push` is the actionable recommendation in the current simulator.
+
+Train in explicit cycles and evaluate every cycle on the same held-out seed range:
+
+```sh
+make race-train-decision CIRCUIT=monza DECISION_CARS=6 DECISION_DURATION=60 STEPS=10000 CYCLES=5 EVAL_EPISODES=3 TRAINING_OUTPUT=.afterlap/race/boost-policy
+make race-evaluate-decision CIRCUIT=monza DECISION_CARS=6 DECISION_DURATION=60 EVAL_EPISODES=10 POLICY=.afterlap/race/boost-policy
+```
+
+Training writes four artifacts:
+
+| Artifact | Purpose |
+| --- | --- |
+| `boost-policy.zip` | Final PPO policy |
+| `boost-policy.best.zip` | Best evaluation-cycle checkpoint |
+| `boost-policy.manifest.json` | Environment, feature, action, simulator and regulation contract |
+| `boost-policy.metrics.json` | Baseline, per-cycle metrics and manual-promotion status |
+
+Each cycle records requested training timesteps, cumulative optimizer epochs, mean reward and spread, improvement over baseline, mean finish position, energy deployed, passes, opportunity recall, boost action rate and failure rate. A cycle is marked improved only when its mean evaluation reward exceeds every prior cycle. A policy is only a promotion candidate when its best reward exceeds the seeded baseline and its evaluation failure rate is zero. Promotion is never automatic, because these results come from an uncalibrated simulator.
+
+Load the policy and metrics into the complete Next.js and simulator stack:
+
+```sh
+make race POLICY=.afterlap/race/boost-policy METRICS=.afterlap/race/boost-policy.metrics.json
+```
+
+The dashboard shows the live source, confidence, recommended mode, availability, target, gap, risk, reward, ratio, cycle graph and evaluation metrics. Both the dashboard and hardware-oriented CLI use the Next.js `/race/socket` WebSocket path. They do not connect directly to the Python simulator.
+
+```sh
+make race-status
+make race-boost
+make race-boost-off
+uv run python scripts/race_control.py boost --car car-02 --url ws://127.0.0.1:18760/race/socket
+```
+
+`boost` is accepted only when the current guarded recommendation for that car can be applied. `boost-off` returns the car to automatic deployment. The WebSocket response is an acknowledgement or an error with the caller's command ID, which lets a physical button controller distinguish a successful activation from a stale or unsafe request.
+
+The implementation follows the published 2026 limits in [FIA Formula 1 Technical Regulations, Section C, Issue 20](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_c_technical_-_iss_20_-_2026-08-05.pdf) and the Overtake control rules in [FIA Formula 1 Sporting Regulations, Section B, Issue 08](https://www.fia.com/system/files/documents/fia_2026_f1_regulations_-_section_b_sporting_-_iss_08_-_2026-08-05_7.pdf). The modeled guard uses the published 350 kW ERS-K maximum, 4 MJ usable energy-store window and 8.5 MJ per-lap recharge ceiling. The FIA supplies Detection Gap, Detection Line and Activation Line parameters per competition, so those parameters must be added from an official event document before the simulator can claim event-valid Overtake activation.
+
 ## Verification
 
 `make race-check` runs race and numerical tests, targeted Python lint/types, and frontend lint/types. `make race-browser-check` starts an isolated app on ports 18860/18861 and refuses to reuse another server and exercises its live controls in Chromium. `bun run build` checks the complete Next.js production build.

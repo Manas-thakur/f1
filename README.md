@@ -62,11 +62,17 @@ For browser tests against a separately started worktree, set `RACE_TEST_URL=http
 make race-generate CIRCUIT=monza CARS=20
 make race-generate CIRCUIT=monza CARS=20 LAPS=3
 make race-train CIRCUIT=monza CARS=20 STEPS=10000
+make race-train-decision CIRCUIT=monza STEPS=10000 CYCLES=5 EVAL_EPISODES=3
+make race-evaluate-decision CIRCUIT=monza POLICY=.afterlap/race/boost-policy
+make race POLICY=.afterlap/race/boost-policy METRICS=.afterlap/race/boost-policy.metrics.json
+make race-status
+make race-boost
+make race-boost-off
 uv run python scripts/race.py catalogue
 uv run python scripts/race.py schema
 ```
 
-When `LAPS` is omitted, each circuit uses its sourced Grand Prix distance. Set `LAPS` for a custom distance. The catalogue and schema commands expose every circuit preset, race setting, direct driver control, and normalized RL action field to scripts. See [RACE_SIMULATOR.md](RACE_SIMULATOR.md) for the physics model, observation/action contract, reward, datasets, training steps, and evaluation guidance. Training uses CPU PyTorch and Stable-Baselines3 PPO.
+When `LAPS` is omitted, each circuit uses its sourced Grand Prix distance. Set `LAPS` for a custom distance. The catalogue and schema commands expose every circuit preset, race setting, direct driver control, normalized RL action field and energy decision contract to scripts. The boost commands communicate through Next.js `/race/socket`, the same path used by the dashboard and a physical button controller. See [RACE_SIMULATOR.md](RACE_SIMULATOR.md) for the physics model, observation/action contracts, metrics, training cycles, evaluation and 2026 regulation scope. Training uses CPU PyTorch and Stable-Baselines3 PPO.
 
 ## Project layout
 
