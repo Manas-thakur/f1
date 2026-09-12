@@ -376,6 +376,31 @@ def promote(
         raise typer.Exit(code=1)
 
 
+@app.command("model-registry")
+def model_registry(
+    output: Annotated[Path | None, typer.Option(help="Write the registry JSON here.")] = None,
+    markdown: Annotated[bool, typer.Option("--markdown", help="Print the summary table.")] = False,
+) -> None:
+    """Emit the machine-readable inventory of every model in the repository.
+
+    Derived from the code and the frozen configuration documents, so a
+    published table cannot drift from what would actually run. Parameter counts
+    come from constructed networks; when the learning extra is absent they are
+    reported as unavailable with the reason rather than guessed.
+    """
+    from .model_registry import as_markdown, build_registry, write_registry
+
+    report = build_registry()
+    if markdown:
+        typer.echo(as_markdown(report))
+        return
+    payload = report.as_dict()
+    payload["content_hash"] = report.content_hash()
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True, default=str))
+    if output is not None:
+        typer.echo(f"wrote {write_registry(report, output=output)}")
+
+
 @app.command()
 def version() -> None:
     """Print component versions."""
