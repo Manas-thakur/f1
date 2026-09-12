@@ -37,7 +37,7 @@ ports and drives it. Nothing in it is a mock.
 | `mypy` (strict, 326 files) | pass |
 | comment policy, docs package, schema drift | pass |
 | `afterlap_core.cli doctor` | pass, 1 optional capability absent |
-| `pytest` (full suite, no deselection) | pass, 1 447 tests |
+| `pytest` (full suite, no deselection) | pass, 1 541 tests |
 | `biome check --error-on-warnings` | pass, 391 rules |
 | `eslint`, `tsc --noEmit` | pass |
 | `vitest` | pass, 351 tests |
@@ -45,6 +45,7 @@ ports and drives it. Nothing in it is a mock.
 | Playwright, fixture-driven | pass, 166 tests |
 | `afterlap_core.cli simulate` | pass, 30 s closed loop |
 | `afterlap_core.cli evaluate` | pass |
+| `afterlap_core.cli train` (SAC smoke, off-gate) | pass, checkpoint written |
 | **live** PostgreSQL + runtime + batch worker + production website | |
 | `scripts/migrate.py` (alembic, real PostgreSQL) | pass |
 | `scripts/demo.py` 13-step runbook | pass, 141 s |
@@ -276,7 +277,7 @@ production build is now warning-free.
 | `tests/operations/test_audit_runner.py` | the audit stops at the first failed gate, records the exit code, kills its live processes when a later gate fails, and never reports an interrupt as a pass |
 | `apps/web/e2e-live/workflow.spec.ts` | the experiment report names both controllers; replay and the sessions list render for the created session; the stream is open on return to the console; five reference surfaces render without a page error |
 
-The suite is 1 447 Python tests, 351 Vitest tests, 166 fixture-driven browser
+The suite is 1 541 Python tests, 351 Vitest tests, 166 fixture-driven browser
 tests and 16 live browser tests. Nothing is deselected: CI previously ran
 `pytest -m "not slow and not torch" --ignore=tests/learning`, which skipped the
 entire learning module. It now runs everything.
@@ -310,6 +311,12 @@ every checkout, every action pinned to a SHA.
   not a fault, and the report labels it. It does mean the shipped baseline is a
   weak reference for a comparison, which the promotion protocol already
   accounts for.
+- **The SAC smoke run reports 45 % withdrawals and one solver timeout in 64
+  decisions.** Run outside the gates to exercise the learning path: it writes a
+  checkpoint, resumes, and labels itself `SMOKE RUN … NOT a trained model`. The
+  withdrawal rate is the planner refusing to advise on an unconverged solve,
+  which is the specified behaviour, and the run reports it rather than hiding
+  it. It is not evidence about a trained policy and the manifest says so.
 - **`degraded database` from `doctor` with no `AFTERLAP_DATABASE_URL`.** The
   runtime falls back to local SQLite and says so. Correct.
 - **`absent acados`.** Optional; CasADi/IPOPT is the active solver and the
