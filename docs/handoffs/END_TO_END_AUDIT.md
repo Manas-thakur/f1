@@ -499,13 +499,14 @@ every checkout, every action pinned to a SHA.
 make audit
 ```
 
-Runs everything above and writes to `artifacts/audit/<timestamp>/`. Roughly 45
-minutes on eight cores, most of it the Python suite and the live browser run.
+Runs every gate in the table above except the `train` row, and writes to
+`artifacts/audit/<timestamp>/`. About an hour on eight cores, most of it the
+Python suite; the live half is roughly five minutes of that.
 
 ```
 uv run --no-sync python scripts/audit.py --live-only --output /tmp/audit
 ```
 
-Runs only the live half against an already-built checkout, in about eight
+Runs only the live half against an already-built checkout, in about five
 minutes. Set `AFTERLAP_AUDIT_DATABASE_URL` to use PostgreSQL instead of the
 default SQLite; the CI `integration` job does exactly that.
