@@ -32,11 +32,11 @@ def policy_manifest(session: RaceSession) -> dict[str, Any]:
 
 
 def load_policy(path: Path, session: RaceSession) -> Any:
-    from stable_baselines3 import PPO
-
     manifest = json.loads(path.with_suffix(".manifest.json").read_text())
     expected = policy_manifest(session)
     for key in ("model_hash", "environment_version", "action_profiles", "observation_size", "reward_version"):
         if manifest.get(key) != expected[key]:
             raise ValueError(f"incompatible saved policy {key}; retraining with this model is required")
+    from stable_baselines3 import PPO
+
     return PPO.load(path, device="cpu")

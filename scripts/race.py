@@ -59,7 +59,7 @@ def main() -> None:
         model = PPO(
             "MlpPolicy",
             Monitor(env),
-            seed=args.seed,
+            seed=settings.seed,
             n_steps=128,
             batch_size=64,
             verbose=1,
@@ -75,7 +75,7 @@ def main() -> None:
         )
         print(json.dumps({"status": "training_completed", "output": str(args.output), "promoted": False}))
         return
-    observation, _ = env.reset(seed=args.seed)
+    observation, _ = env.reset(seed=settings.seed)
     assert env.session is not None
     if args.command == "evaluate":
         policy = load_policy(args.policy, env.session) if args.policy else None
@@ -91,12 +91,12 @@ def main() -> None:
             if terminated or truncated:
                 print(
                     json.dumps(
-                        {"seed": args.seed, "status": env.session.status, "reward": total_reward, **info},
+                        {"seed": settings.seed, "status": env.session.status, "reward": total_reward, **info},
                         allow_nan=False,
                     )
                 )
                 return
-    env.action_space.seed(args.seed)
+    env.action_space.seed(settings.seed)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x") as output:
         output.write(json.dumps(policy_manifest(env.session)) + "\n")

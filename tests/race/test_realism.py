@@ -226,3 +226,80 @@ def test_pass_events_ignore_equal_progress_noise_and_allow_repass():
         len([r for r in sim.world.passes if r.kind == "completed_pass" and r.overtaking_car_id == a.car_id])
         == 2
     )
+
+
+def test_retention_checkpoint_is_distinct_and_emitted_once():
+    from afterlap_core.simulation.engine import StepReport
+
+    session = RaceSession(RaceSettings(cars=2))
+    sim = session.simulator
+    a, b = sim.world.cars.values()
+    pair = sim.world.pairs[(a.car_id, b.car_id)]
+    pair.completed_at_s = 1
+    a.progress_m = b.progress_m + 20
+    a.s_m = a.progress_m % session.track.length
+    report = StepReport(2, 0.01, 1)
+    checkpoint = session.bundle.scenario.retention_checkpoint_id
+    sim._evaluate_retention(a.car_id, checkpoint, 2, report)
+    sim._evaluate_retention(a.car_id, checkpoint, 3, report)
+    assert [event.kind for event in report.passes] == ["retained_pass"]
+
+
+def test_wake_uses_lapped_inline_car_and_is_continuous_at_overlap():
+    session = RaceSession(RaceSettings(cars=3))
+    sim = session.simulator
+    a, b, c = sim.world.cars.values()
+    for car in (a, b, c):
+        car.speed_mps = 40
+        car.lateral_d_m = 0
+    b.progress_m = a.progress_m + session.track.length + 20
+    c.progress_m = a.progress_m + 10
+    c.lateral_d_m = 5
+    effect = sim._wake_effect_for(a.car_id, a.progress_m, 0, 40)
+    assert effect.leader_car_id == b.car_id
+    c.progress_m = a.progress_m - 500
+    b.progress_m = a.progress_m + 1e-6
+    assert sim._wake_effect_for(a.car_id, a.progress_m, 0, 40).shielding < 1e-10
+
+
+def test_arbitrary_supported_steps_hold_one_second_and_decision_cadence():
+    from afterlap_core.race.environment import RaceEnv
+
+    progress = []
+    for dt in (0.005, 0.007, 0.01, 0.02):
+        env = RaceEnv(RaceSettings(cars=1, dt_s=dt, variability=Variability(preset="baseline")))
+        env.reset(seed=4)
+        env.step(0)
+        assert env.session.simulator.session_time_s == pytest.approx(1)
+        assert env.session.next_decision_s == pytest.approx(1)
+        progress.append(env.session.simulator.world.cars["car-01"].progress_m)
+    assert max(progress) - min(progress) < 0.02
+
+
+def test_incompatible_policy_manifest_fails_before_loading_weights(tmp_path):
+    import json
+
+    from afterlap_core.race.policy import load_policy, policy_manifest
+
+    session = RaceSession(RaceSettings(cars=1))
+    manifest = policy_manifest(session)
+    manifest["environment_version"] = "race-driving-v0"
+    path = tmp_path / "policy.zip"
+    path.with_suffix(".manifest.json").write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="incompatible saved policy environment_version"):
+        load_policy(path, session)
+
+
+@pytest.mark.parametrize("seed", [101, 202, 303])
+def test_live_pass_and_abort_on_held_out_seeds(seed):
+    from race_experiments import experiment
+
+    completed = experiment(seed, "pass", 10)
+    aborted = experiment(seed, "abort", 10)
+    assert completed["failure"] is None
+    assert completed["events"].get("completed_pass") == 1
+    assert completed["events"].get("aborted_attempt", 0) == 0
+    assert completed["jerk_rms_mps3"] < 10
+    assert aborted["failure"] is None
+    assert aborted["events"].get("completed_pass", 0) == 0
+    assert aborted["events"].get("aborted_attempt") == 1

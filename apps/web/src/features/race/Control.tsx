@@ -85,7 +85,7 @@ export function Control() {
             </label>
             <label className={styles.wide}>
               Variability
-              <select name="variability" defaultValue={frame?.settings.variability.preset ?? 'mild'}>
+              <select aria-label="Variability" name="variability" defaultValue={frame?.settings.variability.preset ?? 'mild'}>
                 <option value="baseline">Deterministic baseline</option>
                 <option value="mild">Mild variability</option>
                 <option value="training">Broad training variation</option>
