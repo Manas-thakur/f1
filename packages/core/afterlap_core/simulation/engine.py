@@ -605,6 +605,18 @@ class Simulator:
         mu = track.mu_array(samples) * _CORNER_GRIP_SHARE
         low_drag = world.active_actions[car_id].low_drag
         factor = car.downforce_factor_inv_m * (0.75 if low_drag else 1.0)
+        if self._wake is not None:
+            factor *= 1.0 - self._wake.downforce_loss_max
+        rho = world.environment.air_density_kgpm3(
+            s_m, world.race.session_time_s, float(car.air_density_kgpm3.value)
+        )
+        factor *= rho / float(car.air_density_kgpm3.value)
+        mu *= np.asarray(
+            [
+                world.environment.grip_multiplier(float(sample), world.race.session_time_s)
+                for sample in samples
+            ]
+        )
         denominator = curvature - mu * factor
         corner_limit = np.where(
             denominator > 0.0,
@@ -624,7 +636,9 @@ class Simulator:
             spare = envelope_a * envelope_a - lateral_a * lateral_a
             if spare <= 0.0:
                 return 0.0
-            return _BRAKING_SAFETY_MARGIN * braking_fraction * math.sqrt(spare)
+            tyre_decel = braking_fraction * math.sqrt(spare)
+            brake_decel = float(car.max_brake_force_n.value) / float(car.mass_kg.value)
+            return _BRAKING_SAFETY_MARGIN * min(tyre_decel, brake_decel)
 
         speed = limits[-1]
         for index in range(len(limits) - 2, -1, -1):

@@ -8,7 +8,6 @@ from gymnasium import spaces
 
 from afterlap_contracts import DeploymentProfile
 
-from ..simulation.policies import DriverAction
 from .session import RaceSession
 from .settings import RaceSettings
 
@@ -74,17 +73,7 @@ class RaceEnv(gym.Env):
         if not self.action_space.contains(action):
             raise ValueError("action must name one of the five deployment profiles")
         session = self.session
-        observation = session.simulator.observe(car_id="car-01")["car-01"]
-        automatic = session.automatic_action(observation)
-        session.control(
-            "car-01",
-            DriverAction(
-                profile=PROFILES[action],
-                target_lateral_d_m=automatic.target_lateral_d_m,
-                pace_scale=automatic.pace_scale,
-                low_drag=automatic.low_drag,
-            ),
-        )
+        session.bms_profiles["car-01"] = PROFILES[action]
         start = session.simulator.session_time_s
         for _ in range(round(1 / session.settings.dt_s)):
             session.advance(session.settings.dt_s)

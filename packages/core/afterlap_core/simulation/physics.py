@@ -83,6 +83,8 @@ def tractive_force(power_w: float, speed_mps: float, max_force_n: float) -> floa
     """
     if max_force_n < 0.0:
         raise ValueError("max_force_n must be non-negative")
+    if power_w <= 0.0:
+        return 0.0
     if speed_mps <= 0.0:
         return max_force_n
     return min(power_w / speed_mps, max_force_n)

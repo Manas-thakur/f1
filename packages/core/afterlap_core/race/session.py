@@ -30,6 +30,7 @@ class RaceSession:
         )
         self.simulator.world.policies.clear()
         self.overrides: dict[str, DriverAction] = {}
+        self.bms_profiles: dict[str, DeploymentProfile] = {}
         self.lanes = {
             car: initial.lateral_d_m.value for car, initial in self.bundle.scenario.initial_states.items()
         }
@@ -96,7 +97,7 @@ class RaceSession:
             abs(self.track.curvature_at(progress + offset)) < 0.001 for offset in (0, 50, 100, 150)
         )
         return DriverAction(
-            profile=profile,
+            profile=self.bms_profiles.get(car_id, profile),
             pace_scale=0.90 + (int(car_id[-2:]) % 5) * 0.01,
             target_lateral_d_m=lane,
             low_drag=straight and brake is None,
@@ -210,6 +211,7 @@ class RaceSession:
             {
                 "world": self.simulator.snapshot(),
                 "overrides": self.overrides,
+                "bms_profiles": self.bms_profiles,
                 "lanes": self.lanes,
                 "finishes": self.finishes,
                 "events": self.events,
@@ -222,7 +224,7 @@ class RaceSession:
     def restore(self, snapshot: dict[str, Any]) -> None:
         saved = copy.deepcopy(snapshot)
         self.simulator.restore(saved["world"])
-        for key in ("overrides", "lanes", "finishes", "events", "steps", "failure", "status"):
+        for key in ("overrides", "bms_profiles", "lanes", "finishes", "events", "steps", "failure", "status"):
             setattr(self, key, saved[key])
 
     def manifest(self) -> dict[str, Any]:
