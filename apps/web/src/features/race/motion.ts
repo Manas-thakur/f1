@@ -24,15 +24,16 @@ export class RaceMotion {
   private length = 1;
 
   push(frame: RaceFrame, now: number) {
+    const running = frame.status === 'running';
     if (frame.generation !== this.generation || frame.time_s < this.simulationTime
-      || (frame.status === 'running') !== this.running) {
+      || (running && !this.running)) {
       this.samples = [];
       this.cursor = -Infinity;
       this.interval = 150;
       this.rate = frame.requested_rate;
     }
     this.generation = frame.generation;
-    this.running = frame.status === 'running';
+    this.running = running;
     this.length = frame.circuit_map.length_m;
     if (frame.time_s === this.simulationTime && this.samples.length) {
       return;
@@ -43,7 +44,7 @@ export class RaceMotion {
     if (previous && time <= previous.time) {
       return;
     }
-    if (previous) {
+    if (previous && this.running) {
       this.interval += (Math.min(1000, now - previous.at) - this.interval) * 0.1;
       const start = this.samples[Math.max(0, this.samples.length - 12)] ?? previous;
       const measured = (time - start.time) * 1000 / Math.max(1, now - start.at);
@@ -85,10 +86,10 @@ export class RaceMotion {
     if (!last || !first) {
       return new Map<string, MotionPose>();
     }
-    if (!this.running) {
-      return last.poses;
-    }
     if (!Number.isFinite(this.cursor)) {
+      if (!this.running) {
+        return last.poses;
+      }
       if (now - first.at < this.delayMs) {
         return first.poses;
       }
@@ -97,7 +98,7 @@ export class RaceMotion {
       const elapsed = Math.max(0, now - this.sampledAt) / 1000;
       const targetBuffer = this.delayMs * this.rate / 1000;
       const backlog = last.time - this.cursor;
-      const correction = backlog > targetBuffer * 2 ? 1.05 : 1;
+      const correction = this.running && backlog > targetBuffer * 2 ? 1.05 : 1;
       this.cursor += elapsed * this.rate * correction;
     }
     this.sampledAt = now;
