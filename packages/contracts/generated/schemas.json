@@ -3601,6 +3601,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -6161,6 +6164,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -7762,6 +7768,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -9588,6 +9597,9 @@
         "weights_hash": {
           "anyOf": [
             {
+              "maxLength": 71,
+              "minLength": 71,
+              "pattern": "^sha256:[0-9a-f]{64}$",
               "type": "string"
             },
             {
@@ -12625,6 +12637,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -13957,6 +13972,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -18281,6 +18299,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {
@@ -22265,6 +22286,9 @@
             "weights_hash": {
               "anyOf": [
                 {
+                  "maxLength": 71,
+                  "minLength": 71,
+                  "pattern": "^sha256:[0-9a-f]{64}$",
                   "type": "string"
                 },
                 {

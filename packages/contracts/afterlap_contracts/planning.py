@@ -142,7 +142,7 @@ class LearnedContribution(Contract):
 
     enabled: bool = Field(description="False whenever the validated baseline answered instead.")
     bundle_id: str | None = None
-    weights_hash: str | None = None
+    weights_hash: ContentHash | None = None
     in_support: bool = False
     support_reason: str | None = Field(
         default=None, description="Why the learned contribution was or was not in support."

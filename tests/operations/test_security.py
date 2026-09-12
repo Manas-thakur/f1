@@ -22,6 +22,7 @@ import io
 import json
 import logging
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -84,9 +85,20 @@ def test_every_compose_host_publish_binds_loopback_and_no_secret_is_defaulted():
     assert re.search(r"^AFTERLAP_DB_PASSWORD=\s*$", example, flags=re.MULTILINE), (
         ".env.example ships a value for AFTERLAP_DB_PASSWORD; it must be blank"
     )
-    assert not (IMPLEMENTATION_ROOT / "infra" / ".env").exists(), (
-        "infra/.env is present in the tree; it holds a secret and must never be committed"
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", "infra/.env"],
+        cwd=IMPLEMENTATION_ROOT,
+        capture_output=True,
+        check=False,
     )
+    assert tracked.returncode != 0, "infra/.env is tracked by git; it holds a generated password"
+    ignored = subprocess.run(
+        ["git", "check-ignore", "-q", "infra/.env"],
+        cwd=IMPLEMENTATION_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    assert ignored.returncode == 0, "infra/.env is not ignored; `make env` would leave a secret stageable"
 
 
 def test_an_export_path_outside_the_storage_root_is_rejected(tmp_path: Path):

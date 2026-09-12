@@ -135,7 +135,7 @@ def run_evaluation(
     active: list[Controller] = list(supplied)
     supplied_names = {c.name for c in supplied}
     if include_unavailable_rows:
-        active.extend(c for c in unavailable_matrix_controllers() if c.name not in supplied_names)
+        active.extend(unavailable_matrix_controllers(supplied_names))
 
     run = run_benchmark(manifest, active, paths=paths)
     results, notes = _bootstraps(

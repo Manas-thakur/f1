@@ -10,7 +10,7 @@ local stack definition, and the CI workflow.
 **Verdict.** The product works end to end. A session created in the browser
 runs through observation, estimation, legal planning, engineer selection,
 driver execution, snapshot, paired experiment and export, and every artefact it
-produces carries provenance. The audit found and fixed twelve defects, none of
+produces carries provenance. The audit found and fixed fourteen defects, none of
 which produced a wrong recommendation, and most of which were the same shape:
 a value that nothing was checking, because nothing could.
 
@@ -50,8 +50,8 @@ ports and drives it. Nothing in it is a mock.
 | `afterlap_core.cli train` (SAC smoke, off-gate) | pass, checkpoint written |
 | **live** PostgreSQL + runtime + batch worker + production website | |
 | `scripts/migrate.py` (alembic, real PostgreSQL) | pass |
-| `scripts/demo.py` 13-step runbook | pass, 141 s |
-| Playwright against the live stack | pass, 16 tests, 273 s |
+| `scripts/demo.py` 13-step runbook | pass, 100 s |
+| Playwright against the live stack | pass, 16 tests, 186 s |
 
 The live stack ran against `postgres:17.7` in Docker, the Python runtime over
 its loopback IPC socket, the batch worker polling for jobs, and `next start`
@@ -74,16 +74,22 @@ claims and the product does not present them as such.
 
 | Quantity | Value |
 |---|---|
-| Planner duration, p50 / p95 / p99 | 0.311 / 0.358 / 0.362 ms over 26 decisions |
+| Planner duration, p50 / p95 / p99 | 18.6 / 30.7 / **177.9** ms over 26 decisions |
 | Observation age, p50 / p95 | 0.160 / 0.160 s |
 | Stream resyncs during the runbook | 0 |
 | Spool depth | 0 |
-| Runbook wall time | 141 s |
-| Standalone benchmark latency p95 | 0.041 ms over 30 decisions |
+| Runbook wall time | 100 s |
+| Live browser suite | 16 tests, 186 s |
 
-The planner's own p95 is three orders of magnitude inside the 200 ms budget
-`ARCHITECTURE.md` sets, on a synthetic two-car scenario with a fixed schedule.
-Neither number transfers to a real circuit or a real solve.
+`ARCHITECTURE.md` sets an initial p95 target of 200 ms on declared hardware.
+The p95 sits comfortably inside it; the **p99 does not have much room**, at
+178 ms on an idle eight-core machine running a synthetic two-car scenario. That
+is worth watching rather than acting on: 26 samples is too few for a p99 to
+mean much, and this machine is not the declared hardware. It is, though, a real
+change — before `main` connected the planner to the runtime the same run
+reported 0.36 ms p99, because no solve was happening.
+
+Neither figure transfers to a real circuit or a real solve.
 
 ---
 
@@ -136,7 +142,7 @@ site.
 
 ### 2.4 Every digest on the wire was an unconstrained string
 
-Thirty-eight fields across nine contract modules were typed
+Thirty-nine fields across nine contract modules were typed
 `str = Field(min_length=1)` or plain `str`. That accepts `"sha256:"`, a
 truncated digest, an uppercase digest, a digest from a different algorithm and
 a megabyte of text. Defects 2.2 and 2.3 both hid behind this.
@@ -248,7 +254,40 @@ before the runner is imported, so a job that cannot run says so and prints
 nothing that could be read as a measurement. Eleven malformed inputs are now
 regression-tested.
 
-### 2.12 The browser audit's own evidence did not show the feature working
+### 2.12 A comparison-matrix row disappeared from the report entirely
+
+`unavailable_matrix_controllers()` emitted a stub for every row with
+`measurable_today=False`, and the evaluation job measured whatever controllers
+it was handed. `mpc_only` sits in the gap: it stopped being unmeasurable when
+`PlannerController` was written, and a baseline job does not select it, so it
+appeared in **neither** `measured_controllers` nor `unavailable_controllers`.
+A reader of the report could not tell whether the row had been measured,
+refused, or forgotten — which is the one thing the matrix exists to prevent,
+and which the function's own test says in words: *"a row that cannot run is
+unmeasured, never silently omitted"*.
+
+That test was failing on `main`. It never ran there: `main`'s CI is
+`pytest -m "not slow and not torch" --ignore=tests/learning`, and the whole of
+`tests/learning` — eight files — is skipped. This branch removes the filter,
+which is how the failure surfaced.
+
+Fixed by listing every matrix row the run does not measure, with the reason
+distinguishing "this package cannot build it" from "this package can build it
+and this job did not select it".
+
+### 2.13 A security test failed for anyone who had run `make up`
+
+`test_every_compose_host_publish_binds_loopback_and_no_secret_is_defaulted`
+asserted that `infra/.env` does not exist on disk. `make env` creates it, and
+`make up`, `make dev`, `make demo` and `make migrate` all depend on `env`, so
+running the documented local stack once made the security suite fail.
+
+The invariant the sentence states is that the file must never be *committed*,
+which is a different thing. The test now asserts that git does not track it and
+that `.gitignore` covers it, which is the property that actually protects the
+password, and which holds whether or not the developer has started the stack.
+
+### 2.14 The browser audit's own evidence did not show the feature working
 
 The driver screenshot fired the instant the route loaded, so the saved artefact
 showed `NO INSTRUCTION`, `mode unknown` and a connecting stream — the empty
@@ -352,9 +391,10 @@ production build is now warning-free.
 | `apps/web/e2e-live/workflow.spec.ts` | the experiment report names both controllers; replay and the sessions list render for the created session; the stream is open on return to the console; five reference surfaces render without a page error |
 
 The suite is 1 779 Python tests, 359 Vitest tests, 166 fixture-driven browser
-tests and 16 live browser tests. Nothing is deselected: CI previously ran
+tests and 16 live browser tests. Nothing is deselected. CI previously ran
 `pytest -m "not slow and not torch" --ignore=tests/learning`, which skipped the
-entire learning module. It now runs everything.
+whole learning module — eight files, one of which was failing. It now runs
+everything, and that is how findings 2.12 and 2.13 surfaced.
 
 ---
 
@@ -379,6 +419,9 @@ every checkout, every action pinned to a SHA.
 
 ## 6. Observations that are not defects
 
+- **The planner's p99 is 178 ms against a 200 ms target.** Recorded above; too
+  few samples to act on, but the first run where the number is a real solve
+  rather than a fixed schedule.
 - **`saturation_events: 924` in a 30-second benchmark.** The legal fixed
   schedule sits on its power ceiling for most of the run and the scenario ends
   in `energy_depletion`. That is the baseline controller behaving as specified,
@@ -399,7 +442,7 @@ every checkout, every action pinned to a SHA.
   `corridor_quality: unknown`.** Two different facts — the control plane's
   capability state and the compiled package's own declaration — and both are
   accurate. The wording could distinguish them more clearly.
-- **199 server-generated strings still declare no length or pattern.** None is
+- **209 server-generated strings still declare no length or pattern.** None is
   client-supplied, so none is an input-validation hole; they are a rendering
   and storage concern. The count is pinned by a test so it cannot grow while
   nobody is looking.
@@ -415,7 +458,7 @@ every checkout, every action pinned to a SHA.
    encoding rather than removing it. Prefixing `TrackPackage.package_hash` at
    rest would leave one encoding everywhere, at the cost of recompiling every
    shipped package.
-2. **Bring the 199 unbounded response strings down.** The pinned count stops
+2. **Bring the 209 unbounded response strings down.** The pinned count stops
    the set growing; nothing yet shrinks it.
 3. **Add a coverage floor.** `pytest-cov` is already a dependency and unused by
    any gate.

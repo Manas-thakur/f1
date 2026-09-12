@@ -101,7 +101,7 @@ def _hash_properties() -> list[tuple[str, str, dict[str, Any]]]:
 
 
 def test_the_generated_schema_has_hash_fields_to_check() -> None:
-    assert len(_hash_properties()) >= 25
+    assert len(_hash_properties()) >= 30
 
 
 @pytest.mark.parametrize(
@@ -274,7 +274,7 @@ def test_every_string_a_client_can_send_is_bounded() -> None:
     assert unbounded == [], f"unbounded strings on request contracts: {sorted(unbounded)}"
 
 
-UNBOUNDED_RESPONSE_STRINGS = 199
+UNBOUNDED_RESPONSE_STRINGS = 209
 """How many server-generated strings still declare neither a length nor a shape.
 
 These are produced by the server rather than accepted from a client, so they

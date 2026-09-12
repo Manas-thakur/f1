@@ -245,6 +245,7 @@ max-statements = 100
     "T201",
 ]
 "tests/backend/test_vertical_slice.py" = ["PLR0915"]
+"tests/operations/test_security.py" = ["S607"]
 "tests/estimation/conftest.py" = ["PLR0913"]
 "workers/**/*.py" = ["T201"]
 

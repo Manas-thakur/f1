@@ -41,7 +41,7 @@ from afterlap_contracts import (
 from afterlap_core.simulation.policies import DriverAction
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
     from afterlap_core.simulation.observation import Observation
 
@@ -704,23 +704,42 @@ outcome, not a missing implementation, and it is the honest state to publish.
 """
 
 
-def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
-    """Explicit unavailable stubs for every matrix row that is not merged."""
+NOT_SELECTED_REASON = (
+    "this package can build and run the row, but this job did not select it; "
+    "pass it through `controllers=` to measure it"
+)
+
+
+def unavailable_matrix_controllers(
+    supplied_names: Iterable[str] = (),
+) -> tuple[UnavailableController, ...]:
+    """Explicit unavailable stubs for every matrix row this run does not measure.
+
+    A row that cannot run is unmeasured, never silently omitted -- and a row
+    this package *can* build is no different if the job did not select it.
+    ``mpc_only`` was the case in point: it stopped being unmeasurable when
+    ``PlannerController`` was written, so it dropped out of this list, and
+    because a baseline job does not select it either, it stopped appearing in
+    the report at all. A reader could not tell whether it had been measured,
+    refused, or forgotten. It is now listed, with the reason it was not run.
+    """
+    covered = set(supplied_names)
     return tuple(
         UnavailableController(
             row.controller_name,
             owner=row.owner,
             uses_actor=row.uses_actor,
             uses_learned_return=row.uses_learned_return,
-            detail=row.unmeasured_reason or "",
+            detail=(row.unmeasured_reason or "") if not row.measurable_today else NOT_SELECTED_REASON,
         )
         for row in COMPARISON_MATRIX
-        if not row.measurable_today
+        if row.controller_name not in covered
     )
 
 
 __all__ += [
     "COMPARISON_MATRIX",
+    "NOT_SELECTED_REASON",
     "AblatedController",
     "AblationUnsupported",
     "MatrixRow",
