@@ -125,8 +125,12 @@ geometry changed under the session.
 
 Fixed by prefixing at the package-backed source, so one field has one encoding.
 The genuinely different encoding — a digest a file writes into itself — is now
-its own type, `HexDigest`, so the difference is visible in the schema and in
-the generated TypeScript instead of being discovered from a failed comparison.
+its own type, `HexDigest`. The generated TypeScript still says `string`, but the
+generated JSON Schema carries the pattern and the fixed length, and the web
+client validates every response against that schema at runtime, so the console
+refuses a malformed digest rather than rendering it. The difference between the
+two encodings is now readable in the schema instead of being discovered from a
+comparison that silently never matches.
 
 ### 2.3 A placeholder string in a digest field
 
