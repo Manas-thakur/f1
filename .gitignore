@@ -33,6 +33,7 @@ tensorboard/
 .env
 .env.*
 !.env.example
+.afterlap/
 *.log
 
 .DS_Store

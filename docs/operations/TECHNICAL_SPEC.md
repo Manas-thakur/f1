@@ -2,9 +2,23 @@
 
 ## Packaging
 
-Use Compose under `infra/`: Next.js web, Python runtime (`python -m afterlap_api.cli serve`), batch worker and PostgreSQL, with task-owned persistent data directories. Next.js is the public origin for pages, `/api/v1` and SSE. Runtime planning works without internet. Pin Python/Node packages and model artefacts. Root scaffolding and lockfiles are coordinator-owned. Training may use GPU; inference/optimisation performance is measured on the actual runtime hardware.
+Start with `make up` from the repository root. The Makefile owns env files,
+image builds, and process lifetime. On this machine the stack runs under
+Apple `container` via `ac`. `infra/docker-compose.yml` remains the Linux
+service catalog and uses the same host ports. Details, ports, and commands
+are in [LOCAL_STACK.md](LOCAL_STACK.md).
 
-Default development binds `127.0.0.1`; do not expose a public unauthenticated session server. An authorised team installation adds TLS, operator authentication, roles and private network policy. Keep secrets outside version control and source manifests. Archive exports to a configured directory and reject path traversal. Separate simulation truth, operational observations and user-visible report permissions.
+Next.js is the public origin for pages, `/api/v1` and SSE. Runtime planning
+works without internet. Pin Python/Node packages and model artefacts. Root
+scaffolding and lockfiles are coordinator-owned. Training may use GPU;
+inference/optimisation performance is measured on the actual runtime hardware.
+
+Default development binds `127.0.0.1`; do not expose a public unauthenticated
+session server. An authorised team installation adds TLS, operator
+authentication, roles and private network policy. Keep secrets outside version
+control and source manifests. Archive exports to a configured directory and
+reject path traversal. Separate simulation truth, operational observations
+and user-visible report permissions.
 
 ## Metrics
 

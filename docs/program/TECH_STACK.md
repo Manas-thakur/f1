@@ -71,7 +71,10 @@ One shared replay cursor identifies either distance or session time; changing al
 
 ## Storage and local deployment
 
-Compose supplies db, runtime, web and batch services plus a migration job. The Python runtime supervises session processes. Next.js is the public HTTP origin for pages, `/api/v1` and SSE. Separate volumes store database, trajectories and models. Private source credentials never enter exports.
+Compose supplies db, runtime, web and batch services plus a migration job.
+`make up` is the supported start path. Next.js is the public HTTP origin for
+pages, `/api/v1` and SSE. Separate volumes store database, trajectories and
+models. Private source credentials never enter exports.
 
 Use role-scoped session credentials and a single operator lease. Development bootstrap works only in local development mode; no default production secret. Debug truth is a separate restricted endpoint. Driver communication works only in simulator mode. Load only locally produced, hash-verified approved model bundles; do not accept arbitrary pickle uploads.
 
@@ -82,6 +85,8 @@ A01 writes `infra/dependency-baseline.md` with versions, official compatibility 
 A01 implements these command contracts:
 
 ```text
+make up
+make demo
 uv sync --frozen --all-packages
 bun install --frozen-lockfile
 uv run python -m afterlap_core.cli doctor

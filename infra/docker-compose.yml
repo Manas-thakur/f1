@@ -1,5 +1,6 @@
 # AFTERLAP local product packaging.
 #
+#   make up
 #   docker compose -f infra/docker-compose.yml --env-file infra/.env up --build
 #
 # Run it from the implementation workspace root: every build context below is
@@ -69,7 +70,7 @@ services:
       # PostgreSQL already running on the development machine. Comment this
       # block out entirely for a deployment: nothing outside the compose
       # network needs the database.
-      - "127.0.0.1:${AFTERLAP_DB_PORT:-5433}:5432"
+      - "127.0.0.1:${AFTERLAP_DB_PORT:-17539}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U afterlap -d afterlap"]
       interval: 5s
@@ -107,7 +108,7 @@ services:
       AFTERLAP_PORT: "8000"
     volumes: *artifact-volumes
     ports:
-      - "127.0.0.1:${AFTERLAP_API_PORT:-8010}:8000"
+      - "127.0.0.1:${AFTERLAP_API_PORT:-19284}:8000"
     healthcheck:
       test: ["CMD", "python", "-m", "afterlap_api.cli", "request", "GET", "/api/v1/health/ready"]
       interval: 10s
@@ -173,7 +174,7 @@ services:
       AFTERLAP_RUNTIME_URL: http://runtime:8000
       AFTERLAP_AUTOSTART_RUNTIME: "0"
     ports:
-      - "127.0.0.1:${AFTERLAP_WEB_PORT:-8080}:8080"
+      - "127.0.0.1:${AFTERLAP_WEB_PORT:-18473}:8080"
     depends_on:
       runtime:
         condition: service_healthy
