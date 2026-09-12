@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import signal
 import socket
 import subprocess
@@ -119,7 +120,26 @@ class Audit:
                     str(self.output / "runbook.json"),
                 ],
             )
-            self.run("live-browser", ["bun", "run", "test:live"], timeout=900)
+            shutil.rmtree(ROOT / "apps" / "web" / "test-results", ignore_errors=True)
+            self.run("live-browser", ["bun", "run", "test:live"], timeout=1800)
+        self.collect_recordings()
+
+    def collect_recordings(self) -> None:
+        """Move the browser's videos and traces beside the rest of the evidence."""
+        source = ROOT / "apps" / "web" / "test-results"
+        if not source.is_dir():
+            return
+        target = self.output / "recordings"
+        target.mkdir(parents=True, exist_ok=True)
+        moved = 0
+        for item in sorted(source.rglob("*")):
+            if item.suffix not in {".webm", ".zip", ".png"} or not item.is_file():
+                continue
+            name = f"{item.parent.name}{item.suffix}" if item.stem == "video" else item.name
+            shutil.copy2(item, target / name)
+            moved += 1
+        self.results.append({"check": "recordings", "exit_code": 0, "files": moved})
+        print(f"collected {moved} browser recordings into {target}", flush=True)
 
     def start(self, stack: ExitStack, name: str, command: list[str]) -> subprocess.Popen[str]:
         log: IO[str] = stack.enter_context((self.output / f"{name}.log").open("w", encoding="utf-8"))

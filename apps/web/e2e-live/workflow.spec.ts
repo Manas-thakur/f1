@@ -22,9 +22,12 @@ async function snapshot(request: APIRequestContext, id: string): Promise<Session
 
 async function capture(page: Page, name: string): Promise<void> {
   const output = process.env.AFTERLAP_AUDIT_OUTPUT;
-  if (output !== undefined) {
-    await page.screenshot({ path: path.join(output, name), fullPage: false });
+  if (output === undefined) {
+    return;
   }
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('h1, h2').first()).toBeVisible();
+  await page.screenshot({ path: path.join(output, 'screens', name), fullPage: true });
 }
 
 test('browser-created session completes the engineer and driver lifecycle', async ({ page, request }) => {
@@ -80,6 +83,9 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
   const profile = state.recommendation?.display_text.split(' ')[0]?.toLowerCase();
   expect(profile).toBeDefined();
   await page.goto(`/sessions/${id}/driver`);
+  await expect(page.getByTestId('driver-primary')).not.toContainText('NO INSTRUCTION', {
+    timeout: 30_000,
+  });
   await capture(page, 'driver.png');
   const driverResponse = page.waitForResponse((item) => item.url().endsWith('/simulator/driver-action'));
   await page.getByRole('button', { name: profile ?? '', exact: true }).click();
@@ -142,6 +148,7 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
       ),
     ).toBe(true);
   }
+  await expect(page.getByRole('table', { name: /Experiment job queue/i })).toContainText('completed');
   await capture(page, 'lab.png');
   const exported = await post(request, '/exports', { session_id: id, format: 'json' });
   const exportBody = (await exported.json()) as { status: string; hashes: { content: string } };
@@ -151,10 +158,30 @@ test('browser-created session completes the engineer and driver lifecycle', asyn
   expect(scan.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
   await page.goto(`/sessions/${id}/replay`);
   await expect(page.locator('h1')).toBeVisible();
+  await capture(page, 'replay.png');
+  await page.goto('/sessions');
+  await expect(page.getByText(id).first()).toBeVisible();
+  await capture(page, 'sessions.png');
   await page.goto(`/sessions/${id}/engineer`);
   await expect(page.getByText('Stream connection:', { exact: true }).locator('..')).toContainText('open');
   expect(errors).toEqual([]);
 });
+
+for (const [route, name] of [
+  ['/', 'landing.png'],
+  ['/simulation-lab', 'simulation-lab.png'],
+  ['/models', 'models.png'],
+  ['/rulesets/synthetic-pack-v1', 'rules.png'],
+  ['/settings', 'settings.png'],
+] as const) {
+  test(`reference surface renders and is captured: ${route}`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(route);
+    await capture(page, name);
+    expect(errors).toEqual([]);
+  });
+}
 
 test('HTTP and stream boundaries reject malformed input without a server crash', async ({ request }) => {
   for (const seed of [true, '42', -1, 2 ** 32]) {
