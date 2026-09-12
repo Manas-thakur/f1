@@ -1,6 +1,6 @@
 # Validation and evaluation
 
-Reference revision: `ee51224` on `origin/simulator`. Experiments ran on the same Linux x86_64 workspace with Python 3.12, float64 RK2 and 0.01 s steps unless noted. Timing is a workstation measurement, not an isolated hardware benchmark. No Numba changes were copied from the UI worktree. There is no compilation stage in this implementation.
+The measurements in the sections below were recorded for the original physics improvement, before the UI integration and randomized starting grid. They are historical evidence, not rerun results for the current tree. The earlier sections preserve physics-only measurements. The integration sections below cover the merged 3D runtime, JIT kernels, variable grids and training episode seeds. Historical reference revision: `ee51224` on `origin/simulator`. Experiments ran on the same Linux x86_64 workspace with Python 3.12, float64 RK2 and 0.01 s steps unless noted. Timing is a workstation measurement, not an isolated hardware benchmark. That experiment did not include the later vectorized and Numba preview integration. The current engine has a JIT warmup stage.
 
 ## Matched overtaking experiments
 
@@ -55,8 +55,32 @@ uv run --with matplotlib==3.11.2 python scripts/race_plot.py --before original.j
 
 For the original comparison, export `ee51224` into an isolated directory with `git archive`, then run the same experiment script with `PYTHONPATH` selecting that export's `packages/core`, `packages/contracts` and `apps/api`. This exercises the original code without modifying another worktree. Keep the JSON traces and resolved manifests with the experiment. The plot shows actual force-integrated motion and labelled intention transitions, not an animation script.
 
-For broader BMS evaluation, freeze training circuits and scenario families first. Train on Monza plus low-wetness settings and evaluate on held-out circuit families such as Silverstone plus held-out wetness/driver ranges. Use at least 30 independent episode seeds and several training seeds, comparing conserve, neutral and the automatic driver profile under matched scenarios. `race.py evaluate` supports fixed profiles and saved policies; automatic-profile baselines use `RaceSession` without a BMS override. Treat the three held-out seeds above as smoke/regression coverage only.
+For broader BMS evaluation, freeze training circuits and scenario families first. Train on Monza plus low-wetness settings and evaluate on held-out circuit families such as Silverstone plus held-out wetness/driver ranges. Use at least 30 independent episode seeds and several training seeds, comparing conserve, neutral and the automatic driver profile under matched scenarios. `race.py evaluate` supports fixed profiles and saved policies; `--profile automatic` now evaluates the automatic BMS without an override. Treat the three held-out seeds above as smoke/regression coverage only.
 
 Record completion, truncation, physical failure, finish position, race time, energy constraints and actual retained-pass events. Report binomial uncertainty for contacts/completion and bootstrap intervals over independent episodes for continuous metrics. Zero failures in twelve short trials still gives an approximate one-sided 95% upper failure-rate bound of 22%, so it is weak evidence of reliability. Do not bootstrap adjacent frames as independent data. Compare racecraft separately from learned battery management because the learned action has no passing authority.
 
 Ablate driver, vehicle, sensor, surface and wind scales individually at zero, plus wake on/off, while retaining matched seeds. Sweep headway and braking confidence using explicit driver overrides; compare baseline/mild/training/stress presets and alternate timesteps. Report all failed and truncated cases. Calibrate distributions against measured data before making real-car or sim-to-real claims.
+
+
+## Integration training regression
+
+The integrated tree was exercised with a real two-process CPU PPO run: two workers, four rollout transitions each, batch size four, eight total collected transitions, one car and a one-second episode limit. All eight episodes completed collection as time-limit truncations. Monitor logs contained four distinct episode seeds per worker, with disjoint observed seed sets and initial seeds 123/124. A dotted policy filename saved both archive and matching manifest, reloaded through both bare and `.zip` paths, and produced identical deterministic predictions. Evaluation on held-out seed 999 returned finite observations/reward and a truncation without a physical failure. This proves the training interface, not learning quality, parallel speedup or race-length reliability. `tests/race/test_training.py` preserves these checks and invalid-configuration/missing-sidecar guards.
+
+
+## Integrated full-field race acceptance
+
+The merged runtime was exercised with 20 cars, seed 42, the mild variability preset, default source scales, 0.01 s physics steps and automatic racecraft/BMS. Three independent 60 s scenarios reached their configured time limits without contact or lateral-envelope failure:
+
+| Circuit | Simulated duration | Final status | Shared-host wall time |
+| --- | --- | --- | --- |
+| Monza | 60 s | Truncated, no physical failure | 91.82 s |
+| Silverstone | 60 s | Truncated, no physical failure | 130.90 s |
+| Monaco | 60 s | Truncated, no physical failure | 91.04 s |
+
+A separate Monza run used the same field settings, one lap and a 300 s time limit. All 20 cars finished without contact or envelope failure. The session ended at 146.16 simulated seconds; first and last finish crossings were 117.231278574 s and 146.158375193 s. Classification contained 20 unique car identifiers, finite positive finish times and ascending finish-time order. The maximum absolute energy-ledger closure error was 7.43e-7 J. Runtime was 249.60 wall seconds with concurrent browser/CI work on the shared host. These timings are workload observations, not an isolated throughput benchmark or promised playback rate.
+
+The completed-run artifact is `artifacts/simulator-integration/completed-race.json`, an ignored local evidence file containing the exact settings, outcome, complete named classification and acceptance checks. The names are cosmetic labels; this result makes no claim about the real drivers' relative ability. Reproduce the physical run with `RaceSession(RaceSettings(circuit="monza", seed=42, cars=20, laps=1, time_limit_s=300))` and repeatedly call `advance(10)` until `done`.
+
+`tests/race/test_diversity.py` checks collision-free initial footprints and corridor bounds on all 23 circuits with three stress seeds, variable spacing and lateral positions, independent grid ablation, reproducible advancing episode seeds, cosmetic-label isolation and shorter live full-field runs. `tests/race/test_server_variability.py` exchanges advanced settings through a real WebSocket, verifies checkpoint replay and reconnect state, rejects invalid nested settings without mutating the active episode, and checks that hidden rival traits/energy/weather phases do not enter the actor observation.
+
+The completed race establishes one complete default-field path through the integrated simulator. The three time-limited scenarios provide additional corner and traffic coverage. Neither establishes contact-free behavior across arbitrary seeds, manual controls, stress settings or all full-length races; failures and truncations must still be counted in evaluation.

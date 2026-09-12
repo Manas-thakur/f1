@@ -1,3 +1,4 @@
+import { SceneryClearance } from './sceneryClearance';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -6,6 +7,7 @@ import { Sky } from 'three/addons/objects/Sky.js';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
 import { Minimap } from './Minimap';
+import { OverviewMarkers, overviewLayout } from './overview';
 import { RaceMotion } from './motion';
 import type { CircuitMap, RaceFrame } from './types';
 import { box, createCar, foliageTexture, ribbon, spinWheels, surfaceTexture, trackPose } from './worldGeometry';
@@ -35,6 +37,7 @@ export class RaceWorld {
   private readonly onFps: (fps: number) => void;
   private readonly motion = new RaceMotion();
   private readonly minimap: Minimap;
+  private readonly overview: OverviewMarkers;
   private readonly surroundings: Scenery;
   private mapCanvas: HTMLCanvasElement | null = null;
   private readonly lastFollowPosition = new THREE.Vector3();
@@ -71,6 +74,7 @@ export class RaceWorld {
     this.renderer.domElement.setAttribute('aria-label', 'Interactive 3D race scene');
     this.renderer.domElement.setAttribute('role', 'img');
     host.appendChild(this.renderer.domElement);
+    this.overview = new OverviewMarkers(host, onSelect);
     const bounds = new THREE.Box3().setFromPoints(map.points.map(([x, z]) => new THREE.Vector3(x, 0, z)));
     this.center = bounds.getCenter(new THREE.Vector3());
     this.span = Math.max(...bounds.getSize(new THREE.Vector3()).toArray());
@@ -122,6 +126,7 @@ export class RaceWorld {
   }
 
   private buildTrack() {
+    const clearance = new SceneryClearance(this.map);
     const loader = new THREE.TextureLoader();
     const loaded = () => { this.dirty = true; };
     const paved = ['monaco', 'baku', 'singapore', 'las-vegas'].includes(this.map.id);
@@ -159,14 +164,24 @@ export class RaceWorld {
       this.scene.add(new THREE.Mesh(ribbon(this.map, side * 6, side * 6.9, 0.045), curb));
       this.scene.add(new THREE.Mesh(ribbon(this.map, side * 5.75, side * 5.87, 0.04), white));
       this.scene.add(new THREE.Mesh(ribbon(this.map, side * 7, side * 11, 0.01), gravel));
-      const points = Array.from({ length: this.map.points.length + 1 }, (_, i) => {
-        const p = trackPose(this.map, i / this.map.points.length * this.map.length_m, side * 13).position;
-        p.y = 0.8;
-        return p;
-      });
-      const rail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),
-        this.map.points.length, 0.14, 5, true), barrier);
-      this.scene.add(rail);
+      const count = Math.ceil(this.map.length_m / 3);
+      const rails = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.14, 0.14, 1, 5), barrier, count);
+      const transform = new THREE.Object3D();
+      let accepted = 0;
+      for (let i = 0; i < count; i++) {
+        const a = trackPose(this.map, i / count * this.map.length_m, side * 13).position;
+        const b = trackPose(this.map, (i + 1) / count * this.map.length_m, side * 13).position;
+        if (!clearance.segmentClear([a.x, a.z], [b.x, b.z], 0.14)) {
+          continue;
+        }
+        transform.position.copy(a).add(b).multiplyScalar(0.5).y = 0.8;
+        transform.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+        transform.scale.set(1, a.distanceTo(b), 1);
+        transform.updateMatrix();
+        rails.setMatrixAt(accepted++, transform.matrix);
+      }
+      rails.count = accepted;
+      this.scene.add(rails);
     }
     const treeCount = sceneryProfile(this.map.id).trees;
     const leaves = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1),
@@ -180,7 +195,7 @@ export class RaceWorld {
       const s = (i * 0.61803398875 % 1) * this.map.length_m;
       const offset = (i % 2 ? 1 : -1) * (24 + (i * 37 % 140));
       const p = trackPose(this.map, s, offset).position;
-      if (this.map.points.some(([x, z]) => Math.hypot(x - p.x, z - p.z) < 19)) {
+      if (!clearance.circleClear([p.x, p.z], 9)) {
         continue;
       }
       const height = 6 + (i * 13 % 8);
@@ -215,16 +230,21 @@ export class RaceWorld {
     this.scene.add(leaves, trunks);
     const postCount = Math.ceil(this.map.length_m / 8);
     const posts = new THREE.InstancedMesh(new THREE.BoxGeometry(0.12, 1, 0.16), barrier, postCount * 2);
+    let acceptedPosts = 0;
     for (let i = 0; i < postCount; i++) {
-      for (const [j, side] of [-1, 1].entries()) {
+      for (const side of [-1, 1]) {
         const pose = trackPose(this.map, i / postCount * this.map.length_m, side * 13);
+        if (!clearance.circleClear([pose.position.x, pose.position.z], 0.1)) {
+          continue;
+        }
         dummy.position.copy(pose.position).y = 0.5;
         dummy.rotation.set(0, pose.yaw, 0);
         dummy.scale.setScalar(1);
         dummy.updateMatrix();
-        posts.setMatrixAt(i * 2 + j, dummy.matrix);
+        posts.setMatrixAt(acceptedPosts++, dummy.matrix);
       }
     }
+    posts.count = acceptedPosts;
     this.scene.add(posts);
     const start = trackPose(this.map, 0);
     const paddock = new THREE.Group();
@@ -237,17 +257,31 @@ export class RaceWorld {
         box(paddock, (i + j) % 2 ? dark : white, [1, 0.012, 0.6], [i - 5.5, 0.06, j * 0.6]);
       }
     }
-    box(paddock, dark, [0.35, 6.5, 0.35], [-9, 3.25, 0]);
-    box(paddock, dark, [0.35, 6.5, 0.35], [9, 3.25, 0]);
-    box(paddock, dark, [18.4, 1, 0.6], [0, 6.2, 0]);
-    for (let i = 0; i < 5; i++) {
-      box(paddock, new THREE.MeshStandardMaterial({ color: '#a02927' }),
-        [0.23, 0.23, 0.1], [i * 0.45 - 0.9, 6.2, -0.36]);
+    const gantryClear = [-9, 9].every((lateral) => {
+      const p = trackPose(this.map, 0, lateral).position;
+      return clearance.circleClear([p.x, p.z], 0.25);
+    });
+    if (gantryClear) {
+      box(paddock, dark, [0.35, 6.5, 0.35], [-9, 3.25, 0]);
+      box(paddock, dark, [0.35, 6.5, 0.35], [9, 3.25, 0]);
+      box(paddock, dark, [18.4, 1, 0.6], [0, 6.2, 0]);
+      for (let i = 0; i < 5; i++) {
+        box(paddock, new THREE.MeshStandardMaterial({ color: '#a02927' }),
+          [0.23, 0.23, 0.1], [i * 0.45 - 0.9, 6.2, -0.36]);
+      }
     }
     for (let i = 0; i < 10; i++) {
-      box(paddock, concrete, [8, 4, 8], [24, 2, i * 9 - 35]);
-      box(paddock, dark, [0.1, 2.6, 6], [19.95, 1.4, i * 9 - 35]);
-      box(paddock, dark, [9, 0.22, 8.5], [23.5, 4.2, i * 9 - 35]);
+      const pose = clearance.place(this.map, (i * 10 - 35) / this.map.length_m, -24, 7);
+      if (!pose) {
+        continue;
+      }
+      const garage = new THREE.Group();
+      garage.position.copy(pose.position);
+      garage.rotation.y = pose.yaw;
+      box(garage, concrete, [8, 4, 8], [0, 2, 0]);
+      box(garage, dark, [0.1, 2.6, 6], [-4.05, 1.4, 0]);
+      box(garage, dark, [9, 0.22, 8.5], [-0.5, 4.2, 0]);
+      this.scene.add(garage);
     }
     this.scene.add(paddock);
   }
@@ -281,6 +315,12 @@ export class RaceWorld {
   setMode(mode: CameraMode) {
     this.dirty = true;
     this.mode = mode;
+    this.controls.enableRotate = mode !== 'track';
+    this.controls.mouseButtons.LEFT = mode === 'track' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    this.controls.touches.ONE = mode === 'track' ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    this.controls.screenSpacePanning = mode !== 'track';
+    this.camera.clearViewOffset();
+    this.camera.near = 0.12;
     this.camera.fov = mode === 'cockpit' ? 82 : 58;
     this.camera.updateProjectionMatrix();
     this.distance = 1;
@@ -290,14 +330,37 @@ export class RaceWorld {
       this.lastFollowPosition.copy(car.position);
     }
     if (mode === 'track') {
-      this.controls.target.copy(this.center);
-      this.camera.position.copy(this.center)
-        .add(new THREE.Vector3(this.span * 0.3, this.span, this.span * 0.6));
+      this.fitCircuit();
     } else if (mode === 'orbit' && car) {
       this.controls.target.copy(car.position).y = 0.65;
       this.camera.position.copy(car.position).add(new THREE.Vector3(6, 3, 8));
     }
     this.controls.update();
+  }
+
+  private fitCircuit() {
+    const width = this.host.clientWidth;
+    const height = this.host.clientHeight;
+    const toolbar = Number.parseFloat(getComputedStyle(this.host.parentElement ?? this.host)
+      .getPropertyValue('--toolbar-bottom')) || 130;
+    const layout = overviewLayout(this.map, width, height, toolbar);
+    this.controls.enableDamping = false;
+    this.controls.update();
+    this.controls.target.copy(this.center);
+    this.camera.position.copy(this.center)
+      .add(new THREE.Vector3(0, layout.distance, layout.distance * 0.0001));
+    this.controls.maxDistance = Math.max(this.span * 3, layout.distance * 2);
+    this.camera.far = Math.max(16000, layout.distance * 4);
+    this.camera.setViewOffset(width, height, layout.offsetX, layout.offsetY, width, height);
+    this.controls.update();
+    this.controls.enableDamping = true;
+  }
+
+  layoutChanged() {
+    if (this.mode === 'track') {
+      this.fitCircuit();
+      this.dirty = true;
+    }
   }
 
   setMinimap(canvas: HTMLCanvasElement | null) {
@@ -382,6 +445,9 @@ export class RaceWorld {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / Math.max(1, height);
     this.camera.updateProjectionMatrix();
+    if (this.mode === 'track') {
+      this.fitCircuit();
+    }
   }
 
   private animate = () => {
@@ -445,7 +511,14 @@ export class RaceWorld {
     }
     this.dirty = false;
     this.surroundings.update(performance.now() / 1000, this.camera.position, this.highQuality);
+    const near = this.mode === 'track' ? Math.max(0.12, this.camera.position.y / 20) : 0.12;
+    if (Math.abs(this.camera.near - near) > 0.001) {
+      this.camera.near = near;
+      this.camera.updateProjectionMatrix();
+    }
     this.renderer.render(this.scene, this.camera);
+    this.overview.draw(this.camera, this.cars, this.frame, this.selected,
+      this.host.clientWidth, this.host.clientHeight, this.mode === 'track');
     if (this.mapCanvas) {
       this.minimap.draw(this.mapCanvas, this.cars, this.selected);
     }
@@ -468,6 +541,7 @@ export class RaceWorld {
     this.disposed = true;
     this.renderer.setAnimationLoop(null);
     this.resize.disconnect();
+    this.overview.dispose();
     this.surroundings.dispose();
     this.controls.dispose();
     this.renderer.domElement.removeEventListener('pointerdown', this.pointerDown);

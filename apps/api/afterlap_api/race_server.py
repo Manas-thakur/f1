@@ -82,6 +82,7 @@ class RaceServer:
         elif command.operation == "start":
             if session.done:
                 raise ValueError("reset the completed race before starting")
+            session.started = True
             session.status = "running"
         elif command.operation == "step":
             if session.status != "paused":
@@ -116,7 +117,7 @@ class RaceServer:
                     elapsed = self.session.simulator.session_time_s - before
                     self.actual_rate = elapsed / max(time.monotonic() - start, 1e-6)
                     self.publish()
-            await asyncio.sleep(max(0.005, 0.1 / self.speed - (time.monotonic() - start)))
+            await asyncio.sleep(max(0.0, 0.1 / self.speed - (time.monotonic() - start)))
 
     async def connect(self, websocket: ServerConnection) -> None:
         queue: asyncio.Queue[str] = asyncio.Queue(maxsize=1)

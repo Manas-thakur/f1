@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from typing import Literal
 
 import numpy as np
@@ -28,6 +29,7 @@ class Variability(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
     preset: Literal["baseline", "mild", "training", "stress"] = "mild"
+    grid_scale: float = Field(default=1, ge=0, le=1)
     driver_scale: float = Field(default=1, ge=0, le=1)
     vehicle_scale: float = Field(default=1, ge=0, le=1)
     sensor_scale: float = Field(default=1, ge=0, le=2)
@@ -59,6 +61,13 @@ class Variability(BaseModel):
             preferred_line_m=float(line),
             reserve_j=650000 - 150000 * risk,
         )
+
+
+@lru_cache(maxsize=16)
+def _uniform_preview(shape: tuple[int, ...], grip: float) -> np.ndarray:
+    values = np.full(shape, grip, dtype=np.float64)
+    values.setflags(write=False)
+    return values
 
 
 class RaceWeather:
@@ -116,7 +125,7 @@ class RaceWeather:
         return (1 - 0.45 * measured) * (1 - self.patch_amplitude)
 
     def preview_grip_array(self, s_m: np.ndarray, session_time_s: float) -> np.ndarray:
-        return np.full_like(s_m, self.preview_grip(0, session_time_s), dtype=np.float64)
+        return _uniform_preview(s_m.shape, self.preview_grip(0, session_time_s))
 
     def manifest(self) -> dict[str, object]:
         return {

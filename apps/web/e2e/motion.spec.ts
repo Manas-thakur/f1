@@ -6,13 +6,13 @@ import type { RaceFrame } from '../src/features/race/types';
 
 function frame(time: number, progress: number, status = 'running', generation = 1): RaceFrame {
   return {
-    type: 'frame', time_s: time, generation, status, steps: 0, failure: null,
+    type: 'frame', time_s: time, generation, status, started: true, steps: 0, failure: null,
     requested_rate: 1, actual_rate: 1, has_checkpoint: false, events: [],
     settings: { circuit: 'test', seed: 1, cars: 1, laps: 3, dt_s: 0.01,
       wetness: 0, temperature_k: 300, wind_mps: 0, wake: false, variability: { preset: 'mild' }, time_limit_s: 100 },
     circuit_map: { id: 'test', name: 'Test', length_m: 1000,
       points: [[0, 0], [100, 0], [100, 100], [0, 100]] },
-    cars: [{ id: 'car-01', channels: { s_m: progress % 1000, progress_m: progress },
+    cars: [{ id: 'car-01', driver_name: 'Lewis Hamilton', channels: { s_m: progress % 1000, progress_m: progress },
       observed_at_s: time, requested_profile: 'neutral', finish_time_s: null }],
   };
 }
@@ -69,7 +69,7 @@ test('buffer fills before playback and all cars share the same render time', () 
   const motion = new RaceMotion();
   for (let i = 0; i < 8; i++) {
     const update = frame(i * 0.1, i * 10);
-    update.cars.push({ id: 'car-02', observed_at_s: i * 0.1,
+    update.cars.push({ id: 'car-02', driver_name: 'Michael Schumacher', observed_at_s: i * 0.1,
       requested_profile: 'neutral', finish_time_s: null,
       channels: { progress_m: i * 10 - 6, lateral_d_m: 0 } });
     motion.push(update, i * 150);
@@ -124,4 +124,37 @@ test('road surface follows the smoothed car path between artwork nodes', () => {
     expect(Math.hypot(x - car.x, z - car.z)).toBeLessThan(0.05);
   }
   road.dispose();
+});
+
+
+test('100 mph telemetry preserves world-space travel at the achieved playback pace', () => {
+  const speed = 44.704;
+  const points: [number, number][] = [];
+  for (let i = 0; i < 100; i++) { points.push([i * 10, 0]); }
+  for (let i = 0; i < 100; i++) { points.push([1000, i * 10]); }
+  for (let i = 0; i < 100; i++) { points.push([1000 - i * 10, 1000]); }
+  for (let i = 0; i < 100; i++) { points.push([0, 1000 - i * 10]); }
+  for (const rate of [0.5, 1, 2, 8]) {
+    const motion = new RaceMotion();
+    const map = { id: 'metric', name: 'Metric', length_m: 4000, points };
+    const rendered: number[] = [];
+    for (let now = 0; now <= 1800; now += 10) {
+      if (now % 100 === 0) {
+        const time = now / 1000 * rate;
+        const update = frame(time, 100 + time * speed);
+        update.requested_rate = 8;
+        update.circuit_map = map;
+        const car = update.cars[0];
+        if (car) { car.channels['speed_mps'] = speed; }
+        motion.push(update, now);
+      }
+      const pose = motion.sample(now).get('car-01');
+      if (now >= 600 && pose) { rendered.push(trackPose(map, pose.progress).position.x); }
+    }
+    const traveled = (rendered.at(-1) ?? NaN) - (rendered[0] ?? NaN);
+    expect(traveled / 1.2).toBeCloseTo(speed * rate, 1);
+    const steps = rendered.slice(1).map((x, i) => x - (rendered[i] ?? NaN));
+    expect(Math.min(...steps)).toBeGreaterThan(speed * rate * 0.009);
+    expect(Math.max(...steps)).toBeLessThan(speed * rate * 0.011);
+  }
 });

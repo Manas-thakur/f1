@@ -8,7 +8,7 @@ export interface RaceSettings {
   temperature_k: number;
   wind_mps: number;
   wake: boolean;
-  variability: { preset: 'baseline' | 'mild' | 'training' | 'stress' };
+  variability: Variability;
   time_limit_s: number;
 }
 
@@ -19,7 +19,21 @@ export interface CircuitMap {
   points: [number, number][];
 }
 
+export interface Variability {
+  preset: 'baseline' | 'mild' | 'training' | 'stress';
+  grid_scale?: number;
+  driver_scale?: number;
+  vehicle_scale?: number;
+  sensor_scale?: number;
+  surface_scale?: number;
+  wind_scale?: number;
+  wetness_target?: number | null;
+  weather_tau_s?: number;
+  drivers?: Record<string, Record<string, number>>;
+}
+
 export interface RaceCar {
+  driver_name: string;
   id: string;
   channels: Record<string, number | undefined>;
   observed_at_s: number;
@@ -34,6 +48,7 @@ export interface RaceFrame {
   time_s: number;
   steps: number;
   status: string;
+  started: boolean;
   failure: string | null;
   cars: RaceCar[];
   requested_rate: number;

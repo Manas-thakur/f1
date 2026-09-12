@@ -11,6 +11,8 @@ export function Control() {
   const { frame, circuits, send, connected, selected, select, history } = useRace();
   const [profile, setProfile] = useState('neutral');
   const [manual, setManual] = useState(false);
+  const [lockSeed, setLockSeed] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
   if (!frame) {
     return (
       <div className={styles.controlContent}>
@@ -21,14 +23,34 @@ export function Control() {
   function reset(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    let drivers: unknown;
+    try {
+      const overrides = data.get('drivers');
+      drivers = JSON.parse(typeof overrides === 'string' && overrides.trim() ? overrides : '{}');
+      if (!drivers || typeof drivers !== 'object' || Array.isArray(drivers)) {
+        throw new Error('Expected a driver object');
+      }
+    } catch {
+      setSettingsError('Driver overrides must be a JSON object keyed by car ID.');
+      return;
+    }
+    setSettingsError('');
     send('reset', {
       settings: {
         circuit: data.get('circuit'),
-        variability: { preset: data.get('variability') },
-        seed: Number(data.get('seed')),
+        variability: {
+          ...frame?.settings.variability,
+          preset: data.get('variability'),
+          ...Object.fromEntries(['grid_scale', 'driver_scale', 'vehicle_scale', 'sensor_scale',
+            'surface_scale', 'wind_scale', 'weather_tau_s']
+            .map((name) => [name, Number(data.get(name))])),
+          wetness_target: data.get('wetness_target') === '' ? null : Number(data.get('wetness_target')),
+          drivers,
+        },
+        seed: lockSeed ? Number(data.get('seed')) : crypto.getRandomValues(new Uint32Array(1))[0],
         cars: Number(data.get('cars')),
         laps: Number(data.get('laps')),
-        dt_s: 0.01,
+        dt_s: frame?.settings.dt_s ?? 0.01,
         wetness: Number(data.get('wetness')),
         temperature_k: Number(data.get('temperature')) + 273.15,
         wind_mps: Number(data.get('wind')),
@@ -96,6 +118,7 @@ export function Control() {
               Seed
               <input
                 name="seed"
+                onChange={() => setLockSeed(true)}
                 type="number"
                 min="0"
                 max="4294967295"
@@ -103,6 +126,41 @@ export function Control() {
                 defaultValue={frame?.settings.seed ?? 42}
               />
             </label>
+            <label className={styles.checkbox}>
+              <input type="checkbox" checked={lockSeed} onChange={(event) => setLockSeed(event.target.checked)} />
+              Reuse seed for replay
+            </label>
+            <p className={`${styles.caption} ${styles.wide}`}>
+              Unlocked resets draw a fresh seed. Copy the displayed seed to replay this race.
+            </p>
+            <details className={styles.wide}>
+              <summary>Advanced variability</summary>
+              <div className={styles.form}>
+                {([
+                  ['grid_scale', 'Starting grid variation', 1], ['driver_scale', 'Driver variation', 1], ['vehicle_scale', 'Vehicle variation', 1],
+                  ['sensor_scale', 'Sensor noise scale', 2], ['surface_scale', 'Surface variation', 1],
+                  ['wind_scale', 'Wind variation', 1],
+                ] as const).map(([name, label, max]) => <label key={name}>{label}
+                  <input name={name} type="number" min="0" max={max} step="any" required
+                    defaultValue={frame.settings.variability[name] ?? 1} />
+                </label>)}
+                <label>Target wetness
+                  <input name="wetness_target" type="number" min="0" max="1" step="any"
+                    placeholder="Sample automatically" defaultValue={frame.settings.variability.wetness_target ?? ''} />
+                </label>
+                <label>Weather response (s)
+                  <input name="weather_tau_s" type="number" min="30" max="1800" step="any" required
+                    defaultValue={frame.settings.variability.weather_tau_s ?? 120} />
+                </label>
+                <label className={styles.wide}>Driver trait overrides (JSON)
+                  <textarea name="drivers" rows={5} spellCheck={false}
+                    defaultValue={JSON.stringify(frame.settings.variability.drivers ?? {}, null, 2)} />
+                  <span>Keys are stable car IDs, such as car-01.
+                    Parameter bounds are in RACE_PARAMETERS.md.</span>
+                </label>
+              </div>
+            </details>
+            {settingsError && <p role="alert" className={styles.wide}>{settingsError}</p>}
             <label>
               Cars
               <input
@@ -129,6 +187,7 @@ export function Control() {
               Time limit (s)
               <input
                 name="duration"
+                step="any"
                 type="number"
                 min="1"
                 max="14400"
@@ -143,7 +202,7 @@ export function Control() {
                 type="number"
                 min="0"
                 max="1"
-                step="0.1"
+                step="any"
                 defaultValue={frame?.settings.wetness ?? 0}
                 required
               />
@@ -155,10 +214,8 @@ export function Control() {
                 type="number"
                 min="0"
                 max="50"
-                step="0.1"
-                defaultValue={Number(
-                  ((frame?.settings.temperature_k ?? 303.15) - 273.15).toFixed(1),
-                )}
+                step="any"
+                defaultValue={(frame.settings.temperature_k - 273.15)}
                 required
               />
             </label>
@@ -169,7 +226,7 @@ export function Control() {
                 type="number"
                 min="-20"
                 max="20"
-                step="0.1"
+                step="any"
                 defaultValue={frame?.settings.wind_mps ?? 0}
                 required
               />
@@ -193,7 +250,7 @@ export function Control() {
               Car
               <select value={selected} onChange={(event) => select(event.target.value)}>
                 {frame?.cars.map((car) => (
-                  <option key={car.id}>{car.id}</option>
+                  <option key={car.id} value={car.id}>{car.driver_name}</option>
                 ))}
               </select>
             </label>
@@ -212,7 +269,7 @@ export function Control() {
                 type="number"
                 min="0.7"
                 max="1"
-                step="0.01"
+                step="any"
                 defaultValue="0.94"
                 required
               />
@@ -224,7 +281,7 @@ export function Control() {
                 type="number"
                 min="-5"
                 max="5"
-                step="0.1"
+                step="any"
                 defaultValue="-2.5"
                 required
               />
@@ -247,7 +304,7 @@ export function Control() {
                 type="number"
                 min="0"
                 max="1"
-                step="0.05"
+                step="any"
                 defaultValue="0.5"
                 disabled={!manual}
                 required={manual}
@@ -260,7 +317,7 @@ export function Control() {
                 type="number"
                 min="0"
                 max="1"
-                step="0.05"
+                step="any"
                 defaultValue="0"
                 disabled={!manual}
                 required={manual}

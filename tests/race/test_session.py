@@ -134,3 +134,28 @@ def test_traffic_braking_cannot_weaken_corner_braking():
     manual, _ = simulator._evaluate("car-01", position, speed, -2.5, DriverAction(brake=0.1), 0.01, None)
     assert floor.acceleration_mps2 < manual.acceleration_mps2 - 5
     assert floor.acceleration_mps2 < -10
+
+
+@pytest.mark.parametrize("varying", [False, True])
+def test_scalar_track_fields_match_periodic_interpolation(varying):
+    from afterlap_core.simulation.config import _tables_for
+
+    track, _ = circuit("monaco")
+    if varying:
+        segments = tuple(
+            segment.model_copy(
+                update={
+                    name: getattr(segment, name).model_copy(update={"value": base + index % 3 * 0.01})
+                    for name, base in [("grade_rad", 0), ("mu", 1), ("width_m", 12)]
+                }
+            )
+            for index, segment in enumerate(track.segments)
+        )
+        track = track.model_copy(update={"segments": segments})
+    tables = _tables_for(track)
+    for position in [-track.length - 1, 0, 10.3, track.length * 0.37, track.length * 2]:
+        for field in ["grade", "mu", "width"]:
+            expected = tables.evaluate_scalar(getattr(tables, field + "_list"), position)
+            assert getattr(track, field + "_at")(position) == expected
+    for position in [float("nan"), float("inf"), -float("inf")]:
+        assert all(math.isnan(getattr(track, field + "_at")(position)) for field in ["grade", "mu", "width"])

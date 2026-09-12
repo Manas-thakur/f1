@@ -86,6 +86,23 @@ class EnergyLedger:
         if math.isnan(self.initial_energy_j):
             self.initial_energy_j = self.energy_j
 
+    def deployment_flow(
+        self, dt_s: float, requested_deploy_dc_w: float, aux_w: float
+    ) -> tuple[float, float, float, float]:
+        energy = self.energy_j
+
+        aux_capacity_w = max(0.0, (energy - self.energy_min_j) / dt_s)
+        actual_aux_w = min(aux_w, aux_capacity_w)
+        energy -= actual_aux_w * dt_s
+
+        requested_out_w = battery_out_power(requested_deploy_dc_w, self.eta_discharge)
+        available_out_w = max(0.0, (energy - self.energy_min_j) / dt_s)
+        actual_out_w = min(requested_out_w, available_out_w)
+        actual_deploy_dc_w = actual_out_w * self.eta_discharge
+        energy -= actual_out_w * dt_s
+
+        return energy, actual_aux_w, actual_out_w, actual_deploy_dc_w
+
     def plan(
         self,
         dt_s: float,
@@ -105,18 +122,10 @@ class EnergyLedger:
         if aux_w < 0.0:
             raise ValueError("auxiliary load cannot be negative")
 
-        energy = self.energy_j
-
-        aux_capacity_w = max(0.0, (energy - self.energy_min_j) / dt_s)
-        actual_aux_w = min(aux_w, aux_capacity_w)
-        energy -= actual_aux_w * dt_s
-
-        requested_out_w = battery_out_power(requested_deploy_dc_w, self.eta_discharge)
-        available_out_w = max(0.0, (energy - self.energy_min_j) / dt_s)
-        actual_out_w = min(requested_out_w, available_out_w)
-        actual_deploy_dc_w = actual_out_w * self.eta_discharge
+        energy, actual_aux_w, actual_out_w, actual_deploy_dc_w = self.deployment_flow(
+            dt_s, requested_deploy_dc_w, aux_w
+        )
         deploy_saturated = requested_deploy_dc_w - actual_deploy_dc_w > 1e-9
-        energy -= actual_out_w * dt_s
 
         source_limited_dc_w = min(requested_harvest_dc_w, mechanical_available_w)
         requested_in_w = battery_in_power(source_limited_dc_w, self.eta_charge)

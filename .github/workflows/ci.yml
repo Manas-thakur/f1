@@ -76,6 +76,8 @@ jobs:
           enable-cache: true
       - name: Install CPU training dependencies
         run: uv sync --frozen --all-packages --group learning
+      - name: Parallel training and policy reload
+        run: uv run --group learning pytest tests/race/test_training.py
       - name: Generate transitions
         run: make race-generate CIRCUIT=monza CARS=2 LAPS=1 DURATION=5
       - name: Train a policy

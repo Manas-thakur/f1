@@ -30,7 +30,7 @@ from .state import (
 )
 from .track import TrackGeometry, footprints_overlap, geometry_for
 from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField
-from .wake import DISABLED as WAKE_DISABLED, FREE_AIR as WAKE_FREE_AIR, WakeEffect, WakeModel
+from .wake import DISABLED as WAKE_DISABLED, FREE_AIR as WAKE_FREE_AIR, WakeEffect, WakeField, WakeModel
 
 _MIN_SUBSTEP_S = 1.0e-4
 
@@ -123,6 +123,7 @@ class Simulator:
         self._electrical_limits: dict[str, ElectricalLimits] = {}
         self._wake: WakeModel | None = None
         self._wake_effects: dict[str, WakeEffect] = {}
+        self._wake_field: WakeField | None = None
         self._overtake_trackers: dict[tuple[str, str], OvertakeTracker] = {}
 
     def reset(
@@ -258,6 +259,10 @@ class Simulator:
         if model is None:
             return WAKE_DISABLED
         world = self.world
+        if self._wake_field is not None:
+            return self._wake_field.effect(
+                model, car_id, progress_m, lateral_d_m, speed_mps, world.track.length
+            )
         strongest = WAKE_FREE_AIR
         for other_id, other in world.cars.items():
             if other_id == car_id:
@@ -526,7 +531,9 @@ class Simulator:
         action: DriverAction,
         dt_s: float,
         plan: LedgerPlan | None,
-    ) -> tuple[_Evaluation, LedgerPlan]:
+        *,
+        diagnostics: bool = True,
+    ) -> tuple[_Evaluation, LedgerPlan | None]:
 
         world = self.world
         track = world.track
@@ -575,7 +582,7 @@ class Simulator:
             car, self._event_limits, world.cars[car_id].battery_temperature_k, grip_multiplier
         )
         self._electrical_limits[car_id] = limits
-        derate = limits.thermal_derate()
+        derate = limits.thermal_derate() if diagnostics else 0.0
         deploy_ceiling_w = limits.deploy_ceiling_dc_w(speed, overtake_eligible=False)
 
         max_brake_n = min(float(car.max_brake_force_n.value), braking_fraction * long_envelope_n)
@@ -615,8 +622,8 @@ class Simulator:
         brake_force_n = brake * max_brake_n
         mechanical_brake_w = brake_force_n * speed
 
-        if plan is None:
-            requested_deploy_w = DEPLOY_FRACTION[action.profile] * deploy_ceiling_w * throttle
+        requested_deploy_w = DEPLOY_FRACTION[action.profile] * deploy_ceiling_w * throttle
+        if plan is None and diagnostics:
             if car.regen_enabled:
                 mechanical_available_w = limits.harvest_ceiling_dc_w(speed, mechanical_brake_w)
                 requested_harvest_w = (
@@ -633,7 +640,13 @@ class Simulator:
                 aux_w=float(car.aux_load_w.value),
             )
 
-        shaft_w = (ice_full_w * throttle + plan.actual_deploy_dc_w) * float(car.drivetrain_efficiency.value)
+        actual_deploy_w = (
+            plan.actual_deploy_dc_w
+            if plan is not None
+            else ledger.deployment_flow(dt_s, requested_deploy_w, float(car.aux_load_w.value))[3]
+        )
+
+        shaft_w = (ice_full_w * throttle + actual_deploy_w) * float(car.drivetrain_efficiency.value)
         drive_available_n = physics.tractive_force(shaft_w, speed, float(car.max_tractive_force_n.value))
         net_drive_n = drive_available_n - brake_force_n
         acceleration, applied_n = physics.longitudinal_acceleration(
@@ -645,40 +658,64 @@ class Simulator:
         limit_d = self.geometry.lateral_limit(s_m, float(car.width_m.value))
         target_d = max(-limit_d, min(action.target_lateral_d_m, limit_d))
         lateral_rate = float(driver.line_tracking_gain.value) * (target_d - lateral_d_m)
-        heading_error = math.atan2(lateral_rate, max(speed, 1.0))
+        heading_error = math.atan2(lateral_rate, max(speed, 1.0)) if diagnostics else 0.0
 
-        diagnostics = {
-            "applied_throttle": throttle,
-            "applied_brake": brake,
-            "grip_multiplier": grip_multiplier,
-            "drive_force_n": applied_n,
-            "drag_force_n": drag_n,
-            "rolling_force_n": roll_n,
-            "grade_force_n": grade_n,
-            "traction_limit_n": long_envelope_n,
-            "traction_envelope_n": envelope_n,
-            "lateral_demand_n": lateral_demand_n,
-            "lateral_acceleration_mps2": speed * speed * abs(curvature),
-            "tyre_utilisation": (
-                math.hypot(lateral_demand_n, applied_n) / envelope_n if envelope_n > 0.0 else 0.0
-            ),
-            "ice_power_w": ice_full_w * throttle,
-            "mechanical_braking_power_w": mechanical_brake_w,
-            "target_speed_mps": target_speed,
-            "envelope_speed_mps": envelope_speed,
-            "derate_factor": derate,
-        }
+        telemetry = (
+            {
+                "applied_throttle": throttle,
+                "applied_brake": brake,
+                "grip_multiplier": grip_multiplier,
+                "drive_force_n": applied_n,
+                "drag_force_n": drag_n,
+                "rolling_force_n": roll_n,
+                "grade_force_n": grade_n,
+                "traction_limit_n": long_envelope_n,
+                "traction_envelope_n": envelope_n,
+                "lateral_demand_n": lateral_demand_n,
+                "lateral_acceleration_mps2": speed * speed * abs(curvature),
+                "tyre_utilisation": (
+                    math.hypot(lateral_demand_n, applied_n) / envelope_n if envelope_n > 0.0 else 0.0
+                ),
+                "ice_power_w": ice_full_w * throttle,
+                "mechanical_braking_power_w": mechanical_brake_w,
+                "target_speed_mps": target_speed,
+                "envelope_speed_mps": envelope_speed,
+                "derate_factor": derate,
+            }
+            if diagnostics
+            else {}
+        )
         return (
             _Evaluation(
                 acceleration_mps2=acceleration,
                 lateral_rate_mps=lateral_rate,
                 heading_error_rad=heading_error,
-                diagnostics=diagnostics,
+                diagnostics=telemetry,
             ),
             plan,
         )
 
     def _integrate_all(self, h: float) -> dict[str, _CarTrial]:
+        world = self.world
+        if type(self._wake) is WakeModel:
+            self._wake_field = WakeField(
+                tuple(
+                    (
+                        car_id,
+                        state.progress_m,
+                        state.lateral_d_m,
+                        state.speed_mps,
+                        float(world.bundle.car_configs[car_id].length_m.value),
+                    )
+                    for car_id, state in world.cars.items()
+                )
+            )
+        try:
+            return self._integrate_cars(h)
+        finally:
+            self._wake_field = None
+
+    def _integrate_cars(self, h: float) -> dict[str, _CarTrial]:
 
         world = self.world
         trials: dict[str, _CarTrial] = {}
@@ -686,12 +723,20 @@ class Simulator:
             state = world.cars[car_id]
             action = world.active_actions[car_id]
             first, _ = self._evaluate(
-                car_id, state.progress_m, state.speed_mps, state.lateral_d_m, action, h, None
+                car_id,
+                state.progress_m,
+                state.speed_mps,
+                state.lateral_d_m,
+                action,
+                h,
+                None,
+                diagnostics=False,
             )
             mid_progress = state.progress_m + 0.5 * h * state.speed_mps
             mid_speed = max(0.0, state.speed_mps + 0.5 * h * first.acceleration_mps2)
             mid_lateral = state.lateral_d_m + 0.5 * h * first.lateral_rate_mps
             second, plan = self._evaluate(car_id, mid_progress, mid_speed, mid_lateral, action, h, None)
+            assert plan is not None
 
             speed_next = max(0.0, state.speed_mps + h * second.acceleration_mps2)
             progress_next = state.progress_m + h * mid_speed

@@ -45,6 +45,7 @@ export function Circuit() {
     }
     const resize = new ResizeObserver(() => {
       element.parentElement?.style.setProperty('--toolbar-bottom', `${element.offsetTop + element.offsetHeight + 16}px`);
+      world.current?.layoutChanged();
     });
     resize.observe(element);
     return () => resize.disconnect();
@@ -139,10 +140,9 @@ export function Circuit() {
   const speed = car?.channels['speed_mps'];
   const energy = car?.channels['battery_energy_j'];
   return (
-    <section ref={panel} className={styles.mapPanel} aria-label="Live circuit">
+    <section ref={panel} className={styles.mapPanel} data-overview={mode === 'track'} aria-label="Live circuit">
       <div className={styles.sceneWrap} style={{ width: `calc(100% - ${dockWidth}px)` }}>
       <div ref={toolbar} className={styles.mapTools}>
-        <button type="button" aria-label="Race controls" aria-expanded={settings} onClick={() => setSettings(!settings)}>☰</button>
         <span className={styles.circuitName}>{frame?.circuit_map.name.toUpperCase() ?? 'CONNECTING'}</span>
         <span className={styles.connection} data-socket-url={socketUrl}>{connected ? '● CONNECTED' : '○ DISCONNECTED'}</span>
         <div className={styles.cameraTabs} role="group" aria-label="Camera view">
@@ -163,6 +163,7 @@ export function Circuit() {
           <option value="performance">Performance</option>
         </select>
         <button type="button" onClick={() => void fullscreen()}>Fullscreen</button>
+        <button type="button" aria-label="Race controls" aria-expanded={settings} onClick={() => setSettings(!settings)}>☰</button>
         <Transport />
       </div>
         {/* eslint-disable-next-line
@@ -195,6 +196,7 @@ export function Circuit() {
         <div className={styles.sceneBadge}>
           <span>{frame?.status === 'running' ? `${fps} FPS` : 'RENDER ON DEMAND'}
             {' · '}{mode === 'cockpit' ? 'FIRST PERSON' : mode.toUpperCase()}</span>
+          {mode === 'track' && <span>Click a rank to select · Drag to pan · Scroll to zoom</span>}
           <span>PACE {frame?.playback_rate?.toFixed(2) ?? '…'}× · TARGET {frame?.requested_rate ?? 1}×</span>
         </div>
         {classification && <Classification />}
@@ -204,7 +206,7 @@ export function Circuit() {
         <div className={styles.sceneActions}>
           <button type="button" aria-label="Zoom in" onClick={() => world.current?.zoom(1 / 1.2)}>+</button>
           <button type="button" aria-label="Zoom out" onClick={() => world.current?.zoom(1.2)}>−</button>
-          <button type="button" onClick={() => world.current?.setMode('chase')}>Reset view</button>
+          <button type="button" onClick={() => world.current?.setMode(mode === 'track' ? 'track' : 'chase')}>{mode === 'track' ? 'Fit circuit' : 'Reset view'}</button>
           <button type="button" aria-pressed={showMap} onClick={() => setShowMap(!showMap)}>Minimap</button>
           <button type="button" aria-pressed={classification} onClick={() => setClassification(!classification)}>Classification</button>
           <button type="button" aria-expanded={help} onClick={() => setHelp(!help)}>Controls</button>
@@ -221,11 +223,11 @@ export function Circuit() {
         <div className={styles.minimap} hidden={!showMap}>
           <div><strong>CIRCUIT MAP</strong><span>YOU ▴</span></div>
           <canvas ref={minimapCanvas} width={480} height={300}
-            aria-label={`Circuit minimap tracking ${selected}`} role="img" />
-          <small>{selected.toUpperCase()} · P{car ? (frame?.cars.indexOf(car) ?? 0) + 1 : '?'}</small>
+            aria-label={`Circuit minimap tracking ${car?.driver_name ?? selected}`} role="img" />
+          <small>{car?.driver_name ?? 'Waiting for driver'} · P{car ? (frame?.cars.indexOf(car) ?? 0) + 1 : '?'}</small>
         </div>
         <div className={styles.worldHud}>
-          <div><small>FOLLOWING</small><strong>{selected.toUpperCase()}</strong>
+          <div><small>FOLLOWING</small><strong>{car?.driver_name ?? 'Waiting for driver'}</strong>
             <div className={styles.carSwitch}>
               <button type="button" aria-label="Watch car ahead" onClick={() => switchCar(-1)}>↑</button>
               <button type="button" aria-label="Watch car behind" onClick={() => switchCar(1)}>↓</button>

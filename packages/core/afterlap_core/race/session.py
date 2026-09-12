@@ -16,6 +16,7 @@ from ..simulation.state import PassRecord
 from ..simulation.track import footprints_overlap
 from ..simulation.wake import WakeModel
 from .circuit import circuit
+from .driver_names import driver_names
 from .factory import race_bundle
 from .racecraft import Racecraft
 from .settings import RaceSettings
@@ -26,6 +27,7 @@ class RaceSession:
     def __init__(self, settings: RaceSettings | None = None) -> None:
         self.settings = settings or RaceSettings()
         self.bundle = race_bundle(self.settings)
+        self.driver_names = driver_names(self.settings.seed, tuple(self.bundle.car_configs))
         self.track, self.map = circuit(self.settings.circuit, 0)
         self.weather = RaceWeather(
             self.settings.temperature_k,
@@ -64,6 +66,7 @@ class RaceSession:
         self.finishes: dict[str, float] = {}
         self.events: list[dict[str, Any]] = []
         self.status = "paused"
+        self.started = False
         self.failure: str | None = None
         self.steps = 0
 
@@ -104,6 +107,8 @@ class RaceSession:
     def advance(self, duration_s: float = 0.1) -> None:
         if not math.isfinite(duration_s) or not 0 < duration_s <= 10:
             raise ValueError("advance duration must be in (0, 10]")
+        if not self.done:
+            self.started = True
         remaining = duration_s
         while remaining > 1e-9 and not self.done:
             h = min(self.settings.dt_s, remaining, self.settings.time_limit_s - self.simulator.session_time_s)
@@ -173,6 +178,7 @@ class RaceSession:
             cars.append(
                 {
                     "id": car_id,
+                    "driver_name": self.driver_names[car_id],
                     "channels": channels,
                     "observed_at_s": observation.observed_at_s,
                     "quality": observation.quality.value,
@@ -197,6 +203,7 @@ class RaceSession:
             "time_s": self.simulator.session_time_s,
             "steps": self.steps,
             "status": self.status,
+            "started": self.started,
             "failure": self.failure,
             "cars": cars,
             "events": self.events,
@@ -219,6 +226,7 @@ class RaceSession:
                 "steps": self.steps,
                 "failure": self.failure,
                 "status": self.status,
+                "started": self.started,
             }
         )
 
@@ -241,6 +249,7 @@ class RaceSession:
             "steps",
             "failure",
             "status",
+            "started",
         ):
             setattr(self, key, saved[key])
 

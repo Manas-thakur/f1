@@ -6,6 +6,9 @@ CARS ?= 20
 LAPS ?= 3
 DURATION ?= 1800
 STEPS ?= 10000
+WORKERS ?= 1
+ROLLOUT_STEPS ?= 128
+BATCH_SIZE ?= 64
 OUTPUT ?= .afterlap/race/$(CIRCUIT)-$(SEED).jsonl
 
 .PHONY: help install dev race race-server race-generate race-train race-check race-browser-check race-up race-down
@@ -35,7 +38,7 @@ race-generate:
 	$(PYTHON) scripts/race.py generate --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --output $(OUTPUT)
 
 race-train:
-	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --steps $(STEPS) --output .afterlap/race/policy-$(SEED)
+	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --steps $(STEPS) --workers $(WORKERS) --rollout-steps $(ROLLOUT_STEPS) --batch-size $(BATCH_SIZE) --output .afterlap/race/policy-$(SEED)
 
 race-check:
 	uv run pytest

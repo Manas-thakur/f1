@@ -82,7 +82,7 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
   await expect(page.getByLabel('Live circuit')).toContainText('MONZA');
-  await expect(page.getByRole('button', { name: 'car-01', exact: true })).toBeVisible();
+  await expect(page.locator('[aria-label="Classification"] [data-car-id="car-01"]')).toBeVisible();
   await expect(page.getByLabel('Race lap', { exact: true })).toHaveText('LAP 1 / 5');
   await expect(page.getByLabel('Selected car lap', { exact: true })).toHaveText('LAP 1 / 5');
   await expect(page.getByRole('progressbar', { name: 'Selected car lap progress' })).toHaveAttribute(
@@ -142,7 +142,7 @@ test('race websocket follows a forwarded dashboard port', async ({ page }) => {
     await page.getByRole('button', { name: 'Start race', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Pause race', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Resume race', exact: true })).toBeEnabled();
   } finally {
     for (const socket of sockets) {
       socket.destroy();
@@ -168,7 +168,7 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   await expect(page.getByRole('button', { name: 'Chase', exact: true })).toBeEnabled();
   await expect(page.getByLabel('Selected car lap', { exact: true })).toContainText('LAP 1');
   await page.getByRole('button', { name: 'Pause race', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Resume race', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Car orbit', exact: true }).click();
   await expect(scene).toHaveAttribute('data-camera-mode', 'orbit');
   await expect.poll(async () => Number((await scene.getAttribute('data-camera-position'))?.split(',')[1]))
@@ -186,22 +186,22 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
     .toBeCloseTo(0.86, 2);
   await expect(page.getByRole('button', { name: 'First person', exact: true }))
     .toHaveAttribute('aria-pressed', 'true');
-  const order = await page.getByRole('button', { name: /^car-\d+$/ })
-    .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')));
+  const order = await page.locator('[aria-label="Classification"] [data-car-id]')
+    .evaluateAll((buttons) => buttons.map((button) => button.getAttribute('data-car-id')));
   const first = order[0];
   const last = order.at(-1);
   if (!first || !last) {
     throw new Error('Race classification is empty');
   }
-  await page.getByRole('button', { name: first, exact: true }).click();
+  await page.locator(`[aria-label="Classification"] [data-car-id="${first}"]`).click();
   await page.keyboard.press('ArrowUp');
-  await expect(page.getByRole('button', { name: last, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator(`[aria-label="Classification"] [data-car-id="${last}"]`)).toHaveAttribute('aria-pressed', 'true');
   await expect(scene).toHaveAttribute('data-camera-mode', 'cockpit');
-  const minimap = page.getByRole('img', { name: `Circuit minimap tracking ${last}` });
+  const minimap = page.getByRole('img', { name: /Circuit minimap tracking/ });
   await expect(minimap).toHaveAttribute('data-selected-car', last);
   await expect(minimap).toHaveAttribute('data-selected-position', /\d/);
   await page.keyboard.press('ArrowDown');
-  await expect(page.getByRole('button', { name: first, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator(`[aria-label="Classification"] [data-car-id="${first}"]`)).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Minimap', exact: true }).click();
   await expect(page.getByRole('img', { name: /Circuit minimap/ })).toBeHidden();
   await page.keyboard.press('m');
@@ -209,7 +209,7 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   await scene.focus();
   await page.keyboard.press('4');
   await expect(scene).toHaveAttribute('data-camera-mode', 'track');
-  await page.getByRole('button', { name: 'Reset view', exact: true }).click();
+  await page.getByRole('button', { name: 'Chase', exact: true }).click();
   await expect(scene).toHaveAttribute('data-camera-mode', 'chase');
   const bounds = await scene.boundingBox();
   if (!bounds) {
@@ -223,8 +223,8 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   const dragged = await scene.getAttribute('data-camera-position');
   await page.mouse.wheel(0, -250);
   await expect.poll(() => scene.getAttribute('data-camera-position')).not.toBe(dragged);
-  await page.getByRole('button', { name: 'car-03', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'car-03', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('[aria-label="Classification"] [data-car-id="car-03"]').click();
+  await expect(page.locator('[aria-label="Classification"] [data-car-id="car-03"]')).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Controls', exact: true }).click();
   await expect(page.getByText('Explore the circuit', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Controls', exact: true }).click();
@@ -264,7 +264,7 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monza');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await expect(page.getByLabel('Live circuit')).toContainText('MONZA');
-  await expect(page.getByRole('button', { name: 'car-01', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[aria-label="Classification"] [data-car-id="car-01"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
   expect(errors).toEqual([]);
 });
@@ -285,7 +285,7 @@ test('unavailable WebGL keeps race controls usable and offers recovery', async (
   await expect(page.getByLabel('Live circuit').getByRole('alert'))
     .toContainText('3D rendering is unavailable', { timeout: 60000 });
   await expect(page.getByRole('button', { name: 'Reload 3D view', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^(Start|Pause) race$/ })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /^(Start|Pause|Resume) race$/ }).and(page.locator('button:enabled'))).toHaveCount(1);
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Reset race', exact: true })).toBeEnabled();
 });
@@ -334,4 +334,53 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
   await expect.poll(async () => Number((await scene.getAttribute('data-camera-position'))?.split(',')[1]))
     .toBeGreaterThanOrEqual(0.65);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);
+});
+
+
+test('start is separate from play and pause, and ended races offer a new race', async ({ page }) => {
+  test.slow();
+  await page.goto('/race');
+  await page.getByLabel('Graphics quality').selectOption('performance');
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByLabel('Seed', { exact: true }).fill('77');
+  await page.getByLabel('Time limit (s)').fill('60');
+  await page.getByRole('combobox', { name: 'Variability', exact: true }).selectOption('baseline');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  const start = page.getByRole('button', { name: 'Start race', exact: true });
+  const play = page.getByRole('button', { name: 'Resume race', exact: true });
+  const pause = page.getByRole('button', { name: 'Pause race', exact: true });
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  await expect(start).toBeEnabled();
+  await expect(play).toBeDisabled();
+  await start.click();
+  await expect(pause).toBeEnabled();
+  await expect(start).toBeDisabled();
+  await expect(scene).toHaveAttribute('data-followed-position', /\d/);
+  await pause.click();
+  await expect(play).toBeEnabled();
+  const pausedAt = await scene.getAttribute('data-observed-time');
+  await page.reload();
+  await expect(play).toBeEnabled();
+  await expect(start).toBeDisabled();
+  await expect.poll(async () => Number(await scene.getAttribute('data-observed-time'))).toBeGreaterThanOrEqual(Number(pausedAt));
+  await play.click();
+  await expect(pause).toBeEnabled();
+  await expect.poll(() => scene.getAttribute('data-observed-time')).not.toBe(pausedAt);
+  await pause.click();
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Time limit (s)').fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await expect(start).toBeEnabled();
+  await start.click();
+  await expect(page.getByText('Time limit reached', { exact: true })).toBeVisible();
+  await expect(start).toBeDisabled();
+  await expect(play).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Step 0.01s', exact: true })).toBeDisabled();
+  await expect(page.getByText('reset the completed race before starting', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'New race', exact: true }).click();
+  await expect(start).toBeEnabled();
+  await expect(play).toBeDisabled();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await page.screenshot({ path: test.info().outputPath('separate-playback-controls.png') });
 });

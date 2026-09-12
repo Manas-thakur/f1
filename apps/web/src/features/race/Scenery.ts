@@ -3,6 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 import type { SceneryProfile } from './circuitScenery';
+import { SceneryClearance } from './sceneryClearance';
 import type { CircuitMap } from './types';
 import { box, trackPose } from './worldGeometry';
 
@@ -11,6 +12,7 @@ const material = (color: string, metalness = 0) => new THREE.MeshStandardMateria
 });
 
 export class Scenery extends THREE.Group {
+  private readonly clearance: SceneryClearance;
   private readonly treePool: THREE.Group[] = [];
   private readonly treePositions: THREE.Vector3[] = [];
   private readonly crowd: {
@@ -28,6 +30,7 @@ export class Scenery extends THREE.Group {
     private readonly invalidate: () => void) {
     super();
     this.name = 'Circuit surroundings';
+    this.clearance = new SceneryClearance(map);
     this.buildGrandstands();
     this.buildLandscape();
     this.buildLandmark();
@@ -36,8 +39,11 @@ export class Scenery extends THREE.Group {
     this.loadTrees();
   }
 
-  private place(progress: number, lateral: number) {
-    const pose = trackPose(this.map, progress * this.map.length_m, lateral);
+  private place(progress: number, lateral: number, radius: number) {
+    const pose = this.clearance.place(this.map, progress, lateral, radius);
+    if (!pose) {
+      return null;
+    }
     const group = new THREE.Group();
     group.position.copy(pose.position);
     group.rotation.y = pose.yaw;
@@ -53,7 +59,10 @@ export class Scenery extends THREE.Group {
     const skinColors = ['#bf8764', '#e2b598', '#855338', '#623d2c', '#c79c78'];
     const headGeometry = this.simpleHead;
     for (let stand = 0; stand < 5; stand++) {
-      const group = this.place([200 / this.map.length_m, 0.21, 0.43, 0.67, 0.88][stand] ?? 0, 31);
+      const group = this.place([200 / this.map.length_m, 0.21, 0.43, 0.67, 0.88][stand] ?? 0, 31, 26);
+      if (!group) {
+        continue;
+      }
       const count = 192;
       const bodies = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.18, 0.3, 3, 7), material('#ffffff'), count);
       const head = new THREE.InstancedMesh(headGeometry, material('#ffffff'), count);
@@ -112,7 +121,10 @@ export class Scenery extends THREE.Group {
       emissive: this.profile.night ? '#b2a17a' : '#000000', emissiveIntensity: 0.45 });
     if (this.profile.urban) {
       for (let i = 0; i < 65; i++) {
-        const group = this.place(i / 65, (i % 2 ? 1 : -1) * (70 + i % 5 * 22));
+        const group = this.place(i / 65, (i % 2 ? 1 : -1) * (70 + i % 5 * 22), 13);
+        if (!group) {
+          continue;
+        }
         const height = this.map.id === 'monaco' ? 15 + i % 8 * 3 : 12 + i % 9 * 9;
         box(group, concrete, [15, height, 20], [0, height / 2, 0]);
         for (let floor = 0; floor < height / 3 - 1; floor++) {
@@ -120,8 +132,9 @@ export class Scenery extends THREE.Group {
         }
       }
     }
-    if (this.profile.water) {
-      const group = this.place(0.57, 240);
+    const waterGroup = this.profile.water ? this.place(0.57, 240, 220) : null;
+    if (waterGroup) {
+      const group = waterGroup;
       const water = new THREE.Mesh(new THREE.CircleGeometry(220, 64),
         new THREE.MeshPhysicalMaterial({ color: '#396f81', metalness: 0.45, roughness: 0.16, clearcoat: 1 }));
       water.rotation.x = -Math.PI / 2;
@@ -135,11 +148,11 @@ export class Scenery extends THREE.Group {
     if (this.profile.conifers || this.profile.landmark === 'dunes') {
       for (let i = 0; i < 25; i++) {
         const hill = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), material(this.profile.terrain));
-        const p = trackPose(this.map, i / 25 * this.map.length_m, (i % 2 ? 1 : -1) * 400).position;
-        if (this.map.points.some(([x, z]) => Math.hypot(x - p.x, z - p.z) < 165)) {
+        const pose = this.clearance.place(this.map, i / 25, (i % 2 ? 1 : -1) * 400, 150);
+        if (!pose) {
           continue;
         }
-        hill.position.copy(p).y = -50;
+        hill.position.copy(pose.position).y = -50;
         hill.scale.set(150, this.profile.landmark === 'dunes' ? 60 : 85, 120);
         this.add(hill);
       }
@@ -147,7 +160,10 @@ export class Scenery extends THREE.Group {
     if (this.profile.night) {
       const lamp = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#d7edff', emissiveIntensity: 3 });
       for (let i = 0; i < 90; i++) {
-        const group = this.place(i / 90, i % 2 ? 17 : -17);
+        const group = this.place(i / 90, i % 2 ? 17 : -17, 1.5);
+        if (!group) {
+          continue;
+        }
         box(group, concrete, [0.18, 16, 0.18], [0, 8, 0]);
         box(group, lamp, [2.5, 0.2, 1.2], [0, 16, 0]);
       }
@@ -155,11 +171,17 @@ export class Scenery extends THREE.Group {
   }
 
   private buildLandmark() {
-    const group = this.place(0.06, -110);
+    const kind = this.profile.landmark;
+    if (kind === 'stands' || kind === 'dunes') {
+      return;
+    }
+    const group = this.place(0.06, -110, 58);
+    if (!group) {
+      return;
+    }
     const bright = material('#dce0db', 0.5);
     const red = material('#b5332e', 0.3);
     const dark = material('#304854', 0.6);
-    const kind = this.profile.landmark;
     if (kind === 'wheel') {
       const wheel = new THREE.Mesh(new THREE.TorusGeometry(30, 0.65, 8, 80), bright);
       wheel.position.y = 34;
@@ -208,20 +230,25 @@ export class Scenery extends THREE.Group {
     const posts = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.055, 0.07, 3.5, 5),
       material('#838c89', 0.7), count * 2);
     const vertices: number[] = [];
+    let accepted = 0;
     for (let i = 0; i < count; i++) {
       for (const side of [-1, 1]) {
         const a = trackPose(this.map, i / count * this.map.length_m, side * 14).position;
         const b = trackPose(this.map, (i + 1) / count * this.map.length_m, side * 14).position;
+        if (!this.clearance.segmentClear([a.x, a.z], [b.x, b.z], 0.08)) {
+          continue;
+        }
         this.dummy.position.set(a.x, 1.75, a.z);
         this.dummy.rotation.set(0, 0, 0);
         this.dummy.updateMatrix();
-        posts.setMatrixAt(i * 2 + (side + 1) / 2, this.dummy.matrix);
+        posts.setMatrixAt(accepted++, this.dummy.matrix);
         for (let wire = 0; wire < 8; wire++) {
           vertices.push(a.x, 0.5 + wire * 0.4, a.z, b.x, 0.5 + wire * 0.4, b.z);
         }
         vertices.push(a.x, 0.5, a.z, b.x, 3.3, b.z, a.x, 3.3, a.z, b.x, 0.5, b.z);
       }
     }
+    posts.count = accepted;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     this.add(posts, new THREE.LineSegments(geometry,
@@ -262,7 +289,7 @@ export class Scenery extends THREE.Group {
     for (let i = 0; i < this.profile.trees; i++) {
       const p = trackPose(this.map, (i * 0.61803398875 % 1) * this.map.length_m,
         (i % 2 ? 1 : -1) * (24 + i * 37 % 140)).position;
-      if (!this.map.points.some(([x, z]) => Math.hypot(x - p.x, z - p.z) < 19)) {
+      if (this.clearance.circleClear([p.x, p.z], 10)) {
         this.treePositions.push(p);
       }
     }
@@ -276,6 +303,14 @@ export class Scenery extends THREE.Group {
       const scale = 12 / bounds.getSize(new THREE.Vector3()).y;
       gltf.scene.scale.multiplyScalar(scale);
       gltf.scene.position.y = -bounds.min.y * scale;
+      const radius = Math.hypot(Math.max(Math.abs(bounds.min.x), Math.abs(bounds.max.x)),
+        Math.max(Math.abs(bounds.min.z), Math.abs(bounds.max.z))) * scale;
+      for (let i = this.treePositions.length - 1; i >= 0; i--) {
+        const p = this.treePositions[i];
+        if (p && !this.clearance.circleClear([p.x, p.z], radius)) {
+          this.treePositions.splice(i, 1);
+        }
+      }
       for (let i = 0; i < 12; i++) {
         const tree = new THREE.Group();
         tree.add(gltf.scene.clone(true));

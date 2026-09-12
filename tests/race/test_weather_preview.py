@@ -39,3 +39,18 @@ def test_braking_preview_ignores_hidden_patch_phases_and_uses_delayed_grip():
     assert simulator._envelope_speed("car-01", 100, 0.92) == baseline
     weather.preview_grip_array = None
     assert simulator._envelope_speed("car-01", 100, 0.92) == baseline
+
+
+def test_uniform_preview_refreshes_after_weather_changes_and_time_rewind():
+    weather = RaceWeather(300, 3, 0.1, 1000, Variability(wetness_target=0.9), 42)
+    positions = np.zeros((2, 3))
+    initial = weather.preview_grip_array(positions, 10)
+    assert not initial.flags.writeable
+    with pytest.raises(ValueError):
+        initial[0, 0] = 0
+    for target, patch, moment, shape in [(0.2, 0.1, 20, (3,)), (0.8, 0.2, 0, (2, 3))]:
+        weather.target = target
+        weather.patch_amplitude = patch
+        result = weather.preview_grip_array(np.zeros(shape), moment)
+        np.testing.assert_array_equal(result, np.full(shape, weather.preview_grip(0, moment)))
+    assert np.all(initial == initial[0, 0])

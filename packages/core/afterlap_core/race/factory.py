@@ -1,9 +1,47 @@
 from __future__ import annotations
 
 from ..rng import StreamRegistry
-from ..simulation.config import InitialCarState, ScenarioBundle, load_car, load_scenario
+from ..simulation.config import (
+    CarConfig,
+    InitialCarState,
+    ScenarioBundle,
+    TrackConfig,
+    load_car,
+    load_scenario,
+)
+from ..simulation.track import footprints_overlap, geometry_for
 from .circuit import assumed, circuit
 from .settings import RaceSettings
+
+
+def starting_grid(
+    settings: RaceSettings, track: TrackConfig, car: CarConfig, streams: StreamRegistry
+) -> dict[str, tuple[float, float]]:
+    rng = streams.stream("grid:episode")
+    strength = settings.variability.strength * settings.variability.grid_scale
+    car_ids = [f"car-{index + 1:02d}" for index in range(settings.cars)]
+    if strength > 0:
+        rng.shuffle(car_ids)
+    geometry = geometry_for(track)
+    length, width = car.length_m.value, car.width_m.value
+    positions: dict[str, tuple[float, float]] = {}
+    progress = 200.0 if settings.cars == 1 else 20.0
+    for car_id in reversed(car_ids):
+        if positions:
+            progress += 14 + float(rng.uniform(-5, 8)) * strength
+        for _ in range(64):
+            limit = max(0, (track.width_at(progress) - width) / 2 - 0.8)
+            lateral = float(rng.uniform(-limit, limit)) * strength**0.5
+            if all(
+                not footprints_overlap(geometry, progress, lateral, 0, length, width, s, d, 0, length, width)
+                for s, d in positions.values()
+            ):
+                positions[car_id] = (progress, lateral)
+                break
+            progress += length + 2
+        else:
+            raise ValueError("could not place a collision-free starting field on this circuit")
+    return positions
 
 
 def race_bundle(settings: RaceSettings) -> ScenarioBundle:
@@ -12,6 +50,7 @@ def race_bundle(settings: RaceSettings) -> ScenarioBundle:
     track, _ = circuit(settings.circuit, 0)
     streams = StreamRegistry(settings.seed)
     variation = settings.variability
+    grid = starting_grid(settings, track, baseline, streams)
     scale = variation.strength * variation.vehicle_scale
     cars = {}
     states = {}
@@ -43,11 +82,11 @@ def race_bundle(settings: RaceSettings) -> ScenarioBundle:
         )
         cars[car_id] = car
         states[car_id] = InitialCarState(
-            progress_m=assumed(200 - index * 10, "m"),
+            progress_m=assumed(grid[car_id][0], "m"),
             speed_mps=assumed(14 + float(rng.uniform(-2, 2)) * scale, "m/s"),
             energy_j=assumed(3.1e6 + float(rng.uniform(-0.7e6, 0.7e6)) * scale, "J"),
             temperature_k=assumed(settings.temperature_k + 5, "K"),
-            lateral_d_m=assumed(2.5 if index % 2 else -2.5, "m"),
+            lateral_d_m=assumed(grid[car_id][1], "m"),
         )
         drivers[car_id] = template.drivers["own"].model_copy(
             update={

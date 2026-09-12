@@ -47,12 +47,14 @@ def encode(session: RaceSession) -> np.ndarray:
 class RaceEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, settings: RaceSettings | None = None) -> None:
+    def __init__(self, settings: RaceSettings | None = None, *, automatic_profiles: bool = False) -> None:
         self.settings = settings or RaceSettings()
         self.action_space = spaces.Discrete(len(PROFILES))
         self.observation_space = spaces.Box(-5, 5, shape=(40,), dtype=np.float32)
         self.session: RaceSession | None = None
         self.previous_action: int | None = None
+        self.automatic_profiles = automatic_profiles
+        self._seeded = False
 
     def reset(
         self,
@@ -60,12 +62,19 @@ class RaceEnv(gym.Env):
         seed: int | None = None,
         options: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
-        super().reset(seed=seed)
-        effective = self.settings.seed if seed is None else seed
+        if seed is not None and not 0 <= seed <= 2**32 - 1:
+            raise ValueError("episode seed must be a 32-bit unsigned integer")
+        if seed is not None or not self._seeded:
+            effective = self.settings.seed if seed is None else seed
+            super().reset(seed=effective)
+            self._seeded = True
+        else:
+            super().reset(seed=None)
+            effective = int(self.np_random.integers(0, 2**32))
         settings = self.settings.model_copy(update={"seed": effective})
         self.session = RaceSession(settings)
         self.previous_action = None
-        return encode(self.session), {"environment_version": "race-bms-v1"}
+        return encode(self.session), {"environment_version": "race-bms-v1", "episode_seed": effective}
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self.session is None or self.session.done or "car-01" in self.session.finishes:
@@ -73,7 +82,8 @@ class RaceEnv(gym.Env):
         if not self.action_space.contains(action):
             raise ValueError("action must name one of the five deployment profiles")
         session = self.session
-        session.bms_profiles["car-01"] = PROFILES[action]
+        if not self.automatic_profiles:
+            session.bms_profiles["car-01"] = PROFILES[action]
         start = session.simulator.session_time_s
         while session.simulator.session_time_s < start + 1 - 1e-9:
             session.advance(min(session.settings.dt_s, start + 1 - session.simulator.session_time_s))
@@ -82,7 +92,11 @@ class RaceEnv(gym.Env):
         elapsed = session.simulator.session_time_s - start
         finished = "car-01" in session.finishes
         failed = session.status == "failed"
-        changed = self.previous_action is not None and self.previous_action != action
+        changed = (
+            not self.automatic_profiles
+            and self.previous_action is not None
+            and self.previous_action != action
+        )
         reward = -elapsed - 0.1 * changed
         position = None
         if failed:
@@ -93,9 +107,10 @@ class RaceEnv(gym.Env):
         self.previous_action = int(action)
         info = {
             "environment_version": "race-bms-v1",
+            "episode_seed": session.settings.seed,
             "elapsed_s": elapsed,
             "finish_position": position,
             "failure": session.failure,
-            "requested_profile": PROFILES[action].value,
+            "requested_profile": "automatic" if self.automatic_profiles else PROFILES[action].value,
         }
         return encode(session), float(reward), finished or failed, session.status == "truncated", info

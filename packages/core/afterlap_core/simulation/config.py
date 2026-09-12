@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from itertools import pairwise
+from math import isfinite
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -40,13 +41,16 @@ class _TrackTables:
         "curvature",
         "curvature_list",
         "grade",
+        "grade_constant",
         "grade_list",
         "length_m",
         "mu",
+        "mu_constant",
         "mu_list",
         "s",
         "s_list",
         "width",
+        "width_constant",
         "width_list",
     )
 
@@ -59,11 +63,19 @@ class _TrackTables:
         self.grade_list = self._closed([float(seg.grade_rad.value) for seg in nodes])
         self.width_list = self._closed([float(seg.width_m.value) for seg in nodes])
         self.mu_list = self._closed([float(seg.mu.value) for seg in nodes])
+        self.grade_constant = self._constant(self.grade_list)
+        self.mu_constant = self._constant(self.mu_list)
+        self.width_constant = self._constant(self.width_list)
         self.s = np.asarray(self.s_list, dtype=np.float64)
         self.curvature = np.asarray(self.curvature_list, dtype=np.float64)
         self.grade = np.asarray(self.grade_list, dtype=np.float64)
         self.width = np.asarray(self.width_list, dtype=np.float64)
         self.mu = np.asarray(self.mu_list, dtype=np.float64)
+
+    @staticmethod
+    def _constant(values: list[float]) -> float | None:
+        value = values[0]
+        return value + 0.0 if isfinite(value) and all(item == value for item in values) else None
 
     @staticmethod
     def _closed(values: list[float]) -> list[float]:
@@ -142,16 +154,22 @@ class TrackConfig(ConfigDocument):
     def grade_at(self, s_m: float) -> float:
 
         tables = _tables_for(self)
+        if tables.grade_constant is not None and isfinite(s_m):
+            return tables.grade_constant
         return tables.evaluate_scalar(tables.grade_list, s_m)
 
     def mu_at(self, s_m: float) -> float:
 
         tables = _tables_for(self)
+        if tables.mu_constant is not None and isfinite(s_m):
+            return tables.mu_constant
         return tables.evaluate_scalar(tables.mu_list, s_m)
 
     def width_at(self, s_m: float) -> float:
 
         tables = _tables_for(self)
+        if tables.width_constant is not None and isfinite(s_m):
+            return tables.width_constant
         return tables.evaluate_scalar(tables.width_list, s_m)
 
     def curvature_array(self, s_m: np.ndarray) -> np.ndarray:

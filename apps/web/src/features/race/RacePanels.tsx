@@ -18,6 +18,10 @@ function lapNumber(car: RaceCar | undefined, total: number) {
 
 export function Transport() {
   const { frame, send, connected } = useRace();
+  const running = frame?.status === 'running';
+  const started = frame?.started ?? false;
+  const ended = Boolean(frame && ['finished', 'failed', 'truncated'].includes(frame.status));
+  const available = connected && Boolean(frame);
   return (
     <div className={styles.transport}>
       <span className={styles.status}>{frame?.status.toUpperCase() ?? 'OFFLINE'}</span>
@@ -31,11 +35,30 @@ export function Transport() {
       <button
         type="button"
         className={styles.primary}
-        disabled={!connected}
-        onClick={() => send(frame?.status === 'running' ? 'pause' : 'start')}
+        disabled={!available || started || ended}
+        onClick={() => send('start')}
       >
-        {frame?.status === 'running' ? 'Pause race' : 'Start race'}
+        Start race
       </button>
+      <button
+        type="button"
+        className={styles.playbackButton}
+        aria-label={running ? 'Pause race' : 'Resume race'}
+        title={ended ? 'This race has ended' : !started ? 'Start the race first' : running ? 'Pause race' : 'Resume race'}
+        disabled={!available || !started || ended}
+        onClick={() => send(running ? 'pause' : 'start')}
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+          {running ? <path d="M6 4h4v16H6zM14 4h4v16h-4z" /> : <path d="M6 3v18l15-9z" />}
+        </svg>
+        {running ? 'Pause' : 'Play'}
+      </button>
+      {ended && <>
+        <span role="status">{frame?.status === 'truncated' ? 'Time limit reached' : frame?.status === 'failed' ? 'Race stopped' : 'Race finished'}</span>
+        <button type="button" disabled={!available} onClick={() => send('reset', {
+          settings: { ...frame?.settings, seed: crypto.getRandomValues(new Uint32Array(1))[0] },
+        })}>New race</button>
+      </>}
       <button
         type="button"
         disabled={!connected || frame?.status !== 'paused'}
@@ -44,8 +67,13 @@ export function Transport() {
         Step {frame?.settings.dt_s ?? 0.01}s
       </button>
       <label>
-        Playback{' '}
+        {frame?.status === 'running' && <span aria-label="Actual playback pace"
+          title="Simulated seconds per real second. The camera follows this pace.">
+          Actual {(frame.playback_rate ?? 0).toFixed(2)}×
+        </span>}
+        Target pace{' '}
         <select
+          aria-label="Playback speed"
           value={frame?.requested_rate ?? 1}
           disabled={!connected}
           onChange={(event) => send('speed', { speed: Number(event.target.value) })}
@@ -69,8 +97,9 @@ export function Classification() {
     <div className={styles.classificationTitle}>CLASSIFICATION <span>{frame?.cars.length ?? 0}</span></div>
     <div className={styles.classificationScroll}>
       {frame?.cars.map((car, index) => <button key={car.id} type="button"
-        aria-label={car.id} aria-pressed={selected === car.id} onClick={() => select(car.id)}>
-        <b>{index + 1}</b><span>{car.id.toUpperCase()}</span>
+        aria-label={car.driver_name} data-car-id={car.id}
+        aria-pressed={selected === car.id} onClick={() => select(car.id)}>
+        <b>{index + 1}</b><span>{car.driver_name}</span>
         <small>{number(car.channels['speed_mps'] === undefined ? undefined : car.channels['speed_mps'] * 3.6, 0)}</small>
       </button>)}
     </div>
@@ -83,7 +112,7 @@ export function Telemetry() {
   const ch = car?.channels ?? {};
   const progress = ch['s_m'] === undefined || !frame ? undefined : ch['s_m'] / frame.circuit_map.length_m * 100;
   return <section className={styles.panel}>
-    <h2>{selected}</h2>
+    <h2>{car?.driver_name ?? 'Waiting for driver'}</h2>
     <p aria-label="Selected car lap">LAP {number(lapNumber(car, frame?.settings.laps ?? 1), 0)} / {frame?.settings.laps ?? '?'}</p>
     <progress aria-label="Selected car lap progress" max={100} value={progress} />
     <dl className={styles.telemetryGrid}>
@@ -93,6 +122,6 @@ export function Telemetry() {
       <dt>Electrical power</dt><dd>{number(ch['electrical_power_w'] === undefined ? undefined : ch['electrical_power_w'] / 1000, 0)} kW</dd>
     </dl>
     <details><summary>Race events</summary>{frame?.events.slice(-10).reverse().map((event, i) =>
-      <p key={i}>{event.session_time_s.toFixed(1)}s · {event.overtaking_car_id} / {event.overtaken_car_id} · {event.kind.replaceAll('_', ' ')}</p>)}</details>
+      <p key={i}>{event.session_time_s.toFixed(1)}s · {frame?.cars.find((item) => item.id === event.overtaking_car_id)?.driver_name} / {frame?.cars.find((item) => item.id === event.overtaken_car_id)?.driver_name} · {event.kind.replaceAll('_', ' ')}</p>)}</details>
   </section>;
 }

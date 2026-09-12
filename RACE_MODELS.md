@@ -10,7 +10,7 @@ The original following controller computed `a = relative_speed / 0.5 + 0.8 * (ga
 
 The engine also had a discontinuous switch from a force-based throttle calculation to a narrow braking band. Its replacement uses the same resistance-compensated force request on both sides of the target. Stronger response during deceleration retains corner-entry feasibility. Sharp curvature in the artwork still causes abrupt braking; these are not surveyed racing lines.
 
-Classification sorts delayed noisy unwrapped progress. Near ties can therefore change displayed order without a physical pass. The current base-branch browser projects received `s_m` onto the periodic artwork, with no temporal interpolation. No display-speed or position smoothing was added. The separate 3D worktree was not changed or used as a source of physics code.
+Classification sorts delayed noisy unwrapped progress, so near ties can change the displayed order without a physical pass. The integrated 3D browser interpolates delayed observations on a shared playback cursor. Display estimates never feed into the engine, learning observations or physical pass events. Rendering FPS and simulated seconds per wall second are separate metrics.
 
 Wake selection previously chose the nearest car in race progress, even if it was laterally irrelevant, and missed lapped traffic. It now uses local periodic separation and the strongest bounded wake among nearby cars. Driver traffic uses periodic local gaps while race events retain unwrapped progress. Lapping is an interaction, not a gained classification position.
 

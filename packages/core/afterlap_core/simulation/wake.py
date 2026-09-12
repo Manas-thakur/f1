@@ -4,6 +4,9 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+import numpy as np
+from numba import njit
+
 from ..config import Parameter, VerificationStatus
 
 SOURCE = "synthetic:afterlap-wake-v1"
@@ -286,6 +289,66 @@ class WakeModel:
             f"wake: range-truncated exponential, R={self.range_m:g} m, L={self.decay_length_m:g} m, "
             f"drag -{self.drag_reduction_max:.0%} / downforce -{self.downforce_loss_max:.0%} at full "
             "shielding; uncalibrated declared assumption"
+        )
+
+
+@njit(cache=True)
+def nearby_wake_indices(
+    field: np.ndarray, own: int, progress: float, length: float, wake_range: float
+) -> np.ndarray:
+    indices = np.empty(len(field), dtype=np.int64)
+    count = 0
+    for index in range(len(field)):
+        if index == own:
+            continue
+        delta = (field[index, 0] - progress) % length
+        clearance = 0.5 * (field[own, 1] + field[index, 1])
+        if 0 < delta < wake_range + clearance:
+            indices[count] = index
+            count += 1
+    return indices[:count]
+
+
+class WakeField:
+    def __init__(self, entries: tuple[tuple[str, float, float, float, float], ...]) -> None:
+        self.entries = entries
+        self.index = {entry[0]: index for index, entry in enumerate(entries)}
+        self.bounds = np.asarray([(entry[1], entry[4]) for entry in entries], dtype=np.float64)
+
+    def effect(
+        self, model: WakeModel, car_id: str, progress: float, lateral: float, speed: float, length: float
+    ) -> WakeEffect:
+        own = self.index[car_id]
+        own_length = self.entries[own][4]
+        best = 0.0
+        chosen = None
+        for index in nearby_wake_indices(self.bounds, own, progress, length, model.range_m):
+            other_id, other_progress, other_lateral, other_speed, other_length = self.entries[index]
+            delta = (other_progress - progress) % length
+            clearance = 0.5 * (own_length + other_length)
+            separation = max(0, delta - clearance)
+            offset = lateral - other_lateral
+            falloff = model.lateral_falloff(offset) if math.isfinite(offset) else 1.0
+            shielding = model.decay(separation) * falloff * model.speed_gate(other_speed)
+            shielding *= min(1, delta / clearance) ** 2
+            if shielding > best:
+                best = shielding
+                chosen = (other_id, separation, offset, other_speed)
+        if chosen is None:
+            return FREE_AIR
+        other_id, separation, offset, other_speed = chosen
+        lateral_known = math.isfinite(offset)
+        return WakeEffect(
+            label=LABEL_LATERAL_RESOLVED if lateral_known else LABEL_INLINE_ASSUMPTION,
+            lateral_known=lateral_known,
+            separation_m=separation,
+            lateral_offset_m=offset if lateral_known else None,
+            relative_speed_mps=other_speed - speed,
+            leader_speed_mps=other_speed,
+            leader_car_id=other_id,
+            shielding=best,
+            drag_multiplier=1 - model.drag_reduction_max * best,
+            downforce_multiplier=1 - model.downforce_loss_max * best,
         )
 
 

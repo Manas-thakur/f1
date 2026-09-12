@@ -23,7 +23,7 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 ## Controls
 
-Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
+Race control selects circuit, seed, car count, lap count, episode time limit, wetness, temperature, wind, and wake effects. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start race begins a fresh episode once. The separate Play/Pause button pauses or resumes that same episode without resetting it, including after reconnecting. Completed, failed and timed-out races disable Start, playback and stepping; New race creates a fresh paused episode with the same settings and a new seed. Use the settings reset with Reuse seed for replay for an identical scenario. One-step advance marks an episode as started, so Play resumes it. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.
 
 Driver controls select a car, battery profile, pace preference, lateral target and low-drag mode. Manual pedals allow explicit throttle and brake requests. Automatic mode uses persistent observation-driven pass intention, clearance prediction and bounded acceleration/lateral requests; manual overrides can cause collisions or unsupported corner entry. The model stops and reports those failures. BMS training changes only the battery profile while retaining the automatic driving policy.
 
@@ -100,7 +100,7 @@ PPO is an on-policy method and collects its own transitions from `RaceEnv`. The 
 make race-train CIRCUIT=monza CARS=20 STEPS=10000
 ```
 
-This installs the learning dependency group, checks the Gym contract, and trains Stable-Baselines3 PPO on CPU. It writes `.afterlap/race/policy-42.zip`. The learning group selects CPU PyTorch wheels on Linux and Windows. macOS uses its native PyTorch package. No CUDA installation is required.
+This installs the learning dependency group and trains Stable-Baselines3 PPO on CPU. Run the training regression suite first. It writes `.afterlap/race/policy-42.zip`. The learning group selects CPU PyTorch wheels on Linux and Windows. macOS uses its native PyTorch package. No CUDA installation is required.
 
 For a wiring smoke run, use one car, a short episode and 128 steps. This tests collection, optimization and checkpoint writing; it does not establish useful driving performance.
 
@@ -127,7 +127,7 @@ The default 20-car reference engine is CPU intensive. The UI reports observed pl
 
 See [research and model design](RACE_MODELS.md), [parameter reference](RACE_PARAMETERS.md) and [validation report](RACE_VALIDATION.md). The BMS observation/action contract remains `race-bms-v1`; model behavior is `race-physics-v2`. An extra delayed own grip channel supports automatic racecraft and operator telemetry, but is not appended to the BMS feature vector. Policy evaluation requires a matching `.manifest.json` sidecar and implementation hash. Old policies must be retrained; action indices are never reinterpreted.
 
-The control page adds one variability preset selector. For precise experiments, use `--settings file.json` with generate, train or evaluate. The entire settings file takes precedence over individual scenario flags, including seed. Use nested feature scales to disable variation groups or supply individual driver traits. Weather phases, target wetness, driver traits, initial states and sensor parameters are included in manifests, not actor observations.
+The integrated controls expose variability settings and preserve the complete scenario recipe. For precise experiments, use `--settings file.json` with generate, train or evaluate. The entire settings file takes precedence over individual scenario flags, including seed; evaluation can explicitly override it with `--eval-seeds`. Use nested feature scales to disable variation groups or supply individual driver traits. Weather phases, target wetness, driver traits, initial states and sensor parameters are included in manifests, not actor observations.
 
 ```sh
 uv run python scripts/race_experiments.py --seeds 101 202 303 --output experiments.json
@@ -139,3 +139,5 @@ uv run --group learning python scripts/race.py evaluate --settings scenario.json
 Diagnostics are privileged offline truth, distinct from generated learning transitions. The experiment script initializes matched physical states on a Monza straight, including a leader using a fixed speed controller and a leader that accelerates away. It reports every timeout, failure, event and time series. It does not move cars after initialization or award pass bonuses.
 
 For isolated local service ports, set `RACE_WEB_PORT` and `RACE_SIM_PORT` when running `scripts/race_stack.py`; the upstream URL follows the simulator port. Browser tests use these same variables. Stop only the processes started for your worktree.
+
+For the complete collection, worker, seed, artifact and held-out evaluation workflow, use [RL_TRAINING.md](RL_TRAINING.md). `WORKERS`, `ROLLOUT_STEPS` and `BATCH_SIZE` configure `make race-train`; every worker still integrates the full physics step.

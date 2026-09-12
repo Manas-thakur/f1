@@ -1,5 +1,5 @@
 .root { height: 100dvh; width: 100%; overflow: hidden; color: #e9f0ef; background: #101920; font: 12px/1.45 Arial, sans-serif; }
-.root button, .root select, .root input { color: inherit; border: 1px solid #ffffff25; border-radius: 6px; background: #17252fed; padding: 8px 10px; font: inherit; }
+.root button, .root select, .root input, .root textarea { color: inherit; border: 1px solid #ffffff25; border-radius: 6px; background: #17252fed; padding: 8px 10px; font: inherit; }
 .root button { cursor: pointer; }
 .root button:hover { background: #314552; }
 .root button:disabled { opacity: .45; cursor: default; }
@@ -23,6 +23,7 @@
 .transport label { margin-left: auto; font-size: 10px; display: flex; align-items: center; gap: 8px; }
 .transport select { padding: 5px; }
 .transport button { padding: 5px 10px; font-size: 11px; }
+.transport .playbackButton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 78px; }
 .lapCounter { font: 11px monospace; margin-right: auto; }
 .classification { display: flex; flex-direction: column; bottom: 215px; max-height: 330px; position: absolute; top: var(--toolbar-bottom, 130px); left: 16px; width: 185px; border: 1px solid #ffffff1e; border-radius: 10px; background: #111e28df; backdrop-filter: blur(10px); overflow: hidden; }
 .classificationTitle { flex-shrink: 0; font: 9px monospace; letter-spacing: 1.3px; display: flex; justify-content: space-between; padding: 11px; color: #c2cfd6; }
@@ -117,3 +118,22 @@
   .worldHud { left: auto; right: 10px; gap: 8px; padding: 8px; }
   .worldHud > div:last-child { display: none; }
 }
+
+.classificationScroll button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.worldHud > div:first-child { max-width: 155px; }
+.worldHud > div:first-child strong { font-size: 14px; }
+.mapPanel[data-overview='true'] .minimap, .mapPanel[data-overview='true'] .worldHud { display: none; }
+.scene :global(.race-overview-markers) { position: absolute; inset: 0; pointer-events: none; }
+.scene :global(.race-overview-markers[hidden]) { display: none; }
+.scene :global(.race-overview-markers svg) { width: 100%; height: 100%; overflow: hidden; position: absolute; }
+.scene :global(.race-overview-markers line) { stroke: #e3f0e8; stroke-width: 1.5; }
+.scene :global(.race-overview-markers circle) { fill: #d4ef9a; stroke: #142127; }
+.scene :global(.race-overview-markers button) { position: absolute; top: 0; left: 0; width: 30px; height: 30px; padding: 0; border: 1px solid #d4ef9a; border-radius: 50%; pointer-events: auto; font: bold 11px monospace; box-shadow: 0 2px 8px #0008; }
+.scene :global(.race-overview-markers button[hidden]) { display: none; }
+@container race-view (max-width: 700px) {
+  .mapPanel[data-overview='true'] .classification { display: none; }
+}
+
+.form textarea { width: 100%; resize: vertical; font-family: monospace; }
+
+.mapPanel[data-overview='true'] .classification { bottom: auto; max-height: min(330px, calc(100cqh - 220px)); }
