@@ -116,7 +116,25 @@ def experiment(seed: int, case: str, duration: float, dt: float = 0.01) -> dict[
     elapsed = time.perf_counter() - start
     gap = np.array([row["gap"] for row in rows])
     acceleration = np.array([row["accel"] for row in rows])
+    intent = next(
+        (
+            event.session_time_s
+            for event in world.passes
+            if event.kind == "pass_intent" and event.overtaking_car_id == "car-02"
+        ),
+        None,
+    )
+    completion = next(
+        (
+            event.session_time_s
+            for event in world.passes
+            if event.kind == "completed_pass" and event.overtaking_car_id == "car-02"
+        ),
+        None,
+    )
     return {
+        "manifest": session.manifest(),
+        "pass_duration_s": completion - intent if completion is not None and intent is not None else None,
         "seed": seed,
         "case": case,
         "dt_s": dt,
@@ -151,7 +169,10 @@ def main() -> None:
         for seed in args.seeds:
             result = experiment(seed, case, args.duration, args.dt)
             results.append(result)
-            print(json.dumps({key: value for key, value in result.items() if key != "rows"}), flush=True)
+            print(
+                json.dumps({key: value for key, value in result.items() if key not in {"rows", "manifest"}}),
+                flush=True,
+            )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("x") as output:
         json.dump(results, output, allow_nan=False)
