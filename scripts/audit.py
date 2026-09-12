@@ -17,6 +17,7 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = ["uv", "run", "--no-sync", "python"]
+ZIZMOR = "zizmor@1.30.1"
 
 
 class Audit:
@@ -48,6 +49,10 @@ class Audit:
         commands = [
             ("python-install", ["uv", "sync", "--frozen", "--all-packages", "--all-groups"]),
             ("web-install", ["bun", "install", "--frozen-lockfile"]),
+            ("python-lockfile", ["uv", "lock", "--check"]),
+            ("python-vulnerabilities", ["uv", "audit", "--preview-features", "audit-command"]),
+            ("web-vulnerabilities", ["bun", "audit"]),
+            ("workflow-security", ["uvx", ZIZMOR, "--offline", "--persona=regular", ".github/workflows"]),
             ("python-format", ["uv", "run", "--no-sync", "ruff", "format", "--check", "."]),
             ("python-lint", ["uv", "run", "--no-sync", "ruff", "check", "."]),
             ("python-types", ["uv", "run", "--no-sync", "mypy"]),

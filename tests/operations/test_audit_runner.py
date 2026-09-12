@@ -21,7 +21,12 @@ def test_a_failed_gate_stops_the_ordered_audit(tmp_path, monkeypatch):
     monkeypatch.setattr(runner, "run", run)
     with pytest.raises(RuntimeError, match="lint failed"):
         runner.checks()
-    assert checked == ["python-install", "web-install", "python-format", "python-lint"]
+    assert checked[:2] == ["python-install", "web-install"]
+    assert checked[-1] == "python-lint"
+    assert "python-vulnerabilities" in checked
+    assert "web-vulnerabilities" in checked
+    assert "workflow-security" in checked
+    assert "python-types" not in checked
 
 
 def test_failed_command_records_exit_code_and_diagnostic(tmp_path):

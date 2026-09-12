@@ -22,13 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.12"
           enable-cache: true
       - name: Install
         run: uv sync --frozen --all-packages --all-groups
+      - name: Lockfile is current
+        run: uv lock --check
       - name: Format
         run: uv run ruff format --check .
       - name: Lint
@@ -48,7 +52,7 @@ jobs:
 
       - name: Python results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: python-results
           path: python-results.xml
@@ -57,8 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.3.14"
       - name: Install
@@ -77,11 +83,36 @@ jobs:
         run: bun run test:e2e
       - name: Browser failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: browser-failures
           path: apps/web/test-results
 
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: "1.3.14"
+      - name: Frozen installs
+        run: |
+          uv sync --frozen --all-packages --all-groups
+          bun install --frozen-lockfile
+      - name: Known vulnerabilities in the Python graph
+        run: uv audit --preview-features audit-command
+      - name: Known vulnerabilities in the JavaScript graph
+        run: bun audit
+      - name: Workflow security
+        run: uvx zizmor@1.30.1 --offline --persona=regular .github/workflows
 
   portability:
     strategy:
@@ -91,12 +122,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.12"
           enable-cache: true
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.3.14"
       - name: Install Python
@@ -124,12 +157,14 @@ jobs:
           --health-cmd "pg_isready -U afterlap"
           --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           python-version: "3.12"
           enable-cache: true
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.3.14"
       - name: Frozen dependencies
@@ -146,11 +181,32 @@ jobs:
         run: uv run --no-sync python scripts/audit.py --live-only --output "${{ runner.temp }}/audit"
       - name: Integration results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: integration-audit
           path: |
             ${{ runner.temp }}/audit/*.log
-            ${{ runner.temp }}/audit/*.png
             ${{ runner.temp }}/audit/summary.json
-            apps/web/test-results
+            ${{ runner.temp }}/audit/runbook.json
+            ${{ runner.temp }}/audit/screens
+            ${{ runner.temp }}/audit/recordings
+
+  gates:
+    if: always()
+    needs: [python, web, supply-chain, portability, integration]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every gate passed
+        run: |
+          printf '%s\n' \
+            "python       ${{ needs.python.result }}" \
+            "web          ${{ needs.web.result }}" \
+            "supply-chain ${{ needs.supply-chain.result }}" \
+            "portability  ${{ needs.portability.result }}" \
+            "integration  ${{ needs.integration.result }}"
+          [ "${{ needs.python.result }}" = success ] \
+            && [ "${{ needs.web.result }}" = success ] \
+            && [ "${{ needs.supply-chain.result }}" = success ] \
+            && [ "${{ needs.portability.result }}" = success ] \
+            && [ "${{ needs.integration.result }}" = success ]
