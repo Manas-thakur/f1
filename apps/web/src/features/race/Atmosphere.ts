@@ -50,10 +50,28 @@ export class Atmosphere extends THREE.Group {
     this.rain.renderOrder = 8;
     this.add(this.rain);
 
-    const cloudGeometry = new THREE.IcosahedronGeometry(1, 2);
-    const cloudMaterial = new THREE.MeshLambertMaterial({
-      color: night ? '#324050' : '#d5d9d8', transparent: true, opacity: night ? 0.5 : 0.72,
-      depthWrite: false,
+    const cloudCanvas = document.createElement('canvas');
+    cloudCanvas.width = cloudCanvas.height = 512;
+    const cloudContext = cloudCanvas.getContext('2d');
+    if (cloudContext) {
+      for (let i = 0; i < 22; i++) {
+        const x = 70 + (values[i * 3] ?? 0) * 372;
+        const y = 110 + (values[i * 3 + 1] ?? 0) * 292;
+        const radius = 60 + (values[i * 3 + 2] ?? 0) * 105;
+        const puff = cloudContext.createRadialGradient(x, y, 0, x, y, radius);
+        puff.addColorStop(0, '#ffffffff');
+        puff.addColorStop(0.5, '#ffffffc0');
+        puff.addColorStop(1, '#ffffff00');
+        cloudContext.fillStyle = puff;
+        cloudContext.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+      }
+    }
+    const cloudTexture = new THREE.CanvasTexture(cloudCanvas);
+    cloudTexture.colorSpace = THREE.SRGBColorSpace;
+    const cloudGeometry = new THREE.PlaneGeometry(1, 1);
+    const cloudMaterial = new THREE.MeshBasicMaterial({
+      color: night ? '#324050' : '#d5d9d8', map: cloudTexture, transparent: true,
+      opacity: night ? 0.32 : 0.4, depthWrite: false, side: THREE.DoubleSide,
     });
     this.clouds = new THREE.InstancedMesh(cloudGeometry, cloudMaterial, 85);
     const dummy = new THREE.Object3D();
@@ -63,15 +81,12 @@ export class Atmosphere extends THREE.Group {
       dummy.position.set(center.x + Math.cos(angle) * radius,
         280 + (values[i * 5 + 2] ?? 0) * 160,
         center.z + Math.sin(angle) * radius);
-      dummy.scale.set(90 + (values[i * 5 + 3] ?? 0) * 190,
-        14 + (values[i * 5 + 4] ?? 0) * 25,
-        55 + (values[i * 5 + 2] ?? 0) * 120);
-      dummy.rotation.y = angle;
+      dummy.scale.set(150 + (values[i * 5 + 3] ?? 0) * 260,
+        80 + (values[i * 5 + 4] ?? 0) * 150, 1);
+      dummy.rotation.set(-Math.PI / 2, 0, angle);
       dummy.updateMatrix();
       this.clouds.setMatrixAt(i, dummy.matrix);
     }
-    this.clouds.castShadow = true;
-    this.clouds.receiveShadow = true;
     this.add(this.clouds);
 
     const puddleMaterial = new THREE.MeshPhysicalMaterial({
@@ -103,7 +118,7 @@ export class Atmosphere extends THREE.Group {
       material.clearcoatRoughness = THREE.MathUtils.lerp(0.5, 0.08, this.wetness);
       material.envMapIntensity = THREE.MathUtils.lerp(0.55, 1.45, this.wetness);
     }
-    const cloudMaterial = this.clouds.material as THREE.MeshLambertMaterial;
+    const cloudMaterial = this.clouds.material as THREE.MeshBasicMaterial;
     cloudMaterial.color.set(this.wetness > 0.55 ? '#68727a' : '#d5d9d8');
     cloudMaterial.opacity = 0.42 + this.wetness * 0.42;
   }
@@ -147,6 +162,7 @@ export class Atmosphere extends THREE.Group {
     this.rain.geometry.dispose();
     (this.rain.material as THREE.Material).dispose();
     this.clouds.geometry.dispose();
+    (this.clouds.material as THREE.MeshBasicMaterial).map?.dispose();
     (this.clouds.material as THREE.Material).dispose();
     for (const puddle of this.puddles) {
       puddle.geometry.dispose();

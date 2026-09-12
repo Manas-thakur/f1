@@ -140,11 +140,8 @@ export function createCar(index: number) {
     box(group, i === 2 ? paint : carbon, [1.96, 0.045, 0.19], [0, 0.2 + i * 0.05, 2.3 - i * 0.2]);
   }
   for (const side of [-1, 1]) {
-    for (let fin = 0; fin < 4; fin++) {
-      const diffuser = box(group, carbon, [0.035, 0.34 + fin * 0.04, 0.72],
-        [side * (0.23 + fin * 0.16), 0.21, -2.12]);
-      diffuser.scale.set(1, 0.45, 0.62);
-      diffuser.rotation.x = -0.13;
+    for (let fin = 0; fin < 2; fin++) {
+      box(group, carbon, [0.025, 0.12, 0.32], [side * (0.31 + fin * 0.22), 0.16, -2.18]);
     }
     const mirror = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 10), paint);
     mirror.scale.set(1.5, 0.65, 0.72);
