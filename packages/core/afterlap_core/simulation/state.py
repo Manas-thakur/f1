@@ -40,6 +40,9 @@ class CarState:
     elapsed_time_s: float = 0.0
     distance_travelled_m: float = 0.0
 
+    applied_throttle: float = 0.0
+    applied_brake: float = 0.0
+    grip_multiplier: float = 1.0
     drive_force_n: float = 0.0
     drag_force_n: float = 0.0
     rolling_force_n: float = 0.0
@@ -124,6 +127,7 @@ class PairState:
     armed: bool = False
 
     attempted: bool = False
+    overlapped: bool = False
     completed_at_s: float | None = None
     completed_progress_m: float | None = None
     retained_evaluated: bool = False

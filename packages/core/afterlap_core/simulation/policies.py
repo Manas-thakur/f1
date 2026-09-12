@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -48,11 +49,16 @@ class DriverAction:
     brake: float | None = None
     harvest_request: float = 1.0
     low_drag: bool = False
+    acceleration_ceiling_mps2: float | None = None
     brake_floor: float = 0.0
     issued_at_s: float = 0.0
     label: str = ""
 
     def __post_init__(self) -> None:
+        if not math.isfinite(self.target_lateral_d_m) or not math.isfinite(self.issued_at_s):
+            raise ValueError("action position and time must be finite")
+        if self.acceleration_ceiling_mps2 is not None and not -30 <= self.acceleration_ceiling_mps2 <= 15:
+            raise ValueError("acceleration ceiling must be finite and within [-30, 15] m/s2")
         if not MIN_PACE_SCALE <= self.pace_scale <= MAX_PACE_SCALE:
             raise ValueError(
                 f"pace_scale {self.pace_scale} is outside the bounded preference range "
