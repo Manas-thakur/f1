@@ -3,6 +3,12 @@ import { FONT, PALETTE } from "../theme";
 
 const OPTIONS: readonly string[] = ["ATTACK NOW", "DELAY", "DEFEND", "RECHARGE"];
 
+const BODY: readonly string[] = [
+  "Lower future energy debt",
+  "Reduced re-pass exposure",
+  "Action legal under current rule state",
+];
+
 export type DecisionCardProps = {
   readonly reveal: number;
   readonly bodyReveal: number;
@@ -18,26 +24,26 @@ export const DecisionCard = ({
   highlight,
   style,
 }: DecisionCardProps) => (
-  <div style={{ position: "absolute", width: 920, ...style }}>
+  <div style={{ position: "absolute", width: 748, ...style }}>
     <div
       style={{
-        background: PALETTE.panel,
-        borderRadius: 20,
+        background: "rgba(14,17,20,0.86)",
+        backdropFilter: "blur(10px)",
+        borderRadius: 16,
         border: `1px solid ${PALETTE.panelEdge}`,
-        padding: "20px 26px 26px",
-        backdropFilter: "blur(3px)",
-        transform: `scaleY(${0.86 + 0.14 * reveal})`,
+        padding: "14px 22px 20px",
+        transform: `scaleY(${0.88 + 0.12 * reveal})`,
         transformOrigin: "top center",
         opacity: reveal,
       }}
     >
-      <div style={{ display: "inline-block", background: PALETTE.chip, padding: "3px 12px 4px" }}>
+      <div style={{ display: "inline-block", background: PALETTE.chip, padding: "2px 10px 3px" }}>
         <span
           style={{
             fontFamily: FONT.display,
             fontWeight: 600,
-            fontSize: 25,
-            letterSpacing: "0.07em",
+            fontSize: 22,
+            letterSpacing: "0.06em",
             color: PALETTE.paper,
           }}
         >
@@ -48,63 +54,61 @@ export const DecisionCard = ({
         style={{
           fontFamily: FONT.display,
           fontWeight: 700,
-          fontSize: 82,
-          lineHeight: "86px",
-          marginTop: 8,
-          letterSpacing: "0.005em",
+          fontSize: 86,
+          lineHeight: "88px",
+          marginTop: 4,
           opacity: bodyReveal,
         }}
       >
         <span style={{ color: PALETTE.paper }}>WAIT </span>
-        <span style={{ color: PALETTE.green, textShadow: "0 0 26px rgba(84,223,89,0.45)" }}>
+        <span style={{ color: PALETTE.green, textShadow: "0 0 24px rgba(84,223,89,0.42)" }}>
           ONE WINDOW
         </span>
       </div>
-      <div style={{ marginTop: 10, opacity: bodyReveal }}>
-        {["Lower future energy debt", "Reduced re-pass exposure", "Action legal under current rule state"].map(
-          (line) => (
-            <div
-              key={line}
-              style={{
-                fontFamily: FONT.display,
-                fontWeight: 400,
-                fontSize: 31,
-                lineHeight: "40px",
-                color: "rgba(255,255,255,0.93)",
-              }}
-            >
-              {line}
-            </div>
-          ),
-        )}
+      <div style={{ marginTop: 6, opacity: bodyReveal }}>
+        {BODY.map((line) => (
+          <div
+            key={line}
+            style={{
+              fontFamily: FONT.display,
+              fontWeight: 400,
+              fontSize: 29,
+              lineHeight: "37px",
+              color: "rgba(255,255,255,0.94)",
+            }}
+          >
+            {line}
+          </div>
+        ))}
       </div>
     </div>
     <div
       style={{
-        marginTop: 10,
-        background: PALETTE.panel,
-        borderRadius: 14,
+        marginTop: 8,
+        background: "rgba(14,17,20,0.86)",
+        backdropFilter: "blur(10px)",
+        borderRadius: 12,
         border: `1px solid ${PALETTE.panelEdge}`,
-        padding: "8px 18px",
+        padding: "6px 16px",
         display: "flex",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
         width: "fit-content",
         opacity: optionsReveal,
       }}
     >
       {OPTIONS.map((option, i) => (
-        <span key={option} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {i > 0 ? <span style={{ color: "rgba(255,255,255,0.42)", fontSize: 22 }}>·</span> : null}
+        <span key={option} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {i > 0 ? <span style={{ color: "rgba(255,255,255,0.4)", fontSize: 20 }}>·</span> : null}
           <span
             style={{
               fontFamily: FONT.display,
               fontWeight: 600,
-              fontSize: 30,
-              letterSpacing: "0.035em",
-              padding: "3px 12px 4px",
-              background: option === highlight ? "rgba(222,229,232,0.82)" : "transparent",
-              color: option === highlight ? "#11151a" : "rgba(255,255,255,0.9)",
+              fontSize: 28,
+              letterSpacing: "0.03em",
+              padding: "2px 10px 3px",
+              background: option === highlight ? "rgba(222,229,232,0.84)" : "transparent",
+              color: option === highlight ? "#11151a" : "rgba(255,255,255,0.92)",
             }}
           >
             {option}

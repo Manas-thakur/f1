@@ -87,3 +87,20 @@ export const groundRing = (
     const a = (i / segments) * Math.PI * 2;
     return ground(cx + Math.cos(a) * radiusX, cz + Math.sin(a) * radiusZ, y);
   });
+
+export const planeCorners = (
+  center: Vec3,
+  halfWidth: number,
+  halfHeight: number,
+  yaw: number,
+  pitch: number,
+): readonly [Vec3, Vec3, Vec3, Vec3] => {
+  const u: Vec3 = [Math.cos(yaw) * halfWidth, 0, Math.sin(yaw) * halfWidth];
+  const v: Vec3 = [0, Math.cos(pitch) * halfHeight, Math.sin(pitch) * halfHeight];
+  const at = (su: number, sv: number): Vec3 => [
+    center[0] + su * u[0] + sv * v[0],
+    center[1] + su * u[1] + sv * v[1],
+    center[2] + su * u[2] + sv * v[2],
+  ];
+  return [at(-1, 1), at(1, 1), at(1, -1), at(-1, -1)];
+};

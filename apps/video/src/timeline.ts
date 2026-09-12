@@ -31,6 +31,36 @@ export const shot = (id: (typeof ids)[number]): Shot => {
   return found;
 };
 
+export type Beat = {
+  readonly id: string;
+  readonly from: number;
+  readonly durationInFrames: number;
+};
+
+const beat = (id: string, from: number, to: number): Beat => ({
+  id,
+  from,
+  durationInFrames: to - from,
+});
+
+export const BEATS: readonly Beat[] = [
+  beat("title", 0, 97),
+  beat("debt", 100, 190),
+  beat("mask", 190, 325),
+  beat("corridor", 323, 560),
+  beat("decision", 566, 708),
+  beat("waitGhost", 699, 719),
+  beat("attackChip", 711, 759),
+  beat("durable", 821, 871),
+  beat("logo", 867, 942),
+];
+
+export const findBeat = (id: string): Beat => {
+  const found = BEATS.find((b) => b.id === id);
+  if (!found) throw new Error(`unknown beat ${id}`);
+  return found;
+};
+
 export type Caption = {
   readonly frame: number;
   readonly word: string;

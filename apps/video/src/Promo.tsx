@@ -1,57 +1,51 @@
+import type { ReactNode } from "react";
 import { AbsoluteFill, Sequence } from "remotion";
 import { loadFont as loadDisplay } from "@remotion/google-fonts/Oswald";
 import { loadFont as loadCaption } from "@remotion/google-fonts/Poppins";
-import { GRADES, Plate } from "./Plate";
-import { SHOTS } from "./timeline";
+import { Plate } from "./Plate";
+import { BEATS } from "./timeline";
 import { PALETTE } from "./theme";
 import { Caption } from "./ui/Caption";
 import { Microtext } from "./ui/Microtext";
+import { Scrim } from "./ui/Scrim";
+import { AttackChip } from "./shots/AttackChip";
 import { Corridor } from "./shots/Corridor";
 import { Decision } from "./shots/Decision";
+import { DurableChip } from "./shots/DurableChip";
 import { EnergyDebt } from "./shots/EnergyDebt";
-import { Ghost } from "./shots/Ghost";
 import { Logo } from "./shots/Logo";
 import { RuleMask } from "./shots/RuleMask";
 import { Title } from "./shots/Title";
-import { Verdict } from "./shots/Verdict";
+import { WaitGhost } from "./shots/WaitGhost";
 
 loadDisplay();
 loadCaption();
 
-const OVERLAYS: Record<string, () => React.ReactNode> = {
-  beam: Title,
+const OVERLAYS: Record<string, () => ReactNode> = {
+  title: Title,
   debt: EnergyDebt,
   mask: RuleMask,
   corridor: Corridor,
   decision: Decision,
-  ghost: Ghost,
-  verdict: Verdict,
+  waitGhost: WaitGhost,
+  attackChip: AttackChip,
+  durable: DurableChip,
   logo: Logo,
 };
 
 export const Promo = () => (
   <AbsoluteFill style={{ backgroundColor: PALETTE.ink }}>
-    <AbsoluteFill>
-      {SHOTS.map((s) => {
-        const grade = GRADES[s.id];
-        if (!grade) return null;
-        return (
-          <Sequence key={s.id} from={s.from} durationInFrames={s.durationInFrames} layout="none">
-            <Plate grade={grade} />
-          </Sequence>
-        );
-      })}
-    </AbsoluteFill>
+    <Plate />
 
-    <Sequence from={0} durationInFrames={97} layout="none">
-      <Title />
+    <Sequence from={120} durationInFrames={812} layout="none">
+      <Scrim left={0} top={790} width={1920} height={290} strength={0.7} blur={22} shape="linear" />
     </Sequence>
 
-    {SHOTS.filter((s) => s.id !== "openA" && s.id !== "openB" && s.id !== "beam").map((s) => {
-      const Overlay = OVERLAYS[s.id];
+    {BEATS.map((b) => {
+      const Overlay = OVERLAYS[b.id];
       if (!Overlay) return null;
       return (
-        <Sequence key={s.id} from={s.from} durationInFrames={s.durationInFrames} layout="none">
+        <Sequence key={b.id} from={b.from} durationInFrames={b.durationInFrames} layout="none">
           <Overlay />
         </Sequence>
       );

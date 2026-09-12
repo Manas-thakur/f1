@@ -1,4 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
+import { Scrim } from "../ui/Scrim";
 import { FONT, PALETTE } from "../theme";
 
 const LINES: readonly (readonly { text: string; accent: boolean }[])[] = [
@@ -21,14 +22,17 @@ export const Title = () => {
     extrapolateRight: "clamp",
   });
   return (
-    <div style={{ position: "absolute", left: 95, top: 52, opacity: out }}>
+    <div style={{ position: "absolute", left: 0, top: 0, opacity: out }}>
+      <Scrim left={-320} top={-300} width={1300} height={1010} strength={0.44} blur={16} />
+      <div style={{ position: "absolute", left: 95, top: 50, width: 1000 }}>
       <div
         style={{
           fontFamily: FONT.display,
           fontWeight: 600,
-          fontSize: 25,
-          letterSpacing: "0.085em",
+          fontSize: 33,
+          letterSpacing: "0.055em",
           color: PALETTE.paper,
+          whiteSpace: "nowrap",
           opacity: eyebrow,
           transform: `translateY(${(1 - eyebrow) * -8}px)`,
           marginBottom: 8,
@@ -48,10 +52,11 @@ export const Title = () => {
             style={{
               fontFamily: FONT.display,
               fontWeight: 700,
-              fontSize: 127,
-              lineHeight: "102px",
+              fontSize: 120,
+              lineHeight: "106px",
               letterSpacing: "-0.005em",
               color: PALETTE.paper,
+              whiteSpace: "nowrap",
               textShadow: "0 6px 30px rgba(0,0,0,0.55)",
               opacity: eased,
               transform: `translateY(${(1 - eased) * 26}px)`,
@@ -68,6 +73,7 @@ export const Title = () => {
           </div>
         );
       })}
+      </div>
     </div>
   );
 };

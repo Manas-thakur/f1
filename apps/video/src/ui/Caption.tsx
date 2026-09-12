@@ -14,7 +14,7 @@ export const Caption = () => {
   const active = CAPTIONS[index];
   if (!active) return null;
   const age = frame - active.frame;
-  const pop = Math.min(1, age / 3);
+  const pop = Math.min(1, (age + 1.7) / 3.2);
   const scale = 0.955 + 0.045 * (1 - (1 - pop) * (1 - pop));
   return (
     <div
@@ -22,9 +22,10 @@ export const Caption = () => {
         position: "absolute",
         left: 0,
         right: 0,
-        top: 862,
+        top: 882,
         display: "flex",
         justifyContent: "center",
+        paddingRight: 72,
         alignItems: "flex-start",
         pointerEvents: "none",
       }}
@@ -33,8 +34,8 @@ export const Caption = () => {
         style={{
           fontFamily: FONT.caption,
           fontWeight: 600,
-          fontSize: 96,
-          lineHeight: "104px",
+          fontSize: 118,
+          lineHeight: "128px",
           color: PALETTE.paper,
           letterSpacing: "-0.012em",
           transform: `scale(${scale})`,

@@ -1,70 +1,34 @@
 import { interpolate, useCurrentFrame } from "remotion";
 import { DecisionCard } from "../ui/DecisionCard";
+import { Scrim } from "../ui/Scrim";
 import { FONT, PALETTE } from "../theme";
 
 export const Decision = () => {
   const frame = useCurrentFrame();
-  const ghost = interpolate(frame, [0, 9], [0, 1], {
+  const card = interpolate(frame, [0, 14], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const ghostOut = interpolate(frame, [12, 22], [1, 0], {
+  const body = interpolate(frame, [8, 22], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const card = interpolate(frame, [14, 28], [0, 1], {
+  const options = interpolate(frame, [16, 30], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const body = interpolate(frame, [22, 36], [0, 1], {
+  const abstain = interpolate(frame, [26, 42], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const options = interpolate(frame, [30, 44], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const abstain = interpolate(frame, [40, 56], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const out = interpolate(frame, [118, 128], [1, 0], {
+  const out = interpolate(frame, [128, 142], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   return (
     <div style={{ position: "absolute", inset: 0, opacity: out }}>
-      {ghostOut > 0 ? (
-        <div
-          style={{
-            position: "absolute",
-            left: 820,
-            top: 268,
-            width: 900,
-            height: 300,
-            background: "rgba(150,158,163,0.30)",
-            borderRadius: 16,
-            opacity: ghost * ghostOut,
-            transform: `scale(${0.9 + 0.1 * ghost})`,
-            transformOrigin: "left top",
-          }}
-        >
-          <span
-            style={{
-              position: "absolute",
-              left: 30,
-              top: 6,
-              fontFamily: FONT.display,
-              fontWeight: 700,
-              fontSize: 96,
-              color: PALETTE.paper,
-            }}
-          >
-            WAIT
-          </span>
-        </div>
-      ) : null}
+      <Scrim left={744} top={168} width={1176} height={560} strength={0.36} blur={20} opacity={card} />
 
       <DecisionCard
         reveal={card}
@@ -72,24 +36,24 @@ export const Decision = () => {
         optionsReveal={options}
         highlight="DELAY"
         style={{
-          left: 855,
-          top: 272,
-          transform: `perspective(1800px) rotateY(-7deg) rotateX(1.5deg) translateX(${(1 - card) * 40}px)`,
+          left: 812,
+          top: 222,
+          transform: `perspective(2000px) rotateY(-6deg) translateX(${(1 - card) * 34}px)`,
           transformOrigin: "left center",
         }}
       />
-
       <div
         style={{
           position: "absolute",
-          left: 1502,
-          top: 296,
-          background: PALETTE.panel,
+          left: 1494,
+          top: 318,
+          background: "rgba(14,17,20,0.86)",
+          backdropFilter: "blur(10px)",
           border: `1px solid ${PALETTE.panelEdge}`,
-          borderRadius: 16,
-          padding: "14px 20px 18px",
+          borderRadius: 14,
+          padding: "12px 18px 16px",
           opacity: abstain,
-          transform: `perspective(1800px) rotateY(-7deg) translateX(${(1 - abstain) * 30}px)`,
+          transform: `perspective(2000px) rotateY(-6deg) translateX(${(1 - abstain) * 26}px)`,
           transformOrigin: "left center",
         }}
       >
@@ -99,16 +63,17 @@ export const Decision = () => {
             style={{
               fontFamily: FONT.display,
               fontWeight: 700,
-              fontSize: 54,
-              lineHeight: "56px",
+              fontSize: 50,
+              lineHeight: "48px",
               color: PALETTE.paper,
-              letterSpacing: "0.01em",
+              letterSpacing: "0.005em",
             }}
           >
             {line}
           </div>
         ))}
       </div>
+
     </div>
   );
 };
