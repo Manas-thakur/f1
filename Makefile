@@ -3,7 +3,7 @@ PYTHON := uv run python
 CIRCUIT ?= silverstone
 SEED ?= 42
 CARS ?= 20
-LAPS ?= 3
+LAPS ?=
 DURATION ?= 1800
 STEPS ?= 10000
 OUTPUT ?= .afterlap/race/$(CIRCUIT)-$(SEED).jsonl
@@ -32,10 +32,10 @@ race-server:
 	$(PYTHON) scripts/race.py serve
 
 race-generate:
-	$(PYTHON) scripts/race.py generate --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --output $(OUTPUT)
+	$(PYTHON) scripts/race.py generate --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DURATION) --output $(OUTPUT)
 
 race-train:
-	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) --laps $(LAPS) --duration $(DURATION) --steps $(STEPS) --output .afterlap/race/policy-$(SEED)
+	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DURATION) --steps $(STEPS) --output .afterlap/race/policy-$(SEED)
 
 race-check:
 	uv run pytest

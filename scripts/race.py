@@ -7,15 +7,23 @@ import json
 from pathlib import Path
 
 from afterlap_core.race import RaceSettings
+from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
-from afterlap_core.race.environment import PROFILES, RaceEnv, encode_control
+from afterlap_core.race.environment import (
+    ACTION_FIELDS,
+    ACTION_HIGH,
+    ACTION_LOW,
+    PROFILES,
+    RaceEnv,
+    encode_control,
+)
 from afterlap_core.race.policy import load_policy, policy_manifest
 from afterlap_core.race.variability import Variability
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deterministic race generator and local WebSocket runtime")
-    parser.add_argument("command", choices=("serve", "generate", "train", "evaluate"))
+    parser.add_argument("command", choices=("serve", "generate", "train", "evaluate", "catalogue", "schema"))
     parser.add_argument("--settings", type=Path)
     parser.add_argument("--preset", choices=("baseline", "mild", "training", "stress"), default="mild")
     parser.add_argument("--policy", type=Path)
@@ -37,6 +45,25 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=18761)
     parser.add_argument("--origin", default="http://127.0.0.1:18760")
     args = parser.parse_args()
+    if args.command == "catalogue":
+        print(json.dumps({"circuits": catalogue()}, indent=2))
+        return
+    if args.command == "schema":
+        print(
+            json.dumps(
+                {
+                    "race_settings": RaceSettings.model_json_schema(),
+                    "driver_control": DriverControl.model_json_schema(),
+                    "rl_action": {
+                        "fields": ACTION_FIELDS,
+                        "low": ACTION_LOW.tolist(),
+                        "high": ACTION_HIGH.tolist(),
+                    },
+                },
+                indent=2,
+            )
+        )
+        return
     if args.command == "serve":
         from afterlap_api.race_server import run_server
 
@@ -44,6 +71,10 @@ def main() -> None:
         with contextlib.suppress(KeyboardInterrupt):
             asyncio.run(run_server(args.host, args.port, args.origin))
         return
+    if args.driver_action and args.command != "evaluate":
+        parser.error("--driver-action is only valid for evaluate")
+    if args.driver_action and args.policy:
+        parser.error("--driver-action and --policy are mutually exclusive")
     settings_payload = {
         "circuit": args.circuit,
         "seed": args.seed,

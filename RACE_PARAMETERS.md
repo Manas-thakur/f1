@@ -66,3 +66,5 @@ uv run python scripts/race_benchmark.py --settings scenario.json --output benchm
 ```
 
 Output files for generation and diagnostics are exclusive-create. Policy sidecars record the exact implementation hash and contract. Keep policy and sidecar together, with the source revision and experiment settings.
+
+Omitting `laps` selects the chosen circuit's sourced Grand Prix distance. An explicit `laps` value from 1 through 80 always overrides that preset. Run `uv run python scripts/race.py catalogue` for machine-readable circuit defaults and `uv run python scripts/race.py schema` for the complete settings, direct control, and normalized RL action schemas.
