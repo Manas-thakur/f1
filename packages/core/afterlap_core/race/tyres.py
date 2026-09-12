@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 
 import numpy as np
@@ -39,6 +39,11 @@ class TyreState:
     service_remaining_s: float = 0
     exit_after_progress_m: float = 0
     stops: int = 0
+    used_compounds: list[TyreCompound] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.used_compounds:
+            self.used_compounds.append(self.compound)
 
     @property
     def grip(self) -> float:
@@ -52,7 +57,7 @@ class TyreState:
         )
 
     def payload(self, visual_lateral_m: float) -> dict[str, object]:
-        return {
+        payload = {
             **asdict(self),
             "compound": self.compound.value,
             "next_compound": self.next_compound.value,
@@ -60,6 +65,8 @@ class TyreState:
             "sidewall": TYRE_SPECS[self.compound].sidewall,
             "visual_lateral_m": visual_lateral_m,
         }
+        payload["used_compounds"] = [compound.value for compound in self.used_compounds]
+        return payload
 
 
 def sample_compound(rng: np.random.Generator, excluding: TyreCompound | None = None) -> TyreCompound:

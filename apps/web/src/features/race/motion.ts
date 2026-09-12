@@ -67,7 +67,7 @@ export class RaceMotion {
           unwrapped = Math.max(old.progress, prediction + correction);
         }
       }
-      poses.set(car.id, { progress: unwrapped, lateral: car.channels['lateral_d_m'] ?? 0,
+      poses.set(car.id, { progress: unwrapped, lateral: car.tyres.visual_lateral_m,
         ...(speed === undefined ? {} : { speed: Math.max(0, speed) }) });
     }
     if (!poses.size) {

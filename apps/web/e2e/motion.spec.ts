@@ -8,12 +8,25 @@ function frame(time: number, progress: number, status = 'running', generation = 
   return {
     type: 'frame', time_s: time, generation, status, steps: 0, failure: null,
     requested_rate: 1, actual_rate: 1, has_checkpoint: false, events: [],
+    boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
+      accuracy: null, precision: null, recall: null },
+    regulations: { name: 'FIA Formula 1 2026 race subset', effective_issue_dates: {}, sources: {},
+      enforced: {}, session_limits: {}, limitations: 'test fixture' },
     settings: { circuit: 'test', seed: 1, cars: 1, laps: 3, dt_s: 0.01,
-      wetness: 0, temperature_k: 300, wind_mps: 0, wake: false, variability: { preset: 'mild' }, time_limit_s: 100 },
+      wetness: 0, weather: 'sunny', temperature_k: 300, wind_mps: 0, wake: false,
+      variability: { preset: 'mild' }, time_limit_s: 100,
+      storyline: { enabled: true, pit_stops: true, tyre_wear_scale: 1,
+        event_interval_min_s: 4, event_interval_max_s: 16,
+        event_duration_min_s: 1.5, event_duration_max_s: 5 } },
     circuit_map: { id: 'test', name: 'Test', length_m: 1000,
       points: [[0, 0], [100, 0], [100, 100], [0, 100]] },
     cars: [{ id: 'car-01', channels: { s_m: progress % 1000, progress_m: progress },
-      observed_at_s: time, requested_profile: 'neutral', finish_time_s: null }],
+      observed_at_s: time, requested_profile: 'neutral', finish_time_s: null,
+      qualifying_position: 1, storyline: 'natural', classified: false,
+      regulation_status: 'running', points: 0,
+      tyres: { compound: 'medium', condition: 1, grip: 1, sidewall: '#f0c438', phase: 'track',
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        used_compounds: ['medium'], visual_lateral_m: 0 } }],
   };
 }
 
@@ -71,6 +84,11 @@ test('buffer fills before playback and all cars share the same render time', () 
     const update = frame(i * 0.1, i * 10);
     update.cars.push({ id: 'car-02', observed_at_s: i * 0.1,
       requested_profile: 'neutral', finish_time_s: null,
+      qualifying_position: 2, storyline: 'natural', classified: false,
+      regulation_status: 'running', points: 0,
+      tyres: { compound: 'hard', condition: 1, grip: 0.97, sidewall: '#f2f2ed', phase: 'track',
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        used_compounds: ['hard'], visual_lateral_m: 0 },
       channels: { progress_m: i * 10 - 6, lateral_d_m: 0 } });
     motion.push(update, i * 150);
     const poses = motion.sample(i * 150);

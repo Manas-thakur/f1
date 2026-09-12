@@ -19,6 +19,7 @@ from ..simulation.wake import WakeModel
 from .circuit import circuit
 from .factory import race_bundle
 from .racecraft import Racecraft
+from .regulations import RaceRegulations2026
 from .settings import RaceSettings
 from .storyline import StorylineDirector
 from .tyres import TyreState, sample_compound
@@ -28,6 +29,7 @@ from .variability import RaceWeather
 class RaceSession:
     def __init__(self, settings: RaceSettings | None = None) -> None:
         self.settings = settings or RaceSettings()
+        self.regulations = RaceRegulations2026()
         self.bundle = race_bundle(self.settings)
         self.track, self.map = circuit(self.settings.circuit, 0)
         self.weather = RaceWeather(
@@ -137,9 +139,15 @@ class RaceSession:
         if tyre.phase == "entry":
             state = self.simulator.world.cars[car_id]
             box_s = self._pit_box_s(car_id)
-            distance = max(0, box_s - state.s_m)
-            stop_distance = state.speed_mps * state.speed_mps / 24 + 5
-            ceiling = -12 if distance <= stop_distance else (0 if state.speed_mps <= 22.22 else -4)
+            limit = self.regulations.pit_lane_speed_limit_mps
+            if state.s_m < self._pit_lane_start_s:
+                distance = self._pit_lane_start_s - state.s_m
+                braking_distance = max(0, state.speed_mps**2 - limit**2) / 24 + 5
+                ceiling = -12 if distance <= braking_distance else 3
+            else:
+                distance = max(0, box_s - state.s_m)
+                stop_distance = state.speed_mps**2 / 24 + 5
+                ceiling = -12 if distance <= stop_distance else (0 if state.speed_mps <= limit else -4)
             action = replace(
                 action,
                 profile=DeploymentProfile.HARVEST,
@@ -173,6 +181,10 @@ class RaceSession:
         index = int(car_id.rsplit("-", maxsplit=1)[-1]) - 1
         return self.track.length - 42 - index * 5.5
 
+    @property
+    def _pit_lane_start_s(self) -> float:
+        return self.track.length - 250
+
     def _visual_lateral(self, car_id: str) -> float:
         tyre = self.tyres[car_id]
         state = self.simulator.world.cars[car_id]
@@ -202,7 +214,16 @@ class RaceSession:
                 self.settings.storyline.pit_stops
                 and tyre.phase == "track"
                 and not tyre.requested
-                and tyre.condition <= tyre.change_threshold
+                and (
+                    tyre.condition <= tyre.change_threshold
+                    or (
+                        len(tyre.used_compounds) < self.regulations.required_dry_compounds
+                        and self.regulations.mandatory_stop_due(
+                            state.progress_m,
+                            self.settings.laps * self.track.length,
+                        )
+                    )
+                )
             ):
                 tyre.requested = True
                 self.events.append(
@@ -253,7 +274,17 @@ class RaceSession:
                     )
             elif tyre.phase == "exit" and state.progress_m >= tyre.exit_after_progress_m:
                 tyre.phase = "track"
+                if tyre.compound not in tyre.used_compounds:
+                    tyre.used_compounds.append(tyre.compound)
                 self.events.append({"kind": "pit_exit", "car_id": car_id, "session_time_s": now})
+
+            if (
+                tyre.phase in {"entry", "service", "exit"}
+                and state.s_m >= self._pit_lane_start_s
+                and state.speed_mps > self.regulations.pit_lane_speed_limit_mps
+            ):
+                state.speed_mps = self.regulations.pit_lane_speed_limit_mps
+                state.acceleration_mps2 = min(0, state.acceleration_mps2)
 
     def advance(self, duration_s: float = 0.1) -> None:
         if not math.isfinite(duration_s) or not 0 < duration_s <= 10:
@@ -325,8 +356,27 @@ class RaceSession:
     def frame(self) -> dict[str, Any]:
         observations = self.simulator.observe(include_rivals=False)
         cars = []
+        provisional_order = sorted(
+            self.simulator.world.cars,
+            key=lambda car_id: (
+                0 if car_id in self.finishes else 1,
+                self.finishes.get(car_id, -self.simulator.world.cars[car_id].progress_m),
+            ),
+        )
+        positions = {car_id: index + 1 for index, car_id in enumerate(provisional_order)}
+        winner_laps = self.settings.laps if self.status == "finished" else 0
         for car_id, observation in observations.items():
             channels = dict(observation.channels)
+            completed_laps = min(
+                self.settings.laps,
+                max(0, math.floor(self.simulator.world.cars[car_id].progress_m / self.track.length)),
+            )
+            distance_compliant = self.regulations.distance_is_classified(completed_laps, winner_laps)
+            compound_compliant = (
+                len(self.tyres[car_id].used_compounds) >= self.regulations.required_dry_compounds
+            )
+            classified = self.status == "finished" and distance_compliant and compound_compliant
+            position = positions[car_id]
             cars.append(
                 {
                     "id": car_id,
@@ -346,6 +396,19 @@ class RaceSession:
                     "qualifying_position": int(car_id.rsplit("-", maxsplit=1)[-1]),
                     "storyline": self.storyline.beats[car_id].mode,
                     "tyres": self.tyres[car_id].payload(self._visual_lateral(car_id)),
+                    "classified": classified,
+                    "regulation_status": (
+                        "classified"
+                        if classified
+                        else "running"
+                        if self.status != "finished"
+                        else "disqualified: two dry compounds not used"
+                        if not compound_compliant
+                        else "not classified: less than 90% distance"
+                    ),
+                    "points": self.regulations.points(position, 1, self.settings.laps)
+                    if self.status == "finished" and classified
+                    else 0,
                 }
             )
         cars.sort(
@@ -367,6 +430,7 @@ class RaceSession:
             "cars": cars,
             "events": self.events,
             "boost_evaluation": self.storyline.confusion.payload(),
+            "regulations": self.regulations.manifest(),
             "provenance": "simulated; uncalibrated cars and scaled circuit artwork",
         }
 
@@ -456,6 +520,7 @@ class RaceSession:
                 "overtake_authorization": "unavailable; boost uses standard curve",
                 "strategy": "synthetic observation-driven straight and passing deployment",
             },
+            "regulations": self.regulations.manifest(),
             "integrator": "RK2 float64",
             "observation": "delayed simulated sensors; rival energy hidden",
         }

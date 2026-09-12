@@ -83,6 +83,8 @@ export function createCar(index: number) {
   const carbon = new THREE.MeshStandardMaterial({ color: '#151a20', roughness: 0.65, metalness: 0.25 });
   const rubber = new THREE.MeshStandardMaterial({ color: '#151619', roughness: 0.92 });
   const alloy = new THREE.MeshStandardMaterial({ color: '#555d66', metalness: 0.95, roughness: 0.27 });
+  const tyreRing = new THREE.MeshStandardMaterial({ color: '#e4bb3b', roughness: 0.8 });
+  group.userData['tyreRingMaterial'] = tyreRing;
   const stripe = new THREE.MeshStandardMaterial({ color: '#e6e8e7', roughness: 0.35 });
   box(group, carbon, [1.65, 0.1, 3.45], [0, 0.19, -0.2]);
   group.add(body(paint, [
@@ -110,7 +112,7 @@ export function createCar(index: number) {
       hub.position.copy(wheel.position);
       group.add(hub);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.012, 6, 32),
-        new THREE.MeshStandardMaterial({ color: '#e4bb3b', roughness: 0.8 }));
+        tyreRing);
       ring.rotation.y = Math.PI / 2;
       ring.position.set(side * 1.12, 0.39, z);
       group.add(ring);
