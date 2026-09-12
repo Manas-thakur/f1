@@ -15,6 +15,7 @@ function seededValues(count: number, seed = 9041) {
 
 export class Atmosphere extends THREE.Group {
   private readonly rain: THREE.LineSegments;
+  private readonly rainEchoes: THREE.LineSegments[];
   private readonly rainPositions: THREE.BufferAttribute;
   private readonly rainOrigins: Float32Array;
   private readonly clouds: THREE.InstancedMesh;
@@ -23,12 +24,14 @@ export class Atmosphere extends THREE.Group {
   private readonly wetMaterials: THREE.MeshPhysicalMaterial[];
   private wetness = 0;
   private wind = 0;
+  private readonly night: boolean;
   private quality: 'ultra' | 'high' | 'performance' = 'ultra';
   private lastRainUpdate = 0;
 
   constructor(map: CircuitMap, center: THREE.Vector3, span: number,
     wetMaterials: THREE.MeshPhysicalMaterial[], night: boolean) {
     super();
+    this.night = night;
     this.wetMaterials = wetMaterials;
     const values = seededValues(8400);
     const positions = new Float32Array(2800 * 2 * 3);
@@ -36,19 +39,28 @@ export class Atmosphere extends THREE.Group {
       const x = (values[i * 3] ?? 0) * 180 - 90;
       const y = (values[i * 3 + 1] ?? 0) * 62;
       const z = (values[i * 3 + 2] ?? 0) * 180 - 90;
-      positions.set([x, y, z, x - 0.12, y - 1.8, z + 0.08], i * 6);
+      positions.set([x, y, z, x - 0.16, y - 2.8, z + 0.12], i * 6);
     }
     this.rainOrigins = positions.slice();
     const rainGeometry = new THREE.BufferGeometry();
     this.rainPositions = new THREE.BufferAttribute(positions, 3);
     rainGeometry.setAttribute('position', this.rainPositions);
     this.rain = new THREE.LineSegments(rainGeometry, new THREE.LineBasicMaterial({
-      color: '#d8edff', transparent: true, opacity: 0.34, depthWrite: false,
+      color: '#b9e4ff', transparent: true, opacity: 0.42, depthWrite: false,
       blending: THREE.AdditiveBlending,
     }));
     this.rain.frustumCulled = false;
     this.rain.renderOrder = 8;
-    this.add(this.rain);
+    this.rainEchoes = [-0.075, 0.075].map((offset) => {
+      const echo = new THREE.LineSegments(rainGeometry,
+        new THREE.LineBasicMaterial({ color: '#83cfff', transparent: true, opacity: 0.2,
+          depthWrite: false, blending: THREE.AdditiveBlending }));
+      echo.position.x = offset;
+      echo.frustumCulled = false;
+      echo.renderOrder = 8;
+      return echo;
+    });
+    this.add(this.rain, ...this.rainEchoes);
 
     const cloudCanvas = document.createElement('canvas');
     cloudCanvas.width = cloudCanvas.height = 512;
@@ -71,7 +83,7 @@ export class Atmosphere extends THREE.Group {
     const cloudGeometry = new THREE.PlaneGeometry(1, 1);
     const cloudMaterial = new THREE.MeshBasicMaterial({
       color: night ? '#324050' : '#d5d9d8', map: cloudTexture, transparent: true,
-      opacity: night ? 0.32 : 0.4, depthWrite: false, side: THREE.DoubleSide,
+      opacity: night ? 0.22 : 0.14, depthWrite: false, side: THREE.DoubleSide,
     });
     this.clouds = new THREE.InstancedMesh(cloudGeometry, cloudMaterial, 85);
     const dummy = new THREE.Object3D();
@@ -94,7 +106,7 @@ export class Atmosphere extends THREE.Group {
       clearcoat: 1, clearcoatRoughness: 0.03, reflectivity: 1, depthWrite: false,
       side: THREE.DoubleSide,
     });
-    for (const [inner, outer] of [[-5.55, -5.1], [4.8, 5.35], [-2.4, -1.9]] as const) {
+    for (const [inner, outer] of [[-5.55, -5.1], [4.8, 5.35]] as const) {
       const puddle = new THREE.Mesh(ribbon(map, inner, outer, 0.057), puddleMaterial.clone());
       puddle.renderOrder = 2;
       this.puddles.push(puddle);
@@ -106,28 +118,34 @@ export class Atmosphere extends THREE.Group {
     this.wetness = THREE.MathUtils.clamp(settings.wetness, 0, 1);
     this.wind = settings.wind_mps;
     this.rain.visible = this.wetness > 0.08;
+    for (const echo of this.rainEchoes) {
+      echo.visible = this.rain.visible;
+    }
     const rainMaterial = this.rain.material as THREE.LineBasicMaterial;
-    rainMaterial.opacity = 0.12 + this.wetness * 0.5;
+    rainMaterial.opacity = 0.14 + this.wetness * 0.48;
+    for (const echo of this.rainEchoes) {
+      (echo.material as THREE.LineBasicMaterial).opacity = 0.06 + this.wetness * 0.24;
+    }
     for (const puddle of this.puddles) {
       const material = puddle.material as THREE.MeshPhysicalMaterial;
-      material.opacity = Math.max(0, this.wetness - 0.28) * 0.48;
+      material.opacity = Math.max(0, this.wetness - 0.45) * 0.08;
     }
     for (const material of this.wetMaterials) {
-      material.roughness = THREE.MathUtils.lerp(0.9, 0.16, this.wetness);
-      material.clearcoat = this.wetness;
-      material.clearcoatRoughness = THREE.MathUtils.lerp(0.5, 0.08, this.wetness);
-      material.envMapIntensity = THREE.MathUtils.lerp(0.55, 1.45, this.wetness);
+      material.roughness = THREE.MathUtils.lerp(0.9, 0.34, this.wetness);
+      material.clearcoat = this.wetness * 0.65;
+      material.clearcoatRoughness = THREE.MathUtils.lerp(0.5, 0.16, this.wetness);
+      material.envMapIntensity = THREE.MathUtils.lerp(0.5, 0.95, this.wetness);
     }
     const cloudMaterial = this.clouds.material as THREE.MeshBasicMaterial;
-    cloudMaterial.color.set(this.wetness > 0.55 ? '#68727a' : '#d5d9d8');
-    cloudMaterial.opacity = 0.42 + this.wetness * 0.42;
+    cloudMaterial.color.set(this.wetness > 0.55 ? '#53616c' : this.night ? '#324050' : '#bdc9cc');
+    cloudMaterial.opacity = (this.night ? 0.18 : 0.1) + this.wetness * 0.16;
   }
 
   setQuality(quality: 'ultra' | 'high' | 'performance') {
     this.quality = quality;
     const drops = quality === 'ultra' ? 2800 : quality === 'high' ? 1500 : 450;
     this.rain.geometry.setDrawRange(0, drops * 2);
-    this.clouds.count = quality === 'performance' ? 32 : quality === 'high' ? 58 : 85;
+    this.clouds.count = quality === 'performance' ? 14 : quality === 'high' ? 28 : 40;
   }
 
   update(time: number, camera: THREE.Vector3) {
@@ -149,8 +167,8 @@ export class Atmosphere extends THREE.Group {
         positions[i + 1] = y;
         positions[i + 2] = this.cameraPosition.z + baseZ;
         positions[i + 3] = this.cameraPosition.x + x - this.wind * 0.035;
-        positions[i + 4] = y - 1.8;
-        positions[i + 5] = this.cameraPosition.z + baseZ + 0.08;
+        positions[i + 4] = y - 2.8;
+        positions[i + 5] = this.cameraPosition.z + baseZ + 0.12;
       }
       this.rainPositions.needsUpdate = true;
     }
@@ -161,6 +179,9 @@ export class Atmosphere extends THREE.Group {
   override dispose() {
     this.rain.geometry.dispose();
     (this.rain.material as THREE.Material).dispose();
+    for (const echo of this.rainEchoes) {
+      (echo.material as THREE.Material).dispose();
+    }
     this.clouds.geometry.dispose();
     (this.clouds.material as THREE.MeshBasicMaterial).map?.dispose();
     (this.clouds.material as THREE.Material).dispose();

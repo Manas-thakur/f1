@@ -28,6 +28,7 @@ export class RaceWorld {
   private readonly ambientOcclusion: GTAOPass;
   private readonly bloom: UnrealBloomPass;
   private readonly antialias: SMAAPass;
+  private readonly night: boolean;
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(52, 1, 0.12, 16000);
   readonly controls: OrbitControls;
@@ -101,8 +102,9 @@ export class RaceWorld {
     room.dispose();
     pmrem.dispose();
     const profile = sceneryProfile(map.id);
-    this.scene.fog = new THREE.FogExp2(profile.night ? '#17232c' : '#aebfc1', 0.00024);
-    this.renderer.toneMappingExposure = profile.night ? 0.65 : 0.85;
+    this.night = profile.night;
+    this.scene.fog = new THREE.FogExp2(profile.night ? '#17232c' : '#94aeb6', 0.00014);
+    this.renderer.toneMappingExposure = profile.night ? 0.65 : 0.74;
     this.scene.add(new THREE.HemisphereLight('#dcefff', '#283527', profile.night ? 0.45 : 1.15));
     const sky = new Sky();
     sky.scale.setScalar(12000);
@@ -133,7 +135,8 @@ export class RaceWorld {
       thickness: 1.2, distanceFallOff: 0.7, samples: 12, screenSpaceRadius: true });
     this.ambientOcclusion.updatePdMaterial({ radius: 4, rings: 2, samples: 8 });
     this.composer.addPass(this.ambientOcclusion);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), profile.night ? 0.35 : 0.1, 0.3, 0.78);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), profile.night ? 0.2 : 0,
+      profile.night ? 0.22 : 0, profile.night ? 1.05 : 1.5);
     this.composer.addPass(this.bloom);
     this.antialias = new SMAAPass();
     this.composer.addPass(this.antialias);
@@ -315,8 +318,11 @@ export class RaceWorld {
     this.host.dataset['weatherWetness'] = frame.settings.wetness.toFixed(2);
     this.host.dataset['weatherWind'] = frame.settings.wind_mps.toFixed(1);
     if (this.scene.fog instanceof THREE.FogExp2) {
-      this.scene.fog.density = 0.00022 + frame.settings.wetness * 0.0011;
+      this.scene.fog.density = 0.00014 + frame.settings.wetness * 0.00038;
     }
+    this.renderer.toneMappingExposure = this.night
+      ? THREE.MathUtils.lerp(0.65, 0.56, frame.settings.wetness)
+      : THREE.MathUtils.lerp(0.74, 0.64, frame.settings.wetness);
     this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
@@ -341,14 +347,39 @@ export class RaceWorld {
         model.add(boost);
         const spray = new THREE.Group();
         spray.name = 'wet-spray';
-        for (const side of [-1, 1]) {
-          const mist = new THREE.Mesh(new THREE.ConeGeometry(0.72, 5.5, 12, 1, true),
-            new THREE.MeshBasicMaterial({ color: '#d9e2e5', transparent: true, opacity: 0.12,
-              depthWrite: false, side: THREE.DoubleSide }));
-          mist.rotation.x = -Math.PI / 2;
-          mist.position.set(side * 0.72, 0.65, -3.9);
-          spray.add(mist);
+        const mistPositions = new Float32Array(120 * 3);
+        let mistSeed = Number(car.id.slice(-2)) * 7919;
+        const random = () => {
+          mistSeed = (mistSeed * 1664525 + 1013904223) >>> 0;
+          return mistSeed / 4294967296;
+        };
+        for (let i = 0; i < 120; i++) {
+          const side = i % 2 ? 1 : -1;
+          const trail = random() * 4.2;
+          mistPositions.set([
+            side * 0.72 + (random() - 0.5) * (0.12 + trail * 0.18),
+            0.2 + random() * (0.18 + trail * 0.14),
+            -1.55 - trail,
+          ], i * 3);
         }
+        const mistGeometry = new THREE.BufferGeometry();
+        mistGeometry.setAttribute('position', new THREE.BufferAttribute(mistPositions, 3));
+        const mistCanvas = document.createElement('canvas');
+        mistCanvas.width = mistCanvas.height = 64;
+        const mistContext = mistCanvas.getContext('2d');
+        if (mistContext) {
+          const mistGradient = mistContext.createRadialGradient(32, 32, 0, 32, 32, 31);
+          mistGradient.addColorStop(0, '#f5fcffff');
+          mistGradient.addColorStop(0.35, '#d7e8ef9c');
+          mistGradient.addColorStop(1, '#b5d1df00');
+          mistContext.fillStyle = mistGradient;
+          mistContext.fillRect(0, 0, 64, 64);
+        }
+        const mistTexture = new THREE.CanvasTexture(mistCanvas);
+        spray.add(new THREE.Points(mistGeometry, new THREE.PointsMaterial({
+          color: '#d7e2e4', map: mistTexture, transparent: true, opacity: 0.14, depthWrite: false,
+          alphaTest: 0.01, size: 0.09, sizeAttenuation: true,
+        })));
         model.add(spray);
         this.cars.set(car.id, model);
         this.scene.add(model);
@@ -360,6 +391,7 @@ export class RaceWorld {
       }
       model.userData['speedMps'] = car.channels['speed_mps'] ?? 0;
       model.userData['wetness'] = frame.settings.wetness;
+      model.userData['raceRunning'] = frame.status === 'running';
       model.visible = car.channels['s_m'] !== undefined;
     }
   }
@@ -404,7 +436,7 @@ export class RaceWorld {
     this.renderer.shadowMap.enabled = this.quality !== 'performance';
     this.sun.shadow.mapSize.setScalar(this.quality === 'ultra' ? 2048 : 1024);
     this.ambientOcclusion.enabled = this.quality === 'ultra';
-    this.bloom.enabled = this.quality === 'ultra';
+    this.bloom.enabled = this.quality === 'ultra' && this.night;
     this.antialias.enabled = this.quality === 'ultra';
     this.atmosphere.setQuality(this.quality);
   }
@@ -560,12 +592,12 @@ export class RaceWorld {
       }
       const speed = Number(model.userData['speedMps'] ?? 0);
       const wetness = Number(model.userData['wetness'] ?? 0);
-      spray.visible = model.visible && wetness > 0.18 && speed > 12;
+      spray.visible = model.visible && Boolean(model.userData['raceRunning']) && wetness > 0.18 && speed > 12;
       const intensity = Math.min(1.6, wetness * speed / 34);
-      spray.scale.set(0.65 + intensity * 0.45, 0.65 + intensity * 0.45, 0.6 + intensity);
+      spray.scale.set(0.55 + intensity * 0.22, 0.55 + intensity * 0.22, 0.7 + intensity * 0.4);
       for (const child of spray.children) {
-        if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshBasicMaterial) {
-          child.material.opacity = 0.035 + intensity * 0.1;
+        if (child instanceof THREE.Points && child.material instanceof THREE.PointsMaterial) {
+          child.material.opacity = 0.045 + intensity * 0.055;
         }
       }
     }
@@ -613,7 +645,8 @@ export class RaceWorld {
       if (object instanceof THREE.InstancedMesh) {
         object.dispose();
       }
-      if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
+      if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments
+        || object instanceof THREE.Points) {
         geometries.add(object.geometry as THREE.BufferGeometry);
         const material = object.material as THREE.Material | THREE.Material[];
         for (const item of Array.isArray(material) ? material : [material]) {
