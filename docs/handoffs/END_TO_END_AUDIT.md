@@ -125,12 +125,15 @@ geometry changed under the session.
 
 Fixed by prefixing at the package-backed source, so one field has one encoding.
 The genuinely different encoding — a digest a file writes into itself — is now
-its own type, `HexDigest`. The generated TypeScript still says `string`, but the
-generated JSON Schema carries the pattern and the fixed length, and the web
-client validates every response against that schema at runtime, so the console
-refuses a malformed digest rather than rendering it. The difference between the
-two encodings is now readable in the schema instead of being discovered from a
-comparison that silently never matches.
+its own type, `HexDigest`, and the difference is readable in the schema instead
+of being discovered from a comparison that silently never matches.
+
+Where the constraint bites: Pydantic refuses a malformed digest at construction
+and at every service boundary, which is the load-bearing half. The generated
+TypeScript still says `string`; the generated JSON Schema carries the pattern
+and the fixed length, and the console checks it at runtime for stream envelopes
+and catalogue responses, which are the two paths that run AJV. The rest of the
+REST client is typed but not runtime-validated — see section 6.
 
 ### 2.3 A placeholder string in a digest field
 
@@ -466,6 +469,13 @@ every checkout, every action pinned to a SHA.
   `corridor_quality: unknown`.** Two different facts — the control plane's
   capability state and the compiled package's own declaration — and both are
   accurate. The wording could distinguish them more clearly.
+- **The console runtime-validates only two response paths.** `validateAs`
+  runs against the generated schema for stream envelopes and for the track
+  catalogue; the other REST responses are typed at compile time and trusted at
+  runtime. That is defensible while the server is the only producer and
+  Pydantic refuses malformed values on the way out, but it means the new digest
+  patterns are enforced server-side and on those two paths, not everywhere the
+  console reads a hash.
 - **209 server-generated strings still declare no length or pattern.** None is
   client-supplied, so none is an input-validation hole; they are a rendering
   and storage concern. The count is pinned by a test so it cannot grow while
