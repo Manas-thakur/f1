@@ -302,16 +302,31 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   await page.goto('/race');
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
-  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await expect.poll(async () => Number(await scene.getAttribute('data-observed-time'))).toBeGreaterThan(0.05);
+  const runningTime = Number(await scene.getAttribute('data-observed-time'));
+  await page.getByRole('combobox', { name: 'Weather', exact: true }).selectOption('rainy');
   await page.getByLabel('Wetness (0 dry, 1 wet)').fill('0.8');
+  await page.getByLabel('Ambient (°C)').fill('18');
   await page.getByLabel('Wind (m/s)').fill('7.5');
-  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await expect(scene).toHaveAttribute('data-weather', 'rainy');
   await expect(scene).toHaveAttribute('data-weather-wetness', '0.80');
   await expect(scene).toHaveAttribute('data-weather-wind', '7.5');
+  await expect(scene).toHaveAttribute('data-weather-temperature', '291.15');
   await expect(page.getByText('HEAVY RAIN', { exact: true })).toBeVisible();
+  await expect.poll(async () => Number(await scene.getAttribute('data-observed-time')))
+    .toBeGreaterThan(runningTime);
+  await page.getByRole('combobox', { name: 'Weather', exact: true }).selectOption('sunny');
+  await expect(scene).toHaveAttribute('data-weather', 'sunny');
+  await expect(page.getByText('WET TRACK', { exact: true })).toBeVisible();
   await expect(page.getByLabel('Graphics quality').locator('option')).toHaveText([
     'Ultra graphics', 'High graphics', 'Performance',
   ]);
+  await page.getByLabel('Graphics quality').selectOption('ultra');
+  await expect(scene).toHaveAttribute('data-render-path', 'postprocessed');
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await expect(scene).toHaveAttribute('data-render-path', 'direct');
+  await expect(scene).toHaveAttribute('data-render-path', 'postprocessed');
   await page.getByLabel('Graphics quality').selectOption('high');
   await expect(scene).toHaveAttribute('data-graphics-quality', 'high');
   await page.getByLabel('Graphics quality').selectOption('performance');

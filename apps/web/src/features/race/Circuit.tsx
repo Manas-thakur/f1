@@ -139,10 +139,10 @@ export function Circuit() {
   };
   const car = frame?.cars.find((item) => item.id === selected);
   const speed = car?.channels['speed_mps'];
-  const wetness = frame?.settings.weather === 'rainy'
-    ? Math.max(frame.settings.wetness, 0.72) : frame?.settings.wetness ?? 0;
-  const weather = wetness >= 0.7 ? 'HEAVY RAIN' : wetness >= 0.35 ? 'WET TRACK'
-    : wetness > 0.08 ? 'LIGHT RAIN' : 'DRY';
+  const wetness = frame?.settings.wetness ?? 0;
+  const raining = frame?.settings.weather === 'rainy';
+  const weather = raining ? wetness >= 0.7 ? 'HEAVY RAIN' : 'RAIN'
+    : wetness > 0.08 ? 'WET TRACK' : 'DRY';
   const speedStyle = {
     '--speed-angle': `${Math.min(290, Math.max(0, (speed ?? 0) * 3.6 / 360 * 290))}deg`,
   } as CSSProperties;

@@ -47,6 +47,7 @@ export class RaceWorld {
   private dirty = true;
   private distance = 1;
   private rendered = 0;
+  private lastMinimapRender = 0;
   private fpsAt = performance.now();
   private fpsFrames = 0;
   private readonly onFps: (fps: number) => void;
@@ -66,6 +67,8 @@ export class RaceWorld {
   private readonly onMode: (mode: CameraMode) => void;
   private readonly onSelect: (id: string) => void;
   private readonly onError: (message: string) => void;
+  private interacting = false;
+  private interactionTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly host: HTMLElement,
@@ -161,6 +164,8 @@ export class RaceWorld {
     this.camera.position.copy(startingView.position).add(new THREE.Vector3(15, 10, -20));
     this.controls.update();
     this.controls.addEventListener('start', this.releaseCamera);
+    this.controls.addEventListener('start', this.beginInteraction);
+    this.controls.addEventListener('end', this.endInteraction);
     this.renderer.domElement.addEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.addEventListener('pointerup', this.pointerUp);
     this.renderer.domElement.addEventListener('dblclick', this.focusCar);
@@ -322,19 +327,20 @@ export class RaceWorld {
     this.frame = frame;
     this.atmosphere.setWeather(frame.settings);
     this.surroundings.setWind(frame.settings.wind_mps);
-    const weatherWetness = frame.settings.weather === 'rainy'
-      ? Math.max(frame.settings.wetness, 0.72) : frame.settings.wetness;
-    this.host.dataset['weatherWetness'] = weatherWetness.toFixed(2);
+    const precipitation = frame.settings.weather === 'rainy'
+      ? Math.max(frame.settings.wetness, 0.55) : 0;
+    this.host.dataset['weatherWetness'] = frame.settings.wetness.toFixed(2);
     this.host.dataset['weatherWind'] = frame.settings.wind_mps.toFixed(1);
+    this.host.dataset['weatherTemperature'] = frame.settings.temperature_k.toFixed(2);
     this.host.dataset['weather'] = frame.settings.weather;
     this.host.dataset['pitCars'] = frame.cars.filter((car) => car.tyres.phase !== 'track')
       .map((car) => car.id).join(',');
     if (this.scene.fog instanceof THREE.FogExp2) {
-      this.scene.fog.density = 0.00014 + weatherWetness * 0.00038;
+      this.scene.fog.density = 0.00014 + precipitation * 0.00038;
     }
     this.renderer.toneMappingExposure = this.night
-      ? THREE.MathUtils.lerp(0.65, 0.56, weatherWetness)
-      : THREE.MathUtils.lerp(0.74, 0.64, weatherWetness);
+      ? THREE.MathUtils.lerp(0.65, 0.56, precipitation)
+      : THREE.MathUtils.lerp(0.74, 0.64, precipitation);
     this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
@@ -402,7 +408,7 @@ export class RaceWorld {
         boost.scale.z = Math.max(0.25, Math.min(1, (car.channels['electrical_power_w'] ?? 0) / 350000));
       }
       model.userData['speedMps'] = car.channels['speed_mps'] ?? 0;
-      model.userData['wetness'] = weatherWetness;
+      model.userData['wetness'] = frame.settings.wetness;
       model.userData['raceRunning'] = frame.status === 'running';
       const tyreRing: unknown = model.userData['tyreRingMaterial'];
       if (tyreRing instanceof THREE.MeshStandardMaterial) {
@@ -462,6 +468,11 @@ export class RaceWorld {
   }
 
   zoom(factor: number) {
+    this.beginInteraction();
+    if (this.interactionTimer !== null) {
+      clearTimeout(this.interactionTimer);
+    }
+    this.interactionTimer = setTimeout(this.endInteraction, 180);
     this.dirty = true;
     if (this.mode === 'chase' || this.mode === 'cockpit') {
       this.distance = THREE.MathUtils.clamp(this.distance * factor, 0.55, 4);
@@ -484,6 +495,18 @@ export class RaceWorld {
       }
       this.onMode('orbit');
     }
+  };
+
+  private beginInteraction = () => {
+    this.interacting = true;
+    this.atmosphere.setInteractive(true);
+  };
+
+  private endInteraction = () => {
+    this.interacting = false;
+    this.atmosphere.setInteractive(false);
+    this.interactionTimer = null;
+    this.dirty = true;
   };
 
   private pointerDown = (event: PointerEvent) => {
@@ -622,14 +645,18 @@ export class RaceWorld {
       }
     }
     const time = performance.now() / 1000;
-    this.surroundings.update(time, this.camera.position, this.quality !== 'performance');
+    this.surroundings.update(time, this.camera.position,
+      this.quality !== 'performance' && !this.interacting);
     this.atmosphere.update(time, this.camera.position);
-    if (this.quality === 'ultra') {
+    if (this.quality === 'ultra' && !this.interacting) {
       this.composer.render();
     } else {
       this.renderer.render(this.scene, this.camera);
     }
-    if (this.mapCanvas) {
+    this.host.dataset['renderPath'] = this.quality === 'ultra' && !this.interacting
+      ? 'postprocessed' : 'direct';
+    if (this.mapCanvas && time - this.lastMinimapRender >= 1 / 15) {
+      this.lastMinimapRender = time;
       this.minimap.draw(this.mapCanvas, this.cars, this.selected);
     }
     this.rendered++;
@@ -652,10 +679,16 @@ export class RaceWorld {
     this.disposed = true;
     this.renderer.setAnimationLoop(null);
     this.resize.disconnect();
+    if (this.interactionTimer !== null) {
+      clearTimeout(this.interactionTimer);
+    }
     this.branding.dispose();
     this.surroundings.dispose();
     this.atmosphere.dispose();
     this.controls.dispose();
+    this.controls.removeEventListener('start', this.releaseCamera);
+    this.controls.removeEventListener('start', this.beginInteraction);
+    this.controls.removeEventListener('end', this.endInteraction);
     this.renderer.domElement.removeEventListener('pointerdown', this.pointerDown);
     this.renderer.domElement.removeEventListener('pointerup', this.pointerUp);
     this.renderer.domElement.removeEventListener('dblclick', this.focusCar);

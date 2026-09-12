@@ -27,6 +27,8 @@ export class Atmosphere extends THREE.Group {
   private readonly night: boolean;
   private quality: 'ultra' | 'high' | 'performance' = 'ultra';
   private lastRainUpdate = 0;
+  private raining = false;
+  private interactive = false;
 
   constructor(map: CircuitMap, center: THREE.Vector3, span: number,
     wetMaterials: THREE.MeshPhysicalMaterial[], night: boolean) {
@@ -115,17 +117,16 @@ export class Atmosphere extends THREE.Group {
   }
 
   setWeather(settings: Pick<RaceSettings, 'weather' | 'wetness' | 'wind_mps'>) {
-    const wetness = settings.weather === 'rainy' ? Math.max(settings.wetness, 0.72) : settings.wetness;
-    this.wetness = THREE.MathUtils.clamp(wetness, 0, 1);
+    this.wetness = THREE.MathUtils.clamp(settings.wetness, 0, 1);
+    const raining = settings.weather === 'rainy';
+    const precipitation = raining ? Math.max(this.wetness, 0.55) : 0;
+    this.raining = raining;
     this.wind = settings.wind_mps;
-    this.rain.visible = this.wetness > 0.08;
-    for (const echo of this.rainEchoes) {
-      echo.visible = this.rain.visible;
-    }
+    this.configureRainLoad();
     const rainMaterial = this.rain.material as THREE.LineBasicMaterial;
-    rainMaterial.opacity = 0.14 + this.wetness * 0.48;
+    rainMaterial.opacity = 0.14 + precipitation * 0.48;
     for (const echo of this.rainEchoes) {
-      (echo.material as THREE.LineBasicMaterial).opacity = 0.06 + this.wetness * 0.24;
+      (echo.material as THREE.LineBasicMaterial).opacity = 0.06 + precipitation * 0.24;
     }
     for (const puddle of this.puddles) {
       const material = puddle.material as THREE.MeshPhysicalMaterial;
@@ -138,20 +139,35 @@ export class Atmosphere extends THREE.Group {
       material.envMapIntensity = THREE.MathUtils.lerp(0.5, 0.95, this.wetness);
     }
     const cloudMaterial = this.clouds.material as THREE.MeshBasicMaterial;
-    cloudMaterial.color.set(this.wetness > 0.55 ? '#53616c' : this.night ? '#324050' : '#bdc9cc');
-    cloudMaterial.opacity = (this.night ? 0.18 : 0.1) + this.wetness * 0.16;
+    cloudMaterial.color.set(raining ? '#53616c' : this.night ? '#324050' : '#bdc9cc');
+    cloudMaterial.opacity = (this.night ? 0.18 : 0.1) + precipitation * 0.16;
   }
 
   setQuality(quality: 'ultra' | 'high' | 'performance') {
     this.quality = quality;
-    const drops = quality === 'ultra' ? 2800 : quality === 'high' ? 1500 : 450;
-    this.rain.geometry.setDrawRange(0, drops * 2);
+    this.configureRainLoad();
     this.clouds.count = quality === 'performance' ? 14 : quality === 'high' ? 28 : 40;
+  }
+
+  setInteractive(interactive: boolean) {
+    this.interactive = interactive;
+    this.configureRainLoad();
+  }
+
+  private configureRainLoad() {
+    const qualityDrops = this.quality === 'ultra' ? 1900 : this.quality === 'high' ? 1100 : 400;
+    const drops = this.interactive ? Math.min(650, qualityDrops) : qualityDrops;
+    this.rain.geometry.setDrawRange(0, drops * 2);
+    this.rain.visible = this.raining;
+    for (const echo of this.rainEchoes) {
+      echo.visible = this.raining && this.quality === 'ultra' && !this.interactive;
+    }
   }
 
   update(time: number, camera: THREE.Vector3) {
     this.cameraPosition.copy(camera);
-    const rainInterval = this.quality === 'ultra' ? 1 / 45 : this.quality === 'high' ? 1 / 30 : 1 / 18;
+    const rainInterval = this.interactive ? 1 / 24
+      : this.quality === 'ultra' ? 1 / 45 : this.quality === 'high' ? 1 / 30 : 1 / 18;
     if (this.rain.visible && time - this.lastRainUpdate >= rainInterval) {
       this.lastRainUpdate = time;
       const positions = this.rainPositions.array as Float32Array;
