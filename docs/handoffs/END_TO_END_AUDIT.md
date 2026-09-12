@@ -2,10 +2,10 @@
 
 **Scope.** Every gate, every surface and every process AFTERLAP ships, run on
 one machine against a real PostgreSQL, a real Python runtime, a real batch
-worker and a real browser. Reviewed: 103 specification documents, 61 519 lines
-of Python across `apps/api`, `packages`, `workers` and `scripts`, 21 253 lines
-of TypeScript across `apps/web`, 31 512 lines of test, the local stack
-definition, and the CI workflow.
+worker and a real browser. Reviewed: 105 specification documents, 67 579 lines
+of Python across `apps/api`, `packages`, `workers` and `scripts`, 22 389 lines
+of TypeScript across `apps/web` and `apps/video`, 34 434 lines of test, the
+local stack definition, and the CI workflow.
 
 **Verdict.** The product works end to end. A session created in the browser
 runs through observation, estimation, legal planning, engineer selection,
@@ -212,8 +212,9 @@ Three were real:
 - `factory.py` imported `Planner` from `session.runtime`, which does not export
   it. With `no_implicit_reexport` on, that is an error; it worked only because
   the code disabling it also disabled `attr-defined`.
-- `PredictionController._proposal` called `.propose` and `.applicable_limits`
-  on values it had already established could be `None`.
+- `PlannerController._proposal` called `.propose` on `self._prediction` and
+  `.applicable_limits` on `request.rule_context`, both of which its own type
+  says can be `None`.
 
 The rest were annotations: an `Any` from a JSON document narrowed nine times by
 an `isinstance` mypy could not follow, a `str` where a `Literal` was declared,
