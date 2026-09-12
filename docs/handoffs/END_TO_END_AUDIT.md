@@ -10,7 +10,7 @@ definition, and the CI workflow.
 **Verdict.** The product works end to end. A session created in the browser
 runs through observation, estimation, legal planning, engineer selection,
 driver execution, snapshot, paired experiment and export, and every artefact it
-produces carries provenance. The audit found and fixed eleven defects, none of
+produces carries provenance. The audit found and fixed twelve defects, none of
 which produced a wrong recommendation, and most of which were the same shape:
 a value that nothing was checking, because nothing could.
 
@@ -39,7 +39,7 @@ ports and drives it. Nothing in it is a mock.
 | `mypy` (strict, 354 files) | pass |
 | comment policy, docs package, schema drift | pass |
 | `afterlap_core.cli doctor` | pass, 1 optional capability absent |
-| `pytest` (full suite, no deselection) | pass, 1 541 tests |
+| `pytest` (full suite, no deselection) | pass, 1 779 tests |
 | `biome check --error-on-warnings` | pass, 391 rules over 166 files |
 | `eslint`, `tsc --noEmit` | pass |
 | `vitest` | pass, 359 tests |
@@ -228,7 +228,26 @@ both typechecks. Bringing it under Biome would take 29 mechanical edits to code
 this branch does not otherwise touch, so it is left as a recommendation rather
 than folded into an audit.
 
-### 2.11 The browser audit's own evidence did not show the feature working
+### 2.11 `simulate` accepted any float typer could parse
+
+`afterlap_core.cli simulate` declared `duration_s` and `dt_s` as plain floats
+and `seed` as a plain int. Four consequences, all reproducible on `main`:
+
+- `--duration-s inf` integrated without end. It does not stop, and nothing
+  bounds it.
+- `--duration-s 1e9` is the same in practice.
+- `--duration-s nan` printed a **complete, successful-looking energy ledger**
+  for a zero-length run and exited 0. A fabricated result from nonsense input
+  is the one thing `AGENTS.md` names as forbidden.
+- `--seed -1` was accepted although every contract declares the seed as
+  `0 <= seed <= 2**32 - 1`.
+
+Fixed with typer bounds plus a finiteness check and a scenario-existence check
+before the runner is imported, so a job that cannot run says so and prints
+nothing that could be read as a measurement. Eleven malformed inputs are now
+regression-tested.
+
+### 2.12 The browser audit's own evidence did not show the feature working
 
 The driver screenshot fired the instant the route loaded, so the saved artefact
 showed `NO INSTRUCTION`, `mode unknown` and a connecting stream — the empty
@@ -331,7 +350,7 @@ production build is now warning-free.
 | `tests/operations/test_audit_runner.py` | the audit stops at the first failed gate, records the exit code, kills its live processes when a later gate fails, and never reports an interrupt as a pass |
 | `apps/web/e2e-live/workflow.spec.ts` | the experiment report names both controllers; replay and the sessions list render for the created session; the stream is open on return to the console; five reference surfaces render without a page error |
 
-The suite is 1 541 Python tests, 359 Vitest tests, 166 fixture-driven browser
+The suite is 1 779 Python tests, 359 Vitest tests, 166 fixture-driven browser
 tests and 16 live browser tests. Nothing is deselected: CI previously ran
 `pytest -m "not slow and not torch" --ignore=tests/learning`, which skipped the
 entire learning module. It now runs everything.
