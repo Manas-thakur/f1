@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .base import Contract, VersionedContract
+from .base import ContentHash, Contract, VersionedContract
 from .enums import (
     ActionCode,
     CalibrationStatus,
@@ -142,7 +142,7 @@ class LearnedContribution(Contract):
 
     enabled: bool = Field(description="False whenever the validated baseline answered instead.")
     bundle_id: str | None = None
-    weights_hash: str | None = None
+    weights_hash: ContentHash | None = None
     in_support: bool = False
     support_reason: str | None = Field(
         default=None, description="Why the learned contribution was or was not in support."
@@ -346,8 +346,8 @@ class Recommendation(VersionedContract):
     valid_from_s: float = Field(ge=0.0)
     expires_at_s: float = Field(gt=0.0)
     observation_cutoff_s: float = Field(ge=0.0)
-    ruleset_hash: str = Field(min_length=1)
-    model_hash: str | None = None
+    ruleset_hash: ContentHash
+    model_hash: ContentHash | None = None
     objective_version: str = Field(min_length=1)
     reason_codes: tuple[ReasonCode, ...] = ()
     outcomes: tuple[CheckpointOutcome, ...] = ()

@@ -28,6 +28,15 @@ if TYPE_CHECKING:
 
 USER_AGENT = "afterlap-track-pipeline/1.0 (research simulator; contact via repository)"
 
+FETCHABLE_SCHEMES = frozenset({"http", "https"})
+"""Schemes the ingestion cache will open. ``file:`` and ``data:`` are refused.
+
+``urllib.request.urlopen`` honours every scheme its openers register, so a
+source manifest naming ``file:///etc/passwd`` would be read and cached as if it
+were an upstream document. A track source is a network document; nothing else
+is a legitimate value here.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class CachedSource:
@@ -169,8 +178,11 @@ class RawSourceCache:
             cached = self.find(source, url, params)
             if cached is not None:
                 return cached
-        request = urllib.request.Request(full, headers={"User-Agent": USER_AGENT, "Accept": "*/*"})
-        with urllib.request.urlopen(request, timeout=timeout_s) as response:
+        require_fetchable_url(full)
+        request = urllib.request.Request(  # noqa: S310 - require_fetchable_url ran above
+            full, headers={"User-Agent": USER_AGENT, "Accept": "*/*"}
+        )
+        with urllib.request.urlopen(request, timeout=timeout_s) as response:  # noqa: S310
             data = response.read()
             content_type = response.headers.get("Content-Type")
         return self.put(
@@ -186,6 +198,17 @@ class RawSourceCache:
             content_type=content_type,
             filename=filename or _guess_filename(full, content_type),
         )
+
+
+def require_fetchable_url(url: str) -> str:
+    """Return ``url`` when it names a network document, else refuse it."""
+    scheme = urllib.parse.urlparse(url).scheme.lower()
+    if scheme not in FETCHABLE_SCHEMES:
+        raise ValueError(
+            f"source url scheme {scheme or '(none)'!r} is not fetchable; "
+            f"expected one of {sorted(FETCHABLE_SCHEMES)}"
+        )
+    return url
 
 
 def _full_url(url: str, params: dict[str, object] | None) -> str:
@@ -205,4 +228,4 @@ def _guess_filename(url: str, content_type: str | None) -> str:
     return tail if tail and "." in tail else "payload.bin"
 
 
-__all__ = ["USER_AGENT", "CachedSource", "RawSourceCache"]
+__all__ = ["FETCHABLE_SCHEMES", "USER_AGENT", "CachedSource", "RawSourceCache", "require_fetchable_url"]

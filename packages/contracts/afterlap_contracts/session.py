@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import Field, model_validator
 
-from .base import Contract, VersionedContract
+from .base import ContentHash, Contract, HexDigest, VersionedContract
 from .enums import CapabilityState, SessionMode, TrackReadiness
 from .estimate import StateEstimate
 from .lifecycle import ControlLease
@@ -24,11 +24,11 @@ class SessionManifest(VersionedContract):
 
     id: str = Field(min_length=1)
     mode: SessionMode
-    track_hash: str = Field(min_length=1)
-    car_hashes: dict[str, str] = Field(min_length=1)
-    ruleset_hash: str = Field(min_length=1)
-    model_hash: str | None = None
-    objective_hash: str = Field(min_length=1)
+    track_hash: ContentHash
+    car_hashes: dict[str, ContentHash] = Field(min_length=1)
+    ruleset_hash: ContentHash
+    model_hash: ContentHash | None = None
+    objective_hash: ContentHash
     seed: int = Field(ge=0)
     created_at: datetime
     source_capabilities: tuple[SourceCapability, ...] = ()
@@ -37,12 +37,12 @@ class SessionManifest(VersionedContract):
     label: str | None = None
     track_id: str | None = None
     event_id: str | None = None
-    track_package_hash: str | None = None
-    event_package_hash: str | None = None
+    track_package_hash: HexDigest | None = None
+    event_package_hash: HexDigest | None = None
     track_readiness: TrackReadiness | None = None
     geometry_provenance: str | None = None
     conditions_id: str | None = None
-    conditions_hash: str | None = None
+    conditions_hash: ContentHash | None = None
 
     @model_validator(mode="after")
     def _capabilities_match_mode(self) -> SessionManifest:
@@ -64,7 +64,7 @@ class SessionSummary(Contract):
 
     id: str = Field(min_length=1)
     mode: SessionMode
-    status: str = Field(min_length=1)
+    status: str = Field(min_length=1, max_length=64)
     revision: int = Field(ge=0)
     created_at: datetime
     label: str | None = None
@@ -77,7 +77,7 @@ class SnapshotReference(Contract):
 
     snapshot_id: str = Field(min_length=1)
     session_id: str = Field(min_length=1)
-    snapshot_hash: str = Field(min_length=1)
+    snapshot_hash: ContentHash
     session_time_s: float = Field(ge=0.0)
     label: str | None = None
     created_at: datetime
@@ -118,7 +118,7 @@ class SessionSnapshot(VersionedContract):
     last_sequence: int = Field(ge=0)
     server_time: datetime
     session_time_s: float = Field(ge=0.0)
-    status: str = Field(min_length=1)
+    status: str = Field(min_length=1, max_length=64)
     manifest: SessionManifest
     estimate: StateEstimate | None = None
     rule_context: RuleContext | None = None

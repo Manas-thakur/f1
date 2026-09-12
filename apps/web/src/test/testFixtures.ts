@@ -146,8 +146,8 @@ export const CANDIDATE_MODEL: ModelManifest = {
   schema_version: '1.0',
   id: 'bundle-candidate-1',
   algorithm: 'sac',
-  weights_hash: 'sha256:candidate-weights',
-  feature_schema_hash: 'sha256:features',
+  weights_hash: 'sha256:891d7b4e4696cde24832c95661b4e1be7016c37f222ca5e1e7b81c495c8e70e3',
+  feature_schema_hash: 'sha256:5b8a8b56dada6ce7567442b4935298df7de2badd7becdcf4915a59487338ca4b',
   rule_family: 'synthetic-pack-v1',
   reward_revision: 'reward-v1',
   approval_status: 'candidate',
@@ -183,7 +183,7 @@ export function experimentJob(
     job: {
       schema_version: '1.0',
       id: 'exp-0001',
-      manifest_hash: 'sha256:manifest',
+      manifest_hash: 'sha256:05b3abf2579a5eb66403cd78be557fd860633a1fe2103c7642030defe32c657f',
       status,
       progress: 0.5,
       created_at: '2026-09-08T10:00:00Z',
@@ -224,7 +224,7 @@ export const REPORT_BUNDLE = {
       'no probability calibration was assessed: this benchmark declares no probabilistic event forecast, so calibration is unmeasured rather than perfect',
     ],
   },
-  report_hash: 'sha256:synthetic-report',
+  report_hash: 'sha256:869abab295d243c025f46dff798f6fd124ddba380bdd4b0555b80a576c00b56e',
   detail: {
     population: {
       planned_units: 4,

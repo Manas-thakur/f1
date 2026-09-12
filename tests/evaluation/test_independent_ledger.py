@@ -167,7 +167,7 @@ def _constant_power_trajectory(*, deploy_w: float, dt_s: float, frames: int) -> 
     return il.RecordedTrajectory(
         car_id="hand",
         scenario_id="hand-computed-constant-power",
-        bundle_hash="sha256:hand",
+        bundle_hash="sha256:1b001706a418bdfca35361355c643b7918572b8f9b7503f3043a6e23b45dce52",
         seed=0,
         car=_CAR,
         track=_LEVEL_TRACK,

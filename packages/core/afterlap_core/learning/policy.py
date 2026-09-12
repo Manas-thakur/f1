@@ -75,7 +75,8 @@ class ActorPolicy:
         with torch.inference_mode():
             action = self.module(tensor, deterministic=True)
         decoded = action.detach().cpu().numpy().astype(np.float64).reshape(-1)
-        return np.clip(decoded, ACTION_LOW, ACTION_HIGH)
+        clipped: np.ndarray = np.clip(decoded, ACTION_LOW, ACTION_HIGH)
+        return clipped
 
     def preferences(self, observation: np.ndarray, bounds: ActionBounds) -> DecodedPreferences:
         """The decoded soft preferences for one tick, under this tick's bounds."""

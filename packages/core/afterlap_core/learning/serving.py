@@ -24,6 +24,7 @@ report.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import platform
 from dataclasses import dataclass
@@ -139,18 +140,14 @@ def library_versions() -> dict[str, str]:
         "torch": torch.__version__,
         "platform": platform.platform(),
     }
-    try:  # pragma: no cover - optional at fit time
+    with contextlib.suppress(ImportError):  # pragma: no cover - optional at fit time
         import gymnasium
 
         versions["gymnasium"] = gymnasium.__version__
-    except Exception:  # pragma: no cover
-        pass
-    try:  # pragma: no cover
+    with contextlib.suppress(ImportError):  # pragma: no cover - optional at fit time
         import stable_baselines3
 
         versions["stable_baselines3"] = stable_baselines3.__version__
-    except Exception:  # pragma: no cover
-        pass
     return versions
 
 

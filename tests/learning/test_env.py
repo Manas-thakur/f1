@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 import pytest
@@ -280,7 +280,7 @@ class TestExecutionTiming:
 
 
 class TestInformationIsolation:
-    ALLOWED_STEP_KEYS = {
+    ALLOWED_STEP_KEYS: ClassVar[set[str]] = {
         "reward_terms",
         "action",
         "planning",

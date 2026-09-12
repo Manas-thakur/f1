@@ -17,8 +17,17 @@
     "build": "bun run --filter @afterlap/web build",
     "test:e2e": "bun run --filter @afterlap/web test:e2e",
     "e2e:install": "bun run --filter @afterlap/web e2e:install",
-    "lint": "bun run --filter @afterlap/web lint",
+    "lint": "bun run lint:biome && bun run --filter @afterlap/web lint",
+    "lint:biome": "biome check . --error-on-warnings",
+    "test:live": "bun run --filter @afterlap/web test:live",
     "video:dev": "bun run --filter @afterlap/video dev",
     "video:render": "bun run --filter @afterlap/video render"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13"
+  },
+  "overrides": {
+    "postcss": "8.5.28",
+    "sharp": "0.35.4"
   }
 }

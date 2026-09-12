@@ -44,8 +44,8 @@ from .conftest import RULE_PACK_ID
 
 REWARD_REVISION = "objective-v1"
 RULESET_HASH = "sha256:" + "1" * 64
-MONZA_PACKAGE = "sha256:" + "2" * 64
-SPA_PACKAGE = "sha256:" + "3" * 64
+MONZA_PACKAGE = "2" * 64
+SPA_PACKAGE = "3" * 64
 
 
 def _approved(**overrides: object) -> ModelManifest:

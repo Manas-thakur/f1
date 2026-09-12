@@ -371,13 +371,13 @@ class CompiledCentreline:
         s = self._wrap(s_m)
         xs = np.concatenate((self.s_m, [self.length_m]))
         ys = np.concatenate((table, [table[0]]))
-        return np.interp(s, xs, ys)
+        return np.asarray(np.interp(s, xs, ys))
 
     def _periodic_angle(self, table: np.ndarray, s_m: np.ndarray | float) -> np.ndarray:
         """Interpolate an angle through its sine and cosine to avoid wrap seams."""
         c = self._periodic(np.cos(table), s_m)
         sn = self._periodic(np.sin(table), s_m)
-        return np.arctan2(sn, c)
+        return np.asarray(np.arctan2(sn, c))
 
     def curvature_at(self, s_m: float) -> float:
         return float(self._periodic(self.curvature_1pm, s_m))

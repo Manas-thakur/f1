@@ -131,7 +131,7 @@ class TestRefusals:
     def test_promotion_is_refused_without_frozen_thresholds(self) -> None:
         unfrozen = FrozenPromotionPolicy(
             policy_id="unfrozen",
-            content_hash="sha256:test",
+            content_hash="sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
             enabled=False,
             frozen_at=None,
             benefit_metric=None,
@@ -156,7 +156,9 @@ class TestRefusals:
 
     def test_promotion_is_refused_on_a_feature_hash_mismatch(self, policy: FrozenPromotionPolicy) -> None:
         decision = promote_bundle(
-            manifest(feature_schema_hash="sha256:a-different-schema"),
+            manifest(
+                feature_schema_hash="sha256:28660c254bf737b1a21a9e122577b7663b954b8bfd55d2397de8b29efa8104cf"
+            ),
             report(),
             policy=policy,
             evidence_supplied=ALL_EVIDENCE,
@@ -308,7 +310,9 @@ class TestAFailedPromotionIsAValidResult:
             comparisons=(comparison("utility_difference_vs_mpc_only", 0.0, -1.0, 1.0),),
         )
         decision = promote_bundle(
-            manifest(feature_schema_hash="sha256:wrong"),
+            manifest(
+                feature_schema_hash="sha256:8810ad581e59f2bc3928b261707a71308f7e139eb04820366dc4d5c18d980225"
+            ),
             broken,
             policy=policy,
             evidence_supplied=(),

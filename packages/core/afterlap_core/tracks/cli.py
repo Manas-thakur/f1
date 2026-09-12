@@ -19,7 +19,7 @@ import json
 import sys
 import urllib.error
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TextIO
+from typing import TYPE_CHECKING, Any, TextIO, cast
 
 from pydantic import ValidationError
 
@@ -64,7 +64,7 @@ def _capability(module: str, attribute: str) -> Callable[..., Any]:
     function = getattr(loaded, attribute, None)
     if function is None or not callable(function):
         raise CapabilityUnavailable(module, attribute)
-    return function
+    return cast("Callable[..., Any]", function)
 
 
 def _dump(payload: Any, out: TextIO) -> None:

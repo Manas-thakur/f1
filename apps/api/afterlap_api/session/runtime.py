@@ -1639,7 +1639,7 @@ class _ExternalPlannerAdapter:
         self._plan = plan_fn
 
     def plan(self, request: PlanRequest) -> PlanningResult:
-        return self._plan(
+        result: object = self._plan(
             request.estimate,
             request.rule_context,
             None,
@@ -1647,6 +1647,9 @@ class _ExternalPlannerAdapter:
             manifest=request.manifest,
             now_s=request.now_s,
         )
+        if not isinstance(result, PlanningResult):
+            raise TypeError("planner must return PlanningResult")
+        return result
 
 
 def default_runtime_config(bundle: ScenarioBundle) -> RuntimeConfig:
@@ -1781,6 +1784,7 @@ __all__ = [
     "InProcessSessionRuntime",
     "IngestionReport",
     "PlanApplication",
+    "Planner",
     "QueuedDriverInput",
     "RuntimeConfig",
     "SessionRuntimeError",

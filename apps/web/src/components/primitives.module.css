@@ -479,7 +479,7 @@
 
 .dialogHead {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--s3);
   margin-bottom: var(--s3);

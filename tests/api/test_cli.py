@@ -41,3 +41,27 @@ def test_in_process_missing_session_is_a_typed_error(tmp_path):
     error = result["body"]["error"]
     assert error["code"] == "not_found"
     assert "traceback" not in json.dumps(result["body"]).lower()
+
+
+def test_production_refuses_a_self_asserted_operator_identity():
+    import pytest
+
+    from afterlap_api.call import Headers
+    from afterlap_api.deps import operator_from_headers
+    from afterlap_api.errors import CapabilityUnavailable
+
+    with pytest.raises(CapabilityUnavailable):
+        operator_from_headers(Settings(development_mode=False), Headers({"X-Operator-Id": "admin"}))
+
+
+def test_idempotency_header_requires_a_bounded_visible_token():
+    import pytest
+
+    from afterlap_api.call import Headers
+    from afterlap_api.db import LifecycleError
+    from afterlap_api.deps import require_idempotency
+
+    for key in ["", " ", "a" * 129, "a\nvalue", "\u03b1"]:
+        with pytest.raises(LifecycleError):
+            require_idempotency(Headers({"Idempotency-Key": key}))
+    assert require_idempotency(Headers({"Idempotency-Key": "a" * 128})) == "a" * 128

@@ -126,7 +126,7 @@ class TrackGeometry:
         s = np.asarray(s_m, dtype=np.float64)
         laps = np.floor(s / self.length_m)
         remainder = s - laps * self.length_m
-        return laps * self._theta[-1] + np.interp(remainder, self._s_grid, self._theta)
+        return np.asarray(laps * self._theta[-1] + np.interp(remainder, self._s_grid, self._theta))
 
     def heading_change(self, s_from: float, s_to: float) -> float:
         """Heading swept between two arc lengths, following the shortest path."""

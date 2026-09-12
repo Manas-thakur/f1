@@ -29,6 +29,7 @@ declared channel that is never published would be a false capability claim.
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any
 
 from afterlap_contracts import Quality, SessionMode, SourceCapability
@@ -333,7 +334,7 @@ def _finite(value: Any) -> bool:
         number = float(value)
     except (TypeError, ValueError):
         return False
-    return number == number and abs(number) != float("inf")
+    return math.isfinite(number) and abs(number) != float("inf")
 
 
 __all__ = [

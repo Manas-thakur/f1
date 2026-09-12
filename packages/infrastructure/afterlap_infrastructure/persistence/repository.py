@@ -256,9 +256,9 @@ def store_decision(
     db.add(decision)
 
     for plan, accepted in ((p, True) for p in accepted_plans):
-        db.add(_plan_row(recommendation, plan, accepted))
+        db.add(_plan_row(recommendation, plan, accepted=accepted))
     for plan, accepted in ((p, False) for p in rejected_plans):
-        db.add(_plan_row(recommendation, plan, accepted))
+        db.add(_plan_row(recommendation, plan, accepted=accepted))
 
     append_event(
         db,
@@ -273,7 +273,7 @@ def store_decision(
     return decision
 
 
-def _plan_row(recommendation: Recommendation, plan: Any, accepted: bool) -> PlanCandidate:
+def _plan_row(recommendation: Recommendation, plan: Any, *, accepted: bool) -> PlanCandidate:
     return PlanCandidate(
         id=f"{recommendation.id}:{plan.id}",
         session_id=recommendation.session_id,

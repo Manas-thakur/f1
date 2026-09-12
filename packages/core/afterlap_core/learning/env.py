@@ -234,7 +234,7 @@ class EpisodeOutcome:
 class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
     """Single-agent energy-strategy environment over the AFTERLAP simulator."""
 
-    metadata = {"render_modes": []}
+    metadata: dict[str, Any] = {"render_modes": []}  # noqa: RUF012 - gymnasium.Env declares this as an instance variable
 
     def __init__(
         self,
@@ -477,7 +477,9 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         self._tick = next_tick
         self._encoded = next_encoded
 
-        info = self._build_info(decoded, planning, terms, next_encoded, terminated, truncated)
+        info = self._build_info(
+            decoded, planning, terms, next_encoded, terminated=terminated, truncated=truncated
+        )
         return next_encoded.observation, float(terms.total), terminated, truncated, info
 
     def close(self) -> None:
@@ -560,6 +562,7 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             if self._finished_now():
                 break
             report = self._simulator.step(actions if first else None, step_s)
+            assert self._bundle is not None
             self._realisation.observe(report, ego_car_id=self._bundle.scenario.ego_car_id)
             first = False
             elapsed += step_s
@@ -768,6 +771,7 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
         planning: Mapping[str, Any],
         terms: RewardTerms,
         encoded: EncodedObservation,
+        *,
         terminated: bool,
         truncated: bool,
     ) -> dict[str, Any]:
@@ -780,10 +784,10 @@ class AfterlapEnv(gym.Env[np.ndarray, np.ndarray]):
             "environment_version": self.environment_version,
         }
         if terminated or truncated:
-            info["episode_outcome"] = self._episode_outcome(terms, truncated).as_dict()
+            info["episode_outcome"] = self._episode_outcome(terms, truncated=truncated).as_dict()
         return info
 
-    def _episode_outcome(self, terms: RewardTerms, truncated: bool) -> EpisodeOutcome:
+    def _episode_outcome(self, terms: RewardTerms, *, truncated: bool) -> EpisodeOutcome:
         assert self._simulator is not None
         assert self._bundle is not None
         ego = self._bundle.scenario.ego_car_id

@@ -188,9 +188,9 @@ def validate_track(track_id: str, paths: Paths) -> TrackPackage:
     _check_sources(package, evidence)
     overlay = _confirmed_overlay(track_id, package, paths, evidence)
     conditions_ok = _conditions_calibrated(directory, evidence)
-    _check_corridor(package, corridor_known, evidence)
+    _check_corridor(package, evidence, widths_finite=corridor_known)
 
-    status = _derive_status(evidence, overlay, conditions_ok, corridor_known)
+    status = _derive_status(evidence, overlay, conditions_ok=conditions_ok, widths_finite=corridor_known)
     evidence.numbers["derived_status"] = status.value
 
     report = ValidationReport(
@@ -590,7 +590,7 @@ def _conditions_calibrated(directory: Path, evidence: _Evidence) -> bool:
     return ok
 
 
-def _check_corridor(package: TrackPackage, widths_finite: bool, evidence: _Evidence) -> None:
+def _check_corridor(package: TrackPackage, evidence: _Evidence, *, widths_finite: bool) -> None:
     quality = package.geometry.corridor_quality
     if quality is CorridorQuality.UNKNOWN:
         evidence.record("corridor", "unknown", "corridor quality unknown; lateral claims disabled")
@@ -603,7 +603,7 @@ def _check_corridor(package: TrackPackage, widths_finite: bool, evidence: _Evide
 
 
 def _derive_status(
-    evidence: _Evidence, overlay: EventOverlay | None, conditions_ok: bool, widths_finite: bool
+    evidence: _Evidence, overlay: EventOverlay | None, *, conditions_ok: bool, widths_finite: bool
 ) -> ReadinessStatus:
     checks = evidence.checks
     if any(checks.get(c) == "fail" for c in _INTEGRITY_CHECKS):

@@ -457,7 +457,7 @@ class Simulator:
 
     def step(self, driver_actions: dict[str, DriverAction] | None, dt_s: float) -> StepReport:
         """Advance the world by ``dt_s`` seconds."""
-        if dt_s <= 0.0:
+        if not math.isfinite(dt_s) or dt_s <= 0.0:
             raise ValueError("a simulation step needs a positive duration")
         world = self.world
         report = StepReport(session_time_s=world.race.session_time_s, dt_s=dt_s, substeps=0)
@@ -633,7 +633,7 @@ class Simulator:
             entry_decel = available_decel(grips[index], curvatures[index], predicted)
             decel = min(exit_decel, entry_decel)
             speed = min(limits[index], math.sqrt(speed * speed + 2.0 * decel * distance))
-        return speed
+        return float(speed)
 
     def _evaluate(
         self,

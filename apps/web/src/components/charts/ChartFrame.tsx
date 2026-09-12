@@ -366,9 +366,8 @@ export function ChartFrame({
 
       <details className={styles.summary}>
         <summary>Numeric summary and sampling detail</summary>
-        <div
+        <section
           className={styles.summaryTableScroll}
-          role="region"
           aria-label={`${title} numeric summary`}
           // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
@@ -420,7 +419,7 @@ export function ChartFrame({
               ))}
             </tbody>
           </table>
-        </div>
+        </section>
       </details>
 
       {markers.length === 0 ? null : (

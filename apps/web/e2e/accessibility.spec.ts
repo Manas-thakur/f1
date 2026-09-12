@@ -129,7 +129,7 @@ test.describe('keyboard-only navigation', () => {
           return true;
         }
         const style = window.getComputedStyle(el);
-        return style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0;
+        return style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0;
       });
       expect(hasRing).toBe(true);
       await page.keyboard.press('Tab');

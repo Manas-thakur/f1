@@ -18,7 +18,7 @@ const TRACK = {
 function centreline(overrides: Record<string, unknown> = {}) {
   return {
     track_id: 'monza',
-    package_hash: 'sha256:abc',
+    package_hash: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
     readiness: 'geometry_validated',
     geometry_provenance: 'openf1_location_telemetry',
     corridor_quality: 'unknown',

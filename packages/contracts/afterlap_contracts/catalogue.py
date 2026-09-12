@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .base import SCHEMA_VERSION
+from .base import SCHEMA_VERSION, ContentHash, HexDigest
 from .enums import TrackReadiness
 
 REAL_CIRCUIT_LABEL = "real_circuit_synthetic_energy"
@@ -81,7 +81,7 @@ class SourceSummary(CataloguePayload):
     title: str
     url: str
     retrieved_at: str
-    sha256: str | None = None
+    sha256: HexDigest | None = None
     permission: str
     priority: int | None = None
     document_revision: str | None = None
@@ -94,14 +94,14 @@ class EventOverlaySummary(CataloguePayload):
     review_status: str
     reviewer_count: int
     confirmed: bool
-    overlay_hash: str
-    ruleset_hash: str
+    overlay_hash: ContentHash
+    ruleset_hash: ContentHash
     detection_line_count: int
     activation_line_count: int
     standard_curve_points: int
     overtake_curve_points: int
     unknown_fields: tuple[str, ...] = ()
-    fia_document_hashes: tuple[str, ...] = ()
+    fia_document_hashes: tuple[HexDigest, ...] = ()
     effective_values_resolved: tuple[str, ...] = ()
     effective_values_unknown: tuple[str, ...] = ()
 
@@ -116,11 +116,11 @@ class TrackSummary(CataloguePayload):
     official_length_m: float | None = None
     official_length_verified: bool = False
     official_length_source_url: str | None = None
-    official_length_sha256: str | None = None
+    official_length_sha256: HexDigest | None = None
     event_ids: tuple[str, ...] = ()
 
     package_present: bool = False
-    package_hash: str | None = None
+    package_hash: HexDigest | None = None
     readiness: TrackReadiness | None = None
     geometry_provenance: str | None = None
     corridor_quality: str | None = None
@@ -128,7 +128,7 @@ class TrackSummary(CataloguePayload):
     nominal_length_m: float | None = None
     point_count: int | None = None
     sample_spacing_m: float | None = None
-    arrays_sha256: str | None = None
+    arrays_sha256: HexDigest | None = None
     source_count: int | None = None
     licence_labels: tuple[str, ...] = ()
     closure_error_m: float | None = None
@@ -186,8 +186,8 @@ class CentrelineResponse(CataloguePayload):
 
     schema_version: str = SCHEMA_VERSION
     track_id: str
-    package_hash: str
-    arrays_sha256: str | None = None
+    package_hash: HexDigest
+    arrays_sha256: HexDigest | None = None
     readiness: TrackReadiness
     geometry_provenance: str
     corridor_quality: str
@@ -212,7 +212,7 @@ class ConditionsSummary(CataloguePayload):
     description: str | None = None
     source: str
     available: bool
-    content_hash: str | None = None
+    content_hash: ContentHash | None = None
     sample_count: int | None = None
     duration_s: float | None = None
     rainfall_minutes: float | None = None
@@ -262,7 +262,7 @@ class ScenarioSummary(CataloguePayload):
     seed: int | None = None
     real_circuit: bool = False
     track_readiness: TrackReadiness | None = None
-    track_package_hash: str | None = None
+    track_package_hash: HexDigest | None = None
     run_label: str | None = None
     unavailable_reason: str | None = None
 

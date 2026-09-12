@@ -146,6 +146,7 @@ export async function ensurePythonRuntime(): Promise<void> {
     });
     child.unref();
     for (let attempt = 0; attempt < 40; attempt += 1) {
+      // biome-ignore lint/performance/noAwaitInLoops: the probe polls one runtime until it answers
       if (await runtimeIsLive()) {
         runtimeSlot.started = true;
         return;
@@ -162,7 +163,32 @@ export async function ensurePythonRuntime(): Promise<void> {
 }
 
 export async function forwardToPython(request: Request, method: string, pathname: string): Promise<Response> {
-  await ensurePythonRuntime();
+  let stdin: string | undefined;
+  if (method !== 'GET' && method !== 'HEAD' && request.body !== null) {
+    const reader = request.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      while (true) {
+        // biome-ignore lint/performance/noAwaitInLoops: a request body arrives as an ordered chunk stream
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        size += value.byteLength;
+        if (size > 65_536) {
+          await reader.cancel();
+          return bridgeError(413, 'validation_failed', 'request body exceeds 64 KiB');
+        }
+        chunks.push(value);
+      }
+      stdin = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks));
+    } catch {
+      return bridgeError(400, 'validation_failed', 'request body must be valid UTF-8');
+    } finally {
+      reader.releaseLock();
+    }
+  }
   const url = new URL(request.url);
   const args = ['request', method, pathname];
   url.searchParams.forEach((value, name) => {
@@ -175,13 +201,16 @@ export async function forwardToPython(request: Request, method: string, pathname
     }
     args.push('--header', `${name}: ${value}`);
   });
-  if (method !== 'GET' && method !== 'HEAD') {
-    const body = await request.text();
-    if (body !== '') {
-      args.push('--body', body);
-    }
+  if (stdin !== undefined && stdin !== '') {
+    args.push('--body', '-');
   }
-  const result = await invokeAfterlapApi(args);
+  let result: CliResult;
+  try {
+    await ensurePythonRuntime();
+    result = await invokeAfterlapApi(args, stdin === undefined ? {} : { stdin });
+  } catch {
+    return bridgeError(503, 'capability_unavailable', 'the Python runtime is unavailable');
+  }
   const raw = result.stdout.trim() || result.stderr.trim();
   let parsed: { status?: number; headers?: Record<string, string>; body?: unknown };
   try {
@@ -194,7 +223,7 @@ export async function forwardToPython(request: Request, method: string, pathname
           message: 'the Python CLI did not return JSON',
           retryable: true,
           request_id: 'cli-parse',
-          details: { stderr: result.stderr.slice(0, 500) },
+          details: {},
         },
       },
       { status: 500 },
@@ -213,4 +242,11 @@ export async function forwardToPython(request: Request, method: string, pathname
     return new Response(null, { status, headers });
   }
   return Response.json(parsed.body, { status, headers });
+}
+
+function bridgeError(status: number, code: string, message: string): Response {
+  return Response.json(
+    { error: { code, message, retryable: status === 503, request_id: 'cli-bridge', details: {} } },
+    { status },
+  );
 }

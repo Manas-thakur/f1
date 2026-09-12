@@ -135,7 +135,7 @@ def rollout_enabled_config(config: EnvConfig, *, planner_deadline_s: float | Non
     to fit inside it, which is a biased sample of exactly the easy cases. The
     deadline actually used is recorded on the collection.
     """
-    updates: dict[str, object] = {}
+    updates: dict[str, Any] = {}
     if config.planner_mode != "full":
         updates["planner_mode"] = "full"
     if planner_deadline_s is not None and planner_deadline_s != config.planner_deadline_s:

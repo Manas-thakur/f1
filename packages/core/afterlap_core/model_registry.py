@@ -168,7 +168,10 @@ def _sac_record(paths: Paths | None, unavailable: dict[str, str]) -> ModelRecord
         import numpy as np
         from gymnasium import spaces
         from stable_baselines3.common.torch_layers import FlattenExtractor
-        from stable_baselines3.sac.policies import Actor, ContinuousCritic
+        from stable_baselines3.sac.policies import (  # type: ignore[attr-defined]
+            Actor,
+            ContinuousCritic,
+        )
 
         from .learning.architecture import describe_module
 

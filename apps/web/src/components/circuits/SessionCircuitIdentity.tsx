@@ -192,7 +192,7 @@ export function SessionCircuitPanel({ manifest, capabilities }: SessionCircuitId
             The control plane declares lateral geometry{' '}
             <span className="afterlap-mono">{verdict}</span> for this session, re-read from the
             package the hash on this session pins.{' '}
-            {verdict === 'available' ? '' : CORRIDOR_UNKNOWN_REASON}
+            {verdict === 'available' ? null : <span>{CORRIDOR_UNKNOWN_REASON}</span>}
           </p>
           {verdict === 'available' ? null : (
             <ul className={styles.withdrawnList} data-testid="circuit-corridor-withdrawn">

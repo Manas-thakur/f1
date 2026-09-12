@@ -107,7 +107,7 @@ def atomic_write_bytes(target: Path, payload: bytes) -> Path:
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(handle.name, target)
+        Path(handle.name).replace(target)
     except BaseException:
         Path(handle.name).unlink(missing_ok=True)
         raise
@@ -159,7 +159,7 @@ class ArtifactStore:
             path.parent.mkdir(parents=True, exist_ok=True)
             staging = path.with_suffix(".staging")
             shutil.copy2(source, staging)
-            os.replace(staging, path)
+            staging.replace(path)
         return digest
 
     def get_bytes(self, digest: str) -> bytes:

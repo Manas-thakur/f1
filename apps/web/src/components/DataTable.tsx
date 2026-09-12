@@ -88,9 +88,8 @@ export function DataTable<Row>({
       ) : null}
 
       {effectiveState === 'ready' ? (
-        <div
+        <section
           className={styles.tableScroll}
-          role="region"
           aria-labelledby={headingId}
           // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
@@ -139,7 +138,7 @@ export function DataTable<Row>({
               })}
             </tbody>
           </table>
-        </div>
+        </section>
       ) : null}
 
       {footer === undefined ? null : <div className={styles.tableFoot}>{footer}</div>}

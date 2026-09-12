@@ -16,7 +16,7 @@ export AFTERLAP_DB_PORT
 
 .DEFAULT_GOAL := help
 
-.PHONY: help env build up down stop start restart logs ps wait urls doctor demo migrate install dev stop-dev
+.PHONY: help env build up down stop start restart logs ps wait urls doctor demo migrate install dev stop-dev audit
 
 help:
 	@printf '%s\n' \
@@ -37,7 +37,8 @@ help:
 	  'make migrate      alembic upgrade against the stack database' \
 	  'make install      uv and bun frozen installs' \
 	  'make dev          native runtime + web on the unique ports, postgres in compose' \
-	  'make stop-dev     stop native runtime/web/batch started by make dev'
+	  'make stop-dev     stop native runtime/web/batch started by make dev' \
+	  'make audit        run every gate and the live stack end to end'
 
 env:
 	@if [ ! -f "$(ENV_FILE)" ]; then \
@@ -133,3 +134,6 @@ stop-dev:
 	@if [ -f "$(STATE)/web.pid" ]; then kill "$$(cat "$(STATE)/web.pid")" 2>/dev/null || true; rm -f "$(STATE)/web.pid"; fi
 	@if [ -f "$(STATE)/runtime.pid" ]; then kill "$$(cat "$(STATE)/runtime.pid")" 2>/dev/null || true; rm -f "$(STATE)/runtime.pid"; fi
 	@echo "native processes stopped; postgres is still the compose db service (make down to stop it)"
+
+audit:
+	uv run --all-groups python scripts/audit.py

@@ -351,7 +351,7 @@ class SimulatorAdapter(_BaseAdapter):
     def _iterate(self) -> Iterable[ObservationRecord]:
         observations = getattr(self._source, "observations", None)
         if callable(observations):
-            return observations()
+            return cast("Iterable[ObservationRecord]", observations())
         if callable(self._source):
             return self._source()
         return cast("Iterable[ObservationRecord]", self._source)

@@ -11,6 +11,8 @@ inflates the published size by two thirds.
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 torch = pytest.importorskip("torch", reason="the architecture report walks torch modules")
@@ -54,8 +56,9 @@ class TestCountsAreReadOffTheModule:
 
     def test_a_frozen_parameter_is_counted_separately_not_dropped(self) -> None:
         module = _tiny_mlp()
-        module[0].weight.requires_grad_(False)
-        module[0].bias.requires_grad_(False)
+        first = cast("Any", module)[0]
+        first.weight.requires_grad_(False)
+        first.bias.requires_grad_(False)
         described = describe_module(module, identity="test/mlp")
         assert described.frozen_parameters == 4 * 8 + 8
         assert described.trainable_parameters == 8 * 1 + 1

@@ -443,7 +443,7 @@ class ChunkReader:
         path = self.session_root / ACQUISITION_NAME
         if not path.exists():
             return {}
-        return json.loads(path.read_text(encoding="utf-8"))
+        return dict(json.loads(path.read_text(encoding="utf-8")))
 
     def verify(self) -> tuple[str, ...]:
         """Re-hash every published chunk; returns a tuple of failure messages."""

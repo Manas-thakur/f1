@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from dataclasses import dataclass
@@ -44,6 +45,13 @@ class ApiError(RuntimeError):
         self.retryable = bool(source.get("retryable", False))
 
 
+def _http_only(url: str) -> str:
+    scheme = urllib.parse.urlparse(url).scheme.lower()
+    if scheme not in {"http", "https"}:
+        raise ValueError(f"runbook client refuses the {scheme or '(none)'!r} scheme in {url!r}")
+    return url
+
+
 @dataclass(slots=True)
 class ApiClient:
     """Minimal JSON client against one AFTERLAP origin."""
@@ -55,10 +63,10 @@ class ApiClient:
 
     def url(self, path: str) -> str:
         if path.startswith("http"):
-            return path
+            return _http_only(path)
         if path.startswith("/api") or path == "/metrics":
-            return f"{self.base_url.rstrip('/')}{path}"
-        return f"{self.base_url.rstrip('/')}{self.prefix}{path}"
+            return _http_only(f"{self.base_url.rstrip('/')}{path}")
+        return _http_only(f"{self.base_url.rstrip('/')}{self.prefix}{path}")
 
     def request(
         self,
@@ -78,9 +86,13 @@ class ApiClient:
             headers["Idempotency-Key"] = idempotency_key or f"demo-{uuid.uuid4().hex[:16]}"
         headers["X-Operator-Id"] = self.operator_id
 
-        request = urllib.request.Request(url, data=payload, headers=headers, method=method.upper())
+        request = urllib.request.Request(  # noqa: S310 - url() admits http and https only
+            url, data=payload, headers=headers, method=method.upper()
+        )
         try:
-            with urllib.request.urlopen(request, timeout=timeout_s or self.timeout_s) as response:
+            with urllib.request.urlopen(  # noqa: S310 - url() admits http and https only
+                request, timeout=timeout_s or self.timeout_s
+            ) as response:
                 raw = response.read()
                 return json.loads(raw) if raw else None
         except urllib.error.HTTPError as error:

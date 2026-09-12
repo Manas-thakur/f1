@@ -136,7 +136,7 @@ def _hardware() -> str:
 def _make_single_env(
     config: EnvConfig, scenario_id: str | None, seed: int, index: int, session_id: str
 ) -> Any:
-    def factory() -> Monitor:
+    def factory() -> Monitor[np.ndarray, np.ndarray]:
         env = AfterlapEnv(config=config, scenario_id=scenario_id, session_id=f"{session_id}:{index}")
         env.reset(seed=seed + index)
         return Monitor(env)

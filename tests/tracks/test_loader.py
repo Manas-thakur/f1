@@ -78,7 +78,7 @@ def test_load_track_falls_back_to_the_package_and_yields_a_track_source(frozen_p
     source = load_track(SYNTHETIC_TRACK_ID, paths)
     assert isinstance(source, CompiledTrackSource)
     assert isinstance(source, TrackSource)
-    assert source.config_hash == package.package_hash
+    assert source.config_hash == f"sha256:{package.package_hash}"
     assert source.synthetic is False
     assert source.geometry_provenance == "synthetic_sketch"
     assert source.lateral_geometry_surveyed is False

@@ -16,21 +16,21 @@ async function handle(request: NextRequest, context: RouteContext, method: strin
 }
 
 export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
-  return handle(request, context, 'GET');
+  return await handle(request, context, 'GET');
 }
 
 export async function POST(request: NextRequest, context: RouteContext): Promise<Response> {
-  return handle(request, context, 'POST');
+  return await handle(request, context, 'POST');
 }
 
 export async function PUT(request: NextRequest, context: RouteContext): Promise<Response> {
-  return handle(request, context, 'PUT');
+  return await handle(request, context, 'PUT');
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext): Promise<Response> {
-  return handle(request, context, 'PATCH');
+  return await handle(request, context, 'PATCH');
 }
 
 export async function DELETE(request: NextRequest, context: RouteContext): Promise<Response> {
-  return handle(request, context, 'DELETE');
+  return await handle(request, context, 'DELETE');
 }

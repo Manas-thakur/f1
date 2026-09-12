@@ -40,7 +40,7 @@ export function nearestIndex(x: readonly number[], target: number): number {
   let low = 0;
   let high = x.length - 1;
   while (low < high) {
-    const mid = (low + high) >> 1;
+    const mid = Math.floor((low + high) / 2);
     if ((x[mid] as number) < target) {
       low = mid + 1;
     } else {

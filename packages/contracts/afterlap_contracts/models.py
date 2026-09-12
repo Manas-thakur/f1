@@ -10,7 +10,7 @@ from datetime import datetime
 
 from pydantic import Field, model_validator
 
-from .base import Contract, VersionedContract
+from .base import ContentHash, Contract, HexDigest, VersionedContract
 from .enums import ApprovalStatus, CalibrationStatus, FailureCategory, JobStatus
 
 
@@ -218,18 +218,18 @@ class ModelManifest(VersionedContract):
 
     id: str = Field(min_length=1)
     algorithm: str = Field(min_length=1)
-    weights_hash: str = Field(min_length=1)
-    artifact_hashes: dict[str, str] = Field(default_factory=dict)
-    feature_schema_hash: str = Field(min_length=1)
-    normalizer_hash: str | None = None
+    weights_hash: ContentHash
+    artifact_hashes: dict[str, ContentHash] = Field(default_factory=dict)
+    feature_schema_hash: ContentHash
+    normalizer_hash: ContentHash | None = None
     rule_family: str = Field(min_length=1)
     reward_revision: str = Field(min_length=1)
     continuation_controller: str | None = None
-    training_data_hash: str | None = None
+    training_data_hash: ContentHash | None = None
     training_code_revision: str | None = None
     library_versions: dict[str, str] = Field(default_factory=dict)
     supported_scenario_families: tuple[str, ...] = ()
-    ruleset_hash: str | None = Field(
+    ruleset_hash: ContentHash | None = Field(
         default=None,
         description=(
             "Content hash of the rule pack this bundle was trained against. `rule_family` names "
@@ -245,7 +245,7 @@ class ModelManifest(VersionedContract):
             "bundle that does not name it."
         ),
     )
-    track_package_hashes: dict[str, str] = Field(
+    track_package_hashes: dict[str, HexDigest] = Field(
         default_factory=dict,
         description=(
             "Per-circuit compiled package hash the bundle trained against. Recompiled geometry "
@@ -262,7 +262,7 @@ class ModelManifest(VersionedContract):
     )
     support_thresholds: SupportThresholds | None = None
     approval_status: ApprovalStatus = ApprovalStatus.UNEVALUATED
-    benchmark_report_hash: str | None = None
+    benchmark_report_hash: ContentHash | None = None
     promotion_policy: PromotionPolicy = PromotionPolicy()
     created_at: datetime
     model_card: str | None = None
@@ -281,9 +281,10 @@ class ExperimentManifest(VersionedContract):
     """Immutable definition of a branch or benchmark experiment."""
 
     id: str = Field(min_length=1)
-    snapshot_hash: str = Field(min_length=1)
+    snapshot_hash: ContentHash
     treatment_ids: tuple[str, ...] = Field(min_length=1)
-    opponent_policy_hashes: dict[str, str] = Field(default_factory=dict)
+    controller_ids: tuple[str, ...] = Field(min_length=1)
+    opponent_policy_hashes: dict[str, ContentHash] = Field(default_factory=dict)
     disturbance_seed_ids: tuple[int, ...] = Field(min_length=1)
     evaluator_version: str = Field(min_length=1)
     metrics_version: str = Field(min_length=1)
@@ -291,18 +292,28 @@ class ExperimentManifest(VersionedContract):
     checkpoint_ids: tuple[str, ...] = ()
     created_at: datetime
 
+    @model_validator(mode="after")
+    def _controllers_match_treatments(self) -> ExperimentManifest:
+        if len(self.controller_ids) != len(self.treatment_ids):
+            raise ValueError("each treatment must name exactly one controller")
+        if len(set(self.treatment_ids)) != len(self.treatment_ids):
+            raise ValueError("treatment ids must be unique")
+        if any(not value.strip() for value in self.controller_ids):
+            raise ValueError("controller ids must not be blank")
+        return self
+
 
 class ExperimentJob(VersionedContract):
     """Trackable batch job. Partial results are labelled, never aggregated silently."""
 
     id: str = Field(min_length=1)
-    manifest_hash: str = Field(min_length=1)
+    manifest_hash: ContentHash
     status: JobStatus
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
     created_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None
-    report_hash: str | None = None
+    report_hash: ContentHash | None = None
     failure: str | None = None
     partial_results: bool = False
 

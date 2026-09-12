@@ -943,7 +943,7 @@ def _periodic_fill(x: np.ndarray, y: np.ndarray, period: float) -> np.ndarray:
         return y
     if not good.any():
         raise CompileError("no registered points in any bin")
-    return np.interp(x, x[good], y[good], period=period)
+    return np.asarray(np.interp(x, x[good], y[good], period=period))
 
 
 def choose_smoothing_across_laps(

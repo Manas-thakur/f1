@@ -24,7 +24,9 @@ function renderReport(stub: FetchStub) {
     path: PATH,
     route: ROUTE,
   });
-  restoreFetch = () => (globalThis.fetch = original);
+  restoreFetch = () => {
+    globalThis.fetch = original;
+  };
   return result;
 }
 
@@ -38,7 +40,7 @@ afterEach(() => {
 function handlers(reportHandler: RouteHandler): Parameters<typeof makeFetch>[0] {
   return [
     ['/report', reportHandler],
-    ['/experiments/', () => ({ body: experimentJob({ report_hash: 'sha256:r' }, 'completed') })],
+    ['/experiments/', () => ({ body: experimentJob({ report_hash: 'sha256:454349e422f05297191ead13e21d3db520e5abef52055e4964b82fb213f593a1' }, 'completed') })],
   ];
 }
 

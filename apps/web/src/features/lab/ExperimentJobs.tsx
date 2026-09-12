@@ -208,7 +208,7 @@ export function ExperimentJobs({ client = labClient, submitted }: ExperimentJobs
     <Panel id="experiments" title="Experiment jobs">
       <DataTable
         caption="Experiment job queue"
-        description="Batch runs queued against a snapshot. Cancellation keeps whatever finished and marks it incomplete."
+        description="Scenario runs with snapshot provenance. Cancellation keeps whatever finished and marks it incomplete."
         columns={columns}
         rows={[...rows]}
         rowKey={(row) => row.job.id}

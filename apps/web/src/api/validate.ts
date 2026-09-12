@@ -1,6 +1,6 @@
 
 import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020';
-import schemaBundle from '@contracts/schemas.json';
+import schemaBundle from '@contracts/schemas.json' with { type: "json" };
 import type { StreamEnvelope, SCHEMA_VERSION } from '@contracts';
 
 export type SupportedSchemaVersion = typeof SCHEMA_VERSION;

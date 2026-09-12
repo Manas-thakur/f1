@@ -125,7 +125,7 @@ class PlanningWorld:
 
     @property
     def checkpoint_ids(self) -> tuple[str, ...]:
-        return self.bundle.track.checkpoint_ids
+        return tuple(self.bundle.track.checkpoint_ids)
 
 
 @dataclass(frozen=True, slots=True)

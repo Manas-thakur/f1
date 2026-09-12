@@ -9,7 +9,9 @@ function renderModels(stub: FetchStub) {
   const original = globalThis.fetch;
   globalThis.fetch = stub.fetchImpl;
   renderRoute(<ModelsView />, { path: '/models', route: '/models' });
-  return () => (globalThis.fetch = original);
+  return () => {
+    globalThis.fetch = original;
+  };
 }
 
 describe('candidate and approved are distinguished by evidence', () => {
@@ -97,7 +99,7 @@ describe('approvalIsSupported', () => {
     expect(
       approvalIsSupported({
         ...UNSUPPORTED_APPROVED_MODEL,
-        benchmark_report_hash: 'sha256:report',
+        benchmark_report_hash: 'sha256:845e91831319e89c4d656bdb80c278ac09a7230d61e5dfd2e1b1fbb436ac8917',
       }),
     ).toBe(true);
   });

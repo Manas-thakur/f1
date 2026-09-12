@@ -7,6 +7,7 @@ job that could not run reports failed or unavailable rather than exiting zero.
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Annotated
@@ -134,13 +135,27 @@ def list_configs_command(
 @app.command()
 def simulate(
     scenario: Annotated[str, typer.Option(help="Scenario configuration id.")] = "two-straight-counterattack",
-    seed: Annotated[int, typer.Option(help="Scenario seed.")] = 42,
-    duration_s: Annotated[float, typer.Option(help="Simulated duration in seconds.")] = 30.0,
-    dt_s: Annotated[float, typer.Option(help="Integration step in seconds.")] = 0.01,
+    seed: Annotated[int, typer.Option(min=0, max=2**32 - 1, help="Scenario seed.")] = 42,
+    duration_s: Annotated[
+        float, typer.Option(min=0.001, max=3600.0, help="Simulated duration in seconds.")
+    ] = 30.0,
+    dt_s: Annotated[float, typer.Option(min=0.001, max=0.1, help="Integration step in seconds.")] = 0.01,
     output: Annotated[Path | None, typer.Option(help="Write the trajectory summary here.")] = None,
 ) -> None:
-    """Run a headless closed-loop simulation and report the energy ledger."""
+    """Run a headless closed-loop simulation and report the energy ledger.
+
+    The bounds are enforced before anything runs. ``--duration-s inf`` used to
+    integrate without end, and ``--duration-s nan`` used to print a complete,
+    successful-looking report of a zero-length run. Neither is a measurement,
+    and a job that cannot run has to say so rather than produce a record.
+    """
+    from .config import list_configs
     from .runner import run_headless
+
+    if not math.isfinite(duration_s) or not math.isfinite(dt_s):
+        raise typer.BadParameter("duration and integration step must be finite")
+    if scenario not in list_configs("scenarios"):
+        raise typer.BadParameter("scenario must name a shipped configuration")
 
     summary = run_headless(scenario_id=scenario, seed=seed, duration_s=duration_s, dt_s=dt_s).summary()
     _emit(summary, output)

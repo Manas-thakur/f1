@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import shutil
 import uuid
 from dataclasses import dataclass, field
@@ -286,7 +285,7 @@ class BatchWorker:
         atomic_write_json(staged, body)
         target = self.reports_root / f"{context.job_id}.json"
         target.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(staged, target)
+        staged.replace(target)
         (self.reports_root / f"{context.job_id}.hash").write_text(digest, encoding="utf-8")
         return target
 
@@ -298,7 +297,7 @@ def read_report(reports_root: Path, job_id: str) -> dict[str, Any] | None:
     path = Path(reports_root) / f"{job_id}.json"
     if not path.exists():
         return None
-    return cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+    return cast("dict[str, Any]", json.loads(path.read_text(encoding="utf-8")))
 
 
 def run_forever(  # pragma: no cover - the polling loop is the process entry point

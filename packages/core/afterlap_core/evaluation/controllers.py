@@ -41,7 +41,7 @@ from afterlap_contracts import (
 from afterlap_core.simulation.policies import DriverAction
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
     from afterlap_core.simulation.observation import Observation
 
@@ -386,7 +386,10 @@ class LegalFixedSchedule(_LegalBaseline):
 
     def decide(self, request: ControlRequest) -> ControlDecision:
         started = time.perf_counter()
-        latency = lambda: (time.perf_counter() - started) * 1000.0  # noqa: E731
+
+        def latency() -> float:
+            return (time.perf_counter() - started) * 1000.0
+
         gated = self._gate(request, latency())
         if gated is not None:
             return gated
@@ -415,7 +418,10 @@ class LegalGreedyAttacker(_LegalBaseline):
 
     def decide(self, request: ControlRequest) -> ControlDecision:
         started = time.perf_counter()
-        latency = lambda: (time.perf_counter() - started) * 1000.0  # noqa: E731
+
+        def latency() -> float:
+            return (time.perf_counter() - started) * 1000.0
+
         gated = self._gate(request, latency())
         if gated is not None:
             return gated
@@ -698,26 +704,49 @@ outcome, not a missing implementation, and it is the honest state to publish.
 """
 
 
+NOT_SELECTED_REASON = (
+    "this package can build and run the row, but this job did not select it; "
+    "pass it through `controllers=` to measure it"
+)
+
+
 def unavailable_matrix_controllers() -> tuple[UnavailableController, ...]:
     """Explicit unavailable stubs for every matrix row that is not merged."""
-    return tuple(
-        UnavailableController(
-            row.controller_name,
-            owner=row.owner,
-            uses_actor=row.uses_actor,
-            uses_learned_return=row.uses_learned_return,
-            detail=row.unmeasured_reason or "",
-        )
-        for row in COMPARISON_MATRIX
-        if not row.measurable_today
+    return tuple(_stub(row) for row in COMPARISON_MATRIX if not row.measurable_today)
+
+
+def unmeasured_matrix_controllers(supplied_names: Iterable[str]) -> tuple[UnavailableController, ...]:
+    """Explicit stubs for every matrix row a run does not measure.
+
+    A row that cannot run is unmeasured, never silently omitted -- and a row
+    this package *can* build is no different if the job did not select it.
+    ``mpc_only`` was the case in point: it stopped being unmeasurable when
+    ``PlannerController`` was written, so it left
+    :func:`unavailable_matrix_controllers`, and because a baseline job does not
+    select it either, it stopped appearing in the report at all. A reader could
+    not tell whether it had been measured, refused, or forgotten.
+    """
+    covered = set(supplied_names)
+    return tuple(_stub(row) for row in COMPARISON_MATRIX if row.controller_name not in covered)
+
+
+def _stub(row: MatrixRow) -> UnavailableController:
+    return UnavailableController(
+        row.controller_name,
+        owner=row.owner,
+        uses_actor=row.uses_actor,
+        uses_learned_return=row.uses_learned_return,
+        detail=(row.unmeasured_reason or "") if not row.measurable_today else NOT_SELECTED_REASON,
     )
 
 
 __all__ += [
     "COMPARISON_MATRIX",
+    "NOT_SELECTED_REASON",
     "AblatedController",
     "AblationUnsupported",
     "MatrixRow",
     "ScheduleEntry",
     "unavailable_matrix_controllers",
+    "unmeasured_matrix_controllers",
 ]

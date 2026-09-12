@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from .base import Contract, VersionedContract
+from .base import ContentHash, Contract, VersionedContract
 from .enums import CapabilityState, Provenance, Quality, SessionMode
 
 
@@ -126,7 +126,7 @@ class TelemetryChunkManifest(Contract):
     staging-then-manifest write atomic from a reader's point of view.
     """
 
-    chunk_hash: str = Field(min_length=1)
+    chunk_hash: ContentHash
     session_id: str = Field(min_length=1)
     car_id: str | None = None
     channel_family: str = Field(min_length=1)

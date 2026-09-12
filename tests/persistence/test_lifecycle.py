@@ -241,7 +241,11 @@ def test_rule_invalidation_is_processed_before_selection(factory):
     _seed(factory)
 
     with pytest.raises(LifecycleError) as excinfo:
-        _act(factory, key="stale-rules", ruleset_hash="sha256:a-different-pack")
+        _act(
+            factory,
+            key="stale-rules",
+            ruleset_hash="sha256:4c27e1a043ee99489a73c39df2a0d98d055fa21e8e028c9343da935b5458d207",
+        )
     assert excinfo.value.code is ErrorCode.RECOMMENDATION_INVALIDATED
 
     with transaction(factory) as db:

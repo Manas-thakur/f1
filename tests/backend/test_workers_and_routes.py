@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from workers.batch_worker import (
@@ -426,3 +427,51 @@ def test_creating_a_session_through_the_route_starts_a_real_runtime(client):
     runtime = app.state.runtimes.get(body["manifest"]["id"])
     assert runtime.session_time_s == 0.0
     assert runtime.revision == 1
+
+
+def test_batch_worker_uses_controller_names_instead_of_display_labels(client, tmp_path):
+    import batch_worker_main
+
+    app = client.app_instance
+    factory = app.state.database.factory
+    session = start_session(factory)
+    with command_transaction(factory) as db:
+        db.add(
+            SnapshotRow(
+                id="snap-controller-mapping",
+                session_id=session.session_id,
+                snapshot_hash="sha256:" + "a" * 64,
+                session_time_s=1.0,
+            )
+        )
+    payload: dict[str, Any] = {
+        "snapshot_id": "snap-controller-mapping",
+        "treatments": [
+            {"treatment_id": "reference", "controller": "legal_fixed_schedule"},
+            {"treatment_id": "candidate", "controller": "legal_greedy_attacker"},
+        ],
+        "seeds": [42],
+        "evaluator_version": "eval-1",
+        "evaluation_horizon_s": 1.0,
+    }
+    response = client.post(f"{API_PREFIX}/experiments", json=payload, headers=_headers("mapped-job"))
+    assert response.status_code == 202, response.text
+    job = response.json()["job"]
+    worker = _worker(factory, tmp_path, "mapping-worker")
+    assert worker.claim() == (job["id"], job["manifest_hash"])
+    outcome = worker.run(job["id"], job["manifest_hash"], batch_worker_main.build_runner(factory))
+    assert outcome.status is JobStatus.COMPLETED, outcome.failure
+    report = read_report(tmp_path / "reports", job["id"])
+    assert report is not None
+    assert report["controller_ids"] == {
+        "reference": "legal_fixed_schedule",
+        "candidate": "legal_greedy_attacker",
+    }
+    assert report["benchmark"]["unavailable_controllers"] == []
+    assert len(report["benchmark"]["outcomes"]) == 2
+    assert all(row["status"] == "completed" for row in report["benchmark"]["outcomes"])
+    assert all(row["final_progress_m"] > 0.0 for row in report["benchmark"]["outcomes"])
+    payload["treatments"][1]["model_bundle_id"] = "unverified-bundle"
+    refused = client.post(f"{API_PREFIX}/experiments", json=payload, headers=_headers("bundle-job"))
+    assert refused.status_code == 503
+    assert refused.json()["error"]["code"] == "capability_unavailable"

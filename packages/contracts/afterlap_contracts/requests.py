@@ -8,10 +8,11 @@ second human decision.
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Annotated, Self
 
-from pydantic import Field
+from pydantic import ConfigDict, Field, model_validator
 
-from .base import Contract
+from .base import ContentHash, Contract
 from .enums import DeploymentProfile, JobStatus, OperatorAction, SessionCommandKind, SessionMode
 from .lifecycle import ControlLease, ExecutionEvent, OperatorEvent
 from .models import ExperimentJob, ModelManifest
@@ -19,18 +20,27 @@ from .planning import Recommendation
 from .rules import RuleManifest
 from .session import SessionManifest, SessionSnapshot, SessionSummary, SnapshotReference
 
+Identifier = Annotated[str, Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")]
+Seed = Annotated[int, Field(strict=True, ge=0, le=2**32 - 1)]
+Revision = Annotated[int, Field(strict=True, ge=0)]
 
-class CreateSessionRequest(Contract):
+
+class RequestContract(Contract):
+    model_config = ConfigDict(allow_inf_nan=False)
+
+
+class CreateSessionRequest(RequestContract):
     mode: SessionMode
-    scenario_id: str = Field(min_length=1)
-    ruleset_id: str = Field(min_length=1)
-    seed: int = Field(ge=0)
-    model_bundle_id: str | None = None
-    label: str | None = None
-    track_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
-    event_id: str | None = Field(default=None, pattern=r"^[a-z0-9-]+$")
+    scenario_id: Identifier
+    ruleset_id: Identifier
+    seed: Seed
+    model_bundle_id: Identifier | None = None
+    label: str | None = Field(default=None, max_length=120)
+    track_id: str | None = Field(default=None, max_length=128, pattern=r"^[a-z0-9-]+$")
+    event_id: str | None = Field(default=None, max_length=128, pattern=r"^[a-z0-9-]+$")
     conditions_id: str | None = Field(
         default=None,
+        max_length=128,
         pattern=r"^[a-z0-9-]+$",
         description="A coherent weather/surface/race-control tape; absent means the static environment.",
     )
@@ -43,37 +53,37 @@ class CreateSessionResponse(Contract):
 
 class SessionListResponse(Contract):
     sessions: tuple[SessionSummary, ...] = ()
-    next_cursor: str | None = None
+    next_cursor: str | None = Field(default=None, min_length=1, max_length=512)
 
 
-class AcquireLeaseRequest(Contract):
-    operator_id: str = Field(min_length=1)
-    expected_lease_revision: int | None = Field(default=None, ge=0)
-    ttl_s: float = Field(default=120.0, gt=0.0, le=3600.0)
+class AcquireLeaseRequest(RequestContract):
+    operator_id: Identifier
+    expected_lease_revision: Revision | None = None
+    ttl_s: float = Field(default=120.0, strict=True, gt=0.0, le=3600.0)
 
 
 class AcquireLeaseResponse(Contract):
     lease: ControlLease
 
 
-class SessionCommandRequest(Contract):
+class SessionCommandRequest(RequestContract):
     kind: SessionCommandKind
-    expected_revision: int = Field(ge=0)
-    operator_id: str = Field(min_length=1)
-    step_duration_s: float | None = Field(default=None, gt=0.0)
+    expected_revision: Revision
+    operator_id: Identifier
+    step_duration_s: float | None = Field(default=None, strict=True, gt=0.0, le=60.0)
 
 
 class SessionCommandResponse(Contract):
     accepted: bool
     revision: int = Field(ge=0)
     sequence: int = Field(ge=0)
-    status: str = Field(min_length=1)
+    status: str = Field(min_length=1, max_length=64)
 
 
-class RecommendationActionRequest(Contract):
+class RecommendationActionRequest(RequestContract):
     action: OperatorAction
-    expected_revision: int = Field(ge=0)
-    operator_id: str = Field(min_length=1)
+    expected_revision: Revision
+    operator_id: Identifier
     reason: str | None = Field(default=None, max_length=500)
 
 
@@ -82,13 +92,13 @@ class RecommendationActionResponse(Contract):
     operator_event: OperatorEvent
 
 
-class DriverActionRequest(Contract):
+class DriverActionRequest(RequestContract):
     """Simulator-only. The server rejects this in replay and live_team modes."""
 
     profile_id: DeploymentProfile
-    observed_at_s: float = Field(ge=0.0)
-    recommendation_id: str | None = None
-    operator_id: str = Field(min_length=1)
+    observed_at_s: float = Field(strict=True, ge=0.0)
+    recommendation_id: Identifier | None = None
+    operator_id: Identifier
 
 
 class DriverActionResponse(Contract):
@@ -96,7 +106,7 @@ class DriverActionResponse(Contract):
     recommendation: Recommendation | None = None
 
 
-class CreateSnapshotRequest(Contract):
+class CreateSnapshotRequest(RequestContract):
     label: str | None = Field(default=None, max_length=120)
 
 
@@ -104,28 +114,36 @@ class CreateSnapshotResponse(Contract):
     snapshot: SnapshotReference
 
 
-class TreatmentSpec(Contract):
+class TreatmentSpec(RequestContract):
     """One branch of a paired experiment."""
 
-    treatment_id: str = Field(min_length=1)
-    controller: str = Field(min_length=1)
-    model_bundle_id: str | None = None
-    description: str | None = None
+    treatment_id: Identifier
+    controller: Identifier
+    model_bundle_id: Identifier | None = None
+    description: str | None = Field(default=None, max_length=500)
 
 
-class CreateExperimentRequest(Contract):
-    snapshot_id: str = Field(min_length=1)
-    treatments: tuple[TreatmentSpec, ...] = Field(min_length=1)
-    seeds: tuple[int, ...] = Field(min_length=1)
-    evaluator_version: str = Field(min_length=1)
-    evaluation_horizon_s: float = Field(gt=0.0)
+class CreateExperimentRequest(RequestContract):
+    snapshot_id: Identifier
+    treatments: tuple[TreatmentSpec, ...] = Field(min_length=1, max_length=16)
+    seeds: tuple[Seed, ...] = Field(min_length=1, max_length=64)
+    evaluator_version: Identifier
+    evaluation_horizon_s: float = Field(strict=True, gt=0.0, le=3600.0)
+
+    @model_validator(mode="after")
+    def unique_branches(self) -> Self:
+        if len(set(self.seeds)) != len(self.seeds):
+            raise ValueError("experiment seeds must be unique")
+        if len({item.treatment_id for item in self.treatments}) != len(self.treatments):
+            raise ValueError("experiment treatment identifiers must be unique")
+        return self
 
 
 class CreateExperimentResponse(Contract):
     job: ExperimentJob
 
 
-class CancelExperimentRequest(Contract):
+class CancelExperimentRequest(RequestContract):
     reason: str = Field(min_length=1, max_length=500)
 
 
@@ -149,15 +167,25 @@ class RulesetResponse(Contract):
     manifest: RuleManifest
 
 
-class CreateExportRequest(Contract):
-    session_id: str = Field(min_length=1)
+class CreateExportRequest(RequestContract):
+    session_id: Identifier
     format: str = Field(pattern="^(json|csv|parquet)$")
-    start_session_time_s: float | None = Field(default=None, ge=0.0)
-    end_session_time_s: float | None = Field(default=None, ge=0.0)
+    start_session_time_s: float | None = Field(default=None, strict=True, ge=0.0)
+    end_session_time_s: float | None = Field(default=None, strict=True, ge=0.0)
+
+    @model_validator(mode="after")
+    def ordered_range(self) -> Self:
+        if (
+            self.start_session_time_s is not None
+            and self.end_session_time_s is not None
+            and self.end_session_time_s < self.start_session_time_s
+        ):
+            raise ValueError("the selected range ends before it starts")
+        return self
 
 
 class ExportJobResponse(Contract):
-    export_id: str = Field(min_length=1)
+    export_id: Identifier
     status: JobStatus
     path: str | None = Field(
         default=None,
@@ -167,7 +195,7 @@ class ExportJobResponse(Contract):
             "machine rather than the artefact."
         ),
     )
-    hashes: dict[str, str] = Field(default_factory=dict)
+    hashes: dict[str, ContentHash] = Field(default_factory=dict)
     synthetic: bool = True
     created_at: datetime
 
@@ -176,7 +204,7 @@ class HealthResponse(Contract):
     """Liveness proves the loop runs. Readiness proves capabilities exist."""
 
     status: str = Field(pattern="^(live|ready|not_ready)$")
-    detail: dict[str, str] = Field(default_factory=dict)
+    detail: dict[str, Annotated[str, Field(max_length=512)]] = Field(default_factory=dict)
 
 
 class DecisionEvidenceResponse(Contract):

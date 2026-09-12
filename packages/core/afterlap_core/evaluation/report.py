@@ -269,8 +269,8 @@ def build_report(
             continue
         result = by_controller.get(name)
         if result is not None:
-            contract = result.to_contract()
-            comparisons.append(contract)
+            comparison = result.to_contract()
+            comparisons.append(comparison)
             rows.append(
                 ComparisonRow(
                     controller=name,
@@ -278,7 +278,7 @@ def build_report(
                     purpose=matrix_row.purpose,
                     owner=matrix_row.owner,
                     status="measured",
-                    comparison=contract,
+                    comparison=comparison,
                     distribution=result.distribution.as_dict(),
                 )
             )

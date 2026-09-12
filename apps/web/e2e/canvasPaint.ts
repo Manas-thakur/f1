@@ -62,7 +62,7 @@ export async function recordCanvasText(page: Page): Promise<void> {
 }
 
 export async function paintedText(page: Page): Promise<PaintedText[]> {
-  return page.evaluate(
+  return await page.evaluate(
     () => (window as unknown as { __paintedText: PaintedText[] }).__paintedText ?? [],
   );
 }

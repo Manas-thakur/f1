@@ -224,6 +224,16 @@ def training_data_hash(
     )
 
 
+def _mapping(value: object) -> dict[str, Any]:
+    """The value when it is a mapping, otherwise an empty one.
+
+    A run manifest is read from disk, so every branch of it is ``Any``. Narrowing
+    once here keeps the reader honest about that instead of repeating an
+    ``isinstance`` beside each lookup and still handing ``None`` to ``.get``.
+    """
+    return dict(value) if isinstance(value, dict) else {}
+
+
 def _load_run_manifest(run_directory: Path) -> dict[str, Any]:
     path = run_directory / "run_manifest.json"
     if not path.is_file():
@@ -245,11 +255,10 @@ def evidence_from_run(
 ) -> TrainingEvidence:
     """Read the run's own record. Nothing is inferred when a field is absent."""
     manifest = _load_run_manifest(run_directory)
-    result = manifest.get("result") if isinstance(manifest.get("result"), dict) else {}
-    metrics = result.get("metrics") if isinstance(result.get("metrics"), dict) else checkpoint.metrics
-    metrics = metrics if isinstance(metrics, dict) else {}
-    losses = metrics.get("optimiser") if isinstance(metrics.get("optimiser"), dict) else {}
-    returns = metrics.get("episode_return") if isinstance(metrics.get("episode_return"), dict) else {}
+    result = _mapping(manifest.get("result"))
+    metrics = _mapping(result.get("metrics")) or _mapping(checkpoint.metrics)
+    losses = _mapping(metrics.get("optimiser"))
+    returns = _mapping(metrics.get("episode_return"))
     seeds = checkpoint.seeds or tuple(int(s) for s in manifest.get("seeds", ()) or ())
     if not seeds and manifest.get("seed") is not None:
         seeds = (int(manifest["seed"]),)

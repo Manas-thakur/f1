@@ -329,7 +329,7 @@ class RivalParticleFilter:
         base = behaviour.base_speed_gain_mps.as_array()[particles.mode]
         pressure = behaviour.pressure_speed_gain_mps.as_array()[particles.mode]
         gain = base + context.pressure * pressure
-        return particles.pace_bias_mps + self.deploy_fraction(particles.energy_j) * gain
+        return np.asarray(particles.pace_bias_mps + self.deploy_fraction(particles.energy_j) * gain)
 
     def mode_power_w(self, particles: ParticleSet, context: RivalContext) -> np.ndarray:
         """Signed DC-bus power each particle's mode implies. Positive deploys."""
@@ -337,7 +337,7 @@ class RivalParticleFilter:
         base = behaviour.base_power_w.as_array()[particles.mode]
         pressure = behaviour.pressure_power_w.as_array()[particles.mode]
         gain = base + context.pressure * pressure
-        return self.deploy_fraction(particles.energy_j) * gain
+        return np.asarray(self.deploy_fraction(particles.energy_j) * gain)
 
     def propagate(self, dt_s: float, context: RivalContext) -> None:
         """Advance every particle by ``dt_s`` through the simplified rival model."""
@@ -395,9 +395,9 @@ class RivalParticleFilter:
         total = belief.sum(axis=1, keepdims=True)
         normalised = np.divide(belief, np.where(total > 0.0, total, 1.0))
         if floor <= 0.0:
-            return normalised
+            return np.asarray(normalised)
         epsilon = min(1.0, floor * modes)
-        return (1.0 - epsilon) * normalised + epsilon / modes
+        return np.asarray((1.0 - epsilon) * normalised + epsilon / modes)
 
     def _sample_mode_path(self, matrix: np.ndarray, likelihood: np.ndarray | None) -> None:
         """Draw each particle's next discrete mode along a Markov path.

@@ -75,7 +75,7 @@ class ResolvedArtefacts:
 
     @property
     def track_hash(self) -> str:
-        return self.bundle.track.config_hash
+        return str(self.bundle.track.config_hash)
 
     @property
     def car_hashes(self) -> dict[str, str]:

@@ -18,6 +18,7 @@ import { SimulationLab } from './SimulationLab';
 import { pacingIntervalMs } from './RunControl';
 
 const SESSION_ID = SESSION_SNAPSHOT.session_id;
+const SNAPSHOT_HASH = 'sha256:d1b0aae58822367cec0912e5e738b7b3807f359451fcedc10cf6ee02fc65930f';
 const PATH = `/sessions/${SESSION_ID}/lab`;
 const ROUTE = '/sessions/:sessionId/lab';
 
@@ -25,7 +26,7 @@ const SNAPSHOT_REFERENCE = {
   snapshot: {
     snapshot_id: 'snap-0001',
     session_id: SESSION_ID,
-    snapshot_hash: 'sha256:0f1e2d3c',
+    snapshot_hash: SNAPSHOT_HASH,
     session_time_s: 12.3,
     label: 'before the attack',
     created_at: '2026-09-08T12:00:00Z',
@@ -35,7 +36,7 @@ const SNAPSHOT_REFERENCE = {
 function handlers(overrides: readonly [string, RouteHandler][] = []) {
   return [
     ...overrides,
-    ['/sessions/' + SESSION_ID + '/snapshots', () => ({ status: 201, body: SNAPSHOT_REFERENCE })],
+    [`/sessions/${SESSION_ID}/snapshots`, () => ({ status: 201, body: SNAPSHOT_REFERENCE })],
     ['/snapshot', () => ({ body: SESSION_SNAPSHOT })],
     ['/rulesets/', () => ({ body: { manifest: RULE_MANIFEST } })],
     ['/models', () => ({ body: { models: [CANDIDATE_MODEL] } })],
@@ -122,7 +123,7 @@ describe('snapshot and compare from here', () => {
     await user.click(await screen.findByRole('button', { name: 'Create snapshot' }));
 
     await waitFor(() => expect(stub.matching('/snapshots').length).toBe(1));
-    expect(await screen.findByText(/sha256:0f1e2d3c/)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(SNAPSHOT_HASH))).toBeInTheDocument();
     expect(stub.matching('/snapshots')[0]?.headers['idempotency-key']).toBeTruthy();
   });
 
@@ -133,15 +134,14 @@ describe('snapshot and compare from here', () => {
       handlers([
         [
           '/experiments',
-          (request) =>
-            request.method === 'POST' ? { status: 202, body: created } : { body: [experimentJob()] },
+          (item) => (item.method === 'POST' ? { status: 202, body: created } : { body: [experimentJob()] }),
         ],
       ]),
     );
     renderLab(stub);
 
     await user.click(await screen.findByRole('button', { name: 'Create snapshot' }));
-    await screen.findByText(/sha256:0f1e2d3c/);
+    await screen.findByText(new RegExp(SNAPSHOT_HASH));
 
     const queue = screen.getByRole('button', { name: 'Queue paired experiment' });
     await waitFor(() => expect(queue).toBeEnabled());

@@ -174,3 +174,21 @@ def test_the_api_reports_worker_health_without_making_itself_unready(tmp_path: P
             f"a stale batch worker made the control plane unready ({ready.json()})"
         )
         assert ready.json()["detail"]["batch_worker"] == "stale"
+
+
+def test_worker_uses_the_same_configured_artifact_root_as_the_api(tmp_path: Path, monkeypatch):
+    import batch_worker_main
+    from afterlap_api.db.engine import create_all, create_db_engine
+
+    storage = tmp_path / "isolated-storage"
+    monkeypatch.setenv("AFTERLAP_ROOT", str(tmp_path))
+    monkeypatch.setenv("AFTERLAP_ARTIFACT_ROOT", str(storage))
+    url = f"sqlite+pysqlite:///{(tmp_path / 'worker.sqlite3').as_posix()}"
+    monkeypatch.setenv("AFTERLAP_DATABASE_URL", url)
+    engine = create_db_engine(url)
+    create_all(engine)
+    engine.dispose()
+    assert batch_worker_main.main(["--once", "--wait-for-database", "0"]) == 0
+    assert heartbeat_path(storage / "artifacts").is_file()
+    assert not heartbeat_path(tmp_path / "artifacts").exists()
+    assert batch_worker_main._healthcheck() == 0

@@ -146,6 +146,7 @@ class BenchmarkManifest(BaseModel):
             id=f"{self.id}:{snapshot_digest[:16]}",
             snapshot_hash=snapshot_digest,
             treatment_ids=tuple(treatment_ids),
+            controller_ids=tuple(treatment_ids),
             disturbance_seed_ids=self.seeds,
             evaluator_version=self.evaluator_version,
             metrics_version=self.metrics_version,

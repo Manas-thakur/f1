@@ -11,7 +11,7 @@ from itertools import pairwise
 
 from pydantic import Field, model_validator
 
-from .base import Contract, VersionedContract
+from .base import ContentHash, Contract, VersionedContract
 from .enums import CheckStatus, CoverageStatus, DeploymentProfile, EligibilityState, FlagState
 
 
@@ -150,8 +150,8 @@ class RuleContext(VersionedContract):
 
     session_id: str = Field(min_length=1)
     season_revision: str = Field(min_length=1)
-    ruleset_hash: str = Field(min_length=1)
-    event_pack_hash: str | None = None
+    ruleset_hash: ContentHash
+    event_pack_hash: ContentHash | None = None
     resolved_at_s: float = Field(ge=0.0)
     progress_m: float = Field(ge=0.0)
     current_flags: tuple[FlagState, ...] = (FlagState.UNKNOWN,)
@@ -200,7 +200,7 @@ class ConstraintResult(VersionedContract):
 
     status: CheckStatus
     checks: tuple[ConstraintCheck, ...] = ()
-    ruleset_hash: str = Field(min_length=1)
+    ruleset_hash: ContentHash
     checked_at_s: float = Field(ge=0.0)
     checker_version: str = Field(min_length=1)
     unresolved_conditions: tuple[str, ...] = ()

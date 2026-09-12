@@ -58,14 +58,14 @@ export function parseReportBundle(value: unknown): ReportBundleBody | null {
   if (!isRecord(value)) {
     return null;
   }
-  const report = value['report'];
-  if (!isRecord(report) || typeof report['id'] !== 'string') {
+  const report = value.report;
+  if (!isRecord(report) || typeof report.id !== 'string') {
     return null;
   }
-  const detail = isRecord(value['detail']) ? (value['detail'] as ReportDetail) : {};
+  const detail = isRecord(value.detail) ? (value.detail as ReportDetail) : {};
   return {
     report: report as unknown as BenchmarkReport,
-    report_hash: typeof value['report_hash'] === 'string' ? value['report_hash'] : 'not recorded',
+    report_hash: typeof value.report_hash === 'string' ? value.report_hash : 'not recorded',
     detail,
   };
 }

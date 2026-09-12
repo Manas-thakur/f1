@@ -12,14 +12,14 @@ function PreferenceEffects() {
   const motion = useSessionStore((s) => s.view.motion);
 
   useEffect(() => {
-    document.documentElement.dataset['density'] = density;
+    document.documentElement.dataset.density = density;
   }, [density]);
 
   useEffect(() => {
     if (motion === 'reduce') {
-      document.documentElement.dataset['motion'] = 'reduce';
+      document.documentElement.dataset.motion = 'reduce';
     } else {
-      delete document.documentElement.dataset['motion'];
+      delete document.documentElement.dataset.motion;
     }
   }, [motion]);
 

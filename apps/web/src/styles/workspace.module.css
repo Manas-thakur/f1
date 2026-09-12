@@ -43,7 +43,7 @@
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(min(280px, 100%), 1fr);
   gap: var(--s4);
-  align-items: start;
+  align-items: flex-start;
   min-width: 0;
 }
 

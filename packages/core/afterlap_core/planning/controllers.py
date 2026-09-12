@@ -210,10 +210,16 @@ class PlannerController:
             from ..learning.actions import compute_bounds, decode_action
         except ImportError as exc:
             return None, f"the learning extra is not installed: {exc}"
-        action = self._prediction.propose(encoded.observation)
+        prediction = self._prediction
+        if prediction is None:
+            return None, "no frozen actor is loaded for this session"
+        action = prediction.propose(encoded.observation)
         if action is None:
             return None, "the frozen actor produced no action"
-        bounds = compute_bounds(estimate, request.rule_context.applicable_limits, checkpoint_interval_s=20.0)
+        rule_context = request.rule_context
+        if rule_context is None:
+            return None, "no rule context was resolved for this decision"
+        bounds = compute_bounds(estimate, rule_context.applicable_limits, checkpoint_interval_s=20.0)
         decoded = decode_action(action, bounds)
         if not decoded.learned_enabled or decoded.budget_j is None:
             return None, f"the actor preference was not usable: {decoded.reason}"

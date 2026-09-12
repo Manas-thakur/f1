@@ -13,7 +13,7 @@ interface Overflow {
 
 
 async function measureOverflow(page: Page): Promise<Overflow> {
-  return page.evaluate(() => {
+  return await page.evaluate(() => {
     const innerWidth = window.innerWidth;
     const offenders: { selector: string; right: number }[] = [];
     const allowance = 1; 

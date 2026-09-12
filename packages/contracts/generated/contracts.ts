@@ -964,6 +964,7 @@ export interface ExperimentManifest {
   "id": string;
   "snapshot_hash": string;
   "treatment_ids": Array<string>;
+  "controller_ids": Array<string>;
   "opponent_policy_hashes"?: Record<string, string>;
   "disturbance_seed_ids": Array<number>;
   "evaluator_version": string;

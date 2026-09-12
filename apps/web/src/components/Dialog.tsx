@@ -1,4 +1,12 @@
-import * as RadixDialog from '@radix-ui/react-dialog';
+import {
+  Close as DialogClose,
+  Content as DialogContent,
+  Description as DialogDescription,
+  Overlay as DialogOverlay,
+  Portal as DialogPortal,
+  Root as DialogRoot,
+  Title as DialogTitle,
+} from '@radix-ui/react-dialog';
 import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 
 import { Button } from './Button';
@@ -61,39 +69,39 @@ export function Dialog({
   );
 
   return (
-    <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
-      <RadixDialog.Portal>
-        <RadixDialog.Overlay className={styles.dialogOverlay} />
-        <RadixDialog.Content
+    <DialogRoot open={open} onOpenChange={onOpenChange}>
+      <DialogPortal>
+        <DialogOverlay className={styles.dialogOverlay} />
+        <DialogContent
           className={styles.dialogContent}
           onCloseAutoFocus={handleCloseAutoFocus}
           onInteractOutside={handleInteractOutside}
         >
           <div className={styles.dialogHead}>
-            <RadixDialog.Title asChild>
+            <DialogTitle asChild>
               <h2>{title}</h2>
-            </RadixDialog.Title>
-            <RadixDialog.Close asChild>
+            </DialogTitle>
+            <DialogClose asChild>
               <Button variant="quiet" aria-label="Close dialog">
                 Close
               </Button>
-            </RadixDialog.Close>
+            </DialogClose>
           </div>
           {description !== undefined ? (
-            <RadixDialog.Description className={styles.dialogDescription}>
+            <DialogDescription className={styles.dialogDescription}>
               {description}
-            </RadixDialog.Description>
+            </DialogDescription>
           ) : (
 
 
-            <RadixDialog.Description className="afterlap-visually-hidden">
+            <DialogDescription className="afterlap-visually-hidden">
               {title}
-            </RadixDialog.Description>
+            </DialogDescription>
           )}
           {children}
           {footer !== undefined ? <div className={styles.dialogFooter}>{footer}</div> : null}
-        </RadixDialog.Content>
-      </RadixDialog.Portal>
-    </RadixDialog.Root>
+        </DialogContent>
+      </DialogPortal>
+    </DialogRoot>
   );
 }

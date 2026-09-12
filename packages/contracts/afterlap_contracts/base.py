@@ -9,17 +9,46 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Final, Literal, Self
+from typing import Annotated, Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-SCHEMA_VERSION: Final[str] = "1.0"
+SCHEMA_VERSION: Final = "1.0"
 """Wire envelope schema version (DOMAIN_MODEL.md, "Version negotiation")."""
 
 CONTRACT_REVISION: Final[int] = 1
 """Coordinator-controlled contract revision. Workers may not increment this."""
 
 SchemaVersion = Literal["1.0"]
+
+CONTENT_HASH_PATTERN: Final = r"^sha256:[0-9a-f]{64}$"
+"""Shape of every digest on the wire: the algorithm, then its lowercase hex.
+
+``min_length=1`` accepted ``sha256:``, a truncated digest, an uppercase one and
+a digest from a different algorithm. Two of those compare unequal to the value
+that produced them, so a mismatched artefact would have been reported as a
+changed artefact. The prefix is part of the value because a bare digest cannot
+say which algorithm produced it.
+"""
+
+ContentHash = Annotated[str, Field(min_length=71, max_length=71, pattern=CONTENT_HASH_PATTERN)]
+"""A ``sha256:<64 lowercase hex>`` digest."""
+
+HEX_DIGEST_PATTERN: Final = r"^[0-9a-f]{64}$"
+"""Shape of a digest that is written without its algorithm: bare lowercase hex.
+
+Two things on this wire record a digest of a *file*: a compiled track or event
+package, which writes its own hash into itself, and a cached source document,
+whose hash names the directory it is stored under. Neither can gain the
+``sha256:`` prefix without invalidating every artefact already on disk, so they
+keep the bare encoding and say so in the type. Everything else uses
+:data:`ContentHash`; the two are distinct types precisely so a reader can see
+which encoding a field carries instead of discovering it from a failed
+comparison.
+"""
+
+HexDigest = Annotated[str, Field(min_length=64, max_length=64, pattern=HEX_DIGEST_PATTERN)]
+"""A bare ``<64 lowercase hex>`` digest of a stored file."""
 
 
 class Contract(BaseModel):
@@ -77,9 +106,13 @@ def content_hash_of(payload: Any) -> str:
 
 
 __all__ = [
+    "CONTENT_HASH_PATTERN",
     "CONTRACT_REVISION",
+    "HEX_DIGEST_PATTERN",
     "SCHEMA_VERSION",
+    "ContentHash",
     "Contract",
+    "HexDigest",
     "SchemaVersion",
     "VersionedContract",
     "content_hash_of",

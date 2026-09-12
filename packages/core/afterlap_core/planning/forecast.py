@@ -27,12 +27,13 @@ prediction of nothing happening.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Literal
 
 from afterlap_contracts import IntervalValue, OutcomeRange, Provenance, ScenarioOutcome
 
 __all__ = ["OBSERVED_SPREAD_KIND", "outcome_ranges"]
 
-OBSERVED_SPREAD_KIND = "physical_bounds"
+OBSERVED_SPREAD_KIND: Literal["physical_bounds"] = "physical_bounds"
 """The observed minimum and maximum. Not a fitted quantile, not a CI."""
 
 

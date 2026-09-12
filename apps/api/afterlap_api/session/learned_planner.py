@@ -332,8 +332,9 @@ class LearnedPlannerAdapter:
         if continuation_reason:
             reasons.append(continuation_reason)
         calibrator = service.probability_calibration() if service is not None else None
-        if service is not None and calibrator is None and getattr(service, "calibrator_detail", ""):
-            reasons.append(service.calibrator_detail)
+        detail = "" if service is None else str(getattr(service, "calibrator_detail", "") or "")
+        if calibrator is None and detail:
+            reasons.append(detail)
 
         result = self._plan(
             request.estimate,

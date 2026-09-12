@@ -15,7 +15,7 @@ test.describe('the laboratory', () => {
     await page.goto(LAB);
 
     await page.getByRole('button', { name: 'Create snapshot' }).click();
-    await expect(page.getByText('sha256:e2e-snapshot')).toBeVisible();
+    await expect(page.getByText('sha256:6ba5af5c3f52b5ba946c0b6504911ccbd0a3d120ec8b53115fd841e1f1584925')).toBeVisible();
     expect(log.urls.filter((url) => url.includes('/snapshots')).length).toBe(1);
   });
 
@@ -25,7 +25,7 @@ test.describe('the laboratory', () => {
     await page.goto(LAB);
 
     await page.getByRole('button', { name: 'Create snapshot' }).click();
-    await expect(page.getByText('sha256:e2e-snapshot')).toBeVisible();
+    await expect(page.getByText('sha256:6ba5af5c3f52b5ba946c0b6504911ccbd0a3d120ec8b53115fd841e1f1584925')).toBeVisible();
 
     const queue = page.getByRole('button', { name: 'Queue paired experiment' });
     await expect(queue).toBeEnabled();

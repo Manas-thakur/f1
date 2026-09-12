@@ -222,7 +222,7 @@ class ElectricalLimits:
         floor = float(REGEN_GRIP_FLOOR.value if floor_param is None else floor_param.value)
         return usable_regen_fraction(grip, floor, float(REGEN_GRIP_EXPONENT.value))
 
-    def applied_curve(self, overtake_eligible: bool) -> _Curve | None:
+    def applied_curve(self, *, overtake_eligible: bool) -> _Curve | None:
         """The event curve that governs this car: ``None`` when unknown.
 
         An eligible car uses the Overtake curve only when that curve is
@@ -235,17 +235,17 @@ class ElectricalLimits:
             return overtake
         return event.standard_curve
 
-    def event_deploy_curve_w(self, speed_mps: float, overtake_eligible: bool) -> float:
+    def event_deploy_curve_w(self, speed_mps: float, *, overtake_eligible: bool) -> float:
         """Event curve at this speed, or ``inf`` when unknown or none defined."""
-        curve = self.applied_curve(overtake_eligible)
+        curve = self.applied_curve(overtake_eligible=overtake_eligible)
         if curve is None:
             return inf
         return interpolate_curve(curve, speed_mps)
 
-    def deploy_ceiling_dc_w(self, speed_mps: float, overtake_eligible: bool = False) -> float:
+    def deploy_ceiling_dc_w(self, speed_mps: float, *, overtake_eligible: bool = False) -> float:
         """DC-bus deployment ceiling: min(car ceiling x thermal derate, event curve)."""
         car_w = self.thermal_derate() * float(self.car.max_deploy_power_w.value)
-        return min(car_w, self.event_deploy_curve_w(speed_mps, overtake_eligible))
+        return min(car_w, self.event_deploy_curve_w(speed_mps, overtake_eligible=overtake_eligible))
 
     def harvest_ceiling_dc_w(
         self,
@@ -290,8 +290,8 @@ class ElectricalLimits:
         return {
             "event_id": event.event_id,
             "review_status": event.review_status,
-            "deploy_standard": event.curve_label(self.applied_curve(False)),
-            "deploy_overtake": event.curve_label(self.applied_curve(True)),
+            "deploy_standard": event.curve_label(self.applied_curve(overtake_eligible=False)),
+            "deploy_overtake": event.curve_label(self.applied_curve(overtake_eligible=True)),
             "recharge_allowance": allowance_label,
             "recharge_allowance_j": event.recharge_allowance_j,
             "harvest_max": LABEL_CAR,

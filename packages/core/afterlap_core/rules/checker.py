@@ -65,6 +65,7 @@ if TYPE_CHECKING:
 __all__ = [
     "CHECKER_VERSION",
     "CHECK_ARTICLES",
+    "DEFAULT_CHECKER_CONFIG",
     "CheckerConfig",
     "PlanTrace",
     "TracePoint",
@@ -101,6 +102,10 @@ class CheckerConfig:
     def __post_init__(self) -> None:
         if self.substeps_per_interval < 1:
             raise ValueError("substeps_per_interval must be at least 1")
+
+
+DEFAULT_CHECKER_CONFIG = CheckerConfig()
+"""Shared default. ``CheckerConfig`` is frozen, so one instance is safe to share."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -346,7 +351,7 @@ def build_trace(
     context: RuleContext,
     *,
     manifest: RuleManifest | None = None,
-    config: CheckerConfig = CheckerConfig(),
+    config: CheckerConfig = DEFAULT_CHECKER_CONFIG,
 ) -> PlanTrace:
     """Reintegrate the plan independently of whatever produced it."""
     ceiling = _ceiling_model(context, manifest)
@@ -781,7 +786,7 @@ def check_plan(
     context: RuleContext,
     *,
     manifest: RuleManifest | None = None,
-    config: CheckerConfig = CheckerConfig(),
+    config: CheckerConfig = DEFAULT_CHECKER_CONFIG,
 ) -> ConstraintResult:
     """Independently verify one candidate plan.
 

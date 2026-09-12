@@ -106,7 +106,7 @@ def perform_runtime_request(
             "headers": {str(key).lower(): str(value) for key, value in (reply.get("headers") or {}).items()},
             "body": reply.get("body"),
         }
-    except (OSError, ConnectionError, json.JSONDecodeError) as exc:
+    except (OSError, ConnectionError, ValueError) as exc:
         return {
             "status": 503,
             "headers": {"content-type": "application/json"},
@@ -202,7 +202,7 @@ def _serve_connection(conn: socket.socket, plane: Any) -> None:
                     write_message(conn, {"kind": "envelope", "data": frame})
             else:
                 write_message(conn, {"kind": "error", "message": f"unknown kind {kind!r}"})
-    except (OSError, ConnectionError):
+    except (OSError, ConnectionError, ValueError):
         return
     finally:
         conn.close()
@@ -242,7 +242,11 @@ def request_command(
         typer.Option("--in-process", help="Handle the call in this process instead of attaching to serve."),
     ] = False,
 ) -> None:
-    payload = body.encode("utf-8") if body is not None else None
+    payload = (
+        sys.stdin.buffer.read(65_537) if body == "-" else body.encode("utf-8") if body is not None else None
+    )
+    if payload is not None and len(payload) > 65_536:
+        raise typer.BadParameter("request body exceeds 64 KiB")
     headers = _header_pairs(header or [])
     mapped = _query_map(query)
     if in_process:
