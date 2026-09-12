@@ -3,6 +3,8 @@ name: simulator
 on:
   push:
     branches: [simulator]
+  pull_request:
+    branches: [simulator]
   workflow_dispatch:
 
 concurrency:

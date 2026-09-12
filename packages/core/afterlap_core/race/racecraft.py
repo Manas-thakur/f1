@@ -81,10 +81,16 @@ class Racecraft:
             elif abs(gap) <= self.length_m:
                 self.transition("alongside", now)
             elif (
-                now - self.since_s >= self.traits.commitment_s
-                and abs(own_d - desired) < 0.3
-                and float(target["relative_speed_mps"]) > 0.5
-            ) or not self.clear(rivals, own_d, desired, 0.7):
+                (
+                    now - self.since_s >= self.traits.commitment_s
+                    and abs(own_d - desired) < 0.3
+                    and float(target["relative_speed_mps"]) > 0.5
+                )
+                or abs(desired - float(target["lateral_d_m"])) < self.width_m + self.traits.clearance_m
+                or not self.clear(
+                    [rival for rival in rivals if rival["car_id"] != self.rival_id], own_d, desired, 0.7
+                )
+            ):
                 self.transition("aborting", now)
         elif self.state in {"committed", "alongside"}:
             self.transition("aborting", now)

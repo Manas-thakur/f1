@@ -75,8 +75,8 @@ class RaceEnv(gym.Env):
         session = self.session
         session.bms_profiles["car-01"] = PROFILES[action]
         start = session.simulator.session_time_s
-        for _ in range(round(1 / session.settings.dt_s)):
-            session.advance(session.settings.dt_s)
+        while session.simulator.session_time_s < start + 1 - 1e-9:
+            session.advance(min(session.settings.dt_s, start + 1 - session.simulator.session_time_s))
             if session.done or "car-01" in session.finishes:
                 break
         elapsed = session.simulator.session_time_s - start
