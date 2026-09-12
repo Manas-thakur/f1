@@ -8,7 +8,7 @@ from websockets.asyncio.server import serve
 from websockets.exceptions import InvalidStatus
 
 from afterlap_api.race_server import Command, RaceServer, allowed_origins
-from afterlap_core.race import RaceSession, RaceSettings, RacingLineSettings
+from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings, RacingLineSettings
 from afterlap_core.simulation.physics import tractive_force
 
 
@@ -38,6 +38,35 @@ def test_server_starts_with_script_supplied_racing_line_settings():
     runtime = RaceServer(settings)
     assert runtime.session.settings == settings
     assert runtime.session.frame()["settings"]["racing_line"]["randomness"] == 0.2
+
+
+def test_live_conditions_update_without_resetting_the_race():
+    runtime = RaceServer(RaceSettings(cars=2))
+    runtime.apply(Command(id="start", operation="start"))
+    runtime.session.advance(0.1)
+    session = runtime.session
+    time_s = session.simulator.session_time_s
+    runtime.apply(
+        Command(
+            id="weather",
+            operation="configure",
+            conditions=RaceConditionPatch(weather="rainy", wetness=0.8, temperature_k=289.15, wind_mps=7.5),
+        )
+    )
+    assert runtime.session is session
+    assert runtime.generation == 0
+    assert session.status == "running"
+    assert session.simulator.session_time_s == time_s
+    assert session.settings.weather == "rainy"
+    assert session.weather.wetness_at(time_s) == 0.8
+    assert session.weather.temperature_k == 289.15
+    assert session.weather.wind_mps == 7.5
+
+
+def test_live_conditions_require_a_value():
+    runtime = RaceServer()
+    with pytest.raises(ValueError, match="at least one live condition"):
+        runtime.apply(Command(id="empty", operation="configure", conditions=RaceConditionPatch()))
 
 
 @pytest.mark.asyncio

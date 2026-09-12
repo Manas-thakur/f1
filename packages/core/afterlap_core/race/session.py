@@ -19,7 +19,7 @@ from .factory import race_bundle
 from .racecraft import Racecraft
 from .racing_line import RacingLine
 from .regulations import RaceRegulations2026
-from .settings import RaceSettings
+from .settings import RaceConditionPatch, RaceSettings
 from .storyline import StorylineDirector
 from .tyres import TyreState, sample_compound
 from .variability import RaceWeather
@@ -122,6 +122,16 @@ class RaceSession:
             if not math.isfinite(action.target_lateral_d_m) or abs(action.target_lateral_d_m) > 5:
                 raise ValueError("lateral target must be within the synthetic corridor")
             self.overrides[car_id] = action
+
+    def configure_conditions(self, conditions: RaceConditionPatch) -> None:
+        updates = conditions.model_dump(exclude_none=True)
+        if not updates:
+            raise ValueError("at least one live condition is required")
+        self.settings = RaceSettings.model_validate({**self.settings.model_dump(), **updates})
+        self.weather.temperature_k = self.settings.temperature_k
+        self.weather.wind_mps = self.settings.wind_mps
+        self.weather.wetness = self.settings.wetness
+        self.weather.target = self.settings.wetness
 
     def automatic_action(self, observation: Observation) -> DriverAction:
         car_id = observation.car_id
