@@ -9,6 +9,7 @@ from pathlib import Path
 from afterlap_core.race import RaceSettings, RacingLineSettings, StorylineSettings
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
+from afterlap_core.race.decision import decision_schema
 from afterlap_core.race.environment import (
     ACTION_FIELDS,
     ACTION_HIGH,
@@ -23,7 +24,19 @@ from afterlap_core.race.variability import Variability
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deterministic race generator and local WebSocket runtime")
-    parser.add_argument("command", choices=("serve", "generate", "train", "evaluate", "catalogue", "schema"))
+    parser.add_argument(
+        "command",
+        choices=(
+            "serve",
+            "generate",
+            "train",
+            "evaluate",
+            "train-decision",
+            "evaluate-decision",
+            "catalogue",
+            "schema",
+        ),
+    )
     parser.add_argument("--settings", type=Path)
     parser.add_argument("--preset", choices=("baseline", "mild", "training", "stress"), default="mild")
     parser.add_argument("--policy", type=Path)
@@ -52,6 +65,10 @@ def main() -> None:
     parser.add_argument("--line-smoothing-m", type=float, default=30)
     parser.add_argument("--corner-overtakes", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--steps", type=int, default=10000)
+    parser.add_argument("--cycles", type=int, default=5)
+    parser.add_argument("--eval-episodes", type=int, default=3)
+    parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--metrics", type=Path)
     parser.add_argument("--output", type=Path, default=Path(".afterlap/race/transitions.jsonl"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=18761)
@@ -71,6 +88,7 @@ def main() -> None:
                         "low": ACTION_LOW.tolist(),
                         "high": ACTION_HIGH.tolist(),
                     },
+                    "boost_decision": decision_schema(),
                 },
                 indent=2,
             )
@@ -124,8 +142,33 @@ def main() -> None:
                     args.port,
                     args.origin,
                     settings=settings,
+                    policy_path=args.policy,
+                    metrics_path=args.metrics,
                 )
             )
+        return
+    if args.command == "train-decision":
+        from afterlap_core.race.training import train_decision_policy
+
+        metrics = train_decision_policy(
+            settings,
+            args.output,
+            args.steps,
+            args.cycles,
+            args.eval_episodes,
+            args.learning_rate,
+        )
+        print(json.dumps(metrics, allow_nan=False))
+        return
+    if args.command == "evaluate-decision":
+        if args.policy is None:
+            parser.error("evaluate-decision requires --policy")
+        from afterlap_core.race.decision import BoostDecisionEngine
+        from afterlap_core.race.training import evaluate_decision_policy
+
+        engine = BoostDecisionEngine(args.policy)
+        metrics = evaluate_decision_policy(engine.model, settings, args.eval_episodes)
+        print(json.dumps({"type": "boost_evaluation", **metrics}, allow_nan=False))
         return
     env = RaceEnv(settings)
     if args.command == "train":
