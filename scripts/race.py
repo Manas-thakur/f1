@@ -52,7 +52,6 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=18761)
     parser.add_argument("--origin", default="http://127.0.0.1:18760")
-    parser.add_argument("--button-gpio", type=int, default=None)
     args = parser.parse_args()
     if args.command == "catalogue":
         print(json.dumps({"circuits": catalogue()}, indent=2))
@@ -115,7 +114,6 @@ def main() -> None:
                     args.port,
                     args.origin,
                     settings=settings,
-                    button_gpio=args.button_gpio,
                 )
             )
         return

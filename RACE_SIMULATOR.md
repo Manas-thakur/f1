@@ -15,10 +15,6 @@ make race
 
 Open [the race view](http://127.0.0.1:18760/race). The hamburger opens docked settings; Float allows dragging and resizing them. `/race/control` redirects to `/race`. Press Start race. Ctrl+C stops the processes started by this command.
 
-On a Raspberry Pi, connect a normally-open momentary button between BCM GPIO 17 and ground, then start the stack with `AFTERLAP_BUTTON_GPIO=17 make race`. The input uses the GPIO pull-up and 50 ms software debounce. Every accepted press is broadcast immediately and appears on all connected circuit and control dashboards. This input reports button events only; it does not activate a deployment profile.
-
-To show the same dashboard on another computer on the local network, set the Pi hostname to `afterlap-pi` and start with `AFTERLAP_BUTTON_GPIO=17 AFTERLAP_WEB_HOST=0.0.0.0 AFTERLAP_RACE_ORIGIN=http://afterlap-pi.local:18760 make race`. Open `http://afterlap-pi.local:18760/race` on the other computer. Only the Next.js dashboard is exposed; the Python simulator remains on loopback behind its WebSocket proxy.
-
 Use either native `make race` or Docker, since they share ports. If switching from Docker to native, run `make race-down` first. The native launcher checks both ports before starting either service and reports conflicts without stopping existing processes.
 
 For containers, use `make race-up` and `make race-down`. These create the `afterlap-race` Compose project with loopback ports 18760 and 18761. The race lab does not require a database: episode data is streamed to files and live state stays in the simulation process. Race checkpoints are in memory and are lost when the simulator stops.
