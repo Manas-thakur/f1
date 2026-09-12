@@ -27,7 +27,7 @@ A 20-car Monza field reaches its 10 s limit without contact, recording eight com
 
 Unit and numerical tests cover missing observations, pressure, unavailable sides, a third-car blocker, overlap through a corner, aborts, returning, a legitimate repass, retained position, local lapped traffic, shared finish crossing, low energy, wet grip, wind direction, finite configuration, energy limits and checkpoint replay. The cadence test exercises 0.005, 0.007, 0.01 and 0.02 s steps, requiring an exact one-second BMS action interval. The physical invariant suite retains its previous tolerances.
 
-Contact still terminates the episode. Large disturbances, difficult geometry and unpredictable traffic are not proven safe. Lateral motion remains reduced line tracking, with no yaw/slip dynamics or complete lane-change tyre demand. Circuit curvature can cause sharp acceleration changes even with smooth following. There is no measured tyre, aero or weather calibration.
+The current default ignores contact entirely. Cars may overlap, and no collision response, damage or safety claim is modeled. Optional terminate mode retains the earlier footprint failure behavior for comparison. Lateral motion remains reduced line tracking, with no yaw/slip dynamics or complete lane-change tyre demand. Circuit curvature can cause sharp acceleration changes even with smooth following. There is no measured tyre, aero or weather calibration.
 
 ## Throughput and integration
 

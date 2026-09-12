@@ -29,8 +29,8 @@ class Command(BaseModel):
 
 
 class RaceServer:
-    def __init__(self) -> None:
-        self.session = RaceSession()
+    def __init__(self, settings: RaceSettings | None = None) -> None:
+        self.session = RaceSession(settings)
         self.checkpoint: dict[str, Any] | None = None
         self.speed = 1.0
         self.actual_rate = 0.0
@@ -158,8 +158,8 @@ def allowed_origins(origin: str) -> list[Origin | re.Pattern[str] | None]:
     ]
 
 
-async def run_server(host: str, port: int, origin: str) -> None:
-    runtime = RaceServer()
+async def run_server(host: str, port: int, origin: str, settings: RaceSettings | None = None) -> None:
+    runtime = RaceServer(settings)
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
