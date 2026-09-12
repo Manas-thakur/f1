@@ -1,5 +1,3 @@
-# Own car 0.65 s behind a rival on the main straight, deciding whether to attack now or reserve energy for the counterattack.
-# Illustrative initial condition. Not a calibrated real circuit or measured race.
 id: two-straight-counterattack
 synthetic: true
 description: "Own car 0.65 s behind a rival on the main straight, deciding whether to attack now or reserve energy for the counterattack."

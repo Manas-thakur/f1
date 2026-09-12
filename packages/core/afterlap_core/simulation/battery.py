@@ -1,23 +1,3 @@
-"""Three separate energy ledgers with an auditable balance.
-
-The three quantities the plan insists on keeping apart:
-
-1. **Battery stored energy** (J at the battery terminal). This is the physical
-   state of charge in an explicit operating window.
-2. **CU-K DC-bus recharge ledger** (J on the DC bus). A *regulatory* count of
-   the quantity measured at its specified bus. It is not battery gain: the two
-   differ by the charge efficiency, and mixing them is exactly the error
-   ``UNITS_TIME.md`` forbids.
-3. **Mechanical/auxiliary accounting** (J). Mechanical energy offered to the
-   generator, mechanical energy rejected because the battery could not take it,
-   and auxiliary electrical draw.
-
-Everything is planned first (:meth:`EnergyLedger.plan`, a pure function of the
-current state) and only then committed (:meth:`EnergyLedger.commit`). That split
-is what lets the integrator evaluate a midpoint derivative without the ledger
-advancing twice.
-"""
-
 from __future__ import annotations
 
 import math
@@ -29,8 +9,6 @@ from .physics import battery_in_power, battery_out_power
 
 @dataclass(frozen=True, slots=True)
 class LedgerPlan:
-    """What the ledger *would* do for one step. Pure; nothing has moved yet."""
-
     dt_s: float
     requested_deploy_dc_w: float
     actual_deploy_dc_w: float
@@ -48,18 +26,12 @@ class LedgerPlan:
 
     @property
     def net_battery_w(self) -> float:
-        """Signed battery terminal flow; positive means the battery is charging.
 
-        The convention is stated here once. It never coexists with the
-        non-negative ``battery_out_w``/``battery_in_w`` flows without this label.
-        """
         return self.battery_in_w - self.battery_out_w
 
 
 @dataclass(frozen=True, slots=True)
 class SaturationEvent:
-    """A recorded refusal to violate a physical bound."""
-
     session_time_s: float
     car_id: str
     kind: str
@@ -80,8 +52,6 @@ class SaturationEvent:
 
 @dataclass(slots=True)
 class EnergyLedger:
-    """Battery state plus the independent regulatory and mechanical ledgers."""
-
     car_id: str
     energy_j: float
     energy_min_j: float
@@ -125,12 +95,7 @@ class EnergyLedger:
         mechanical_available_w: float,
         aux_w: float,
     ) -> LedgerPlan:
-        """Saturate the requests against the energy window without mutating state.
 
-        Ordering inside a step is fixed so the result never depends on call
-        order: auxiliary draw first (it is not optional), then deployment, then
-        harvest into whatever headroom remains.
-        """
         if dt_s <= 0.0:
             raise ValueError("ledger steps need a positive duration")
         if requested_deploy_dc_w < 0.0 or requested_harvest_dc_w < 0.0:
@@ -182,7 +147,7 @@ class EnergyLedger:
         )
 
     def commit(self, plan: LedgerPlan, session_time_s: float) -> LedgerPlan:
-        """Apply a plan and record every ledger it touches."""
+
         dt = plan.dt_s
         self.energy_j = min(self.energy_max_j, max(self.energy_min_j, plan.energy_after_j))
 
@@ -225,21 +190,11 @@ class EnergyLedger:
         return plan
 
     def reset_lap_counters(self) -> None:
-        """Reset only the per-lap regulatory counter.
 
-        Crossing the timing line resets the per-lap recharge count. It does not
-        refill the battery and it does not clear the cumulative ledger.
-        """
         self.recharge_this_lap_j = 0.0
 
     def close_error(self) -> float:
-        """Residual of the battery energy balance, in joules.
 
-        ``E_final - (E_initial + battery_in - battery_out)``. ``battery_out``
-        already includes the auxiliary draw. A non-zero residual beyond floating
-        point noise means energy appeared or vanished, and the conservation test
-        asserts against it directly.
-        """
         expected = self.initial_energy_j + self.battery_in_j - self.battery_out_j
         return self.energy_j - expected
 

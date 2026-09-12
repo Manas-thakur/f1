@@ -1,13 +1,3 @@
-"""Simulator truth state.
-
-``WorldState`` is the simulator's private ground truth. It has **no wire
-schema** and must never be serialised into a contract object: everything a
-controller, an operator view or a stored artefact may see goes through
-``observation.observe`` or through an explicit outcome record. The snapshot
-produced by :meth:`WorldState.capture_complete_state` exists for branching and
-restore, not for transport to a client.
-"""
-
 from __future__ import annotations
 
 import copy
@@ -21,15 +11,13 @@ from ..timebase import EventPriority, EventQueue, ScheduledEvent, SessionClock
 from .battery import EnergyLedger
 from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField, TrackSource
 
-if TYPE_CHECKING:  # pragma: no cover - import cycle only matters for typing
+if TYPE_CHECKING:
     from .config import CarConfig, DriverConfig, ScenarioBundle
     from .policies import DriverAction, OpponentPolicy
 
 
 @dataclass(slots=True)
 class CarState:
-    """Physical and electrical truth for one car. All fields are float64."""
-
     car_id: str
 
     progress_m: float = 0.0
@@ -52,6 +40,9 @@ class CarState:
     elapsed_time_s: float = 0.0
     distance_travelled_m: float = 0.0
 
+    applied_throttle: float = 0.0
+    applied_brake: float = 0.0
+    grip_multiplier: float = 1.0
     drive_force_n: float = 0.0
     drag_force_n: float = 0.0
     rolling_force_n: float = 0.0
@@ -61,6 +52,7 @@ class CarState:
     lateral_demand_n: float = 0.0
     lateral_acceleration_mps2: float = 0.0
     tyre_utilisation: float = 0.0
+    tyre_grip_multiplier: float = 1.0
     ice_power_w: float = 0.0
     deploy_power_dc_w: float = 0.0
     harvest_power_dc_w: float = 0.0
@@ -70,6 +62,13 @@ class CarState:
     electrical_loss_power_w: float = 0.0
     mechanical_braking_power_w: float = 0.0
     mechanical_rejected_power_w: float = 0.0
+    boost_active: float = 0.0
+    boost_elapsed_s: float = 0.0
+    last_boost_s: float = 0.0
+    boost_total_s: float = 0.0
+    boost_this_lap_s: float = 0.0
+    deployed_this_lap_j: float = 0.0
+    energy_laps: list[dict[str, float]] = field(default_factory=list)
     target_speed_mps: float = 0.0
     envelope_speed_mps: float = 0.0
     derate_factor: float = 1.0
@@ -94,8 +93,6 @@ class CarState:
 
 @dataclass(slots=True)
 class RaceState:
-    """Session-level truth shared by every car."""
-
     session_time_s: float = 0.0
     leader_lap: int = 0
     flags: tuple[FlagState, ...] = (FlagState.GREEN,)
@@ -121,8 +118,6 @@ class RaceState:
 
 @dataclass(slots=True)
 class PassRecord:
-    """One pass-related observation, kept separate by kind."""
-
     session_time_s: float
     overtaking_car_id: str
     overtaken_car_id: str
@@ -136,17 +131,11 @@ class PassRecord:
 
 @dataclass(slots=True)
 class PairState:
-    """Hysteresis state machine for one ordered pair of cars."""
-
     label: str = "behind"
     armed: bool = False
-    """True once the follower has been outside the attempt band.
-
-    An attempt is only meaningful after the cars have been clearly apart; without
-    this, a car that has just *been* passed would immediately register an attempt
-    of its own simply because it is still nearby."""
 
     attempted: bool = False
+    overlapped: bool = False
     completed_at_s: float | None = None
     completed_progress_m: float | None = None
     retained_evaluated: bool = False
@@ -157,8 +146,6 @@ class PairState:
 
 @dataclass(slots=True)
 class CheckpointRecord:
-    """A completed checkpoint crossing, with the truth at the crossing time."""
-
     checkpoint_id: str
     car_id: str
     lap: int
@@ -174,8 +161,6 @@ class CheckpointRecord:
 
 @dataclass(slots=True)
 class TruthSample:
-    """One instant of physical truth, buffered for the delayed sensor path."""
-
     session_time_s: float
     cars: dict[str, dict[str, Any]]
 
@@ -188,8 +173,6 @@ class TruthSample:
 
 @dataclass(slots=True)
 class QueuedAction:
-    """A driver action waiting out its reaction delay."""
-
     apply_time_s: float
     car_id: str
     action: DriverAction
@@ -199,14 +182,6 @@ class QueuedAction:
 
 @dataclass
 class WorldState:
-    """Complete simulator truth. Private to the simulator; never on the wire.
-
-    ``capture_complete_state`` returns a deep-copied plain dictionary containing
-    every car state, energy ledger, race state, opponent memory, event queue,
-    integrator state, delayed driver-action queue, sensor buffer and random
-    generator state, which is exactly the snapshot contents the plan requires.
-    """
-
     bundle: ScenarioBundle
     track: TrackSource
     car_configs: dict[str, CarConfig]
@@ -234,7 +209,7 @@ class WorldState:
     last_dt_s: float = 0.0
 
     def capture_complete_state(self) -> dict[str, Any]:
-        """Deep-copied plain-data snapshot of every piece of mutable truth."""
+
         if self.streams is None or self.keyed is None:
             raise RuntimeError("world state has no random streams; reset() was not called")
         return copy.deepcopy(
@@ -304,7 +279,7 @@ class WorldState:
         )
 
     def restore(self, snapshot: dict[str, Any]) -> None:
-        """Restore every mutable field from a snapshot produced by this class."""
+
         from .policies import DriverAction
 
         if snapshot.get("schema") != "afterlap.simulation.snapshot/1":

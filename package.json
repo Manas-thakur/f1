@@ -1,33 +1,16 @@
 {
-  "name": "afterlap-workspace",
+  "name": "race-simulator",
   "version": "0.1.0",
   "private": true,
-  "description": "AFTERLAP web workspace. Next.js serves pages and /api/v1; Python is invoked as a CLI.",
   "packageManager": "bun@1.3.14",
   "workspaces": [
-    "apps/web",
-    "apps/video"
-  ],
-  "trustedDependencies": [
-    "esbuild"
+    "apps/web"
   ],
   "scripts": {
-    "typecheck": "bun run --filter @afterlap/web typecheck && bun run --filter @afterlap/video typecheck",
-    "test": "bun run --filter @afterlap/web test",
+    "dev": "bun run --filter @afterlap/web dev",
     "build": "bun run --filter @afterlap/web build",
-    "test:e2e": "bun run --filter @afterlap/web test:e2e",
-    "e2e:install": "bun run --filter @afterlap/web e2e:install",
-    "lint": "bun run lint:biome && bun run --filter @afterlap/web lint",
-    "lint:biome": "biome check . --error-on-warnings",
-    "test:live": "bun run --filter @afterlap/web test:live",
-    "video:dev": "bun run --filter @afterlap/video dev",
-    "video:render": "bun run --filter @afterlap/video render"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.5.13"
-  },
-  "overrides": {
-    "postcss": "8.5.28",
-    "sharp": "0.35.4"
+    "typecheck": "bun run --filter @afterlap/web typecheck",
+    "lint": "bun run --filter @afterlap/web lint",
+    "test:e2e": "bun run --filter @afterlap/web test:e2e"
   }
 }

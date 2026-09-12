@@ -1,9 +1,0 @@
-id: monaco-2025-race
-description: OpenF1 weather record for the 2025 Monaco Grand Prix race session (session_key 9979).
-source: openf1
-session_key: 9979
-gust:
-  enabled: false
-rubber_fraction: 0.0
-notes:
-  - "altitude left null: near sea level but not verified; pressure is measured so no fallback is needed"

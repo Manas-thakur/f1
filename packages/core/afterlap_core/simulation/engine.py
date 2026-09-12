@@ -1,38 +1,7 @@
-"""The deterministic headless simulator.
-
-Public API, exactly as specified in ``simulation/TECHNICAL_SPEC.md``::
-
-    reset(manifest_or_scenario, seed)
-    step(driver_actions, dt_s)
-    snapshot()
-    restore(snapshot)
-    observe(sensor_config)
-
-Step ordering follows ``NUMERICS_AND_VALIDATION.md``:
-
-1. process safety/line events at their true crossing time (the step is split at
-   the interpolated crossing rather than applying the transition a step late),
-2. update legal profiles,
-3. apply delayed driver actions,
-4. compute tyre/engine/electrical forces,
-5. integrate motion and battery,
-6. update the thermal state,
-7. detect geometry and passes,
-8. create observations with noise and delay,
-9. record completed checkpoints.
-
-**Integrator**: explicit midpoint (RK2) on float64 for progress, speed and
-lateral offset. The electrical demand is held constant across a step — it is a
-driver-selected profile, not a continuous control — and is saturated once
-against the full step, which makes the battery ledger close exactly rather than
-to within a midpoint truncation error. The thermal state uses the analytic
-solution of its linear ODE and is therefore exact for a constant loss power.
-"""
-
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -43,10 +12,11 @@ from ..rng import KeyedRandom, StreamRegistry
 from ..timebase import EventPriority, EventQueue, SessionClock, crossing_time, laps_and_s
 from . import physics
 from .battery import EnergyLedger, LedgerPlan, SaturationEvent
-from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, load_bundle
+from .braking import braking_speed
+from .config import ObservationConfig, ScenarioBundle, ScenarioConfig, TrackConfig, load_bundle
 from .energy_limits import ElectricalLimits, EventEnergyLimits
 from .observation import Observation, observe
-from .overtake import OvertakeTracker, corridor_known
+from .overtake import OvertakeTracker
 from .policies import DriverAction, OpponentPolicy, build_policy
 from .state import (
     CarState,
@@ -63,8 +33,7 @@ from .track_source import DEFAULT_ENVIRONMENT, EnvironmentField
 from .wake import DISABLED as WAKE_DISABLED, FREE_AIR as WAKE_FREE_AIR, WakeEffect, WakeModel
 
 _MIN_SUBSTEP_S = 1.0e-4
-"""Below this, an event boundary is applied at the end of the sub-step instead
-of splitting again. It bounds the number of splits per step."""
+
 
 _SPEED_EPS = 1.0e-9
 _PREVIEW_M = 400.0
@@ -76,26 +45,10 @@ _PREVIEW_OFFSETS = np.unique(
         )
     )
 )
-"""Braking-preview grid: fine near the car where a curvature ramp resolves the
-braking point, coarse further out where only the corner limit itself matters."""
 
-_PREVIEW_OFFSETS_LIST: list[float] = _PREVIEW_OFFSETS.tolist()
-_MAX_MODELLED_SPEED_MPS = 130.0
-_BRAKE_DEADBAND_MPS = 0.05
-"""Speed error below which the driver does not touch the brake."""
-
-_BRAKE_BAND_MPS = 0.5
-"""Speed error at which the driver is already braking at the full envelope."""
 
 _CORNER_GRIP_SHARE = 0.95
-"""Lateral share of the grip envelope the driver model plans a corner around."""
 
-_BRAKING_SAFETY_MARGIN = 0.97
-"""Fraction of the computed braking capability the preview plans against.
-
-It absorbs the preview grid discretisation, so the planned braking point is
-slightly early rather than slightly late.
-"""
 
 DEPLOY_FRACTION: dict[DeploymentProfile, float] = {
     DeploymentProfile.HARVEST: 0.0,
@@ -104,7 +57,7 @@ DEPLOY_FRACTION: dict[DeploymentProfile, float] = {
     DeploymentProfile.PUSH: 0.80,
     DeploymentProfile.OVERTAKE: 1.0,
 }
-"""Fraction of the deployment ceiling each coarse profile asks for."""
+
 
 HARVEST_FRACTION: dict[DeploymentProfile, float] = {
     DeploymentProfile.HARVEST: 1.0,
@@ -113,18 +66,15 @@ HARVEST_FRACTION: dict[DeploymentProfile, float] = {
     DeploymentProfile.PUSH: 0.40,
     DeploymentProfile.OVERTAKE: 0.0,
 }
-"""Fraction of the available regenerative braking each profile blends in."""
+
 
 TIMING_LINE_ID = "__timing_line__"
 
 ATTEMPT_BAND_LENGTHS = 2.0
-"""Multiples of the nose-to-tail distance inside which a follower is attempting."""
 
 
 @dataclass(frozen=True, slots=True)
 class _Evaluation:
-    """Derivatives and diagnostics at one point of the step."""
-
     acceleration_mps2: float
     lateral_rate_mps: float
     heading_error_rad: float
@@ -133,8 +83,6 @@ class _Evaluation:
 
 @dataclass(slots=True)
 class _CarTrial:
-    """The tentative result of integrating one car across a sub-step."""
-
     car_id: str
     progress_m: float
     speed_mps: float
@@ -148,8 +96,6 @@ class _CarTrial:
 
 @dataclass(slots=True)
 class StepReport:
-    """Everything one ``step`` produced, for the caller and for validation."""
-
     session_time_s: float
     dt_s: float
     substeps: int
@@ -160,25 +106,15 @@ class StepReport:
     policy_actions: dict[str, DriverAction] = field(default_factory=dict)
     profile_downgrades: list[dict[str, Any]] = field(default_factory=list)
     electrical_limits: dict[str, dict[str, Any]] = field(default_factory=dict)
-    """Per car: which source bound each deployment/recovery ceiling this step
-    (``ElectricalLimits.describe``). Provenance, never an input to the dynamics."""
+
     envelope_exceedances: list[dict[str, Any]] = field(default_factory=list)
-    """Recorded rather than hidden: the reduced model has no understeer escape,
-    so a state where lateral demand exceeds the tyre envelope is reported as an
-    unsupported condition instead of being silently clipped."""
+
     wake_effects: dict[str, dict[str, Any]] = field(default_factory=dict)
-    """Per car: the aerodynamic interaction applied at the last force evaluation
-    (``WakeEffect.describe``), including whether the lateral offset behind it was
-    known. Diagnostics; the dynamics read the multipliers, not this record."""
+
     overtake_stages: dict[str, dict[str, Any]] = field(default_factory=dict)
-    """Per registered pair ``"a|b"``: the four-stage overtake record
-    (``OvertakeRecord.as_dict``). Empty unless :meth:`Simulator.follow_overtake`
-    registered the pair. ``overlap`` is ``unavailable`` on an unknown corridor."""
 
 
 class Simulator:
-    """Headless deterministic physics and battle simulator."""
-
     def __init__(self) -> None:
         self._world: WorldState | None = None
         self._geometry: TrackGeometry | None = None
@@ -188,42 +124,30 @@ class Simulator:
         self._wake: WakeModel | None = None
         self._wake_effects: dict[str, WakeEffect] = {}
         self._overtake_trackers: dict[tuple[str, str], OvertakeTracker] = {}
+        self._ignore_contacts = False
 
     def reset(
         self,
         manifest_or_scenario: str | ScenarioConfig | ScenarioBundle,
         seed: int | None = None,
         environment: EnvironmentField | None = None,
-        event_overlay: Any | None = None,
+        event_limits: EventEnergyLimits | None = None,
         wake: WakeModel | None = None,
+        ignore_contacts: bool = False,
     ) -> Simulator:
-        """Load a scenario and build the initial world state.
 
-        ``seed`` overrides the scenario's own seed; the override is recorded in
-        the snapshot so a run can always be traced back to the seed that
-        produced it. ``event_overlay`` overrides the overlay the scenario's
-        ``event_id`` would load from the track package; either way only values
-        confirmed by two reviewers ever tighten an electrical limit.
-
-        ``wake`` installs an aerodynamic interaction model
-        (:class:`~.wake.WakeModel`). It is ``None`` by default because every
-        coefficient in that model is an uncalibrated declared assumption, so a
-        run has to ask for it; without it the drag and downforce multipliers are
-        exactly 1.0 and the trajectory is bit-identical to a pre-wake run.
-        """
         bundle = (
             manifest_or_scenario
             if isinstance(manifest_or_scenario, ScenarioBundle)
             else load_bundle(manifest_or_scenario)
         )
         scenario = bundle.scenario
-        self._event_limits = EventEnergyLimits.from_overlay(
-            event_overlay if event_overlay is not None else self._load_event_overlay(bundle)
-        )
+        self._event_limits = event_limits or EventEnergyLimits.none()
         self._electrical_limits = {}
         self._wake = wake
         self._wake_effects = {}
         self._overtake_trackers = {}
+        self._ignore_contacts = ignore_contacts
         effective_seed = scenario.seed if seed is None else int(seed)
         world = WorldState(
             bundle=bundle,
@@ -295,30 +219,17 @@ class Simulator:
         self._record_truth_sample()
         return self
 
-    @staticmethod
-    def _load_event_overlay(bundle: ScenarioBundle) -> Any | None:
-        """The overlay named by ``scenario.event_id``; ``None`` when there is none to load."""
-        event_id = bundle.scenario.event_id
-        if event_id is None:
-            return None
-        from ..tracks.loader import TrackPackageError, load_event_overlay
-
-        try:
-            return load_event_overlay(bundle.track.id, event_id)
-        except TrackPackageError:
-            return None
-
     def electrical_limits(self, car_id: str) -> ElectricalLimits | None:
-        """The limits in force at the last force evaluation of ``car_id``; ``None`` before the first step."""
+
         return self._electrical_limits.get(car_id)
 
     @property
     def wake_model(self) -> WakeModel | None:
-        """The installed aerodynamic interaction model, or ``None`` when free air."""
+
         return self._wake
 
     def wake_effect(self, car_id: str) -> WakeEffect | None:
-        """The interaction applied at the last force evaluation of ``car_id``."""
+
         return self._wake_effects.get(car_id)
 
     def follow_overtake(
@@ -328,14 +239,7 @@ class Simulator:
         *,
         retention_checkpoint_id: str | None = None,
     ) -> OvertakeTracker:
-        """Register an ordered pair for four-stage overtake labelling.
 
-        The tracker is fed from truth after every step and its record appears in
-        ``StepReport.overtake_stages``. Nothing is registered by default, so a
-        run that does not ask for stage labelling behaves exactly as before.
-        ``retention_checkpoint_id`` defaults to the scenario's own retention
-        checkpoint.
-        """
         if retention_checkpoint_id is None:
             retention_checkpoint_id = self.world.bundle.scenario.retention_checkpoint_id
         tracker = OvertakeTracker(
@@ -352,64 +256,46 @@ class Simulator:
     def _wake_effect_for(
         self, car_id: str, progress_m: float, lateral_d_m: float, speed_mps: float
     ) -> WakeEffect:
-        """Aerodynamic interaction imposed on ``car_id`` by the car ahead.
 
-        Simulator truth, not an observation: the leader is the nearest car ahead
-        in unwrapped progress, read at the start of the sub-step. The lateral
-        offset is passed to the model only when the corridor is surveyed at both
-        cars' positions; otherwise it is ``None`` and the model estimates the tow
-        from longitudinal separation under its declared in-line assumption,
-        making no side-by-side or contact claim (decision D-10).
-
-        With no model installed, or nothing ahead, the returned multipliers are
-        exactly 1.0.
-        """
         model = self._wake
         if model is None:
             return WAKE_DISABLED
         world = self.world
-        leader_id: str | None = None
-        nearest = float("inf")
+        strongest = WAKE_FREE_AIR
         for other_id, other in world.cars.items():
             if other_id == car_id:
                 continue
-            delta = other.progress_m - progress_m
-            if 0.0 < delta < nearest:
-                nearest = delta
-                leader_id = other_id
-        if leader_id is None:
-            return WAKE_FREE_AIR
-        leader = world.cars[leader_id]
-        clearance = self._clearance_m(world.bundle, car_id, leader_id)
-        own_s = progress_m % world.track.length
-        lateral_offset: float | None = None
-        if corridor_known(world, own_s) and corridor_known(world, leader.s_m):
-            lateral_offset = lateral_d_m - leader.lateral_d_m
-        return model.evaluate(
-            separation_m=nearest - clearance,
-            lateral_offset_m=lateral_offset,
-            relative_speed_mps=leader.speed_mps - speed_mps,
-            leader_speed_mps=leader.speed_mps,
-            leader_car_id=leader_id,
-        )
+            delta = (other.progress_m - progress_m) % world.track.length
+            clearance = self._clearance_m(world.bundle, car_id, other_id)
+            if not 0 < delta < model.range_m + clearance:
+                continue
+            effect = model.evaluate(
+                separation_m=max(0, delta - clearance),
+                lateral_offset_m=lateral_d_m - other.lateral_d_m,
+                relative_speed_mps=other.speed_mps - speed_mps,
+                leader_speed_mps=other.speed_mps,
+                leader_car_id=other_id,
+            )
+            shielding = effect.shielding * min(1, delta / clearance) ** 2
+            if shielding > strongest.shielding:
+                strongest = replace(
+                    effect,
+                    shielding=shielding,
+                    drag_multiplier=1 - model.drag_reduction_max * shielding,
+                    downforce_multiplier=1 - model.downforce_loss_max * shielding,
+                )
+        return strongest
 
     @staticmethod
     def _clearance_m(bundle: ScenarioBundle, a: str, b: str) -> float:
-        """Nose-to-tail longitudinal separation between two car centres.
 
-        This is the *longitudinal* condition only. Physical clearance is decided
-        by the separating-axis footprint test, which is what catches a yawed car
-        whose along-track extent is longer than its wheelbase. Adding a fixed
-        margin here instead would make the footprint veto unreachable and turn
-        the contact rule into decoration.
-        """
         return 0.5 * (
             float(bundle.car_configs[a].length_m.value) + float(bundle.car_configs[b].length_m.value)
         )
 
     @staticmethod
     def _initial_thresholds(bundle: ScenarioBundle, car_id: str, state: CarState) -> dict[str, float]:
-        """First unwrapped progress value at which each line is next crossed."""
+
         length = bundle.track.length
         thresholds: dict[str, float] = {}
         lines = [(TIMING_LINE_ID, float(bundle.track.timing_line_s_m.value))]
@@ -422,7 +308,7 @@ class Simulator:
 
     @property
     def world(self) -> WorldState:
-        """Private truth. Exposed for tests and for the branching helper only."""
+
         if self._world is None:
             raise RuntimeError("the simulator has not been reset")
         return self._world
@@ -444,20 +330,27 @@ class Simulator:
         return self.world.race.session_time_s
 
     def observe(
-        self, sensor_config: ObservationConfig | None = None, car_id: str | None = None
+        self,
+        sensor_config: ObservationConfig | None = None,
+        car_id: str | None = None,
+        *,
+        include_rivals: bool = True,
     ) -> dict[str, Observation]:
-        """Build observations. The only path from truth to a controller."""
-        return observe(self.world, sensor_config or self.sensor_config, car_id)
+
+        return observe(self.world, sensor_config or self.sensor_config, car_id, include_rivals=include_rivals)
 
     def snapshot(self) -> dict[str, Any]:
-        return self.world.capture_complete_state()
+        snapshot = self.world.capture_complete_state()
+        snapshot["ignore_contacts"] = self._ignore_contacts
+        return snapshot
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         self.world.restore(snapshot)
+        self._ignore_contacts = bool(snapshot["ignore_contacts"])
 
     def step(self, driver_actions: dict[str, DriverAction] | None, dt_s: float) -> StepReport:
-        """Advance the world by ``dt_s`` seconds."""
-        if not math.isfinite(dt_s) or dt_s <= 0.0:
+
+        if dt_s <= 0.0:
             raise ValueError("a simulation step needs a positive duration")
         world = self.world
         report = StepReport(session_time_s=world.race.session_time_s, dt_s=dt_s, substeps=0)
@@ -504,7 +397,7 @@ class Simulator:
         return report
 
     def _policy_action(self, car_id: str, policy: OpponentPolicy) -> DriverAction:
-        """Opponents decide from their own observation, never from truth."""
+
         world = self.world
         assert world.streams is not None
         observation = self.observe(car_id=car_id)[car_id]
@@ -556,12 +449,7 @@ class Simulator:
                 state.pending_apply_time_s = None
 
     def _update_legal_profiles(self, report: StepReport) -> None:
-        """Downgrade a profile the current physical state cannot support.
 
-        This is the simulator's own physical admissibility, not the regulatory
-        rule engine: it only enforces the battery window and the thermal derate.
-        Regulatory admissibility is owned by the rules module.
-        """
         world = self.world
         for car_id, state in world.cars.items():
             car = world.car_configs[car_id]
@@ -588,52 +476,53 @@ class Simulator:
                 state.active_profile = DeploymentProfile.HARVEST
 
     def _envelope_speed(self, car_id: str, s_m: float, braking_fraction: float) -> float:
-        """Highest entry speed that still fits every corner in the preview.
 
-        Backward braking-point construction over the preview grid. At each grid
-        point the *available* longitudinal deceleration is what the friction
-        ellipse leaves once the corner at that point has taken its share, so the
-        result accounts for the fact that a car already cornering cannot brake
-        at the full envelope. A naive ``mu*g`` propagation over-estimates the
-        deceleration and lets the car arrive beyond the envelope.
-        """
         world = self.world
         track = world.track
         car = world.car_configs[car_id]
         samples = s_m + _PREVIEW_OFFSETS
-        curvature = np.abs(track.curvature_array(samples))
-        mu = track.mu_array(samples) * _CORNER_GRIP_SHARE
-        factor = car.downforce_factor_inv_m
-        denominator = curvature - mu * factor
-        corner_limit = np.where(
-            denominator > 0.0,
-            np.sqrt(mu * physics.GRAVITY_MPS2 / np.where(denominator > 0.0, denominator, 1.0)),
-            _MAX_MODELLED_SPEED_MPS,
+        low_drag = world.active_actions[car_id].low_drag
+        factor = car.downforce_factor_inv_m * (0.75 if low_drag else 1.0)
+        if self._wake is not None:
+            factor *= 1.0 - self._wake.downforce_loss_max
+        rho = world.environment.air_density_kgpm3(
+            s_m, world.race.session_time_s, float(car.air_density_kgpm3.value)
         )
-        corner_limit = np.minimum(corner_limit, _MAX_MODELLED_SPEED_MPS)
-
-        limits = corner_limit.tolist()
-        curvatures = curvature.tolist()
-        grips = mu.tolist()
-        offsets = _PREVIEW_OFFSETS_LIST
-
-        def available_decel(grip: float, curvature_at: float, at_speed: float) -> float:
-            envelope_a = grip * (physics.GRAVITY_MPS2 + factor * at_speed * at_speed)
-            lateral_a = at_speed * at_speed * curvature_at
-            spare = envelope_a * envelope_a - lateral_a * lateral_a
-            if spare <= 0.0:
-                return 0.0
-            return _BRAKING_SAFETY_MARGIN * braking_fraction * math.sqrt(spare)
-
-        speed = limits[-1]
-        for index in range(len(limits) - 2, -1, -1):
-            distance = offsets[index + 1] - offsets[index]
-            exit_decel = available_decel(grips[index + 1], curvatures[index + 1], speed)
-            predicted = math.sqrt(speed * speed + 2.0 * exit_decel * distance)
-            entry_decel = available_decel(grips[index], curvatures[index], predicted)
-            decel = min(exit_decel, entry_decel)
-            speed = min(limits[index], math.sqrt(speed * speed + 2.0 * decel * distance))
-        return float(speed)
+        factor *= rho / float(car.air_density_kgpm3.value)
+        preview_array = getattr(world.environment, "preview_grip_array", None)
+        preview_scalar = getattr(world.environment, "preview_grip", None)
+        if preview_array is not None:
+            grip_multipliers = preview_array(samples, world.race.session_time_s)
+        elif preview_scalar is not None:
+            grip_multipliers = np.asarray(
+                [preview_scalar(float(sample), world.race.session_time_s) for sample in samples]
+            )
+        else:
+            grip_multipliers = world.environment.grip_multiplier_array(samples, world.race.session_time_s)
+        grip_multipliers = grip_multipliers * world.cars[car_id].tyre_grip_multiplier
+        brake_decel = float(car.max_brake_force_n.value) / float(car.mass_kg.value)
+        if isinstance(track, TrackConfig):
+            return track.preview_speed(
+                samples,
+                grip_multipliers,
+                _CORNER_GRIP_SHARE,
+                _PREVIEW_OFFSETS,
+                factor,
+                braking_fraction,
+                brake_decel,
+            )
+        curvature = np.abs(track.curvature_array(samples))
+        mu = track.mu_array(samples) * _CORNER_GRIP_SHARE * grip_multipliers
+        return float(
+            braking_speed(
+                curvature,
+                mu,
+                _PREVIEW_OFFSETS,
+                factor,
+                braking_fraction,
+                brake_decel,
+            )
+        )
 
     def _evaluate(
         self,
@@ -645,7 +534,7 @@ class Simulator:
         dt_s: float,
         plan: LedgerPlan | None,
     ) -> tuple[_Evaluation, LedgerPlan]:
-        """Forces, electrical saturation and derivatives at one state point."""
+
         world = self.world
         track = world.track
         car = world.car_configs[car_id]
@@ -662,7 +551,9 @@ class Simulator:
 
         curvature = track.curvature_at(s_m)
         grade = track.grade_at(s_m)
-        grip_multiplier = environment.grip_multiplier(s_m, session_time_s)
+        grip_multiplier = (
+            environment.grip_multiplier(s_m, session_time_s) * world.cars[car_id].tyre_grip_multiplier
+        )
         mu = track.mu_at(s_m) * grip_multiplier
         heading = self._geometry.heading_at(s_m) if self._geometry is not None else 0.0
         air_speed = max(0.0, speed + environment.headwind_mps(s_m, heading, session_time_s))
@@ -670,12 +561,18 @@ class Simulator:
         wake_effect = self._wake_effect_for(car_id, progress_m, lateral_d_m, speed)
         self._wake_effects[car_id] = wake_effect
 
-        down_n = physics.downforce(rho, wake_effect.downforce_multiplier * float(car.cla_m2.value), air_speed)
+        aero_down = 0.75 if action.low_drag else 1.0
+        aero_drag = 0.82 if action.low_drag else 1.0
+        down_n = physics.downforce(
+            rho, aero_down * wake_effect.downforce_multiplier * float(car.cla_m2.value), air_speed
+        )
         envelope_n = physics.traction_limit(mass, physics.GRAVITY_MPS2, mu, down_n)
         lateral_demand_n = mass * speed * speed * abs(curvature)
         long_envelope_n = physics.longitudinal_envelope(envelope_n, min(lateral_demand_n, envelope_n))
 
-        drag_n = physics.drag_force(rho, wake_effect.drag_multiplier * float(car.cda_m2.value), air_speed)
+        drag_n = physics.drag_force(
+            rho, aero_drag * wake_effect.drag_multiplier * float(car.cda_m2.value), air_speed
+        )
         roll_n = physics.rolling_force(mass, physics.GRAVITY_MPS2, float(car.crr.value), grade)
         grade_n = physics.grade_force(mass, physics.GRAVITY_MPS2, grade)
 
@@ -698,11 +595,8 @@ class Simulator:
         if action.throttle is not None or action.brake is not None:
             throttle = 0.0 if action.throttle is None else action.throttle
             brake = 0.0 if action.brake is None else action.brake
-        elif speed > target_speed + _BRAKE_DEADBAND_MPS:
-            throttle = 0.0
-            brake = min(1.0, (speed - target_speed) / _BRAKE_BAND_MPS)
         else:
-            tau = 0.6
+            tau = 0.08 if speed > target_speed else 0.6
             desired_a = (target_speed - speed) / tau
             required_n = mass * desired_a + drag_n + roll_n + grade_n
             if required_n >= 0.0:
@@ -712,6 +606,21 @@ class Simulator:
                 throttle = 0.0
                 brake = min(1.0, -required_n / max_brake_n) if max_brake_n > 0.0 else 0.0
 
+        if action.acceleration_ceiling_mps2 is not None:
+            requested_n = mass * action.acceleration_ceiling_mps2 + drag_n + roll_n + grade_n
+            drive_w = (
+                ice_full_w + DEPLOY_FRACTION[world.cars[car_id].active_profile] * deploy_ceiling_w
+            ) * float(car.drivetrain_efficiency.value)
+            drive_n = physics.tractive_force(drive_w, speed, float(car.max_tractive_force_n.value))
+            if requested_n >= 0:
+                throttle = min(throttle, requested_n / max(1, drive_n))
+            else:
+                throttle = 0.0
+                brake = max(brake, min(1, -requested_n / max(1, max_brake_n)))
+
+        if action.brake_floor > 0.0:
+            brake = max(brake, action.brake_floor)
+            throttle = 0.0
         brake_force_n = brake * max_brake_n
         mechanical_brake_w = brake_force_n * speed
 
@@ -725,6 +634,11 @@ class Simulator:
             else:
                 mechanical_available_w = 0.0
                 requested_harvest_w = 0.0
+            allowance = limits.recharge_allowance_j()
+            if allowance is not None:
+                requested_harvest_w = min(
+                    requested_harvest_w, max(0.0, allowance - ledger.recharge_this_lap_j) / dt_s
+                )
             plan = ledger.plan(
                 dt_s,
                 requested_deploy_dc_w=requested_deploy_w,
@@ -748,6 +662,9 @@ class Simulator:
         heading_error = math.atan2(lateral_rate, max(speed, 1.0))
 
         diagnostics = {
+            "applied_throttle": throttle,
+            "applied_brake": brake,
+            "grip_multiplier": grip_multiplier,
             "drive_force_n": applied_n,
             "drag_force_n": drag_n,
             "rolling_force_n": roll_n,
@@ -776,7 +693,7 @@ class Simulator:
         )
 
     def _integrate_all(self, h: float) -> dict[str, _CarTrial]:
-        """Explicit midpoint integration of every car across one sub-step."""
+
         world = self.world
         trials: dict[str, _CarTrial] = {}
         for car_id in sorted(world.cars):
@@ -845,6 +762,17 @@ class Simulator:
             state.battery_energy_j = ledger.energy_j
             state.recharge_ledger_j = ledger.recharge_cumulative_j
             state.recharge_ledger_this_lap_j = ledger.recharge_this_lap_j
+            state.deployed_this_lap_j += trial.plan.actual_deploy_dc_w * h
+            boosting = state.active_profile in {DeploymentProfile.PUSH, DeploymentProfile.OVERTAKE}
+            state.boost_active = float(boosting and trial.plan.actual_deploy_dc_w > 1000.0)
+            if state.boost_active:
+                state.boost_elapsed_s += h
+                state.boost_total_s += h
+                state.boost_this_lap_s += h
+            else:
+                if state.boost_elapsed_s > 0:
+                    state.last_boost_s = state.boost_elapsed_s
+                state.boost_elapsed_s = 0.0
             state.deploy_power_dc_w = trial.plan.actual_deploy_dc_w
             state.harvest_power_dc_w = trial.plan.actual_harvest_dc_w
             state.battery_out_power_w = trial.plan.battery_out_w
@@ -867,7 +795,7 @@ class Simulator:
                 )
 
     def _next_boundary_gap(self, now: float, remaining: float) -> float:
-        """Time to the next queued event or delayed action inside this step."""
+
         world = self.world
         gap = remaining
         peek = world.events.peek_time()
@@ -879,7 +807,7 @@ class Simulator:
         return max(gap, _MIN_SUBSTEP_S)
 
     def _earliest_crossing(self, now: float, h: float, trials: dict[str, _CarTrial]) -> float | None:
-        """Interpolated time of the first line crossing inside this sub-step."""
+
         world = self.world
         earliest: float | None = None
         for car_id, trial in trials.items():
@@ -892,7 +820,7 @@ class Simulator:
         return earliest
 
     def _schedule_crossings(self, now: float, h: float, trials: dict[str, _CarTrial]) -> None:
-        """Queue a line event for every threshold this sub-step actually passed."""
+
         world = self.world
         for car_id, trial in trials.items():
             thresholds = world.next_thresholds[car_id]
@@ -914,7 +842,7 @@ class Simulator:
                 thresholds[line_id] = threshold
 
     def _process_events(self, now: float, report: StepReport) -> None:
-        """Apply every queued event at or before ``now`` in contract order."""
+
         world = self.world
         for event in world.events.pop_until(now + 1e-12):
             payload = dict(event.payload)
@@ -928,6 +856,16 @@ class Simulator:
             state = world.cars[car_id]
             ledger = world.ledgers[car_id]
             if line_id == TIMING_LINE_ID:
+                state.energy_laps.append(
+                    {
+                        "lap": float(state.lap),
+                        "deployed_j": state.deployed_this_lap_j,
+                        "recharged_j": ledger.recharge_this_lap_j,
+                        "boost_s": state.boost_this_lap_s,
+                    }
+                )
+                state.deployed_this_lap_j = 0.0
+                state.boost_this_lap_s = 0.0
                 ledger.reset_lap_counters()
                 state.recharge_ledger_this_lap_j = ledger.recharge_this_lap_j
             else:
@@ -966,19 +904,7 @@ class Simulator:
         )
 
     def _detect_passes(self, report: StepReport) -> None:
-        """Pass labelling from footprint clearance and unwrapped progress.
 
-        Three separate records are kept. ``attempted_pass`` fires once when the
-        following car comes inside the attempt band. ``completed_pass`` requires
-        both a full clearance in unwrapped progress **and** non-overlapping
-        footprints, so a longitudinal scalar crossing while the cars are
-        physically in contact is never rewarded. ``retained_pass`` is decided
-        later, at a named checkpoint.
-
-        The clearance band ``[-clear, +clear]`` is the hysteresis: a label only
-        changes when the cars are unambiguously separated, so numerical jitter
-        around the boundary cannot flap the label.
-        """
         world = self.world
         now = world.race.session_time_s
         for (a, b), pair in world.pairs.items():
@@ -1002,8 +928,19 @@ class Simulator:
                 if pair.label == "behind":
                     pair.label = "contesting"
 
+            if (
+                pair.label != "ahead"
+                and not pair.overlapped
+                and abs(delta) < clearance
+                and (self._ignore_contacts or not self._overlapping(a, b))
+            ):
+                pair.overlapped = True
+                record = PassRecord(now, a, b, "longitudinal_overlap")
+                world.passes.append(record)
+                report.passes.append(record)
+
             if pair.label != "ahead" and delta > clearance:
-                if self._overlapping(a, b):
+                if not self._ignore_contacts and self._overlapping(a, b):
                     record = PassRecord(
                         session_time_s=now,
                         overtaking_car_id=a,
@@ -1030,12 +967,13 @@ class Simulator:
                 pair.label = "behind"
                 pair.armed = False
                 pair.attempted = False
+                pair.overlapped = False
                 pair.completed_at_s = None
                 pair.completed_progress_m = None
                 pair.retained_evaluated = False
 
     def _update_overtake_stages(self, report: StepReport) -> None:
-        """Feed every registered pair's stage machine from truth. Inert when none."""
+
         if not self._overtake_trackers:
             return
         world = self.world
@@ -1044,7 +982,7 @@ class Simulator:
             report.overtake_stages[f"{a}|{b}"] = tracker.record(world).as_dict()
 
     def _evaluate_retention(self, car_id: str, checkpoint_id: str, moment: float, report: StepReport) -> None:
-        """Decide retained-pass at the scenario's named retention checkpoint."""
+
         world = self.world
         for (a, b), tracker in self._overtake_trackers.items():
             if a == car_id:
@@ -1058,7 +996,7 @@ class Simulator:
                 continue
             delta = world.cars[a].progress_m - world.cars[b].progress_m
             clearance = self._clearance_m(world.bundle, a, b)
-            retained = delta > clearance and not self._overlapping(a, b)
+            retained = delta > clearance and (self._ignore_contacts or not self._overlapping(a, b))
             pair.retained_evaluated = True
             record = PassRecord(
                 session_time_s=moment,
@@ -1071,29 +1009,37 @@ class Simulator:
             report.passes.append(record)
 
     def _record_truth_sample(self) -> None:
-        """Append the current truth to the delay buffer.
 
-        The buffer holds truth. Noise, quantisation and gating are applied on
-        the way *out*, in ``observation.observe``, so a snapshot restores the
-        same buffer and therefore the same future observations.
-        """
         world = self.world
         sample = TruthSample(
             session_time_s=world.race.session_time_s,
             cars={
                 car_id: {
                     "speed_mps": state.speed_mps,
+                    "grip_multiplier": world.environment.grip_multiplier(
+                        state.s_m, world.race.session_time_s
+                    ),
                     "progress_m": state.progress_m,
                     "s_m": state.s_m,
                     "lap": float(state.lap),
                     "lateral_d_m": state.lateral_d_m,
                     "acceleration_mps2": state.acceleration_mps2,
+                    "applied_throttle": state.applied_throttle,
+                    "applied_brake": state.applied_brake,
                     "battery_energy_j": state.battery_energy_j,
                     "battery_temperature_k": state.battery_temperature_k,
                     "recharge_this_lap_j": state.recharge_ledger_this_lap_j,
                     "recharge_cumulative_j": state.recharge_ledger_j,
                     "electrical_power_w": state.deploy_power_dc_w - state.harvest_power_dc_w,
                     "active_profile_code": state.active_profile.value,
+                    "boost_active": state.boost_active,
+                    "boost_elapsed_s": state.boost_elapsed_s,
+                    "last_boost_s": state.last_boost_s,
+                    "boost_total_s": state.boost_total_s,
+                    "boost_this_lap_s": state.boost_this_lap_s,
+                    "deployed_this_lap_j": state.deployed_this_lap_j,
+                    "deployed_cumulative_j": world.ledgers[car_id].deployed_dc_j,
+                    "energy_laps": tuple(dict(lap) for lap in state.energy_laps),
                 }
                 for car_id, state in world.cars.items()
             },
@@ -1105,19 +1051,13 @@ class Simulator:
             world.sensor_buffer.pop(0)
 
     def detect_geometry_events(self) -> list[PassRecord]:
-        """Re-run pass and contact detection against the current state.
 
-        ``step`` calls the same routine at stage 7. Exposing it lets the geometry
-        rule be exercised on a constructed configuration — a yawed car alongside
-        another, say — without having to reach that configuration through a
-        whole trajectory.
-        """
         report = StepReport(session_time_s=self.world.race.session_time_s, dt_s=0.0, substeps=0)
         self._detect_passes(report)
         return report.passes
 
     def energy_close_errors(self) -> dict[str, float]:
-        """Battery balance residual per car, in joules."""
+
         return {car_id: ledger.close_error() for car_id, ledger in self.world.ledgers.items()}
 
     def passes_of_kind(self, kind: str) -> list[PassRecord]:

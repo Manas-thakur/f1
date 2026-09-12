@@ -1,10 +1,3 @@
-"""Configuration loading with mandatory units, provenance and bounds.
-
-Every configured physical parameter carries units, a source and a verification
-status. A synthetic configuration makes the software executable; it never
-establishes realism, and the loader keeps that distinction machine-readable.
-"""
-
 from __future__ import annotations
 
 from enum import StrEnum
@@ -20,8 +13,6 @@ if TYPE_CHECKING:
 
 
 class VerificationStatus(StrEnum):
-    """How much confidence a configured parameter has earned."""
-
     SYNTHETIC_ASSUMPTION = "synthetic_assumption"
     LITERATURE_DERIVED = "literature_derived"
     CALIBRATED_ON_SYNTHETIC = "calibrated_on_synthetic"
@@ -29,8 +20,6 @@ class VerificationStatus(StrEnum):
 
 
 class Parameter(BaseModel):
-    """One physical parameter with the provenance the plan demands."""
-
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     value: float
@@ -55,8 +44,6 @@ class Parameter(BaseModel):
 
 
 class ConfigDocument(BaseModel):
-    """Base class for a loadable YAML configuration."""
-
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: str = Field(min_length=1)
@@ -69,7 +56,7 @@ class ConfigDocument(BaseModel):
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
-    """Read a YAML document, failing loudly on anything that is not a mapping."""
+
     if not path.exists():
         raise FileNotFoundError(f"configuration {path} does not exist")
     payload = yaml.safe_load(path.read_text(encoding="utf-8"))

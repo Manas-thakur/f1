@@ -1,22 +1,15 @@
-"""Regeneration bounds keep the battery balance closed (A16-5).
-
-Adding grip, acceptance and event limits in front of the ledger must not open
-the energy balance: the limits only shrink what the ledger is offered, and the
-shortfall is friction braking the car still feels.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 from conftest import build_bundle
 
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.simulation import DriverAction, ScenarioBundle, Simulator
-from afterlap_core.tracks.package import EventOverlay, PowerCurveRow
+from afterlap_core.simulation.energy_limits import EventEnergyLimits
 
 ENERGY_CLOSE_TOLERANCE_J = 1.0e-4
-"""As in ``test_energy_conservation.py``."""
 
 
 @dataclass(frozen=True)
@@ -29,6 +22,9 @@ class _Wet:
 
     def grip_multiplier(self, s_m, session_time_s):
         return 0.7
+
+    def grip_multiplier_array(self, s_m, session_time_s):
+        return np.full_like(s_m, 0.7)
 
     @property
     def describes(self) -> str:
@@ -49,22 +45,19 @@ def _accepting_bundle() -> ScenarioBundle:
     return ScenarioBundle(scenario=bundle.scenario, track=bundle.track, car_configs=cars)
 
 
-OVERLAY = EventOverlay(
-    event_id="bounds-event",
-    ruleset_hash="bounds",
-    standard_curve=(
-        PowerCurveRow(speed_kph=0.0, power_kw=250.0),
-        PowerCurveRow(speed_kph=360.0, power_kw=100.0),
-    ),
-    review_status="confirmed",
-    reviewers=("a", "b"),
+LIMITS = EventEnergyLimits(
+    event_id="synthetic-bounds",
+    review_status="synthetic",
+    standard_curve=((0.0, 250000.0), (100.0, 100000.0)),
+    overtake_curve=None,
+    recharge_allowance_j=None,
 )
 
 
 def test_every_limit_active_keeps_the_ledger_closed_and_the_harvest_bounded() -> None:
     bundle = _accepting_bundle()
     car = bundle.car_configs["own"]
-    simulator = Simulator().reset(bundle, seed=3, environment=_Wet(), event_overlay=OVERLAY)
+    simulator = Simulator().reset(bundle, seed=3, environment=_Wet(), event_limits=LIMITS)
     brake = DriverAction(profile=DeploymentProfile.HARVEST, throttle=0.0, brake=1.0)
     push = DriverAction(profile=DeploymentProfile.OVERTAKE, throttle=1.0, brake=0.0)
 

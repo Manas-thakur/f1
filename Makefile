@@ -1,139 +1,64 @@
-THIS_MAKEFILE := $(abspath $(firstword $(MAKEFILE_LIST)))
-ROOT := $(patsubst %/,%,$(dir $(THIS_MAKEFILE)))
-include $(ROOT)/infra/ports.env
-
-ENV_FILE := $(ROOT)/infra/.env
-STATE := $(ROOT)/.afterlap
-COMPOSE := docker compose -f $(ROOT)/infra/docker-compose.yml --env-file $(ENV_FILE)
-PYTHON := uv run python
-WEB_URL := http://127.0.0.1:$(AFTERLAP_WEB_PORT)
-API_URL := http://127.0.0.1:$(AFTERLAP_API_PORT)
-DB_ADDR := 127.0.0.1:$(AFTERLAP_DB_PORT)
-
-export AFTERLAP_WEB_PORT
-export AFTERLAP_API_PORT
-export AFTERLAP_DB_PORT
-
 .DEFAULT_GOAL := help
+PYTHON := uv run python
+CIRCUIT ?= silverstone
+SEED ?= 42
+CARS ?= 20
+LAPS ?=
+DURATION ?= 1800
+STEPS ?= 10000
+CONTACT_MODE ?= ignore
+LINE_RANDOMNESS ?= 0.7
+CORNER_LINE_STRENGTH ?= 0.9
+LINE_WANDER_M ?= 0.8
+LINE_LOOKAHEAD_M ?= 65
+LINE_SMOOTHING_M ?= 30
+RACING_LINE_FLAGS ?= --racing-line --corner-overtakes
+OUTPUT ?= .afterlap/race/$(CIRCUIT)-$(SEED).jsonl
+RACE_LINE_ARGS := --contact-mode $(CONTACT_MODE) --line-randomness $(LINE_RANDOMNESS) --corner-line-strength $(CORNER_LINE_STRENGTH) --line-wander-m $(LINE_WANDER_M) --line-lookahead-m $(LINE_LOOKAHEAD_M) --line-smoothing-m $(LINE_SMOOTHING_M) $(RACING_LINE_FLAGS)
 
-.PHONY: help env build up down stop start restart logs ps wait urls doctor demo migrate install dev stop-dev audit
-
+.PHONY: help install dev race race-server race-generate race-train race-check race-browser-check race-up race-down
 help:
-	@printf '%s\n' \
-	  'AFTERLAP local stack on docker compose. Host ports: web $(AFTERLAP_WEB_PORT), runtime $(AFTERLAP_API_PORT), postgres $(AFTERLAP_DB_PORT).' \
-	  '' \
-	  'make env          write infra/.env with a generated password if missing' \
-	  'make up           build images and start db, runtime, batch, web' \
-	  'make down         stop and remove containers; volumes stay' \
-	  'make stop         stop containers in place' \
-	  'make start        start an already-created stack' \
-	  'make restart      restart the stack' \
-	  'make logs         follow container logs' \
-	  'make ps           show container status' \
-	  'make wait         block until every service is healthy' \
-	  'make urls         print loopback addresses' \
-	  'make doctor       run afterlap_core.cli doctor' \
-	  'make demo         run the 13-step live runbook against $(WEB_URL)' \
-	  'make migrate      alembic upgrade against the stack database' \
-	  'make install      uv and bun frozen installs' \
-	  'make dev          native runtime + web on the unique ports, postgres in compose' \
-	  'make stop-dev     stop native runtime/web/batch started by make dev' \
-	  'make audit        run every gate and the live stack end to end'
-
-env:
-	@if [ ! -f "$(ENV_FILE)" ]; then \
-	  password="$$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"; \
-	  printf '%s\n' \
-	    "AFTERLAP_DB_PASSWORD=$$password" \
-	    "AFTERLAP_ENV=development" \
-	    "AFTERLAP_WEB_PORT=$(AFTERLAP_WEB_PORT)" \
-	    "AFTERLAP_API_PORT=$(AFTERLAP_API_PORT)" \
-	    "AFTERLAP_DB_PORT=$(AFTERLAP_DB_PORT)" \
-	    "AFTERLAP_EXPERIMENT_QUOTA_BYTES=2147483648" \
-	    "AFTERLAP_OPERATIONAL_RESERVE_BYTES=268435456" \
-	    "AFTERLAP_BATCH_CPUS=2.0" \
-	    > "$(ENV_FILE)"; \
-	  echo "wrote $(ENV_FILE)"; \
-	fi
-
-build: env
-	$(COMPOSE) build
-
-up: env
-	$(COMPOSE) up --build --detach --wait
-	@$(MAKE) urls
-
-down: env
-	$(COMPOSE) down
-
-stop: env
-	$(COMPOSE) stop
-
-start: env
-	$(COMPOSE) up --detach --wait
-	@$(MAKE) urls
-
-restart: env
-	$(COMPOSE) restart
-	@$(MAKE) urls
-
-logs: env
-	$(COMPOSE) logs -f
-
-ps: env
-	$(COMPOSE) ps
-
-wait: env
-	$(COMPOSE) up --detach --wait
-
-urls:
-	@printf '%s\n' \
-	  "engineer console  $(WEB_URL)" \
-	  "api via next      $(WEB_URL)/api/v1" \
-	  "session stream    $(WEB_URL)/api/v1/sessions/<id>/stream" \
-	  "python runtime    $(API_URL)" \
-	  "postgres          $(DB_ADDR)"
-
-doctor:
-	$(PYTHON) -m afterlap_core.cli doctor
-
-demo: env
-	$(PYTHON) scripts/demo.py --base-url $(WEB_URL)
-
-migrate: env
-	set -a && . "$(ENV_FILE)" && set +a && \
-	AFTERLAP_DATABASE_URL="postgresql+psycopg://afterlap:$${AFTERLAP_DB_PASSWORD}@127.0.0.1:$(AFTERLAP_DB_PORT)/afterlap" \
-	$(PYTHON) scripts/migrate.py --wait-for-database 60
+	@echo "make install             Install Python and web dependencies"
+	@echo "make race (or make dev)  Start simulator and dashboard on port 18760"
+	@echo "make race-server         Start only the WebSocket simulator"
+	@echo "make race-generate       Write RL transitions as JSONL"
+	@echo "make race-train          Train and save a PPO policy"
+	@echo "make race-check          Run physics tests, lint, and type checks"
+	@echo "make race-browser-check  Test the live dashboard and port forwarding"
+	@echo "make race-up / race-down Start or stop the Docker simulator"
 
 install:
 	uv sync --frozen --all-packages
 	bun install --frozen-lockfile
 
-dev: env
-	$(COMPOSE) up --detach --wait db
-	@$(MAKE) migrate
-	@mkdir -p "$(STATE)"
-	@set -a && . "$(ENV_FILE)" && set +a && \
-	  AFTERLAP_ENV=development \
-	  AFTERLAP_HOST=127.0.0.1 \
-	  AFTERLAP_PORT=$(AFTERLAP_API_PORT) \
-	  AFTERLAP_RUNTIME_URL=$(API_URL) \
-	  AFTERLAP_DATABASE_URL="postgresql+psycopg://afterlap:$${AFTERLAP_DB_PASSWORD}@127.0.0.1:$(AFTERLAP_DB_PORT)/afterlap" \
-	  $(PYTHON) -m afterlap_api.cli serve --host 127.0.0.1 --port $(AFTERLAP_API_PORT) \
-	  >"$(STATE)/runtime.log" 2>&1 & echo $$! >"$(STATE)/runtime.pid"
-	@set -a && . "$(ENV_FILE)" && set +a && \
-	  AFTERLAP_ENV=development \
-	  AFTERLAP_AUTOSTART_RUNTIME=0 \
-	  AFTERLAP_RUNTIME_URL=$(API_URL) \
-	  bun run --filter @afterlap/web dev \
-	  >"$(STATE)/web.log" 2>&1 & echo $$! >"$(STATE)/web.pid"
-	@$(MAKE) urls
-	@echo "native logs: $(STATE)/runtime.log $(STATE)/web.log"
+dev: race
 
-stop-dev:
-	@if [ -f "$(STATE)/web.pid" ]; then kill "$$(cat "$(STATE)/web.pid")" 2>/dev/null || true; rm -f "$(STATE)/web.pid"; fi
-	@if [ -f "$(STATE)/runtime.pid" ]; then kill "$$(cat "$(STATE)/runtime.pid")" 2>/dev/null || true; rm -f "$(STATE)/runtime.pid"; fi
-	@echo "native processes stopped; postgres is still the compose db service (make down to stop it)"
+race:
+	$(PYTHON) scripts/race_stack.py
 
-audit:
-	uv run --all-groups python scripts/audit.py
+race-server:
+	$(PYTHON) scripts/race.py serve --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DURATION) $(RACE_LINE_ARGS)
+
+race-generate:
+	$(PYTHON) scripts/race.py generate --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DURATION) $(RACE_LINE_ARGS) --output $(OUTPUT)
+
+race-train:
+	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DURATION) $(RACE_LINE_ARGS) --steps $(STEPS) --output .afterlap/race/policy-$(SEED)
+
+race-check:
+	uv run pytest
+	uv run ruff format --check .
+	uv run ruff check .
+	uv run mypy
+	uv run python scripts/check_no_comments.py
+	bun run typecheck
+	bun run lint
+
+race-browser-check:
+	cd apps/web && bunx playwright test --config playwright.race.config.ts
+
+race-up:
+	docker compose -f infra/race-compose.yml up --build --detach --wait
+
+race-down:
+	docker compose -f infra/race-compose.yml down

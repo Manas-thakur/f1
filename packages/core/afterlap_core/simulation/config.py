@@ -1,13 +1,3 @@
-"""Simulator configuration documents.
-
-Every physical number is a :class:`~afterlap_core.config.Parameter` carrying a
-unit, a source and a verification status. The shipped fixtures are all
-``synthetic_assumption``: they make the simulator executable and they are not a
-model of any real car, circuit or race. Nothing in this module can promote a
-value to ``measured``; only a calibration run against real measurements could,
-and no such measurements exist in this package.
-"""
-
 from __future__ import annotations
 
 from bisect import bisect_right
@@ -21,37 +11,23 @@ from afterlap_contracts import DeploymentProfile, Provenance
 
 from ..config import ConfigDocument, Parameter, load_config
 from ..paths import Paths
+from .braking import sample_track, track_braking_speed
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
 class _Frozen(BaseModel):
-    """Immutable, strict base for nested configuration records."""
-
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
 class TrackCheckpoint(_Frozen):
-    """A named location on the centreline with a stable identifier.
-
-    Checkpoint ids are frozen before any result is produced; evaluation compares
-    branches at these ids, never at an ad-hoc distance.
-    """
-
     id: str = Field(min_length=1)
     s_m: Parameter
     description: str | None = None
 
 
 class TrackSegment(_Frozen):
-    """One centreline breakpoint.
-
-    Values between breakpoints are interpolated with a smoothstep so curvature
-    is continuous and has a continuous first derivative at the nodes; a raw
-    piecewise-constant curvature would inject impulsive lateral demand.
-    """
-
     s_m: Parameter
     curvature_inv_m: Parameter
     grade_rad: Parameter
@@ -60,8 +36,6 @@ class TrackSegment(_Frozen):
 
 
 class _TrackTables:
-    """Vectorised interpolation tables derived from a :class:`TrackConfig`."""
-
     __slots__ = (
         "curvature",
         "curvature_list",
@@ -96,16 +70,11 @@ class _TrackTables:
         return [*values, values[0]]
 
     def evaluate(self, table: np.ndarray, s_m: np.ndarray) -> np.ndarray:
-        """Vectorised smoothstep interpolation with periodic wrap."""
-        s = np.asarray(s_m, dtype=np.float64) % self.length_m
-        index = np.clip(np.searchsorted(self.s, s, side="right") - 1, 0, len(self.s) - 2)
-        span = self.s[index + 1] - self.s[index]
-        t = np.where(span > 0.0, (s - self.s[index]) / np.where(span > 0.0, span, 1.0), 0.0)
-        weight = t * t * (3.0 - 2.0 * t)
-        return np.asarray(table[index] + weight * (table[index + 1] - table[index]))
+
+        return sample_track(table, self.s, np.asarray(s_m, dtype=np.float64), self.length_m)
 
     def evaluate_scalar(self, values: list[float], s_m: float) -> float:
-        """Scalar fast path. Identical arithmetic to :meth:`evaluate`."""
+
         s = s_m % self.length_m
         index = min(max(bisect_right(self.s_list, s) - 1, 0), len(self.s_list) - 2)
         low = self.s_list[index]
@@ -119,13 +88,7 @@ _TABLE_CACHE: dict[int, tuple[TrackConfig, _TrackTables]] = {}
 
 
 def _tables_for(track: TrackConfig) -> _TrackTables:
-    """Interpolation tables for a track document.
 
-    Keyed by object identity with the document itself held alongside, so a
-    reused ``id`` can never return another track's tables. ``lru_cache`` is
-    deliberately not used: hashing a Pydantic document on every physics
-    evaluation dominated the measured step cost.
-    """
     entry = _TABLE_CACHE.get(id(track))
     if entry is not None and entry[0] is track:
         return entry[1]
@@ -137,8 +100,6 @@ def _tables_for(track: TrackConfig) -> _TrackTables:
 
 
 class TrackConfig(ConfigDocument):
-    """Centreline geometry, grip envelope and named locations for one circuit."""
-
     length_m: Parameter
     segments: tuple[TrackSegment, ...] = Field(min_length=2)
     checkpoints: tuple[TrackCheckpoint, ...] = ()
@@ -174,28 +135,55 @@ class TrackConfig(ConfigDocument):
         return self
 
     def curvature_at(self, s_m: float) -> float:
-        """Signed centreline curvature (1/m); positive turns left."""
+
         tables = _tables_for(self)
         return tables.evaluate_scalar(tables.curvature_list, s_m)
 
     def grade_at(self, s_m: float) -> float:
-        """Road grade in radians; positive is uphill in the direction of travel."""
+
         tables = _tables_for(self)
         return tables.evaluate_scalar(tables.grade_list, s_m)
 
     def mu_at(self, s_m: float) -> float:
-        """Peak grip coefficient of the surface envelope."""
+
         tables = _tables_for(self)
         return tables.evaluate_scalar(tables.mu_list, s_m)
 
     def width_at(self, s_m: float) -> float:
-        """Usable track width in metres."""
+
         tables = _tables_for(self)
         return tables.evaluate_scalar(tables.width_list, s_m)
 
     def curvature_array(self, s_m: np.ndarray) -> np.ndarray:
         tables = _tables_for(self)
         return np.asarray(tables.evaluate(tables.curvature, s_m), dtype=np.float64)
+
+    def preview_speed(
+        self,
+        positions: np.ndarray,
+        grip_multipliers: np.ndarray,
+        grip_share: float,
+        offsets: np.ndarray,
+        factor: float,
+        braking_fraction: float,
+        brake_decel: float,
+    ) -> float:
+        tables = _tables_for(self)
+        return float(
+            track_braking_speed(
+                tables.curvature,
+                tables.mu,
+                tables.s,
+                tables.length_m,
+                positions,
+                grip_multipliers,
+                grip_share,
+                offsets,
+                factor,
+                braking_fraction,
+                brake_decel,
+            )
+        )
 
     def mu_array(self, s_m: np.ndarray) -> np.ndarray:
         tables = _tables_for(self)
@@ -221,15 +209,11 @@ class TrackConfig(ConfigDocument):
 
 
 class PowerMapPoint(_Frozen):
-    """One breakpoint of the internal-combustion shaft-power map."""
-
     speed_mps: Parameter
     power_w: Parameter
 
 
 class CarConfig(ConfigDocument):
-    """Mass, aerodynamic, powertrain, electrical and thermal parameters."""
-
     mass_kg: Parameter
     cda_m2: Parameter
     cla_m2: Parameter
@@ -305,7 +289,7 @@ class CarConfig(ConfigDocument):
         return self
 
     def ice_power_at(self, speed_mps: float) -> float:
-        """Piecewise-linear shaft power with flat extrapolation at both ends."""
+
         points = self.ice_power_map
         if speed_mps <= points[0].speed_mps.value:
             return float(points[0].power_w.value)
@@ -320,13 +304,11 @@ class CarConfig(ConfigDocument):
 
     @property
     def downforce_factor_inv_m(self) -> float:
-        """``0.5 * rho * ClA / m`` — the 1/m coefficient in the corner-speed law."""
+
         return 0.5 * self.air_density_kgpm3.value * self.cla_m2.value / self.mass_kg.value
 
 
 class DriverConfig(_Frozen):
-    """Human execution model: how late and how imprecisely an action lands."""
-
     reaction_delay_mean_s: Parameter
     reaction_delay_std_s: Parameter
     execution_jitter_s: Parameter
@@ -345,8 +327,6 @@ class DriverConfig(_Frozen):
 
 
 class InitialCarState(_Frozen):
-    """Initial physical state of one car."""
-
     progress_m: Parameter
     speed_mps: Parameter
     energy_j: Parameter
@@ -356,20 +336,11 @@ class InitialCarState(_Frozen):
 
 
 class PolicySpec(_Frozen):
-    """Which frozen opponent policy drives a rival, and with what preferences."""
-
     kind: str = Field(pattern="^(conserve|normal|attack|defend)$")
     params: dict[str, Parameter] = Field(default_factory=dict)
 
 
 class ObservationConfig(_Frozen):
-    """Sensor pipeline: delay, noise, quantisation and channel availability.
-
-    ``expose_rival_energy=False`` removes the field entirely rather than sending
-    a zero or a null: a controller must not be able to distinguish "hidden" from
-    "measured as zero".
-    """
-
     delay_s: Parameter
     noise_sigma: dict[str, Parameter] = Field(default_factory=dict)
     quantisation: dict[str, Parameter] = Field(default_factory=dict)
@@ -391,8 +362,6 @@ class ObservationConfig(_Frozen):
 
 
 class ScenarioConfig(ConfigDocument):
-    """A reproducible initial condition plus its observation and opponent setup."""
-
     track_id: str = Field(min_length=1)
     cars: dict[str, str] = Field(min_length=1, description="car_id -> car config id")
     ego_car_id: str = Field(min_length=1)
@@ -440,12 +409,7 @@ class ScenarioConfig(ConfigDocument):
         return self
 
     def _check_gap(self) -> None:
-        """The declared spacing must agree with the declared initial states.
 
-        This keeps the fixture self-describing: the human-readable gap in the
-        scenario document cannot silently drift away from the progress values
-        the simulator actually starts from.
-        """
         assert self.gap_ahead_s is not None
         ego = self.initial_states[self.ego_car_id]
         rivals = [
@@ -476,8 +440,6 @@ class ScenarioConfig(ConfigDocument):
 
 
 class ScenarioBundle(_Frozen):
-    """A scenario resolved together with the documents it references."""
-
     scenario: ScenarioConfig
     track: Any
     car_configs: dict[str, CarConfig]
@@ -499,19 +461,8 @@ class ScenarioBundle(_Frozen):
 
 
 def load_track(track_id: str, paths: Paths | None = None) -> TrackConfig | Any:
-    """Resolve a track by id.
 
-    A synthetic sketch lives at ``configs/tracks/<id>.yaml``. A compiled real
-    circuit lives under ``artifacts/tracks/<id>/`` as a hash-pinned package and
-    is loaded through :mod:`afterlap_core.tracks.loader`. The YAML is checked
-    first so every existing fixture resolves exactly as before.
-    """
-    try:
-        return TrackConfig.model_validate(load_config("tracks", track_id, paths))
-    except FileNotFoundError:
-        from ..tracks.loader import load_track_package_source
-
-        return load_track_package_source(track_id, paths)
+    return TrackConfig.model_validate(load_config("tracks", track_id, paths))
 
 
 def load_car(car_id: str, paths: Paths | None = None) -> CarConfig:
@@ -522,45 +473,8 @@ def load_scenario(scenario_id: str, paths: Paths | None = None) -> ScenarioConfi
     return ScenarioConfig.model_validate(load_config("scenarios", scenario_id, paths))
 
 
-def resolve_bundle(
-    scenario: str | ScenarioConfig,
-    paths: Paths | None = None,
-    *,
-    seed: int | None = None,
-    allow_network: bool = False,
-) -> ScenarioBundle:
-    """``load_bundle`` plus the conditions tape the scenario names.
-
-    This lives here, below both planning and learning, because all three of
-    the planner, the training environment and the control plane must resolve a
-    scenario the same way. When they did not, the planner re-simulated a
-    real-circuit scenario under still, dry reference air while the episode it
-    was advising ran under a measured weather tape, and nothing reported the
-    disagreement.
-
-    A scenario without ``conditions_id`` is returned untouched, with the
-    static reference environment, so every existing synthetic scenario keeps
-    its exact bundle identity.
-    """
-    bundle = load_bundle(scenario, paths)
-    conditions_id = bundle.scenario.conditions_id
-    if conditions_id is None:
-        return bundle
-    from ..conditions.loader import environment_for, load_conditions, load_conditions_config
-
-    tape = load_conditions(conditions_id, paths, allow_network=allow_network)
-    config = load_conditions_config(conditions_id, paths)
-    environment = environment_for(
-        tape,
-        bundle.track,
-        seed=bundle.scenario.seed if seed is None else int(seed),
-        rubber_fraction=config.rubber_fraction,
-    )
-    return bundle.model_copy(update={"environment": environment, "environment_hash": tape.content_hash})
-
-
 def load_bundle(scenario: str | ScenarioConfig, paths: Paths | None = None) -> ScenarioBundle:
-    """Resolve a scenario and every document it references."""
+
     config = load_scenario(scenario, paths) if isinstance(scenario, str) else scenario
     track = load_track(config.track_id, paths)
     car_configs = {car_id: load_car(cfg_id, paths) for car_id, cfg_id in config.cars.items()}
@@ -577,7 +491,7 @@ def configs_root(paths: Paths | None = None) -> Path:
 
 
 def parameter_provenance(document: ConfigDocument) -> dict[str, Any]:
-    """Flatten every parameter's verification status for a provenance report."""
+
     report: dict[str, Any] = {}
 
     def walk(prefix: str, payload: Any) -> None:

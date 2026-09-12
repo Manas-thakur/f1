@@ -1,25 +1,9 @@
 [project]
 name = "afterlap-api"
 version = "0.1.0"
-description = "AFTERLAP Python CLI and session runtime"
+description = "Standalone race simulator"
 requires-python = "==3.12.*"
-dependencies = [
-    "afterlap-application",
-    "afterlap-contracts",
-    "afterlap-core",
-    "afterlap-infrastructure",
-    "anyio>=4.0",
-    "numpy>=2.0,<3",
-    "typer>=0.12",
-    "sqlalchemy>=2.0,<3",
-    "alembic>=1.13",
-]
-
-[project.scripts]
-afterlap-api = "afterlap_api.cli:main"
-
-[project.optional-dependencies]
-postgres = ["psycopg[binary]>=3.2"]
+dependencies = ["afterlap-core", "websockets>=15,<18"]
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13"]
@@ -30,7 +14,4 @@ module-name = "afterlap_api"
 module-root = ""
 
 [tool.uv.sources]
-afterlap-application = { workspace = true }
-afterlap-contracts = { workspace = true }
 afterlap-core = { workspace = true }
-afterlap-infrastructure = { workspace = true }

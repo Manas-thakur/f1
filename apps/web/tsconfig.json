@@ -15,7 +15,6 @@
       }
     ],
     "types": [
-      "vitest/globals",
       "node"
     ],
     "strict": true,
@@ -35,12 +34,6 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@contracts": [
-        "../../packages/contracts/generated/contracts.ts"
-      ],
-      "@contracts/*": [
-        "../../packages/contracts/generated/*"
-      ],
       "@/*": [
         "./src/*"
       ]
@@ -49,17 +42,13 @@
     "resolveJsonModule": true
   },
   "include": [
-    "../../packages/contracts/generated/contracts.ts",
     "e2e/**/*.ts",
     "next-env.d.ts",
     "next.config.ts",
-    "playwright.config.ts",
+    "playwright.race.config.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "vitest.config.ts",
-    ".next/types/**/*.ts",
-    "e2e-live/**/*.ts",
-    "playwright.live.config.ts"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "**/._*",

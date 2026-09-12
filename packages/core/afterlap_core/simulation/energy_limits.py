@@ -1,34 +1,3 @@
-"""Electrical deployment and recovery ceilings for one car at one instant.
-
-``RACE_CONDITION_MODEL.md`` ("Energy deployment and regeneration") asks for
-
-```text
-P_ers_drive_dc    = commanded electrical drive power after applicable limits
-P_ers_recharge_dc = recoverable braking power after motor, grip, battery and rule limits
-```
-
-This module is the single place those *limits* are assembled. The engine
-asks :class:`ElectricalLimits` for a deployment ceiling and a harvest ceiling
-and hands the answers to :class:`~.battery.EnergyLedger`, which remains the
-only place battery energy changes. Nothing here moves energy.
-
-Three sources feed a limit and every limit says which one bound it:
-
-* ``car_document`` -- the car configuration (DC ceilings, regen share, the
-  thermal derate ramp, optional charge-acceptance ramp).
-* ``event_curve_confirmed`` -- the event Power Unit Information curve, but only
-  when :func:`~afterlap_core.tracks.fia_overlay.overlay_effective_values`
-  returns it, i.e. two distinct reviewers confirmed the overlay and the curve
-  is not in ``unknown_fields``.
-* ``event_curve_unknown`` -- an overlay exists but its curve is unknown
-  (unreviewed, recalled, or chart-only). Unknown never widens a limit: the car
-  document ceiling applies unchanged.
-
-Every coefficient that is not a car-document field is a
-:class:`~afterlap_core.config.Parameter` with ``synthetic_assumption``
-provenance. None of them has been calibrated against a real car.
-"""
-
 from __future__ import annotations
 
 from bisect import bisect_right
@@ -39,8 +8,7 @@ from typing import TYPE_CHECKING, Any
 from ..config import Parameter, VerificationStatus
 from .physics import derate_factor
 
-if TYPE_CHECKING:  # pragma: no cover - typing only; the engine must not import the tracks package eagerly
-    from ..tracks.package import EventOverlay
+if TYPE_CHECKING:
     from .config import CarConfig
 
 KPH_PER_MPS = 3.6
@@ -62,7 +30,7 @@ REGEN_GRIP_FLOOR = Parameter(
         "Order-of-magnitude assumption for a wet surface; not a measured stability limit."
     ),
 )
-"""Default of the grip/stability regen law when the car document does not set one."""
+
 
 REGEN_GRIP_EXPONENT = Parameter(
     value=1.0,
@@ -79,25 +47,10 @@ LABEL_EVENT_CONFIRMED = "event_curve_confirmed"
 LABEL_EVENT_UNKNOWN = "event_curve_unknown"
 
 _Curve = tuple[tuple[float, ...], tuple[float, ...]]
-"""Speeds in m/s (strictly increasing) and DC power in W, ready for interpolation."""
-
-
-def _curve_si(rows: list[Any] | None) -> _Curve | None:
-    """Sort and convert confirmed ``(speed_kph, power_kw)`` rows; ``None`` stays unknown.
-
-    A confirmed *empty* list is knowledge ("no curve defined for this event"); it
-    is returned as an empty curve, which imposes no limit.
-    """
-    if rows is None:
-        return None
-    pairs = sorted((float(kph) / KPH_PER_MPS, float(kw) * W_PER_KW) for kph, kw in rows)
-    speeds = tuple(s for s, _ in pairs)
-    powers = tuple(p for _, p in pairs)
-    return speeds, powers
 
 
 def interpolate_curve(curve: _Curve, speed_mps: float) -> float:
-    """Piecewise-linear power at ``speed_mps`` with flat extrapolation at both ends."""
+
     speeds, powers = curve
     if not speeds:
         return inf
@@ -114,13 +67,6 @@ def interpolate_curve(curve: _Curve, speed_mps: float) -> float:
 
 @dataclass(frozen=True, slots=True)
 class EventEnergyLimits:
-    """The event-specific electrical values the rules allow us to use.
-
-    Built once per simulator reset from an :class:`EventOverlay` through
-    :func:`overlay_effective_values`, so the two-reviewer gate is applied
-    exactly once and the per-step object only reads tuples.
-    """
-
     event_id: str | None
     review_status: str | None
     standard_curve: _Curve | None
@@ -128,25 +74,22 @@ class EventEnergyLimits:
     recharge_allowance_j: float | None
 
     @classmethod
-    def none(cls) -> EventEnergyLimits:
-        """No overlay at all: every limit comes from the car document."""
-        return cls(None, None, None, None, None)
+    def race_2026(cls) -> EventEnergyLimits:
+        return cls(
+            "2026-base-illustration",
+            "public-base-limits; event overrides unavailable",
+            (
+                (0.0, 80.55555555555556, 94.44444444444444, 95.83333333333333),
+                (350000.0, 350000.0, 100000.0, 0.0),
+            ),
+            None,
+            8500000.0,
+        )
 
     @classmethod
-    def from_overlay(cls, overlay: EventOverlay | None) -> EventEnergyLimits:
-        if overlay is None:
-            return cls.none()
-        from ..tracks.fia_overlay import overlay_effective_values
+    def none(cls) -> EventEnergyLimits:
 
-        values = overlay_effective_values(overlay)
-        allowance = values["recharge_allowance_mj"]
-        return cls(
-            event_id=values["event_id"],
-            review_status=values["review_status"],
-            standard_curve=_curve_si(values["standard_curve"]),
-            overtake_curve=_curve_si(values["overtake_curve"]),
-            recharge_allowance_j=None if allowance is None else float(allowance) * J_PER_MJ,
-        )
+        return cls(None, None, None, None, None)
 
     @property
     def present(self) -> bool:
@@ -161,11 +104,7 @@ class EventEnergyLimits:
 
 
 def usable_regen_fraction(grip_multiplier: float, floor: float, exponent: float) -> float:
-    """Share of the regen route the driver can use at this grip; 1.0 at the dry reference.
 
-    ``((g - floor) / (1 - floor)) ** exponent`` clipped to [0, 1]. Exactly 1.0 at
-    ``g >= 1`` so a dry run is bit-identical to a run without this law.
-    """
     if grip_multiplier >= 1.0:
         return 1.0
     if grip_multiplier <= floor:
@@ -176,28 +115,10 @@ def usable_regen_fraction(grip_multiplier: float, floor: float, exponent: float)
 
 @dataclass(frozen=True, slots=True)
 class ElectricalLimits:
-    """Deployment and recovery ceilings for one car, one instant, one location.
-
-    Cheap to construct (four attribute stores), so the engine builds one per
-    car per force evaluation and keeps the last one for :meth:`describe`.
-    """
-
     car: CarConfig
     event: EventEnergyLimits
     battery_temperature_k: float
     grip_multiplier: float
-
-    @classmethod
-    def build(
-        cls,
-        car: CarConfig,
-        overlay: EventOverlay | None,
-        *,
-        battery_temperature_k: float,
-        grip_multiplier: float = 1.0,
-    ) -> ElectricalLimits:
-        """Convenience for callers holding a raw overlay (tests, tools)."""
-        return cls(car, EventEnergyLimits.from_overlay(overlay), battery_temperature_k, grip_multiplier)
 
     def thermal_derate(self) -> float:
         car = self.car
@@ -208,7 +129,7 @@ class ElectricalLimits:
         )
 
     def charge_acceptance(self) -> float:
-        """Battery acceptance factor in [0, 1]; 1.0 when the car document sets no ramp."""
+
         car = self.car
         start = car.charge_acceptance_start_temperature_k
         end = car.charge_acceptance_end_temperature_k
@@ -222,30 +143,25 @@ class ElectricalLimits:
         floor = float(REGEN_GRIP_FLOOR.value if floor_param is None else floor_param.value)
         return usable_regen_fraction(grip, floor, float(REGEN_GRIP_EXPONENT.value))
 
-    def applied_curve(self, *, overtake_eligible: bool) -> _Curve | None:
-        """The event curve that governs this car: ``None`` when unknown.
+    def applied_curve(self, overtake_eligible: bool) -> _Curve | None:
 
-        An eligible car uses the Overtake curve only when that curve is
-        confirmed *and has rows*; a confirmed "none defined" or an unknown
-        Overtake curve falls back to the standard curve. Unknown never widens.
-        """
         event = self.event
         overtake = event.overtake_curve
         if overtake_eligible and overtake is not None and overtake[0]:
             return overtake
         return event.standard_curve
 
-    def event_deploy_curve_w(self, speed_mps: float, *, overtake_eligible: bool) -> float:
-        """Event curve at this speed, or ``inf`` when unknown or none defined."""
-        curve = self.applied_curve(overtake_eligible=overtake_eligible)
+    def event_deploy_curve_w(self, speed_mps: float, overtake_eligible: bool) -> float:
+
+        curve = self.applied_curve(overtake_eligible)
         if curve is None:
             return inf
         return interpolate_curve(curve, speed_mps)
 
-    def deploy_ceiling_dc_w(self, speed_mps: float, *, overtake_eligible: bool = False) -> float:
-        """DC-bus deployment ceiling: min(car ceiling x thermal derate, event curve)."""
+    def deploy_ceiling_dc_w(self, speed_mps: float, overtake_eligible: bool = False) -> float:
+
         car_w = self.thermal_derate() * float(self.car.max_deploy_power_w.value)
-        return min(car_w, self.event_deploy_curve_w(speed_mps, overtake_eligible=overtake_eligible))
+        return min(car_w, self.event_deploy_curve_w(speed_mps, overtake_eligible))
 
     def harvest_ceiling_dc_w(
         self,
@@ -253,13 +169,7 @@ class ElectricalLimits:
         mechanical_brake_w: float,
         grip_multiplier: float | None = None,
     ) -> float:
-        """DC-bus recovery ceiling for the braking power currently applied.
 
-        ``min(max_harvest, regen_share * P_brake, grip_fraction * regen_share * P_brake,
-        acceptance * max_harvest)``. Braking power not admitted here stays on the
-        friction brakes; the ledger records it as mechanical rejection, so no
-        wheel work is counted twice.
-        """
         car = self.car
         max_harvest_w = float(car.max_harvest_power_w.value)
         regen_route_w = float(car.regen_share.value) * mechanical_brake_w
@@ -271,11 +181,11 @@ class ElectricalLimits:
         )
 
     def recharge_allowance_j(self) -> float | None:
-        """Event recharge allowance in joules; ``None`` when unknown."""
+
         return self.event.recharge_allowance_j
 
     def describe(self) -> dict[str, Any]:
-        """Which source bound each limit, plus the factors that were in force."""
+
         event = self.event
         acceptance_declared = (
             self.car.charge_acceptance_start_temperature_k is not None
@@ -290,8 +200,8 @@ class ElectricalLimits:
         return {
             "event_id": event.event_id,
             "review_status": event.review_status,
-            "deploy_standard": event.curve_label(self.applied_curve(overtake_eligible=False)),
-            "deploy_overtake": event.curve_label(self.applied_curve(overtake_eligible=True)),
+            "deploy_standard": event.curve_label(self.applied_curve(False)),
+            "deploy_overtake": event.curve_label(self.applied_curve(True)),
             "recharge_allowance": allowance_label,
             "recharge_allowance_j": event.recharge_allowance_j,
             "harvest_max": LABEL_CAR,

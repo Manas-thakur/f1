@@ -1,30 +1,11 @@
-# AFTERLAP working agreement
+# Simulator working agreement
 
-Product code lives at the repository root. Specifications live under `docs/` and are reference material.
+This repository tree contains only the standalone race simulator. Develop on feature branches from `simulator`, make checkpoint commits, and open pull requests targeting `simulator`. Keep CI green. Do not merge simulator work into `main`.
 
-## Layout
-
-- Python 3.12 via `uv` at the repository root. Run `uv run ...`. Control-plane work is `python -m afterlap_api.cli`.
-- Next.js (Bun 1.3) in `apps/web`: pages and `/api/v1` route handlers that invoke the Python CLI.
-- Local stack: `make up` from the repository root. Host ports live in `infra/ports.env`.
-- Docs: `docs/program`, `docs/contracts`, module specs, `docs/design`, `docs/deck`, `docs/handoffs`.
-- Handoffs: `docs/handoffs/<agent-id>.md`.
-
-## Engineering rules
-
-- SI units internally. Display conversions only at the UI edge.
-- Unknown values are `null` plus provenance and quality, never `0`.
-- Simulator truth (`WorldState`) never crosses into controller or UI payloads.
-- An unimplemented capability returns an explicit unavailable result.
-- No fabricated measurements, benchmark wins, trained weights or certification claims.
-- Never weaken or delete an invariant test to make a build pass.
-- No comments in source files. Allowed: license blocks and tool pragmas (`noqa`, `type: ignore`, `biome-ignore`).
-- Public functions have type hints. CI enforces Ruff, mypy, ESLint, tsc, pytest and Vitest.
-
-## Invariants
-
-- Simulation truth is isolated from controller observations and frontend operational views.
-- Team-to-car network control is outside real-F1 scope. The connected driver screen is simulation-only.
-- Hard modelled constraints are enforced outside RL. Human selection does not bypass them.
-- No live RL exploration, silent model replacement or automatic promotion.
-- Browser prototypes keep the visible illustrative-data notice.
+- Python 3.12 with uv, Bun 1.3 with Next.js.
+- SI units internally, display conversions at the UI boundary.
+- Simulator truth never crosses into controller or UI observations.
+- Unknown measurements stay unavailable.
+- Preserve physical invariants and deterministic checkpoint replay.
+- No code comments except functional lint and type directives.
+- No fabricated measurements, trained performance claims, or calibrated-vehicle claims.

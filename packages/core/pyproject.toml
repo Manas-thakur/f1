@@ -1,25 +1,19 @@
 [project]
 name = "afterlap-core"
 version = "0.1.0"
-description = "AFTERLAP domain core: data, simulation, rules, estimation, planning, learning, evaluation"
+description = "Standalone race simulator"
 requires-python = "==3.12.*"
 dependencies = [
     "afterlap-contracts",
-    "numpy>=2.0,<3",
-    "pyyaml>=6.0",
-    "typer>=0.12",
+    "gymnasium>=1,<2",
+    "numpy>=2,<3",
+    "pyyaml>=6",
+    "pydantic>=2.9,<3",
+    "numba>=0.61,<1",
 ]
 
 [project.optional-dependencies]
-data = ["pyarrow>=17.0"]
-solver = ["casadi>=3.6,<4"]
-track-ingestion = ["scipy>=1.14,<2", "pypdf>=5.0,<7"]
-learning = [
-    "torch>=2.4,<3",
-    "gymnasium>=1.0,<2",
-    "stable-baselines3>=2.4,<3",
-    "tensorboard>=2.17",
-]
+learning = ["stable-baselines3>=2.4,<3", "torch>=2.4,<3"]
 
 [build-system]
 requires = ["uv_build>=0.12.10,<0.13"]

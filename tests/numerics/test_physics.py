@@ -1,9 +1,3 @@
-"""Hand-computed checks of the pure physics kernels.
-
-Every expected value in this file is produced by arithmetic written out in the
-test itself. No expectation is obtained by calling the function under test.
-"""
-
 from __future__ import annotations
 
 import math
@@ -53,7 +47,7 @@ class TestResistanceForces:
 
 class TestTractionLimiting:
     def test_traction_limit_binds_before_the_velocity_integration(self) -> None:
-        """An infeasible drive force must never reach the acceleration."""
+
         mass = 800.0
         limit = 12000.0
         drag, roll, grade = 1837.5, 94.0, 0.0
@@ -124,7 +118,7 @@ class TestElectricalConversion:
 
 class TestThermalStep:
     def test_matches_the_analytic_solution_of_the_linear_ode(self) -> None:
-        """``C dT/dt = P - h (T - T_amb)`` has an exact exponential solution."""
+
         temperature, c_th, loss, h, ambient, dt = 320.0, 80000.0, 18000.0, 900.0, 303.15, 0.50
         steady_state = 303.15 + 18000.0 / 900.0
         assert steady_state == pytest.approx(323.15, abs=1e-9)
@@ -135,7 +129,7 @@ class TestThermalStep:
         )
 
     def test_repeated_steps_agree_with_one_long_step(self) -> None:
-        """The exact solution composes, so the result is dt-independent."""
+
         args = (80000.0, 18000.0, 900.0, 303.15)
         one_shot = physics.thermal_step(320.0, *args, 1.0)
         stepwise = 320.0
@@ -163,7 +157,7 @@ class TestThermalStep:
 
 class TestCorneringEnvelope:
     def test_corner_speed_matches_the_hand_solved_balance(self) -> None:
-        """``v^2 (|k| - mu * df) = mu * g``."""
+
         curvature, mu, g = 0.01250, 1.50, 9.80665
         downforce_factor = 0.5 * 1.20 * 4.00 / 798.0
         denominator = 0.01250 - 1.50 * downforce_factor

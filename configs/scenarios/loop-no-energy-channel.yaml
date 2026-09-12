@@ -1,5 +1,3 @@
-# Held-out case: the own-car energy channel is unavailable, so a controller must operate without any stored-energy measurement.
-# Illustrative initial condition. Not a calibrated real circuit or measured race.
 id: loop-no-energy-channel
 synthetic: true
 description: "Held-out case: the own-car energy channel is unavailable, so a controller must operate without any stored-energy measurement."

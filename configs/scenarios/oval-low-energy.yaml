@@ -1,5 +1,3 @@
-# Held-out case: own car starts near the lower energy bound on a constant-radius oval.
-# Illustrative initial condition. Not a calibrated real circuit or measured race.
 id: oval-low-energy
 synthetic: true
 description: "Held-out case: own car starts near the lower energy bound on a constant-radius oval."

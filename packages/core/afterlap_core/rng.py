@@ -1,16 +1,9 @@
-"""Keyed random streams for reproducible branching.
-
-Exogenous draws are keyed by ``(scenario, seed, event_type, physical_time_bin)``
-rather than by a mutable call counter. Two branches that make different
-decisions therefore still see the *same* wind, grip and sensor noise, which is
-what makes a paired comparison meaningful.
-"""
-
 from __future__ import annotations
 
 import hashlib
 import struct
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -19,20 +12,14 @@ _MASK64 = (1 << 64) - 1
 
 
 def derive_seed(*parts: Any) -> int:
-    """Derive a stable 64-bit seed from arbitrary key parts.
 
-    Stable across processes and platforms because it hashes the textual key
-    rather than relying on Python's salted ``hash()``.
-    """
     payload = "\x1f".join(repr(p) for p in parts).encode("utf-8")
     digest = hashlib.blake2b(payload, digest_size=8).digest()
-    return int(struct.unpack("<Q", digest)[0] & _MASK64)
+    return struct.unpack("<Q", digest)[0] & _MASK64
 
 
 @dataclass(frozen=True, slots=True)
 class StreamKey:
-    """Identity of one exogenous disturbance draw."""
-
     scenario: str
     seed: int
     event_type: str
@@ -42,14 +29,12 @@ class StreamKey:
         return derive_seed(self.scenario, self.seed, self.event_type, self.time_bin)
 
 
+@lru_cache(maxsize=8192)
+def _normal_sample(key: StreamKey, scale: float) -> float:
+    return float(np.random.default_rng(key.as_seed()).normal(0.0, scale))
+
+
 class KeyedRandom:
-    """Exogenous disturbance source shared by paired experiment branches.
-
-    ``bin_width_s`` quantises physical time so that two branches which reach the
-    same physical instant draw the same disturbance even if they arrived there
-    after a different number of internal calls.
-    """
-
     def __init__(self, scenario: str, seed: int, *, bin_width_s: float = 0.5) -> None:
         if bin_width_s <= 0.0:
             raise ValueError("bin width must be positive")
@@ -69,7 +54,7 @@ class KeyedRandom:
         return np.random.default_rng(self.key(event_type, physical_time_s).as_seed())
 
     def normal(self, event_type: str, physical_time_s: float, *, scale: float = 1.0) -> float:
-        return float(self.generator(event_type, physical_time_s).normal(0.0, scale))
+        return _normal_sample(self.key(event_type, physical_time_s), scale)
 
     def uniform(
         self, event_type: str, physical_time_s: float, *, low: float = 0.0, high: float = 1.0
@@ -78,13 +63,6 @@ class KeyedRandom:
 
 
 class StreamRegistry:
-    """Named independent generators whose state is captured in a snapshot.
-
-    Each name (sensor noise, driver response, opponent perturbation) advances
-    independently, so adding a call in one subsystem cannot shift another's
-    sequence.
-    """
-
     def __init__(self, root_seed: int, names: tuple[str, ...] = ()) -> None:
         self.root_seed = root_seed
         self._generators: dict[str, np.random.Generator] = {}
@@ -97,7 +75,7 @@ class StreamRegistry:
         return self._generators[name]
 
     def capture(self) -> dict[str, Any]:
-        """Serialisable state of every stream, for snapshot/restore."""
+
         return {
             "root_seed": self.root_seed,
             "streams": {

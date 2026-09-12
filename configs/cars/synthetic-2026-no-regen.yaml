@@ -1,6 +1,3 @@
-# Synthetic 2026-style energy-recovery car sketch.
-# NOT a measured Formula 1 car. Every value is a plausible-order assumption
-# chosen so the reduced model runs; none is calibrated against real data.
 id: synthetic-2026-no-regen
 synthetic: true
 description: "Synthetic car with regeneration disabled, for the brake-without-recharge validation case."

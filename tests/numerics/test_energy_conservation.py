@@ -1,14 +1,3 @@
-"""The validation matrix from ``simulation/NUMERICS_AND_VALIDATION.md``.
-
-One test per row of the table, plus the energy-balance closure whose tolerance
-is established here and reported in ``handoffs/A03.md``.
-
-Tolerances are stated as named constants with the reasoning next to them. None
-of them is loose enough to hide a conservation failure: the observed residuals
-are five to seven orders of magnitude below every threshold, which is what makes
-the thresholds meaningful rather than decorative.
-"""
-
 from __future__ import annotations
 
 from itertools import pairwise
@@ -20,24 +9,16 @@ from afterlap_core.simulation import DriverAction, Simulator
 from afterlap_core.simulation.physics import kinetic_energy
 
 ENERGY_CLOSE_TOLERANCE_J = 1.0e-4
-"""Absolute battery-balance residual allowed after a full run.
 
-Established empirically: the observed residual over a 30 s two-car run with
-about 2.4 MJ of throughput is below 1e-7 J, i.e. around 1e-13 relative. The
-threshold is three orders of magnitude above the observed value so that
-platform-level float64 differences do not make the suite flaky, and still nine
-orders below anything a real accounting error would produce.
-"""
 
 RELATIVE_CLOSE_TOLERANCE = 1.0e-12
-"""Residual relative to the total energy moved through the battery."""
+
 
 ENVELOPE_TOLERANCE = 1.0e-9
-"""The tyre envelope is a hard constraint; only float noise is tolerated."""
 
 
 def _coast_action() -> DriverAction:
-    """No drive, no brake, no harvest source: pure resistance deceleration."""
+
     return DriverAction(profile=DeploymentProfile.HARVEST, throttle=0.0, brake=0.0)
 
 
@@ -208,7 +189,7 @@ class TestHarvestNearTheUpperBound:
 
 class TestConstantRadius:
     def test_lateral_demand_stays_inside_the_friction_envelope(self) -> None:
-        """The oval's corners have exactly constant curvature by construction."""
+
         from conftest import build_bundle
 
         bundle = build_bundle(
@@ -314,7 +295,7 @@ class TestEnergyBalanceCloses:
             assert abs(residual) <= RELATIVE_CLOSE_TOLERANCE * throughput + 1.0e-6
 
     def test_no_net_recharge_appears_without_a_physical_source(self) -> None:
-        """Total DC harvest can never exceed the mechanical energy offered."""
+
         from conftest import build_bundle
 
         bundle = build_bundle("oval-defend-hold")
@@ -326,7 +307,7 @@ class TestEnergyBalanceCloses:
             assert ledger.battery_in_j <= ledger.harvested_dc_j + 1e-9
 
     def test_the_three_ledgers_are_not_interchangeable(self) -> None:
-        """CU-K bus energy, battery gain and mechanical energy differ by losses."""
+
         from conftest import build_bundle
 
         bundle = build_bundle(

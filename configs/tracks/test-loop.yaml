@@ -1,5 +1,3 @@
-# Synthetic 5200 m closed loop with a mix of straights, medium corners and a hairpin.
-# Synthetic centreline sketch. Not surveyed, not a real circuit.
 id: test-loop
 synthetic: true
 description: "Synthetic 5200 m closed loop with a mix of straights, medium corners and a hairpin."

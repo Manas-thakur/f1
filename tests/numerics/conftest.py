@@ -1,12 +1,3 @@
-"""Fixture builders for the numerical validation suite.
-
-The shipped scenarios carry a realistic human reaction delay. A numerical
-validation case needs the input it asks for to be applied at the instant it
-asks for it, otherwise the first fraction of a second measures the *previous*
-action. These helpers therefore build derived bundles with an explicit,
-documented override rather than adding a second set of fixture files.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -35,7 +26,7 @@ def build_bundle(
     energy_channel_available: bool | None = None,
     noise_free: bool = False,
 ) -> ScenarioBundle:
-    """Load a shipped scenario and apply explicit test overrides."""
+
     bundle = load_bundle(scenario_id)
     scenario = bundle.scenario
     updates: dict[str, Any] = {}

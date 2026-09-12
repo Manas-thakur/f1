@@ -1,38 +1,32 @@
-name: ci
+name: simulator
 
 on:
   push:
-    branches: [main]
+    branches: [simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   pull_request:
+    branches: [simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: simulator-${{ github.ref }}
   cancel-in-progress: true
-
-permissions:
-  contents: read
-
-env:
-  OMP_NUM_THREADS: "1"
-  OPENBLAS_NUM_THREADS: "1"
 
 jobs:
   python:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
           enable-cache: true
       - name: Install
-        run: uv sync --frozen --all-packages --all-groups
-      - name: Lockfile is current
-        run: uv lock --check
+        run: uv sync --frozen --all-packages
       - name: Format
         run: uv run ruff format --check .
       - name: Lint
@@ -41,172 +35,48 @@ jobs:
         run: uv run mypy
       - name: Comment policy
         run: uv run python scripts/check_no_comments.py
-      - name: Docs package
-        run: uv run python docs/tools/validate_package.py
-      - name: Schema drift
-        run: uv run python -m afterlap_contracts.schema_export --check
-      - name: Doctor
-        run: uv run python -m afterlap_core.cli doctor
-      - name: Tests
-        run: uv run pytest --junitxml=python-results.xml
-
-      - name: Python results
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: python-results
-          path: python-results.xml
+      - name: Race and physics tests
+        run: uv run pytest
 
   web:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
         with:
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+          python-version: "3.12"
+          enable-cache: true
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.14"
       - name: Install
-        run: bun install --frozen-lockfile
-      - name: Lint
-        run: bun run lint
-      - name: Types
-        run: bun run typecheck
-      - name: Unit tests
-        run: bun run test
-      - name: Build
+        run: |
+          uv sync --frozen --all-packages
+          bun install --frozen-lockfile || bun install --frozen-lockfile
+      - name: Lint and types
+        run: |
+          bun run lint
+          bun run typecheck
+      - name: Production build
         run: bun run build
-      - name: Install Playwright browser
-        run: bunx playwright install chromium
-      - name: Playwright
-        run: bun run test:e2e
-      - name: Browser failure artifacts
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: browser-failures
-          path: apps/web/test-results
+      - name: Install browser
+        run: bunx playwright install --with-deps chromium
+      - name: Live race and forwarded connection
+        run: make race-browser-check
 
-
-  supply-chain:
+  training:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
           enable-cache: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.3.14"
-      - name: Frozen installs
-        run: |
-          uv sync --frozen --all-packages --all-groups
-          bun install --frozen-lockfile
-      - name: Known vulnerabilities in the Python graph
-        run: uv audit --preview-features audit-command
-      - name: Known vulnerabilities in the JavaScript graph
-        run: bun audit
-      - name: Workflow security
-        run: uvx zizmor@1.30.1 --offline --persona=regular .github/workflows
-
-  portability:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.3.14"
-      - name: Install Python
-        run: uv sync --frozen --all-packages
-      - name: Cross-platform Python contracts
-        run: uv run pytest tests/operations/test_platform_portability.py tests/operations/test_model_regime.py tests/operations/test_worker_heartbeat.py tests/operations/test_session_process_runtime.py
-      - name: Install web
-        run: bun install --frozen-lockfile
-      - name: Cross-platform web types
-        run: bun run typecheck
-
-  integration:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:17.7
-        env:
-          POSTGRES_USER: afterlap
-          POSTGRES_PASSWORD: integration-test
-          POSTGRES_DB: afterlap
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U afterlap"
-          --health-interval 5s --health-timeout 5s --health-retries 12
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: "1.3.14"
-      - name: Frozen dependencies
-        run: |
-          uv sync --frozen --all-packages --all-groups
-          bun install --frozen-lockfile
-      - name: Production website
-        run: bun run build
-      - name: Browser
-        run: bun run e2e:install
-      - name: Live PostgreSQL, runtime, worker and browser audit
-        env:
-          AFTERLAP_AUDIT_DATABASE_URL: postgresql+psycopg://afterlap:integration-test@127.0.0.1:5432/afterlap
-        run: uv run --no-sync python scripts/audit.py --live-only --output "${{ runner.temp }}/audit"
-      - name: Integration results
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: integration-audit
-          path: |
-            ${{ runner.temp }}/audit/*.log
-            ${{ runner.temp }}/audit/summary.json
-            ${{ runner.temp }}/audit/runbook.json
-            ${{ runner.temp }}/audit/screens
-            ${{ runner.temp }}/audit/recordings
-
-  gates:
-    if: always()
-    needs: [python, web, supply-chain, portability, integration]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Every gate passed
-        run: |
-          printf '%s\n' \
-            "python       ${{ needs.python.result }}" \
-            "web          ${{ needs.web.result }}" \
-            "supply-chain ${{ needs.supply-chain.result }}" \
-            "portability  ${{ needs.portability.result }}" \
-            "integration  ${{ needs.integration.result }}"
-          [ "${{ needs.python.result }}" = success ] \
-            && [ "${{ needs.web.result }}" = success ] \
-            && [ "${{ needs.supply-chain.result }}" = success ] \
-            && [ "${{ needs.portability.result }}" = success ] \
-            && [ "${{ needs.integration.result }}" = success ]
+      - name: Install CPU training dependencies
+        run: uv sync --frozen --all-packages --group learning
+      - name: Generate transitions
+        run: make race-generate CIRCUIT=monza CARS=2 LAPS=1 DURATION=5
+      - name: Train a policy
+        run: make race-train CIRCUIT=monza CARS=1 LAPS=1 DURATION=8 STEPS=128

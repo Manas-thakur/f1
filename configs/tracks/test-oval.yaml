@@ -1,5 +1,3 @@
-# Synthetic 4000 m oval: two equal straights joined by two 180-degree constant-radius corners.
-# Synthetic centreline sketch. Not surveyed, not a real circuit.
 id: test-oval
 synthetic: true
 description: "Synthetic 4000 m oval: two equal straights joined by two 180-degree constant-radius corners."
