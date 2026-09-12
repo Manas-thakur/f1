@@ -319,9 +319,6 @@ export class RaceWorld {
     this.distance = 1;
     this.onMode(mode);
     const car = this.cars.get(this.selected);
-    if (this.frame) {
-      this.pitLane.update(this.frame, performance.now() / 1000);
-    }
     if (car) {
       this.lastFollowPosition.copy(car.position);
     }
@@ -423,6 +420,9 @@ export class RaceWorld {
   private animate = () => {
     if (this.disposed) {
       return;
+    }
+    if (this.frame) {
+      this.pitLane.update(this.frame, performance.now() / 1000);
     }
     const renderedPoses = this.motion.sample(performance.now());
     for (const [id, model] of this.cars) {
