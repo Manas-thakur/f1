@@ -1,6 +1,6 @@
 # @afterlap/video
 
-Remotion composition for the AFTERLAP concept promo, `ApexLedgerPromo`:
+Remotion composition for the AFTERLAP explainer, `AfterlapPromo`:
 1920x1080, 30 fps, 942 frames (31.4 s), no audio track.
 
 ## Commands
@@ -11,7 +11,7 @@ bun run --filter @afterlap/video render
 bun run --filter @afterlap/video typecheck
 ```
 
-`dev` opens Remotion Studio. `render` writes `out/apexledger-promo.mp4`.
+`dev` opens Remotion Studio. `render` writes `out/afterlap-promo.mp4`.
 
 ## Structure
 

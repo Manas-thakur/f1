@@ -54,7 +54,7 @@ export const Logo = () => {
             }%, rgba(0,0,0,0) 100%)`,
           }}
         >
-          APEXLEDGER
+          AFTERLAP
         </div>
         <div
           style={{

@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "remotion studio src/index.ts",
-    "render": "remotion render src/index.ts ApexLedgerPromo out/apexledger-promo.mp4",
-    "still": "remotion still src/index.ts ApexLedgerPromo",
+    "render": "remotion render src/index.ts AfterlapPromo out/afterlap-promo.mp4",
+    "still": "remotion still src/index.ts AfterlapPromo",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

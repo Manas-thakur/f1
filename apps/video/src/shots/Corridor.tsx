@@ -35,7 +35,7 @@ type Band = {
 const BANDS: readonly Band[] = [
   {
     id: "delay",
-    label: "DELAY",
+    label: "PREPARE",
     from: APEX_X,
     to: -2.21965,
     labelX: 1081,
@@ -55,7 +55,7 @@ const BANDS: readonly Band[] = [
   },
   {
     id: "recharge",
-    label: "RECHARGE",
+    label: "RECOVER",
     from: -5.282,
     to: -9.53467,
     labelX: 1624,
@@ -242,7 +242,7 @@ export const Corridor = () => {
           opacity: attackIn,
         }}
       >
-        ATTACK NOW
+        ATTACK
       </div>
 
       {BANDS.map((b) => {
@@ -314,7 +314,7 @@ export const Corridor = () => {
               color: PALETTE.paper,
             }}
           >
-            NEXT 2-3 LAPS
+            RE-CHECKED EACH TICK
           </div>
         </div>
       ) : null}
@@ -332,7 +332,7 @@ export const Corridor = () => {
           opacity: rails,
         }}
       >
-        TELEMETRY → BELIEF → RULE MASK → COUNTERFACTUALS → DECISION
+        TELEMETRY → ESTIMATE → RULE CHECK → SCENARIOS → RECOMMENDATION
       </div>
 
       <div
@@ -350,7 +350,7 @@ export const Corridor = () => {
           opacity: rails,
         }}
       >
-        LAP 2–3 ERS
+        EVALUATION HORIZON
       </div>
     </>
   );

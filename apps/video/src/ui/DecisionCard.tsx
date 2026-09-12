@@ -1,12 +1,12 @@
 import type { CSSProperties } from "react";
 import { FONT, PALETTE } from "../theme";
 
-const OPTIONS: readonly string[] = ["ATTACK NOW", "DELAY", "DEFEND", "RECHARGE"];
+const OPTIONS: readonly string[] = ["ATTACK", "PREPARE", "DEFEND", "RECOVER"];
 
 const BODY: readonly string[] = [
-  "Lower future energy debt",
-  "Reduced re-pass exposure",
-  "Action legal under current rule state",
+  "Trigger: detection line · end: counterattack checkpoint",
+  "Lower future energy debt, less re-pass exposure",
+  "Legal under ruleset 2026.08 · checked independently",
 ];
 
 export type DecisionCardProps = {
@@ -47,7 +47,7 @@ export const DecisionCard = ({
             color: PALETTE.paper,
           }}
         >
-          APEXLEDGER · LIVE DECISION
+          AFTERLAP · RECOMMENDATION
         </span>
       </div>
       <div
@@ -60,9 +60,9 @@ export const DecisionCard = ({
           opacity: bodyReveal,
         }}
       >
-        <span style={{ color: PALETTE.paper }}>WAIT </span>
+        <span style={{ color: PALETTE.paper }}>PREPARE </span>
         <span style={{ color: PALETTE.green, textShadow: "0 0 24px rgba(84,223,89,0.42)" }}>
-          ONE WINDOW
+          ATTACK
         </span>
       </div>
       <div style={{ marginTop: 6, opacity: bodyReveal }}>

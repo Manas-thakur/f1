@@ -4,7 +4,7 @@ import { VIDEO } from "./theme";
 
 export const Root = () => (
   <Composition
-    id="ApexLedgerPromo"
+    id="AfterlapPromo"
     component={Promo}
     durationInFrames={VIDEO.durationInFrames}
     fps={VIDEO.fps}

@@ -25,9 +25,9 @@ const GROUND: Camera = {
 };
 
 const CLAUSES: readonly string[] = [
-  "ANNEX 4 · DEPLOYMENT WINDOW LIMITED TO TWO ACTIVATIONS PER LAP SECTOR",
-  "ART. 12.3 · OVERTAKE ASSIST DISABLED WITHIN 100 M OF A YELLOW SECTOR",
-  "APP. 9B · HARVEST CREDIT MUST SETTLE BEFORE THE NEXT CONTROL LINE",
+  "SEASON REVISION → EVENT PACK → TIMESTAMPED RACE-CONTROL STATE",
+  "ELIGIBILITY OBSERVED AT DETECTION · ACTIVATED AT THE CROSSING",
+  "MISSING INFORMATION RESOLVES TO UNKNOWN, NEVER TO A DEFAULT",
 ];
 
 const BOX = planeCorners([2.226, 4.185, 0], 7.48, 1.772, -0.055, 0);
@@ -42,7 +42,7 @@ export const RuleMask = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const hud = interpolate(frame, [12, 34], [0, 1], {
+  const hud = interpolate(frame, [8, 26], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -62,8 +62,8 @@ export const RuleMask = () => {
 
   return (
     <div style={{ position: "absolute", inset: 0, opacity: out }}>
-      <Scrim left={0} top={606} width={1920} height={330} strength={0.24} blur={16} shape="linear" opacity={hud} />
-      <Scrim left={540} top={96} width={1160} height={350} strength={0.3} blur={16} opacity={box} />
+      <Scrim left={0} top={606} width={1920} height={330} strength={0.4} blur={20} shape="linear" opacity={hud} />
+      <Scrim left={540} top={96} width={1160} height={350} strength={0.34} blur={18} opacity={hud} />
       <Scrim left={1200} top={886} width={720} height={112} strength={0.4} blur={13} opacity={stamp} />
 
       <svg
@@ -74,12 +74,12 @@ export const RuleMask = () => {
       >
         <defs>
           <radialGradient id="mask-gold">
-            <stop offset="0.05" stopColor="rgba(236,164,36,0.40)" />
+            <stop offset="0.05" stopColor="rgba(236,164,36,0.52)" />
             <stop offset="0.62" stopColor="rgba(236,164,36,0.17)" />
             <stop offset="1" stopColor="rgba(236,164,36,0)" />
           </radialGradient>
           <radialGradient id="mask-teal">
-            <stop offset="0.05" stopColor="rgba(60,205,220,0.42)" />
+            <stop offset="0.05" stopColor="rgba(60,205,220,0.54)" />
             <stop offset="0.62" stopColor="rgba(60,205,220,0.18)" />
             <stop offset="1" stopColor="rgba(60,205,220,0)" />
           </radialGradient>
@@ -96,7 +96,7 @@ export const RuleMask = () => {
             camera={GROUND}
             center={[-2.02, -7.35]}
             radius={[1.86 * fields, 2.05 * fields]}
-            stroke="rgba(236,164,36,0.55)"
+            stroke="rgba(236,164,36,0.3)"
             strokeWidth={2}
           />
           <GroundEllipse
@@ -109,7 +109,7 @@ export const RuleMask = () => {
             camera={GROUND}
             center={[2.24, -7.35]}
             radius={[1.66 * fields, 1.95 * fields]}
-            stroke="rgba(60,205,220,0.62)"
+            stroke="rgba(60,205,220,0.34)"
             strokeWidth={2}
           />
         </g>
@@ -137,7 +137,7 @@ export const RuleMask = () => {
                 color: PALETTE.paper,
               }}
             >
-              RULE MASK
+              RULE PACK
             </span>
           </div>
           <div style={{ padding: "46px 48px 0" }}>
@@ -178,7 +178,7 @@ export const RuleMask = () => {
         <div
           style={{
             position: "absolute",
-            left: 32,
+            left: 56,
             top: 636,
             transform: skew(-11, 4),
             transformOrigin: "left center",
@@ -194,11 +194,11 @@ export const RuleMask = () => {
               whiteSpace: "nowrap",
             }}
           >
-            ENERGY 2.4–3.0 MJ
+            BATTERY 4.1 MJ
           </div>
           <div style={{ marginTop: 3 }}>
             <Chip tone="amber" fontSize={17}>
-              INFERRED RANGE
+              MEASURED
             </Chip>
           </div>
         </div>
@@ -206,7 +206,7 @@ export const RuleMask = () => {
         <div
           style={{
             position: "absolute",
-            left: 199,
+            left: 216,
             top: 632,
             transform: skew(-13, 5),
             transformOrigin: "left center",
@@ -226,7 +226,7 @@ export const RuleMask = () => {
           </div>
         </div>
 
-        <div style={{ position: "absolute", left: 207, top: 798, transform: skew(-13, 5) }}>
+        <div style={{ position: "absolute", left: 224, top: 798, transform: skew(-13, 5) }}>
           <Chip tone="dark" fontSize={16}>
             OBSERVED
           </Chip>
@@ -235,7 +235,7 @@ export const RuleMask = () => {
         <div
           style={{
             position: "absolute",
-            left: 607,
+            left: 620,
             top: 752,
             transform: skew(-13, 5),
             transformOrigin: "left center",
@@ -251,7 +251,7 @@ export const RuleMask = () => {
               whiteSpace: "nowrap",
             }}
           >
-            RIVAL: SAVE / NEUTRAL / DEFEND / COUNTERATTACK
+            RIVAL BELIEF: CONSERVE / NORMAL / ATTACK / DEFEND
           </div>
         </div>
       </div>

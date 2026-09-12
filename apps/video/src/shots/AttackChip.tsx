@@ -19,7 +19,7 @@ export const AttackChip = () => {
   const jitter = frame > 8 && frame < 16 ? (Math.floor(frame / 2) % 2 === 0 ? 0.62 : 1) : 1;
   return (
     <>
-    <Scrim left={1206} top={40} width={600} height={260} strength={0.24} blur={17} opacity={rise * out} />
+    <Scrim left={1170} top={24} width={690} height={300} strength={0.4} blur={24} opacity={rise * out} />
     <div
       style={{
         position: "absolute",
@@ -46,7 +46,7 @@ export const AttackChip = () => {
           lineHeight: "90px",
         }}
       >
-        ATTACK
+        SELECTED
       </span>
       <span
         style={{

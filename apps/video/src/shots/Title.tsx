@@ -38,7 +38,7 @@ export const Title = () => {
           marginBottom: 8,
         }}
       >
-        2026 · ENERGY &amp; OVERTAKE INTELLIGENCE
+        AFTERLAP · ENERGY &amp; BATTLE DECISION SUPPORT
       </div>
       {LINES.map((line, i) => {
         const t = interpolate(frame, [6 + i * 5, 20 + i * 5], [0, 1], {

@@ -21,7 +21,7 @@ export const Decision = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const out = interpolate(frame, [134, 142], [1, 0], {
+  const out = interpolate(frame, [128, 137], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -36,7 +36,7 @@ export const Decision = () => {
         reveal={card}
         bodyReveal={body}
         optionsReveal={options}
-        highlight="DELAY"
+        highlight="PREPARE"
         style={{
           left: 868,
           top: 266,
@@ -59,7 +59,7 @@ export const Decision = () => {
           transformOrigin: "left center",
         }}
       >
-        {["ABSTAIN", "IF FUTURES", "DISAGREE"].map((line) => (
+        {["WITHDRAWN", "IF DATA", "GOES STALE"].map((line) => (
           <div
             key={line}
             style={{

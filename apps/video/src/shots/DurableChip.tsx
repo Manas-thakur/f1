@@ -37,7 +37,7 @@ export const DurableChip = () => {
           color: PALETTE.paper,
         }}
       >
-        DURABLE POSITION
+        POSITION RETAINED
       </span>
     </div>
     </>

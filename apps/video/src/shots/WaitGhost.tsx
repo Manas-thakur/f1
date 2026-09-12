@@ -1,17 +1,20 @@
 import { interpolate, useCurrentFrame } from "remotion";
+import { Scrim } from "../ui/Scrim";
 import { FONT, PALETTE } from "../theme";
 
 export const WaitGhost = () => {
   const frame = useCurrentFrame();
-  const rise = interpolate(frame, [0, 7], [0, 1], {
+  const rise = interpolate(frame, [0, 4], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const fade = interpolate(frame, [12, 20], [1, 0], {
+  const fade = interpolate(frame, [5, 11], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
   return (
+    <>
+    <Scrim left={800} top={30} width={860} height={420} strength={0.3} blur={24} opacity={rise * fade} />
     <div
       style={{
         position: "absolute",
@@ -39,8 +42,9 @@ export const WaitGhost = () => {
           color: PALETTE.paper,
         }}
       >
-        WAIT
+        PLAN
       </span>
     </div>
+    </>
   );
 };
