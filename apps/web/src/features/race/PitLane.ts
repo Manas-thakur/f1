@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
-import type { CircuitMap, RaceFrame } from './types';
+import type { MotionPose } from './motion';
+import type { CircuitMap } from './types';
 import { box, trackPose } from './worldGeometry';
 
 const PIT_BOX_LAST_OFFSET_M = 42;
@@ -107,15 +108,15 @@ export class PitLane extends THREE.Group {
     ));
   }
 
-  update(frame: RaceFrame, time: number) {
+  update(poses: Map<string, MotionPose>, time: number) {
     for (const [carId, rig] of this.crews) {
-      const car = frame.cars.find((item) => item.id === carId);
-      rig.group.visible = car?.tyres.phase === 'service';
-      if (!car || !rig.group.visible) {
+      const pose = poses.get(carId);
+      rig.group.visible = pose?.pitPhase === 'service';
+      if (!pose || !rig.group.visible) {
         continue;
       }
-      const duration = Math.max(0.1, car.tyres.service_duration_s);
-      const elapsed = duration - car.tyres.service_remaining_s;
+      const duration = Math.max(0.1, pose.serviceDuration ?? 0.1);
+      const elapsed = duration - (pose.serviceRemaining ?? 0);
       const choreography = Math.sin(Math.min(1, elapsed / duration) * Math.PI);
       for (const [index, person] of rig.mechanics.entries()) {
         person.rotation.z = (index % 2 ? -1 : 1) * choreography * 0.22;

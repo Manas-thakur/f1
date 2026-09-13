@@ -38,6 +38,7 @@ test('motion interpolates continuously without easing at each received point', (
   const motion = new RaceMotion();
   for (let i = 0; i < 5; i++) {
     const update = frame(i * 0.1, i * 10);
+    update.requested_rate = 2 / 3;
     const car = update.cars[0];
     if (car) {
       car.channels['lateral_d_m'] = i;
@@ -55,10 +56,16 @@ test('motion interpolates continuously without easing at each received point', (
 
 test('motion crosses the finish line forwards, settles into a pause and restores immediately', () => {
   const motion = new RaceMotion();
-  motion.push(frame(1, 995), 0);
-  motion.push(frame(1.1, 1005), 150);
+  const beforeLine = frame(1, 995);
+  const afterLine = frame(1.1, 1005);
+  beforeLine.requested_rate = 2 / 3;
+  afterLine.requested_rate = 2 / 3;
+  motion.push(beforeLine, 0);
+  motion.push(afterLine, 150);
   expect(motion.sample(450).get('car-01')?.progress).toBeCloseTo(1000);
-  motion.push(frame(1.1, 1005, 'paused'), 460);
+  const paused = frame(1.1, 1005, 'paused');
+  paused.requested_rate = 2 / 3;
+  motion.push(paused, 460);
   expect(motion.sample(460).get('car-01')?.progress).toBeLessThan(1001);
   expect(motion.sample(3000).get('car-01')?.progress).toBe(1005);
   motion.push(frame(0, 5, 'paused', 2), 3100);
@@ -135,6 +142,18 @@ test('pit phases follow the rendered pit-lane lateral path', () => {
   }
   motion.push(update, 0);
   expect(motion.sample(0).get('car-01')?.lateral).toBe(-13);
+  expect(motion.sample(0).get('car-01')?.pitPhase).toBe('service');
+});
+
+test('network arrival delays do not change the requested visual playback rate', () => {
+  const motion = new RaceMotion();
+  const arrivals = [0, 100, 200, 950, 1050, 1150];
+  for (const [index, arrival] of arrivals.entries()) {
+    const update = frame(index * 0.1, index * 5.5);
+    update.requested_rate = 2;
+    motion.push(update, arrival);
+  }
+  expect(motion.playbackRate).toBe(2);
 });
 
 test('arrival jitter does not turn constant motion into packet-sized jumps', () => {
@@ -144,7 +163,9 @@ test('arrival jitter does not turn constant motion into packet-sized jumps', () 
   const positions: number[] = [];
   for (let now = 0; now <= 1800; now += 10) {
     while (next < arrivals.length && (arrivals[next] ?? Infinity) <= now) {
-      motion.push(frame(next * 0.1, next * 10), arrivals[next] ?? 0);
+      const update = frame(next * 0.1, next * 10);
+      update.requested_rate = 2 / 3;
+      motion.push(update, arrivals[next] ?? 0);
       next++;
     }
     const position = motion.sample(now).get('car-01')?.progress ?? 0;
