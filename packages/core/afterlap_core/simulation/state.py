@@ -67,6 +67,7 @@ class CarState:
     last_boost_s: float = 0.0
     boost_total_s: float = 0.0
     boost_this_lap_s: float = 0.0
+    boost_latched: float = 0.0
     deployed_this_lap_j: float = 0.0
     energy_laps: list[dict[str, float]] = field(default_factory=list)
     target_speed_mps: float = 0.0

@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   reactStrictMode: true,
+  ...(process.env['RACE_ALLOWED_DEV_ORIGINS']
+    ? { allowedDevOrigins: process.env['RACE_ALLOWED_DEV_ORIGINS'].split(',') }
+    : {}),
   async rewrites() {
     return [{
       source: '/race/socket',

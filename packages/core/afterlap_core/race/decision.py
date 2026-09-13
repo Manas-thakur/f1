@@ -168,6 +168,7 @@ def assess_boost(session: RaceSession, observation: Observation) -> BoostRecomme
     energy = channels.get("battery_energy_j")
     temperature = channels.get("battery_temperature_k")
     acceleration = channels.get("acceleration_mps2")
+    boost_latched = channels.get("boost_latched") == 1
     progress = channels.get("progress_m")
     car = session.bundle.car_configs[observation.car_id]
     energy_floor = float(car.battery_energy_min_j.value)
@@ -201,6 +202,7 @@ def assess_boost(session: RaceSession, observation: Observation) -> BoostRecomme
         and float(energy) > reserve
         and float(temperature) < derate_end
         and (acceleration is None or float(acceleration) > -2.0)
+        and not boost_latched
     )
     wet_risk = session.settings.wetness
     corner_risk = 1.0 - straight_score
@@ -232,6 +234,9 @@ def assess_boost(session: RaceSession, observation: Observation) -> BoostRecomme
     if not required:
         mode = DeploymentProfile.NEUTRAL.value
         reason = "Required delayed telemetry is unavailable"
+    elif boost_latched:
+        mode = DeploymentProfile.HARVEST.value
+        reason = "Boost must be released before recovered energy can be deployed"
     elif not boost_available:
         mode = (
             DeploymentProfile.HARVEST.value

@@ -21,7 +21,8 @@ function car(id: string, channels: Record<string, number>): RaceCar {
 function frame(time_s: number, cars: RaceCar[], generation = 1): RaceFrame {
   return {
     type: 'frame', time_s, generation, steps: Math.round(time_s * 100), status: 'running',
-    failure: null, requested_rate: 1, actual_rate: 1, has_checkpoint: false, events: [],
+    failure: null, requested_rate: 1, actual_rate: 1, has_checkpoint: false,
+    selected_car_id: 'car-01', events: [],
     flags: ['green'],
     recommendations: {}, training_metrics: null,
     boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
@@ -162,13 +163,23 @@ test('the telemetry screen streams one car, scales to the display and starts the
   test.slow();
   await page.goto('/race');
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('madring');
+  await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('las-vegas');
   await page.getByLabel('Cars', { exact: true }).fill('3');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
 
   await page.setViewportSize({ width: 800, height: 480 });
   await page.goto('/tel/car-01');
   await expect(page.getByLabel('Live telemetry for car-01')).toBeVisible();
+  const selectionResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/race/selection/car-02'
+  ));
+  await page.getByRole('combobox', { name: 'Telemetry car', exact: true }).selectOption('car-02');
+  expect(await (await selectionResponse).json()).toMatchObject({
+    car_id: 'car-02', status: 'accepted',
+  });
+  await expect(page).toHaveURL(/\/tel\/car-02$/);
+  await expect(page.getByLabel('Live telemetry for car-02')).toBeVisible();
   await expect(page.getByLabel('Position and lap')).toContainText('/3');
   const stageSize = async () => page.evaluate(() => {
     const box = document.querySelector('[class*="dashboard"]')?.getBoundingClientRect();
@@ -180,6 +191,16 @@ test('the telemetry screen streams one car, scales to the display and starts the
     .toHaveAttribute('aria-keyshortcuts', 'Space');
   await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
+  const boost = page.getByRole('button', { name: 'Apply boost to car-02', exact: true });
+  await expect(boost).toBeEnabled({ timeout: 60000 });
+  const [boostResponse] = await Promise.all([
+    page.waitForResponse((response) => (
+      response.request().method() === 'POST' && new URL(response.url()).pathname === '/race/boost'
+    )),
+    boost.click(),
+  ]);
+  expect(await boostResponse.json()).toMatchObject({ car_id: 'car-02', status: 'accepted' });
+  await expect(boost).toHaveAttribute('data-active', 'true');
   const speed = page.getByLabel('Speed, electrical power and deployment profile');
   await expect.poll(async () => Number(await speed.locator('strong').nth(1).innerText()))
     .toBeGreaterThan(0);
@@ -199,10 +220,16 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
   await page.getByLabel('Cars', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  const selectionResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/race/selection/car-01'
+  ));
+  await page.getByRole('button', { name: 'car-01', exact: true }).click();
+  await selectionResponse;
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
-  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
-  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Pause race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
   const summary = page.getByLabel('Race telemetry for car-01');
   await expect(summary).toBeVisible();

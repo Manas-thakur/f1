@@ -174,12 +174,13 @@ export class Atmosphere extends THREE.Group {
       const limit = Math.min(positions.length, this.rain.geometry.drawRange.count * 3);
       const fall = time * (48 + this.wetness * 42);
       const drift = time * this.wind * 0.65;
+      const floor = Math.max(0, this.cameraPosition.y - 31);
       for (let i = 0; i < limit; i += 6) {
         const baseX = this.rainOrigins[i] ?? 0;
         const baseY = this.rainOrigins[i + 1] ?? 0;
         const baseZ = this.rainOrigins[i + 2] ?? 0;
-        const y = ((baseY - fall) % 62 + 62) % 62;
-        const x = baseX + drift % 180 - 90;
+        const y = floor + ((baseY - fall) % 62 + 62) % 62;
+        const x = ((baseX + drift + 90) % 180 + 180) % 180 - 90;
         positions[i] = this.cameraPosition.x + x;
         positions[i + 1] = y;
         positions[i + 2] = this.cameraPosition.z + baseZ;

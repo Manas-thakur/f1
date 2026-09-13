@@ -69,6 +69,7 @@ def main() -> None:
     parser.add_argument("--eval-episodes", type=int, default=3)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--metrics", type=Path)
+    parser.add_argument("--control-state", type=Path, default=Path(".afterlap/race/control.sqlite3"))
     parser.add_argument("--output", type=Path, default=Path(".afterlap/race/transitions.jsonl"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=18761)
@@ -144,6 +145,7 @@ def main() -> None:
                     settings=settings,
                     policy_path=args.policy,
                     metrics_path=args.metrics,
+                    control_state_path=args.control_state,
                 )
             )
         return

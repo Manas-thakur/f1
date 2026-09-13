@@ -11,6 +11,8 @@
 .sceneWrap::after { content: ''; position: absolute; z-index: 2; inset: 0; pointer-events: none; box-shadow: inset 0 0 110px #02080ca8; background: linear-gradient(180deg, #03101920 0%, transparent 22%, transparent 72%, #02070b4d 100%); }
 .scene { width: 100%; height: 100%; touch-action: none; outline: none; }
 .scene canvas { display: block; width: 100%; height: 100%; }
+.pausedRain { position: absolute; z-index: 3; inset: 0; pointer-events: none; opacity: .52; mix-blend-mode: screen; background-image: repeating-linear-gradient(105deg, transparent 0 17px, #b9e4ff00 18px, #b9e4ffb8 19px, #b9e4ff00 21px, transparent 22px 47px); background-size: 180px 180px; animation: paused-rain .42s linear infinite; }
+@keyframes paused-rain { to { background-position: -36px 180px; } }
 .mapTools { position: sticky; z-index: 10; top: 0; left: 0; right: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px 12px; border: 0; border-bottom: 1px solid #dff5ff24; border-radius: 0; background: linear-gradient(115deg, #07131df5, #14232cf2); box-shadow: 0 8px 28px #0005, inset 0 1px #ffffff12; backdrop-filter: blur(18px) saturate(1.25); }
 .dashboardLink { border: 1px solid #ffffff25; border-radius: 6px; background: #17252f; padding: 7px 10px; color: #e9f0ef; font: 700 10px/1.45 Arial, sans-serif; text-decoration: none; }
 .dashboardLink:hover { background: #314552; }
@@ -149,11 +151,13 @@
 .batteryHud { min-width: 165px; pointer-events: auto; }
 .batteryHud progress { display: block; width: 100%; height: 7px; margin: 7px 0; accent-color: #76dff4; }
 .batteryHud[data-energy-mode='RECHARGING'] progress { accent-color: #a2eda2; }
+.batteryHud[data-energy-mode='BOOST HELD'] progress { accent-color: #f2b36c; }
 .worldHud .energyMode { color: #76dff4; font-size: 10px; margin-bottom: 5px; }
 .batteryHud[data-energy-mode='RECHARGING'] .energyMode { color: #a2eda2; }
 .classificationEnergy { display: block; font: normal 8px monospace; opacity: 0.8; margin-top: 3px; }
 .classificationEnergy[data-energy-mode='BOOST'] { color: #48dfff; }
 .classificationEnergy[data-energy-mode='RECHARGING'] { color: #a2eda2; }
+.classificationEnergy[data-energy-mode='BOOST HELD'] { color: #f2b36c; }
 .root .classificationScroll button[aria-pressed='true'] .classificationEnergy { color: #163b43; }
 .energyTelemetry { border-top: 1px solid #ffffff24; margin-top: 16px; padding-top: 12px; }
 .energyTelemetry p { font-size: 11px; line-height: 1.6; color: #b2c4be; }

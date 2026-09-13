@@ -172,6 +172,7 @@ export interface RaceFrame {
   actual_rate: number;
   playback_rate?: number;
   has_checkpoint: boolean;
+  selected_car_id: string;
   circuit_map: CircuitMap;
   events: RaceEvent[];
   boost_evaluation: BoostEvaluation;

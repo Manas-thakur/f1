@@ -204,6 +204,8 @@ export function Circuit() {
               setHelp(false);
             }
           }} />
+        {raining && frame?.status !== 'running'
+          && <div className={styles.pausedRain} data-paused-rain="true" aria-hidden="true" />}
         {!ready && !error && (
           <div className={styles.sceneMessage}>Loading the circuit world…</div>
         )}

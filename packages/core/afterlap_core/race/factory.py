@@ -45,7 +45,7 @@ def race_bundle(settings: RaceSettings) -> ScenarioBundle:
         states[car_id] = InitialCarState(
             progress_m=assumed(200 - index * 10, "m"),
             speed_mps=assumed(14 + float(rng.uniform(-2, 2)) * scale, "m/s"),
-            energy_j=assumed(3.1e6 + float(rng.uniform(-0.7e6, 0.7e6)) * scale, "J"),
+            energy_j=assumed(3.1e6, "J"),
             temperature_k=assumed(settings.temperature_k + 5, "K"),
             lateral_d_m=assumed(2.5 if index % 2 else -2.5, "m"),
         )

@@ -55,3 +55,16 @@ def test_rules_baseline_withholds_boost_until_telemetry_arrives():
     assert "FIA 2026" in recommendation.regulation_basis
     assert 0 <= recommendation.risk_score <= 1
     assert 0 <= recommendation.reward_score <= 1
+
+
+def test_rules_guard_withholds_a_latched_boost_after_energy_recovers():
+    session = RaceSession(RaceSettings(cars=1, time_limit_s=3))
+    state = session.simulator.world.cars["car-01"]
+    state.boost_latched = 1
+    state.active_profile = DeploymentProfile.HARVEST
+    session.bms_profiles["car-01"] = DeploymentProfile.PUSH
+    session.advance(0.2)
+    recommendation = assess_boost(session, session.observations()["car-01"])
+    assert not recommendation.boost_available
+    assert recommendation.mode == "harvest"
+    assert "released" in recommendation.reason

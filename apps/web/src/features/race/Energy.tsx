@@ -10,7 +10,7 @@ function value(n: number | undefined, scale = 1, digits = 1) {
 }
 
 export function BatteryHud() {
-  const { frame, selected, connected, send } = useRace();
+  const { frame, selected, connected, boost } = useRace();
   const car = frame?.cars.find((item) => item.id === selected);
   const ch = car?.channels ?? {};
   const window = car?.battery_window_j;
@@ -29,7 +29,7 @@ export function BatteryHud() {
       {recommendation?.mode.toUpperCase() ?? 'WAITING'} · {recommendation?.boost_available ? 'READY' : 'HELD'}
     </span>
     <button type="button" disabled={!connected || !recommendation?.can_apply}
-      onClick={() => send('boost', { car_id: selected })}>Apply boost</button>
+      onClick={() => void boost()}>Apply boost</button>
   </div>;
 }
 

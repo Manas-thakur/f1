@@ -10,7 +10,11 @@ The feature branch `codex/battery-includes` starts from GitHub simulator commit 
 
 ## Implementation and assumptions
 
-The existing energy ledger remains authoritative. Deployment removes stored energy with discharge losses; recovery adds energy with charge losses. Auxiliary use remains in the balance. Regeneration is restricted by available braking power, rear recovery share, grip, thermal acceptance, battery headroom, and remaining lap recharge allowance. Rejected recovery does not create battery energy. Passing a timing line resets the lap counters, never the battery.
+The existing energy ledger remains authoritative. Deployment removes stored energy with discharge losses; recovery adds energy with charge losses. Auxiliary use remains in the balance. Regeneration is restricted by braking power, rear recovery share, grip, thermal acceptance, battery headroom, and remaining lap recharge allowance. A harder brake request offers more recoverable power until one of those limits binds. Rejected recovery remains friction braking and does not create battery energy. Passing a timing line resets the lap counters, never the battery.
+
+Deployment is demand-aware. Requested electrical power is capped by throttle, the active battery profile, the FIA speed curve, battery temperature, the combined shaft-power ceiling, and the longitudinal tyre-force headroom remaining after combustion power. This prevents stored energy from being spent when it cannot add propulsion. At standstill there is no propulsive electrical-energy flow in this rolling-start model. Race sessions start every car at the same declared 3.1 MJ operating target; seeded vehicle variability no longer assigns arbitrary starting charge.
+
+Reaching the usable energy floor or thermal shutdown latches the applied profile in Harvest. Keeping a boost request held cannot repeatedly deploy each small amount recovered under braking. The driver or controller must first request a non-boost profile, then request boost again. The delayed `boost_latched` observation drives the amber `BOOST HELD` dashboard state, so requested and delivered behavior remain distinguishable without exposing simulator truth.
 
 Automatic racecraft uses delayed own battery telemetry, its existing passing state, acceleration demand, speed, and a 150 m curvature preview. It requests the 80% boost profile during a passing attempt or on a clear straight with at least 0.6 MJ above its reserve, sustaining an ongoing straight burst until 0.2 MJ above reserve. It harvests below reserve and uses a 0.2 MJ hysteresis before leaving recovery. Missing battery measurements select recovery. These thresholds are explicit synthetic strategy assumptions; there are no random boost timers or learned performance claims. Physical acceleration remains subject to traffic, tyres, braking preview and power limits.
 
@@ -24,7 +28,7 @@ This is a public-rule-informed reduced model, not an exact reproduction of a tea
 
 Timing and lap totals shown in the UI are delayed observations. At terminal race state, the final sensor-delay interval can remain unavailable; the UI does not replace it with simulator truth. Initial rolling-grid progress also means the first lap record covers the simulated portion of that lap. Numerical correctness does not establish real-car calibration.
 
-Model version is `race-physics-v3`; earlier physics checkpoints are rejected. The BMS action/feature-vector version remains unchanged. Retrain and evaluate policies against the new manifest before using prior policy results.
+Model version is `race-physics-v5`; earlier physics checkpoints are rejected. The BMS action/feature-vector version remains unchanged. Retrain and evaluate policies against the new manifest before using prior policy results.
 
 ## Validation
 
