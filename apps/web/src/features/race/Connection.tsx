@@ -28,6 +28,30 @@ export function useRace() {
   return context;
 }
 
+export function useRaceToggleShortcut(enabled = true) {
+  const { frame, connected, send } = useRace();
+  const status = frame?.status;
+  useEffect(() => {
+    const keyboard = (event: KeyboardEvent) => {
+      if (!enabled || event.code !== 'Space' || event.repeat || event.altKey
+        || event.ctrlKey || event.metaKey || event.shiftKey) {
+        return;
+      }
+      if (event.target instanceof HTMLElement
+        && event.target.closest('input, select, textarea, button, a, [contenteditable="true"]')) {
+        return;
+      }
+      if (!connected || !status || ['finished', 'failed', 'truncated'].includes(status)) {
+        return;
+      }
+      event.preventDefault();
+      send(status === 'running' ? 'pause' : 'start');
+    };
+    window.addEventListener('keydown', keyboard);
+    return () => window.removeEventListener('keydown', keyboard);
+  }, [connected, enabled, send, status]);
+}
+
 export function RaceConnectionProvider({ children }: { readonly children: ReactNode }) {
   const [frame, setFrame] = useState<RaceFrame | null>(null);
   const [circuits, setCircuits] = useState<CircuitSummary[]>([]);

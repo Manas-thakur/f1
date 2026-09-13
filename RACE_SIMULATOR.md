@@ -39,6 +39,8 @@ The telemetry download contains at most the most recent 200 frames observed by t
 
 The display's Start control sends the same start and pause commands as the race transport. It is disabled once the episode is finished, failed or truncated, because a completed race must be reset before it can run again.
 
+Press Space on either `/race` or `/tel/{car_id}` to toggle between running and paused. The shortcut is ignored while a form control, button or link has focus, and key repeat cannot send duplicate commands.
+
 Every readout comes from a delayed simulated observation channel:
 
 | Display element | Source |

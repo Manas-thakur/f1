@@ -176,7 +176,9 @@ test('the telemetry screen streams one car, scales to the display and starts the
   });
   await expect.poll(stageSize).toEqual({ width: 800, height: 480 });
 
-  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Start race', exact: true }))
+    .toHaveAttribute('aria-keyshortcuts', 'Space');
+  await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
   const speed = page.getByLabel('Speed, electrical power and deployment profile');
   await expect.poll(async () => Number(await speed.locator('strong').nth(1).innerText()))
@@ -186,7 +188,8 @@ test('the telemetry screen streams one car, scales to the display and starts the
 
   await page.setViewportSize({ width: 400, height: 900 });
   await expect.poll(stageSize).toEqual({ width: 400, height: 240 });
-  await page.getByRole('button', { name: 'Pause race', exact: true }).click();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
 });
 
 test('the race overlay prioritizes essential telemetry and links to the selected car display', async ({
@@ -197,6 +200,10 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   await page.getByLabel('Cars', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
   const summary = page.getByLabel('Race telemetry for car-01');
   await expect(summary).toBeVisible();
   await expect(summary.getByLabel('Current speed')).toContainText('KM/H');
