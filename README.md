@@ -74,6 +74,8 @@ uv run python scripts/race.py schema
 
 When `LAPS` is omitted, each circuit uses its sourced Grand Prix distance. Set `LAPS` for a custom distance. The catalogue and schema commands expose every circuit preset, race setting, direct driver control, normalized RL action field and energy decision contract to scripts. The boost commands communicate through Next.js `/race/socket`, the same path used by the dashboard and a physical button controller. See [RACE_SIMULATOR.md](RACE_SIMULATOR.md) for the physics model, observation/action contracts, metrics, training cycles, evaluation and 2026 regulation scope. Training uses CPU PyTorch and Stable-Baselines3 PPO.
 
+See [the energy deployment model engine guide](docs/MODEL_ENGINE.md) for the end-to-end recommendation, training, evaluation, runtime, Next.js WebSocket, and hardware-button flow.
+
 ## Project layout
 
 | Path | Purpose |
