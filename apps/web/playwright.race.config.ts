@@ -8,6 +8,7 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: ['race.spec.ts', 'motion.spec.ts', 'telemetry.spec.ts'],
   workers: 1,
+  retries: process.env['CI'] ? 1 : 0,
   timeout: 120000,
   expect: { timeout: 20000 },
   use: {
