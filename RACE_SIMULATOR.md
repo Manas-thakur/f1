@@ -21,6 +21,12 @@ For containers, use `make race-up` and `make race-down`. These create the `after
 
 `make race-server` starts only the generator's WebSocket runtime. Its defaults accept HTTP and HTTPS browser origins on localhost, 127.0.0.1 and IPv6 loopback at any port, plus local clients without an Origin header. Other browser origins require the explicit `--origin` option. The browser connects to `/race/socket` on the same host and port as the page, using `wss` for HTTPS. Next.js proxies the connection to the simulator, so only the dashboard port needs forwarding. The server-side `AFTERLAP_RACE_UPSTREAM` setting selects the simulator URL during development or production build; Docker builds use `http://simulator:18761`. The local lab has no user accounts or control leases. Commands from connected clients are serialized. It is not a multi-user remote deployment.
 
+## GPIO command trigger
+
+On Raspberry Pi OS, `uv run python scripts/button_command.py` watches a normally-open button connected between BCM GPIO 17 and ground. Holding the button starts a deliberately slow dummy `curl` request. Releasing it sends `SIGINT` to that process, matching terminal Ctrl+C behavior. Terminal Ctrl+C stops both the child command and the watcher.
+
+Pass another command after `--` to replace the dummy request, for example `uv run python scripts/button_command.py -- curl --no-buffer http://127.0.0.1:8000/events`. The command is executed directly without a shell. A command that finishes by itself will not remain active until button release.
+
 ## Controls
 
 Race control selects circuit, seed, car count, lap count, episode time limit, visual weather, wetness, temperature, wind, wake effects, contact handling, seeded racing-line behavior, storylines, pit stops, and tyre wear. Every circuit offers its sourced 2026 Grand Prix lap count as the default and a custom option from 1 through 80 laps. Changing the circuit updates the preset before reset. The circuit view shows the leader’s current lap, each car’s lap in classification, and selected-car lap progress. Lap numbering starts at one and stops at the configured total when a car finishes; progress uses delayed position telemetry. Reset creates a paused episode; it discards the current in-memory race and checkpoint. Start, pause, and one-step advance operate on that same episode. Playback changes the requested wall-clock cadence without changing the integration step. PACE reports observed simulated seconds per wall-clock second; TARGET is the requested playback multiplier. FPS measures rendering separately.

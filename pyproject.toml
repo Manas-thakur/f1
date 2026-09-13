@@ -157,6 +157,7 @@ max-statements = 120
 "tests/**/*.py" = ["S101", "PLR2004", "ANN001", "ANN201", "ANN202", "ANN002", "ANN003", "ANN204", "PT018", "PT011", "E402"]
 "scripts/**/*.py" = ["T201"]
 "scripts/race_stack.py" = ["S603"]
+"scripts/button_command.py" = ["S603", "S607"]
 "scripts/check_no_comments.py" = ["C901", "PLR0912", "T201"]
 "scripts/demo.py" = ["PLR0915", "T201"]
 "docs/tools/**/*.py" = ["T201", "S110"]
