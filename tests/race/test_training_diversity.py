@@ -76,6 +76,13 @@ def test_training_diversity_rejects_unknown_circuits():
         TrainingDiversity(circuits=("not-a-circuit",))
 
 
+def test_training_diversity_rejects_out_of_range_spans():
+    with pytest.raises(ValueError):
+        TrainingDiversity(progress_span_m=5)
+    with pytest.raises(ValueError):
+        TrainingDiversity(energy_span_j=-1)
+
+
 def test_episode_seed_stream_is_reproducible_and_advances_without_an_explicit_seed():
     first = np.random.default_rng(9)
     second = np.random.default_rng(9)

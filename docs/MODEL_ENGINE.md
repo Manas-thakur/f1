@@ -83,7 +83,7 @@ Without a model, this assessment selects a reasonable baseline profile. With a m
 
 ## How training works
 
-The Gymnasium environment controls `car-01`. One action is held for 0.5 simulated seconds. The reward encourages forward progress, gained positions, completed passes, and a strong finish. It penalizes lost positions, battery energy use, risky boosting, unavailable boosting, frequent profile changes, and failed sessions.
+The Gymnasium environment controls `car-01`. One action is held for 0.5 simulated seconds. The reward encourages forward progress, gained positions, completed passes, a strong finish, and a guarded boost when a pass opportunity is present. It penalizes withheld boosts on those opportunities, lost positions, battery energy use, risky boosting, unavailable boosting, frequent profile changes, and failed sessions.
 
 Training uses CPU Stable-Baselines3 PPO. The default setup uses a multilayer perceptron, a discount factor of `0.996672`, ten optimizer epochs per cycle, and seeded simulation episodes. Live `/race` loops stay on one configuration and seed. Training resets draw a new episode seed from the environment RNG, and `train-decision` enables start-state diversity so `car-01` is not always pole with 3.1 MJ. The same seed still replays the same episode. Each requested training cycle is followed by evaluation on a held-out seed range. The best evaluation checkpoint is saved whenever mean reward improves.
 

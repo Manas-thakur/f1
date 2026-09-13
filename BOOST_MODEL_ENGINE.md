@@ -100,7 +100,7 @@ There are two separate PPO environments.
 
 Its 76-value observation contains 38 normalized values followed by 38 availability masks. The values cover own battery and motion telemetry, race and weather context, curvature and racing-line lookaheads, and the nearest cars ahead and behind. Missing telemetry remains different from a measured zero.
 
-Its discrete action chooses one of five profiles: `harvest`, `conserve`, `neutral`, `push`, or `overtake`. A decision is held for 0.5 simulated seconds. Reward favors progress, gained positions, and completed passes, while charging for energy use, unsafe boost requests, risk, lost positions, and action churn.
+Its discrete action chooses one of five profiles: `harvest`, `conserve`, `neutral`, `push`, or `overtake`. A decision is held for 0.5 simulated seconds. Reward favors progress, gained positions, completed passes, and a guarded boost on a modeled pass opportunity, while charging for withheld opportunity boosts, energy use, unsafe boost requests, risk, lost positions, and action churn.
 
 The safety and availability guard is independent of PPO. It blocks boost for missing telemetry, low energy, high temperature, braking, launch conditions, and other unavailable states. Public event-specific Overtake authorization is unavailable, so an unsafe or unsupported output is downgraded.
 

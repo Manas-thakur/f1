@@ -18,6 +18,7 @@ from .session import RaceSession
 from .settings import RaceSettings
 
 DECISION_PROFILES = tuple(DeploymentProfile)
+REWARD_VERSION = "boost-risk-reward-v2"
 PREVIEW_OFFSETS_M = (0.0, 50.0, 100.0, 200.0, 400.0)
 OWN_FEATURES = (
     ("speed_mps", 100.0),
@@ -144,6 +145,39 @@ def decision_values(session: RaceSession, observation: Observation) -> list[floa
     for rival in (observation.rival_ahead(), observation.rival_behind()):
         rivals.extend(None if rival is None else rival.get(name) for name, _ in RIVAL_FEATURES)
     return [*own, *context, *curvature, *line, *rivals]
+
+
+def score_decision(
+    *,
+    progress_delta: float,
+    deployed_j: float,
+    positions_gained: int,
+    positions_lost: int,
+    new_passes: int,
+    boosting: bool,
+    risk_score: float,
+    reward_score: float,
+    opportunity: bool,
+    boost_available: bool,
+    action_changed: bool,
+    failed: bool,
+    finished: bool,
+    rank: int,
+) -> float:
+    reward = progress_delta / 100.0 + 10.0 * positions_gained - 12.0 * positions_lost
+    reward += 2.5 * new_passes
+    reward += 4.0 * positions_gained * float(boosting)
+    reward -= deployed_j / 4.0e6
+    reward -= 3.0 * risk_score * float(boosting)
+    reward -= 2.0 * float(boosting and not boost_available)
+    reward -= 0.05 * float(action_changed)
+    if opportunity and boost_available:
+        reward += (1.4 if boosting else -0.7) * max(reward_score, 0.25)
+    if failed:
+        reward -= 100.0
+    elif finished:
+        reward += 40.0 - 2.0 * (rank - 1)
+    return float(reward)
 
 
 def encode_decision(session: RaceSession, observation: Observation) -> np.ndarray:
@@ -351,16 +385,22 @@ class BoostDecisionEnv(gym.Env[np.ndarray, int]):
         positions_lost = max(0, rank - self.last_rank)
         new_passes = max(0, len(session.simulator.world.passes) - before_passes)
         boosting = profile in {DeploymentProfile.PUSH, DeploymentProfile.OVERTAKE}
-        reward = progress_delta / 100.0 + 10.0 * positions_gained - 12.0 * positions_lost
-        reward += 2.5 * new_passes
-        reward -= deployed_j / 4.0e6
-        reward -= 3.0 * assessment.risk_score * float(boosting)
-        reward -= 2.0 * float(boosting and not assessment.boost_available)
-        reward -= 0.05 * float(self.previous_action is not None and int(action) != self.previous_action)
-        if session.status == "failed":
-            reward -= 100.0
-        elif "car-01" in session.finishes:
-            reward += 40.0 - 2.0 * (rank - 1)
+        reward = score_decision(
+            progress_delta=progress_delta,
+            deployed_j=deployed_j,
+            positions_gained=positions_gained,
+            positions_lost=positions_lost,
+            new_passes=new_passes,
+            boosting=boosting,
+            risk_score=assessment.risk_score,
+            reward_score=assessment.reward_score,
+            opportunity=assessment.opportunity,
+            boost_available=assessment.boost_available,
+            action_changed=self.previous_action is not None and int(action) != self.previous_action,
+            failed=session.status == "failed",
+            finished="car-01" in session.finishes,
+            rank=rank,
+        )
         self.previous_action = int(action)
         self.last_rank = rank
         observation = session.observations()["car-01"]
@@ -399,7 +439,7 @@ def decision_manifest(session: RaceSession) -> dict[str, Any]:
         "missing_value_encoding": "zero value plus availability mask",
         "action_profiles": [profile.value for profile in DECISION_PROFILES],
         "authority": "energy deployment profile only; steering, braking, and racing line stay automatic",
-        "reward_version": "boost-risk-reward-v1",
+        "reward_version": REWARD_VERSION,
         "regulation_scope": "FIA 2026 base limits; public event-specific Overtake activation unavailable",
     }
 
@@ -416,7 +456,7 @@ class BoostDecisionEngine:
                 ("observation_features", list(FEATURE_NAMES)),
                 ("observation_size", OBSERVATION_SIZE),
                 ("action_profiles", [profile.value for profile in DECISION_PROFILES]),
-                ("reward_version", "boost-risk-reward-v1"),
+                ("reward_version", REWARD_VERSION),
             ):
                 if self.manifest.get(key) != expected:
                     raise ValueError(f"incompatible decision policy {key}")
