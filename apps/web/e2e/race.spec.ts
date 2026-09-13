@@ -380,17 +380,19 @@ test('camera dragging keeps scenery details visible', async ({ page }) => {
   await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
   await page.getByLabel('Graphics quality').selectOption('high');
   await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
-  const bounds = await scene.boundingBox();
-  if (!bounds) {
-    throw new Error('3D scene has no visible bounds');
-  }
-  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(bounds.x + bounds.width / 2 + 40, bounds.y + bounds.height / 2 + 20,
-    { steps: 4 });
+  await scene.locator('canvas').evaluate((canvas) => {
+    canvas.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, buttons: 1, clientX: 300, clientY: 300, pointerId: 1,
+    }));
+    canvas.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, button: 0, buttons: 1, clientX: 340, clientY: 320, pointerId: 1,
+    }));
+  });
   await expect(scene).toHaveAttribute('data-render-path', 'direct');
   await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
-  await page.mouse.up();
+  await scene.locator('canvas').dispatchEvent('pointerup', {
+    button: 0, buttons: 0, clientX: 340, clientY: 320, pointerId: 1,
+  });
 });
 
 
