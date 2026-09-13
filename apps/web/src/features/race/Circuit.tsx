@@ -8,7 +8,7 @@ import { rankedCar } from './motion';
 import { Classification, Transport } from './RacePanels';
 import { ControlDrawer } from './ControlDrawer';
 import { TelemetryOverlay } from '../telemetry/Overlay';
-import { useRace } from './Connection';
+import { useRace, useRaceToggleShortcut } from './Connection';
 import type { CameraMode, GraphicsQuality, RaceWorld } from './RaceWorld';
 import styles from './race.module.css';
 
@@ -21,6 +21,7 @@ const CAMERAS: { id: CameraMode; label: string; key: string }[] = [
 
 export function Circuit() {
   const { frame, selected, select, connected, socketUrl, error: connectionError } = useRace();
+  useRaceToggleShortcut();
   const [settings, setSettings] = useState(false);
   const [dockWidth, setDockWidth] = useState(0);
   const [classification, setClassification] = useState(true);
@@ -265,7 +266,7 @@ export function Circuit() {
           <p>Scroll or pinch to zoom · Two fingers to pan</p>
           <p>Click a car to inspect · Double-click to orbit the selected car</p>
           <p>Focus the scene: 1–4 cameras · + / − zoom (also ⌘ / Ctrl) · F fit circuit</p>
-          <p>↑ car ahead · ↓ car behind · Circular race order · M minimap · T telemetry</p>
+          <p>Space start / pause · ↑ car ahead · ↓ car behind · M minimap · T telemetry</p>
           <p>Dragging releases chase. Reset view resumes it.</p>
         </div>}
         <div className={styles.minimap} hidden={!showMap}>

@@ -35,9 +35,11 @@ The telemetry download contains at most the most recent 200 frames observed by t
 
 ## Car telemetry display
 
-`/tel/{car_id}` renders a single car's steering-wheel display for an 800 by 480 panel, for example [car-01](http://127.0.0.1:18760/tel/car-01). The page fits that 800 by 480 artwork to the viewport at a single scale factor and centres it, so a narrower or taller screen letterboxes rather than reflowing. On an exactly 800 by 480 display it renders at scale one. The same display appears at reduced scale in the bottom-right corner of `/race`, following the car the camera is watching, with the car-switch control docked above it; the Telemetry button and the `T` key toggle it. It replaces the older speed and battery corner readout, which now appears only on views too small to hold the panel. Both instances read the same delayed observations over the existing `/race/socket` connection, so the small overlay and the standalone panel always show the same car state.
+`/tel/{car_id}` renders a single car's steering-wheel display for an 800 by 480 panel, for example [car-01](http://127.0.0.1:18760/tel/car-01). The page fits that 800 by 480 artwork to the viewport at a single scale factor and centres it, so a narrower or taller screen letterboxes rather than reflowing. On an exactly 800 by 480 display it renders at scale one. The bottom-right corner of `/race` instead uses a simplified race summary in the same 360 by 216 footprint. It follows the car the camera is watching and prioritizes speed, battery, position, lap, power, throttle and brake. Its full-view link opens that car's `/tel/{car_id}` display in a new tab. The car-switch control remains docked above the summary, and the Telemetry button or `T` key toggles it. The older speed and battery corner readout appears only on views too small to hold the summary. Both displays read the same delayed observations over the existing `/race/socket` connection, so the race summary and the standalone panel show the same car state.
 
 The display's Start control sends the same start and pause commands as the race transport. It is disabled once the episode is finished, failed or truncated, because a completed race must be reset before it can run again.
+
+Press Space on either `/race` or `/tel/{car_id}` to toggle between running and paused. The shortcut is ignored while a form control, button or link has focus, and key repeat cannot send duplicate commands.
 
 Every readout comes from a delayed simulated observation channel:
 

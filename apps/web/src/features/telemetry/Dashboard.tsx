@@ -6,6 +6,7 @@ import { lapClock, signedSeconds } from './lapTiming';
 import { RECHARGE_ALLOWANCE_MJ, clamp01, fixed, ratioPercent } from './readouts';
 import type { GapReadout } from './readouts';
 import { useTelemetry } from './useTelemetry';
+import { useRaceToggleShortcut } from '../race/Connection';
 import styles from './telemetry.module.css';
 
 const SEGMENTS = 20;
@@ -38,6 +39,7 @@ export function Dashboard({ carId, controls = true }: {
   readonly controls?: boolean;
 }) {
   const { frame, connected, car, timing, flag, send } = useTelemetry(carId);
+  useRaceToggleShortcut(controls);
   const running = frame?.status === 'running';
   const startable = connected && frame !== null && !['finished', 'failed', 'truncated'].includes(frame.status);
   const lit = Math.round(clamp01(car.lapFraction) * SEGMENTS);
@@ -145,6 +147,7 @@ export function Dashboard({ carId, controls = true }: {
       {controls && (
         <button type="button" className={styles.start} disabled={!startable}
           aria-label={running ? 'Pause race' : 'Start race'}
+          aria-keyshortcuts="Space"
           onClick={() => send(running ? 'pause' : 'start')}>
           {running ? '❚❚' : '▶'}
         </button>

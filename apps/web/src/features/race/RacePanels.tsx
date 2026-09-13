@@ -41,6 +41,7 @@ export function Transport() {
       <button
         type="button"
         className={styles.primary}
+        aria-keyshortcuts="Space"
         disabled={!connected}
         onClick={() => send(frame?.status === 'running' ? 'pause' : 'start')}
       >

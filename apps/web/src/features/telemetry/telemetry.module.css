@@ -270,17 +270,118 @@
 }
 
 .overlay {
+  --tel-green: #34e56b;
+  --tel-amber: #ffa61e;
+  --tel-red: #ff4a4a;
+  --tel-blue: #4fd2ff;
   position: absolute;
   right: 16px;
   bottom: 30px;
   z-index: 9;
+  width: 360px;
+  height: 216px;
   border: 1px solid #ffffff26;
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 12px 34px #000a;
-  pointer-events: none;
+  background: #081015f2;
+  color: #f5f8fa;
+  font: 11px/1 'Arial Narrow', Arial, sans-serif;
+  backdrop-filter: blur(14px);
 }
 .overlay[hidden] { display: none; }
 @media (max-width: 1099px), (max-height: 899px) {
   .overlay { display: none; }
 }
+
+.raceTelemetryHeader {
+  box-sizing: border-box;
+  height: 48px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 14px;
+  border-bottom: 1px solid #ffffff17;
+  background: #111c23e8;
+}
+.raceTelemetryHeader > div { display: flex; align-items: baseline; gap: 7px; }
+.raceTelemetryHeader small { color: #7f929d; font: 8px/1 monospace; letter-spacing: .12em; }
+.raceTelemetryHeader strong { font: 700 13px/1 monospace; letter-spacing: .04em; }
+.raceTelemetryHeader a {
+  border: 1px solid #ffffff28;
+  border-radius: 6px;
+  padding: 7px 8px;
+  color: #d9e7ec;
+  background: #17252c;
+  font: 700 8px/1 monospace;
+  letter-spacing: .05em;
+  text-decoration: none;
+}
+.raceTelemetryHeader a:hover { background: #263b45; }
+.raceTelemetryHeader a:focus-visible { outline: 2px solid #d4ef9a; outline-offset: 2px; }
+.raceFlag {
+  max-width: 82px;
+  overflow: hidden;
+  border: 1px solid #53616a;
+  border-radius: 10px;
+  padding: 4px 7px;
+  color: #aebbc2;
+  font: 700 7px/1 monospace;
+  letter-spacing: .05em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.raceFlag[data-tone='clear'] { border-color: #2e7c48; color: var(--tel-green); background: #0c2a18; }
+.raceFlag[data-tone='caution'] { border-color: #8a6f16; color: var(--tel-amber); background: #362b07; }
+.raceFlag[data-tone='stopped'] { border-color: #8a2b2b; color: var(--tel-red); background: #351111; }
+.raceFlag[data-tone='finished'] { color: #e7edf2; background: #1d2126; }
+
+.raceTelemetryBody {
+  height: 168px;
+  display: grid;
+  grid-template-columns: 118px repeat(2, 1fr);
+  grid-template-rows: 82px 46px 40px;
+}
+.raceSpeed {
+  grid-row: 1 / span 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #ffffff17;
+  background: #071014;
+}
+.raceSpeed strong { font: italic 700 52px/.85 'Arial Narrow', Arial, sans-serif; letter-spacing: -3px; }
+.raceSpeed span { margin-top: 11px; color: #7f929d; font: 8px/1 monospace; letter-spacing: .18em; }
+.raceBattery { grid-column: 2 / 4; grid-row: 1; padding: 12px 13px 9px; border-bottom: 1px solid #ffffff17; }
+.raceBattery > div:first-child, .raceBattery footer { display: flex; align-items: baseline; justify-content: space-between; }
+.raceBattery small { color: #91a3ac; font: 8px/1 monospace; letter-spacing: .13em; }
+.raceBattery strong { font: 700 24px/1 'Arial Narrow', Arial, sans-serif; }
+.raceBatteryTrack { display: block; width: 100%; height: 9px; margin: 8px 0 7px; accent-color: var(--tel-amber); }
+.raceBatteryTrack[data-energy-mode='BOOST'] { accent-color: var(--tel-blue); }
+.raceBatteryTrack[data-energy-mode='RECHARGING'] { accent-color: var(--tel-green); }
+.raceBatteryTrack[data-energy-mode='UNAVAILABLE'] { accent-color: #39424a; }
+.raceBattery footer { color: #81939c; font: 8px/1 monospace; }
+.raceBattery footer b { color: #d6e2e7; font-weight: 700; }
+.raceBattery footer b[data-energy-mode='BOOST'] { color: var(--tel-blue); }
+.raceBattery footer b[data-energy-mode='RECHARGING'] { color: var(--tel-green); }
+.raceBattery footer b[data-energy-mode='DEPLOYING'] { color: var(--tel-amber); }
+.raceEssentials { grid-column: 2 / 4; grid-row: 2; display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid #ffffff17; }
+.raceEssentials div { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.raceEssentials div + div { border-left: 1px solid #ffffff17; }
+.raceEssentials small { color: #7f929d; font: 7px/1 monospace; letter-spacing: .1em; }
+.raceEssentials strong { margin-top: 5px; font: 700 18px/1 'Arial Narrow', Arial, sans-serif; }
+.raceEssentials span { margin-top: 4px; color: #667a84; font: 7px/1 monospace; }
+.racePedals { grid-column: 2 / 4; grid-row: 3; display: grid; grid-template-columns: 1fr 1fr; }
+.racePedal { display: flex; flex-direction: column; justify-content: center; padding: 0 12px; }
+.racePedal + .racePedal { border-left: 1px solid #ffffff17; }
+.racePedal > div:first-child { display: flex; align-items: baseline; justify-content: space-between; }
+.racePedal span { color: #7f929d; font: 7px/1 monospace; letter-spacing: .06em; }
+.racePedal strong { font: 700 14px/1 'Arial Narrow', Arial, sans-serif; }
+.racePedalTrack { height: 6px; margin-top: 7px; overflow: hidden; border-radius: 3px; background: #1a252b; }
+.racePedalTrack i { display: block; height: 100%; }
+.racePedal[data-pedal='throttle'] strong { color: var(--tel-green); }
+.racePedal[data-pedal='throttle'] i { background: var(--tel-green); }
+.racePedal[data-pedal='brake'] strong { color: var(--tel-red); }
+.racePedal[data-pedal='brake'] i { background: var(--tel-red); }

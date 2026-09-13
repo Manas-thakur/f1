@@ -176,7 +176,9 @@ test('the telemetry screen streams one car, scales to the display and starts the
   });
   await expect.poll(stageSize).toEqual({ width: 800, height: 480 });
 
-  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Start race', exact: true }))
+    .toHaveAttribute('aria-keyshortcuts', 'Space');
+  await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
   const speed = page.getByLabel('Speed, electrical power and deployment profile');
   await expect.poll(async () => Number(await speed.locator('strong').nth(1).innerText()))
@@ -186,5 +188,46 @@ test('the telemetry screen streams one car, scales to the display and starts the
 
   await page.setViewportSize({ width: 400, height: 900 });
   await expect.poll(stageSize).toEqual({ width: 400, height: 240 });
-  await page.getByRole('button', { name: 'Pause race', exact: true }).click();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
+});
+
+test('the race overlay prioritizes essential telemetry and links to the selected car display', async ({
+  page,
+}) => {
+  await page.goto('/race');
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
+  const summary = page.getByLabel('Race telemetry for car-01');
+  await expect(summary).toBeVisible();
+  await expect(summary.getByLabel('Current speed')).toContainText('KM/H');
+  await expect(summary.getByLabel('Battery charge', { exact: true })).toContainText('BATTERY');
+  await expect(summary.getByLabel('Race position, lap and power')).toContainText('POSITION');
+  await expect(summary.getByLabel('Throttle and brake')).toContainText('THROTTLE');
+  const fullView = summary.getByRole('link', {
+    name: 'Open full telemetry for car-01 in a new tab',
+  });
+  await expect(fullView).toHaveAttribute('href', '/tel/car-01');
+  await expect(fullView).toHaveAttribute('target', '_blank');
+  await expect(summary).toHaveCSS('width', '360px');
+  await expect(summary).toHaveCSS('height', '216px');
+
+  await page.getByRole('button', { name: 'Watch car behind', exact: true }).click();
+  const nextSummary = page.getByLabel('Race telemetry for car-02');
+  await expect(nextSummary).toBeVisible();
+  const nextFullView = nextSummary.getByRole('link', {
+    name: 'Open full telemetry for car-02 in a new tab',
+  });
+  await expect(nextFullView).toHaveAttribute('href', '/tel/car-02');
+  const opened = page.context().waitForEvent('page');
+  await nextFullView.click();
+  const telemetryPage = await opened;
+  await expect(telemetryPage).toHaveURL(/\/tel\/car-02$/);
+  await telemetryPage.close();
 });
