@@ -668,8 +668,7 @@ export class RaceWorld {
       }
     }
     const time = performance.now() / 1000;
-    this.surroundings.update(time, this.camera.position,
-      this.quality !== 'performance' && !this.interacting);
+    this.surroundings.update(time, this.camera.position);
     this.atmosphere.update(time, this.camera.position);
     if (this.quality === 'ultra' && !this.interacting) {
       this.composer.render();
@@ -696,6 +695,7 @@ export class RaceWorld {
     this.host.dataset['followedPosition'] = car?.visible ? car.position.toArray().join(',') : '';
     this.host.dataset['observedTime'] = String(this.frame?.time_s ?? 0);
     this.host.dataset['brandingDecals'] = String(this.branding.decalCount);
+    this.host.dataset['sceneryDetails'] = this.surroundings.detailsVisible ? 'visible' : 'hidden';
   };
 
   dispose() {

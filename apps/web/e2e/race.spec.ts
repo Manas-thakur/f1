@@ -266,6 +266,8 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 350);
   await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width / 2 + 90, bounds.y + 380, { steps: 8 });
+  await expect(scene).toHaveAttribute('data-render-path', 'direct');
+  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
   await page.mouse.up();
   await expect(scene).toHaveAttribute('data-camera-mode', 'orbit');
   const dragged = await scene.getAttribute('data-camera-position');
