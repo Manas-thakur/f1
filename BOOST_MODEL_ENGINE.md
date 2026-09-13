@@ -16,7 +16,8 @@ The live boost button asks the decision engine for the current guarded recommend
 | `BoostDecisionEnv` | Trains the energy-only `boost-decision-v1` PPO policy |
 | `RaceEnv` | Wraps one controlled car and its opponents in a Gymnasium environment for PPO training |
 | Race server | Streams observed frames over WebSocket and accepts control commands |
-| Next.js app | Displays `/race` and `/tel/{car_id}`, and forwards selected-car boost POST requests |
+| SQLite control state | Persists the current car selected by either operator view |
+| Next.js app | Displays `/race` and `/tel/{car_id}`, updates selection, and forwards carless boost POST requests |
 
 This is a reduced synthetic simulator. It is useful for software integration, control experiments, repeatable scenarios, and operator-interface development. It is not calibrated against a real Formula 1 vehicle and must not be treated as a validated real-car controller.
 
@@ -25,11 +26,12 @@ This is a reduced synthetic simulator. It is useful for software integration, co
 The required operating rule is:
 
 1. The operator watches a car on `/race`, or chooses a car from the dropdown on `/tel/{car_id}`.
-2. The Boost button sends an HTTP POST containing that car identity in the URL.
-3. The server evaluates the selected car's latest recommendation and rejects the command if boost is unavailable.
-4. After a successful guard check, the server clears the previous manual battery-profile override and assigns the recommended push profile to the newly selected car.
-5. All other cars remain outside the manual override map, so their existing automatic and seeded storyline decisions continue normally.
-6. Selecting and boosting another car transfers manual boost authority to that car. The former car returns to automatic battery-profile decisions.
+2. The browser stores that current car through the server in `.afterlap/race/control.sqlite3`.
+3. The Boost button or hardware sends an HTTP POST with no car identity.
+4. The server reads the current car from SQLite, evaluates its latest recommendation, and rejects the command if boost is unavailable.
+5. After a successful guard check, the server clears the previous manual battery-profile override and assigns the recommended profile to the newly selected car.
+6. All other cars remain outside the manual override map, so their existing automatic and seeded storyline decisions continue normally.
+7. Selecting and boosting another car transfers manual boost authority to that car. The former car returns to automatic battery-profile decisions.
 
 The number of cars is dynamic. The UI builds its dropdown from the cars in the current race frame, and the server validates that the requested car exists in the active session.
 
@@ -37,9 +39,10 @@ The number of cars is dynamic. The UI builds its dropdown from the cars in the c
 
 ```text
 hardware input or Boost button
-  -> POST {dashboard host}/race/boost/{car_id}
+  -> POST {dashboard host}/race/boost
   -> Next.js route handler
-  -> POST {race runtime}/boost/{car_id}
+  -> POST {race runtime}/boost
+  -> read selected_car_id from SQLite
   -> RaceServer boost command
   -> BoostDecisionEngine recommendation and safety guard
   -> RaceSession.bms_profiles contains only the selected car
@@ -53,8 +56,7 @@ The dashboard host is intentionally dynamic. The browser uses a same-origin URL,
 
 ```sh
 HOST="${HOST:-http://127.0.0.1:18760}"
-CAR_ID="${CAR_ID:-car-01}"
-curl --fail-with-body --request POST "${HOST%/}/race/boost/${CAR_ID}"
+curl --fail-with-body --request POST "${HOST%/}/race/boost"
 ```
 
 A successful request returns:
@@ -86,7 +88,7 @@ Open:
 - `http://127.0.0.1:18760/race` for the full race view
 - `http://127.0.0.1:18760/tel/car-01` for the telemetry display
 
-On `/race`, the viewed car changes through classification, scene selection, or the car navigation controls. On `/tel/{car_id}`, use the car dropdown. Start the race, then press Boost. The button is disabled while disconnected, paused, missing the selected car, already observing active boost, or blocked by the current recommendation guard.
+On `/race`, the viewed car changes through classification, scene selection, or the car navigation controls. On `/tel/{car_id}`, use the car dropdown. Each change updates the shared SQLite selection before a subsequent boost request is sent. Start the race, then press Boost. The button is disabled while disconnected, paused, missing the selected car, already observing active boost, or blocked by the current recommendation guard.
 
 ## What can be trained
 
@@ -211,7 +213,7 @@ The first line is a manifest. Later lines contain observation, action, reward, n
 - the Python race runtime, normally on port `18761`
 - the Next.js dashboard, normally on port `18760`
 
-The browser receives telemetry through `/race/socket`. The selected-car POST goes through `/race/boost/{car_id}`. Keeping both browser paths on the dashboard origin makes forwarded ports and changing hosts work without frontend configuration.
+The browser receives telemetry through `/race/socket`. Selection changes go through `/race/selection/{car_id}`, while boost goes through `/race/boost` without a car identifier. Keeping the browser paths on the dashboard origin makes forwarded ports and changing hosts work without frontend configuration.
 
 ## Important current boundary
 

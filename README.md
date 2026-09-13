@@ -12,7 +12,7 @@ make install
 make race
 ```
 
-`make dev` also starts the simulator. Keep the terminal running and open [the race view](http://127.0.0.1:18760/race). When working remotely, forward port **18760** only. Ctrl+C stops both processes. No database is required.
+`make dev` also starts the simulator. Keep the terminal running and open [the race view](http://127.0.0.1:18760/race). When working remotely, forward port **18760** only. Ctrl+C stops both processes. No external database is required; the selected car is persisted in a local SQLite file.
 
 For Docker, use `make race-up`. Run `make race-down` before switching to native startup because both modes use the same ports.
 
