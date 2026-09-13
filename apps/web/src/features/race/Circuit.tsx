@@ -1,15 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 
+import { SiteNav } from '../nav/SiteNav';
+import { TelemetryOverlay } from '../telemetry/Overlay';
+import { useRace, useRaceToggleShortcut } from './Connection';
+import { ControlDrawer } from './ControlDrawer';
 import { BatteryHud } from './Energy';
 import { rankedCar } from './motion';
 import { Classification, Transport } from './RacePanels';
-import { ControlDrawer } from './ControlDrawer';
-import { TelemetryOverlay } from '../telemetry/Overlay';
-import { useRace, useRaceToggleShortcut } from './Connection';
 import type { CameraMode, GraphicsQuality, RaceWorld } from './RaceWorld';
 import styles from './race.module.css';
 
@@ -28,7 +28,7 @@ export function Circuit() {
   const [classification, setClassification] = useState(true);
   const [fps, setFps] = useState(0);
   const host = useRef<HTMLDivElement>(null);
-  const toolbar = useRef<HTMLDivElement>(null);
+  const toolbar = useRef<HTMLElement>(null);
   const minimapCanvas = useRef<HTMLCanvasElement>(null);
   const [showMap, setShowMap] = useState(true);
   const [showTelemetry, setShowTelemetry] = useState(true);
@@ -156,10 +156,14 @@ export function Circuit() {
   return (
     <section ref={panel} className={styles.mapPanel} aria-label="Live circuit" data-weather={weather}>
       <div className={styles.sceneWrap} style={{ width: `calc(100% - ${dockWidth}px)` }}>
-      <div ref={toolbar} className={styles.mapTools}>
-        <button type="button" aria-label="Race controls" aria-expanded={settings}
-          onClick={() => setSettings(!settings)}>☰</button>
-        <Link className={styles.dashboardLink} href="/race/engineer">Dashboard</Link>
+      <SiteNav
+        ref={toolbar}
+        className={styles.mapTools}
+        menu={(
+          <button type="button" aria-label="Race controls" aria-expanded={settings}
+            onClick={() => setSettings(!settings)}>☰</button>
+        )}
+      >
         <span className={styles.circuitName}>{frame?.circuit_map.name.toUpperCase() ?? 'CONNECTING'}</span>
         <span className={styles.connection} data-socket-url={socketUrl}>{connected ? '● CONNECTED' : '○ DISCONNECTED'}</span>
         <div className={styles.cameraTabs} role="group" aria-label="Camera view">
@@ -182,7 +186,7 @@ export function Circuit() {
         </select>
         <button type="button" onClick={() => void fullscreen()}>Fullscreen</button>
         <Transport />
-      </div>
+      </SiteNav>
         {/* eslint-disable-next-line
           jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-noninteractive-tabindex
         */}

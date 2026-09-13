@@ -15,32 +15,16 @@
   overflow: auto;
 }
 
-.topbar {
-  position: sticky;
-  z-index: 30;
-  top: 0;
-  display: grid;
-  grid-template-columns: auto minmax(180px, 1fr) auto auto auto auto auto auto;
-  min-height: 72px;
-  align-items: stretch;
-  border-bottom: 1px solid #3a4249;
-  background: linear-gradient(115deg, #07131df5, #14232cf2);
-  box-shadow: 0 8px 28px #0005, inset 0 1px #ffffff12;
-  backdrop-filter: blur(18px) saturate(1.25);
-}
-
-.identity, .sessionMeta, .quickReadout, .connectionState, .carSelect {
+.sessionMeta, .quickReadout, .connectionState, .carSelect {
   display: flex;
   align-items: center;
+  min-height: 44px;
   border-right: 1px solid var(--line);
-  padding: 0 18px;
+  padding: 0 14px;
 }
 
-.identity { gap: 11px; }
-.identity > b { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 6px; background: var(--lime); color: #071005; font: 900 15px/1 Arial, sans-serif; }
-.identity div, .connectionState div { display: grid; gap: 2px; }
-.identity span, .sessionMeta span, .quickReadout span, .connectionState span, .carSelect { color: var(--muted); font: 700 .68rem/1.2 ui-monospace, monospace; letter-spacing: .12em; }
-.identity strong { font-size: .84rem; letter-spacing: .12em; }
+.connectionState div { display: grid; gap: 2px; }
+.sessionMeta span, .quickReadout span, .connectionState span, .carSelect { color: var(--muted); font: 700 .68rem/1.2 ui-monospace, monospace; letter-spacing: .12em; }
 .sessionMeta { display: grid; align-content: center; gap: 4px; }
 .sessionMeta strong { font: 750 1.08rem/1 ui-monospace, monospace; }
 .sessionMeta i { color: #56616a; font-style: normal; }
@@ -54,10 +38,9 @@
 .connectionState > i { width: 8px; height: 8px; border-radius: 50%; background: #626b72; box-shadow: 0 0 0 4px #626b721c; }
 .connectionState[data-connected='true'] > i { background: var(--lime); box-shadow: 0 0 0 4px #c9ff3720, 0 0 12px #c9ff37aa; }
 .connectionState strong { font: 800 .75rem ui-monospace, monospace; }
-.transportButton, .trackLink { display: grid; min-width: 76px; min-height: 36px; align-self: center; margin: 0 6px; place-items: center; border: 1px solid #dff5ff24; border-radius: 7px; background: var(--lime); color: #101606; font: 900 .72rem ui-monospace, monospace; letter-spacing: .1em; cursor: pointer; text-decoration: none; }
+.transportButton { display: grid; min-width: 76px; min-height: 36px; align-self: center; margin: 0 6px 0 auto; place-items: center; border: 1px solid #dff5ff24; border-radius: 7px; background: var(--lime); color: #101606; font: 900 .72rem ui-monospace, monospace; letter-spacing: .1em; cursor: pointer; }
 .transportButton:disabled { opacity: .45; cursor: default; }
-.trackLink { background: #1a2b36; color: var(--text); padding: 0 16px; }
-.transportButton:focus-visible, .trackLink:focus-visible, .carSelect select:focus-visible { outline: 2px solid white; outline-offset: -4px; }
+.transportButton:focus-visible, .carSelect select:focus-visible { outline: 2px solid white; outline-offset: -4px; }
 
 .workspace {
   display: grid;
@@ -65,7 +48,7 @@
   grid-template-rows: minmax(250px, 1fr) minmax(250px, 1fr) minmax(260px, .9fr);
   gap: 1px;
   min-width: 1180px;
-  height: calc(100dvh - 72px);
+  height: calc(100dvh - 48px);
   min-height: 780px;
   background: var(--line);
 }
@@ -171,15 +154,13 @@
 
 @media (max-width: 1179px) {
   .console { overflow: auto; }
-  .topbar { position: relative; grid-template-columns: auto 1fr auto auto; }
-  .quickReadout, .connectionState { min-height: 58px; border-top: 1px solid var(--line); }
+  .quickReadout, .connectionState { min-height: 52px; }
   .workspace { height: auto; min-height: 0; }
 }
 
 @media (max-width: 760px) {
-  .topbar { grid-template-columns: 1fr 1fr; }
-  .identity, .sessionMeta, .carSelect, .quickReadout, .connectionState { min-height: 64px; padding: 0 12px; }
-  .transportButton, .trackLink { min-height: 48px; }
+  .sessionMeta, .carSelect, .quickReadout, .connectionState { min-height: 48px; padding: 0 12px; }
+  .transportButton { min-height: 40px; margin-left: 6px; }
   .workspace { grid-template-columns: 1fr; grid-template-rows: none; min-width: 0; }
   .cameraWall, .predictionModule, .trackModule, .energyModule, .decisionModule, .validationModule { grid-area: auto; }
   .cameraWall { grid-template-columns: 1fr; grid-template-rows: repeat(6, 230px); }

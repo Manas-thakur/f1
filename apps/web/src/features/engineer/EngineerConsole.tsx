@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { SiteNav } from '../nav/SiteNav';
 import { useRace } from '../race/Connection';
 import type { RaceWorld } from '../race/RaceWorld';
 import type { CircuitMap, RaceCar, RaceFrame } from '../race/types';
@@ -331,10 +331,7 @@ export function EngineerConsole() {
   const car = frame?.cars.find((item) => item.id === selected);
   const speed = car?.channels['speed_mps'];
   return <main className={styles.console}>
-    <header className={styles.topbar}>
-      <div className={styles.identity}><b>AL</b><div>
-        <span>AFTERLAP</span><strong>RACE ENGINEERING</strong>
-      </div></div>
+    <SiteNav>
       <div className={styles.sessionMeta}>
         <span>{frame?.circuit_map.name?.toUpperCase() ?? 'SESSION INITIALISING'}</span>
         <strong>LAP {currentLap(car, frame?.settings.laps)} <i>/</i>{' '}
@@ -360,8 +357,7 @@ export function EngineerConsole() {
         onClick={() => send(frame?.status === 'running' ? 'pause' : 'start')}>
         {frame?.status === 'running' ? 'PAUSE' : 'START'}
       </button>
-      <Link className={styles.trackLink} href="/race">FULL SIM</Link>
-    </header>
+    </SiteNav>
     {(error ?? frame?.failure) && <div className={styles.alert} role="status">
       {error ?? frame?.failure}
     </div>}
