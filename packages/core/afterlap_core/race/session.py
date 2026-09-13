@@ -577,7 +577,7 @@ class RaceSession:
     def snapshot(self) -> dict[str, Any]:
         return copy.deepcopy(
             {
-                "model_version": "race-physics-v4",
+                "model_version": "race-physics-v5",
                 "settings": self.settings.model_dump(),
                 "drivers": self.drivers,
                 "tyres": self.tyres,
@@ -598,7 +598,7 @@ class RaceSession:
 
     def restore(self, snapshot: dict[str, Any]) -> None:
         if (
-            snapshot.get("model_version") != "race-physics-v4"
+            snapshot.get("model_version") != "race-physics-v5"
             or snapshot.get("settings") != self.settings.model_dump()
         ):
             raise ValueError("incompatible race model or settings in checkpoint")
@@ -624,7 +624,7 @@ class RaceSession:
     def manifest(self) -> dict[str, Any]:
         return {
             "type": "manifest",
-            "model_version": "race-physics-v4",
+            "model_version": "race-physics-v5",
             "environment_version": "race-control-v2",
             "drivers": {car: driver.traits.model_dump() for car, driver in self.drivers.items()},
             "racing_lines": {
