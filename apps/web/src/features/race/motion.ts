@@ -1,10 +1,13 @@
-import type { RaceFrame } from './types';
+import type { RaceCar, RaceFrame } from './types';
 
 export interface MotionPose {
   progress: number;
   lateral: number;
   speed?: number;
   lateralRate?: number;
+  pitPhase?: RaceCar['tyres']['phase'];
+  serviceDuration?: number;
+  serviceRemaining?: number;
 }
 
 interface Sample {
@@ -68,6 +71,7 @@ export class RaceMotion {
     this.generation = frame.generation;
     this.running = running;
     this.length = frame.circuit_map.length_m;
+    this.rate = frame.requested_rate;
     if (frame.time_s === this.simulationTime && this.samples.length) {
       return;
     }
@@ -79,9 +83,6 @@ export class RaceMotion {
     }
     if (previous && this.running) {
       this.interval += (Math.min(1000, now - previous.at) - this.interval) * 0.1;
-      const start = this.samples[Math.max(0, this.samples.length - 12)] ?? previous;
-      const measured = (time - start.time) * 1000 / Math.max(1, now - start.at);
-      this.rate = this.samples.length === 1 ? measured : this.rate + (measured - this.rate) * 0.1;
     }
     const poses = new Map<string, MotionPose>();
     for (const car of frame.cars) {
@@ -112,6 +113,9 @@ export class RaceMotion {
         old.lateralRate = centredDt > 0 ? (lateral - before.lateral) / centredDt : lateralRate;
       }
       poses.set(car.id, { progress: unwrapped, lateral, lateralRate,
+        pitPhase: car.tyres.phase,
+        serviceDuration: car.tyres.service_duration_s,
+        serviceRemaining: car.tyres.service_remaining_s,
         ...(speed === undefined ? {} : { speed: Math.max(0, speed) }) });
     }
     if (!poses.size) {
@@ -137,6 +141,7 @@ export class RaceMotion {
         return this.separate(first.poses);
       }
       this.cursor = first.time + Math.max(0, now - first.at - this.delayMs) * this.rate / 1000;
+      this.sampledAt = now;
     } else {
       const elapsed = Math.max(0, now - this.sampledAt) / 1000;
       const targetBuffer = this.delayMs * this.rate / 1000;
@@ -187,7 +192,12 @@ export class RaceMotion {
       ) / duration;
       const speed = origin.speed === undefined || destination.speed === undefined
         ? undefined : origin.speed + (destination.speed - origin.speed) * t;
-      result.set(id, { progress, lateral, lateralRate, ...(speed === undefined ? {} : { speed }) });
+      const state = t < 1 ? origin : destination;
+      result.set(id, { progress, lateral, lateralRate,
+        ...(state.pitPhase === undefined ? {} : { pitPhase: state.pitPhase }),
+        ...(state.serviceDuration === undefined ? {} : { serviceDuration: state.serviceDuration }),
+        ...(state.serviceRemaining === undefined ? {} : { serviceRemaining: state.serviceRemaining }),
+        ...(speed === undefined ? {} : { speed }) });
     }
     return this.separate(result);
   }
@@ -202,6 +212,10 @@ export class RaceMotion {
 
   get delayMs() {
     return Math.max(200, Math.min(1200, this.interval * 2.5));
+  }
+
+  get playbackRate() {
+    return this.rate;
   }
 }
 

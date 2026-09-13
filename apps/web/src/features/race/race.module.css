@@ -11,6 +11,8 @@
 .sceneWrap::after { content: ''; position: absolute; z-index: 2; inset: 0; pointer-events: none; box-shadow: inset 0 0 110px #02080ca8; background: linear-gradient(180deg, #03101920 0%, transparent 22%, transparent 72%, #02070b4d 100%); }
 .scene { width: 100%; height: 100%; touch-action: none; outline: none; }
 .scene canvas { display: block; width: 100%; height: 100%; }
+.pausedRain { position: absolute; z-index: 3; inset: 0; pointer-events: none; opacity: .52; mix-blend-mode: screen; background-image: repeating-linear-gradient(105deg, transparent 0 17px, #b9e4ff00 18px, #b9e4ffb8 19px, #b9e4ff00 21px, transparent 22px 47px); background-size: 180px 180px; animation: paused-rain .42s linear infinite; }
+@keyframes paused-rain { to { background-position: -36px 180px; } }
 .mapTools { position: absolute; z-index: 10; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 7px; border: 1px solid #dff5ff24; border-radius: 8px; background: linear-gradient(115deg, #07131de8, #14232cdd); box-shadow: 0 12px 40px #0007, inset 0 1px #ffffff12; backdrop-filter: blur(18px) saturate(1.25); }
 .circuitName { font: 10px monospace; letter-spacing: 1px; max-width: 200px; margin: 0 8px; }
 .connection { color: #bcdda5; font: 8px monospace; margin-right: auto; }

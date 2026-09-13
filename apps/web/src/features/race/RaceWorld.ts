@@ -562,10 +562,9 @@ export class RaceWorld {
     if (this.disposed) {
       return;
     }
-    if (this.frame) {
-      this.pitLane.update(this.frame, performance.now() / 1000);
-    }
-    const renderedPoses = this.motion.sample(performance.now());
+    const animationNow = performance.now();
+    const renderedPoses = this.motion.sample(animationNow);
+    this.pitLane.update(renderedPoses, animationNow / 1000);
     for (const [id, model] of this.cars) {
       const pose = renderedPoses.get(id);
       model.visible = Boolean(pose);
@@ -574,6 +573,7 @@ export class RaceWorld {
         const location = trackPose(this.map, pose.progress, pose.lateral, slope);
         model.position.copy(location.position);
         model.rotation.y = location.yaw;
+        model.userData['speedMps'] = pose.speed ?? 0;
         spinWheels(model, pose.progress);
       }
     }
