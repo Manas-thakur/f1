@@ -639,20 +639,14 @@ class Simulator:
                 speed,
                 float(car.max_tractive_force_n.value),
             )
-            useful_force_w = (
-                max(0.0, force_ceiling_n - ice_force_n) * speed / drivetrain_efficiency
-            )
-            combined_power_headroom_w = max(
-                0.0, float(car.max_tractive_power_w.value) - ice_requested_w
-            )
+            useful_force_w = max(0.0, force_ceiling_n - ice_force_n) * speed / drivetrain_efficiency
+            combined_power_headroom_w = max(0.0, float(car.max_tractive_power_w.value) - ice_requested_w)
             useful_deploy_ceiling_w = min(
                 deploy_ceiling_w,
                 useful_force_w,
                 combined_power_headroom_w,
             )
-            requested_deploy_w = (
-                DEPLOY_FRACTION[applied_profile] * useful_deploy_ceiling_w * throttle
-            )
+            requested_deploy_w = DEPLOY_FRACTION[applied_profile] * useful_deploy_ceiling_w * throttle
             if car.regen_enabled:
                 mechanical_available_w = mechanical_brake_w
                 requested_harvest_w = (
