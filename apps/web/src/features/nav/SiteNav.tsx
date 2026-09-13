@@ -28,6 +28,7 @@ export function SiteNav({
       ref={ref}
       className={className ? `${styles.bar} ${className}` : styles.bar}
       data-menu={menu ? 'true' : 'false'}
+      aria-label="Site"
     >
       <Link className={styles.brand} href="/race" aria-label="Afterlap race">
         <b>AL</b>

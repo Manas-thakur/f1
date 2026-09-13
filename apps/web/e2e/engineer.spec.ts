@@ -45,7 +45,7 @@ test('site root opens the race view with shared page navigation', async ({ page 
 
 test('simulator toolbar exposes shared navigation and a right-side controls menu', async ({ page }) => {
   await page.goto('/race');
-  const toolbar = page.getByRole('banner');
+  const toolbar = page.locator('header[aria-label="Site"]');
   const engineer = toolbar.getByRole('link', { name: 'Engineer' });
   await expect(engineer).toBeVisible();
   await expect(engineer).toHaveAttribute('href', '/race/engineer');
