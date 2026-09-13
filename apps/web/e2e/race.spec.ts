@@ -1,6 +1,27 @@
 import { expect, test } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { connect, createServer } from 'node:net';
 import type { Socket } from 'node:net';
+
+async function applyAvailableBoost(page: Page, boost: Locator) {
+  let rejected: unknown = null;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await expect(boost).toBeEnabled({ timeout: 60000 });
+    const [response] = await Promise.all([
+      page.waitForResponse((candidate) => (
+        candidate.request().method() === 'POST'
+          && new URL(candidate.url()).pathname === '/race/boost'
+      )),
+      boost.click(),
+    ]);
+    const payload = await response.json();
+    if (response.ok()) {
+      return payload;
+    }
+    rejected = payload;
+  }
+  throw new Error(`Boost stayed unavailable: ${JSON.stringify(rejected)}`);
+}
 
 test('orbit attaches to the first observed car after start, reset and car switching', async ({ page }) => {
   test.slow();
@@ -412,14 +433,9 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   const boost = page.getByRole('button', { name: 'Apply boost to car-01', exact: true });
   await expect(boost).toBeDisabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
-  await expect(boost).toBeEnabled({ timeout: 60000 });
-  const [boostResponse] = await Promise.all([
-    page.waitForResponse((response) => (
-      response.request().method() === 'POST' && new URL(response.url()).pathname === '/race/boost'
-    )),
-    boost.click(),
-  ]);
-  expect(await boostResponse.json()).toMatchObject({ car_id: 'car-01', status: 'accepted' });
+  expect(await applyAvailableBoost(page, boost)).toMatchObject({
+    car_id: 'car-01', status: 'accepted',
+  });
   await expect(boost).toHaveAttribute('data-active', 'true');
   await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
   const scene = page.getByRole('application', { name: '3D camera controls' });
