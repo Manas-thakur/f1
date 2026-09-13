@@ -251,6 +251,11 @@ def allowed_origins(origin: str) -> list[Origin | re.Pattern[str] | None]:
     return [
         Origin(origin),
         re.compile(r"https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::[0-9]{1,5})?"),
+        re.compile(
+            r"https?://(?:10(?:\.[0-9]{1,3}){3}"
+            r"|192\.168(?:\.[0-9]{1,3}){2}"
+            r"|172\.(?:1[6-9]|2[0-9]|3[0-1])(?:\.[0-9]{1,3}){2})(?::[0-9]{1,5})?"
+        ),
         None,
     ]
 

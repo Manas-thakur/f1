@@ -38,6 +38,7 @@ def main() -> None:
     cars = os.environ.get("RACE_CARS")
     policy = os.environ.get("RACE_POLICY")
     metrics = os.environ.get("RACE_METRICS")
+    web_host = os.environ.get("RACE_WEB_HOST", "127.0.0.1")
     check_ports((web_port, simulator_port))
 
     def stop(signum: int, frame: object) -> None:
@@ -61,14 +62,14 @@ def main() -> None:
         )
         children.append(
             subprocess.Popen(
-                [bun, "x", "next", "dev", "--hostname", "127.0.0.1", "--port", str(web_port)],
+                [bun, "x", "next", "dev", "--hostname", web_host, "--port", str(web_port)],
                 cwd=ROOT / "apps/web",
                 env={**os.environ, "AFTERLAP_RACE_UPSTREAM": f"http://127.0.0.1:{simulator_port}"},
                 start_new_session=True,
             )
         )
         print(
-            f"race view: http://127.0.0.1:{web_port}/race\nrace control: http://127.0.0.1:{web_port}/race/control",
+            f"race view: http://{web_host}:{web_port}/race\nrace control: http://{web_host}:{web_port}/race/control",
             flush=True,
         )
         while all(child.poll() is None for child in children):
