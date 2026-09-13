@@ -14,6 +14,7 @@ from afterlap_api.control_state import ControlState
 from afterlap_api.race_server import Command, RaceServer, allowed_origins
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings, RacingLineSettings
+from afterlap_core.simulation import DriverAction
 from afterlap_core.simulation.physics import tractive_force
 
 
@@ -72,6 +73,30 @@ def test_manual_boost_uses_safety_availability_instead_of_policy_mode():
     runtime.decision_engine.recommend = Mock(return_value=available_boost("neutral"))
     runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
     assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.PUSH}
+    assert runtime.session.simulator.world.cars["car-01"].active_profile == DeploymentProfile.PUSH
+    assert json.loads(runtime.frame())["manual_boost_car_id"] == "car-01"
+
+
+def test_selected_car_never_uses_an_automatic_or_driver_override_boost():
+    runtime = RaceServer(RaceSettings(cars=2))
+    session = runtime.session
+    session.control("car-01", DriverAction(profile=DeploymentProfile.OVERTAKE))
+    state = session.simulator.world.cars["car-01"]
+    state.active_profile = DeploymentProfile.PUSH
+    session.simulator.world.active_actions["car-01"] = DriverAction(profile=DeploymentProfile.PUSH)
+    other = session.simulator.world.cars["car-02"]
+    other.active_profile = DeploymentProfile.PUSH
+    session.simulator.world.active_actions["car-02"] = DriverAction(profile=DeploymentProfile.PUSH)
+    runtime.hold_selected_car()
+    assert other.active_profile == DeploymentProfile.PUSH
+    session.status = "running"
+    session.advance(0.5)
+    assert state.active_profile == DeploymentProfile.NEUTRAL
+    assert state.boost_active == 0
+    assert all(
+        queued.action.profile == DeploymentProfile.NEUTRAL
+        for queued in session.simulator.world.action_queues["car-01"]
+    )
 
 
 def test_manual_boost_releases_when_the_guard_expires():
@@ -91,6 +116,8 @@ def test_changing_selection_releases_the_previous_manual_boost():
     runtime.select("car-02")
     assert runtime.control_state.selected() == "car-02"
     assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.NEUTRAL}
+    assert runtime.session.simulator.world.cars["car-02"].active_profile == DeploymentProfile.NEUTRAL
+    assert json.loads(runtime.frame())["manual_boost_car_id"] is None
 
 
 def test_control_state_persists_the_selected_car(tmp_path):
