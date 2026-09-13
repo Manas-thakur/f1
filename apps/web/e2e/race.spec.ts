@@ -315,10 +315,10 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   await expect(scene).toHaveAttribute('data-weather-wetness', '0.80');
   await expect(scene).toHaveAttribute('data-weather-wind', '7.5');
   await expect(scene).toHaveAttribute('data-weather-temperature', '291.15');
-  await expect(page.getByText('HEAVY RAIN', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Live circuit')).toHaveAttribute('data-weather', 'HEAVY RAIN');
   await page.getByRole('combobox', { name: 'Weather', exact: true }).selectOption('sunny');
   await expect(scene).toHaveAttribute('data-weather', 'sunny');
-  await expect(page.getByText('WET TRACK', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Live circuit')).toHaveAttribute('data-weather', 'WET TRACK');
   await expect(page.getByLabel('Graphics quality').locator('option')).toHaveText([
     'Ultra graphics', 'High graphics', 'Performance',
   ]);
