@@ -25,7 +25,7 @@ export function TelemetryOverlay({ carId, visible }: {
 }) {
   const { car, flag, frame, connected, boost } = useTelemetry(carId);
   const [boosting, setBoosting] = useState(false);
-  const recommendation = frame?.recommendations[carId];
+  const recommendation = frame?.recommendations?.[carId];
   const boostActive = car.mode === 'BOOST';
   const boostable = connected && frame?.status === 'running' && car.present && !boosting
     && Boolean(recommendation?.can_apply);

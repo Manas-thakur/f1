@@ -21,7 +21,7 @@ import type { CircuitMap, RaceFrame } from './types';
 import { box, createCar, foliageTexture, ribbon, spinWheels, surfaceDetailTexture,
   surfaceTexture, trackPose } from './worldGeometry';
 
-export type CameraMode = 'chase' | 'cockpit' | 'orbit' | 'track';
+export type CameraMode = 'chase' | 'cockpit' | 'orbit' | 'track' | 'trackside';
 export type GraphicsQuality = 'ultra' | 'high' | 'performance';
 
 export class RaceWorld {
@@ -421,6 +421,7 @@ export class RaceWorld {
   setMode(mode: CameraMode) {
     this.dirty = true;
     this.mode = mode;
+    this.controls.enabled = true;
     this.camera.fov = mode === 'cockpit' ? 82 : 58;
     this.camera.updateProjectionMatrix();
     this.distance = 1;
@@ -438,6 +439,24 @@ export class RaceWorld {
       this.camera.position.copy(car.position).add(new THREE.Vector3(6, 3, 8));
     }
     this.controls.update();
+  }
+
+  setTrackside(progressFraction: number, side: -1 | 1) {
+    this.dirty = true;
+    this.mode = 'trackside';
+    this.controls.enabled = false;
+    this.camera.fov = 46;
+    this.camera.updateProjectionMatrix();
+    const progress = this.map.length_m * progressFraction;
+    const cameraPose = trackPose(this.map, progress, side * 16);
+    const targetPose = trackPose(this.map, progress + 55, 0);
+    this.camera.position.copy(cameraPose.position);
+    this.camera.position.y = 4.8;
+    this.controls.target.copy(targetPose.position);
+    this.controls.target.y = 0.75;
+    this.camera.lookAt(this.controls.target);
+    this.host.dataset['cameraMode'] = 'trackside';
+    this.onMode('trackside');
   }
 
   setMinimap(canvas: HTMLCanvasElement | null) {

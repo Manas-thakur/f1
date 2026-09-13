@@ -48,7 +48,7 @@ export function Dashboard({ carId, controls = true, carIds, onCarChange }: {
   const running = frame?.status === 'running';
   const startable = connected && frame !== null && !['finished', 'failed', 'truncated'].includes(frame.status);
   const boostActive = car.mode === 'BOOST';
-  const recommendation = frame?.recommendations[carId];
+  const recommendation = frame?.recommendations?.[carId];
   const boostable = connected && running && car.present && !boosting
     && Boolean(recommendation?.can_apply);
   const lit = Math.round(clamp01(car.lapFraction) * SEGMENTS);

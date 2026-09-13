@@ -176,7 +176,7 @@ export interface RaceFrame {
   circuit_map: CircuitMap;
   events: RaceEvent[];
   boost_evaluation: BoostEvaluation;
-  recommendations: Record<string, BoostRecommendation>;
+  recommendations?: Record<string, BoostRecommendation>;
   training_metrics: TrainingMetrics | null;
   regulations: {
     name: string;
