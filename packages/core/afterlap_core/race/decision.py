@@ -85,6 +85,8 @@ class BoostRecommendation:
     mode: str
     source: str
     confidence: float | None
+    manual_available: bool
+    manual_reason: str
     boost_available: bool
     overtake_available: bool
     risk_score: float
@@ -231,13 +233,11 @@ def assess_boost(session: RaceSession, observation: Observation) -> BoostRecomme
         if temperature is None
         else float(np.clip((derate_end - float(temperature)) / max(1.0, derate_end - derate_start), 0, 1))
     )
+    manual_available = bool(
+        required and float(energy) > reserve and float(temperature) < derate_end and not boost_latched
+    )
     boost_available = bool(
-        required
-        and float(speed) >= 50 / 3.6
-        and float(energy) > reserve
-        and float(temperature) < derate_end
-        and (acceleration is None or float(acceleration) > -2.0)
-        and not boost_latched
+        manual_available and float(speed) >= 50 / 3.6 and (acceleration is None or float(acceleration) > -2.0)
     )
     wet_risk = session.settings.wetness
     corner_risk = 1.0 - straight_score
@@ -266,6 +266,16 @@ def assess_boost(session: RaceSession, observation: Observation) -> BoostRecomme
         )
     )
     ratio = None if reward <= 0 else reward / max(0.05, risk)
+    if not required:
+        manual_reason = "Required delayed telemetry is unavailable"
+    elif boost_latched:
+        manual_reason = "Boost must be released before recovered energy can be deployed"
+    elif energy is not None and float(energy) <= reserve:
+        manual_reason = "Battery energy reserve is unavailable"
+    elif temperature is not None and float(temperature) >= derate_end:
+        manual_reason = "Battery thermal limit is active"
+    else:
+        manual_reason = "Manual boost is available"
     if not required:
         mode = DeploymentProfile.NEUTRAL.value
         reason = "Required delayed telemetry is unavailable"
@@ -299,6 +309,8 @@ def assess_boost(session: RaceSession, observation: Observation) -> BoostRecomme
         mode=mode,
         source="rules_baseline",
         confidence=None,
+        manual_available=manual_available,
+        manual_reason=manual_reason,
         boost_available=boost_available,
         overtake_available=False,
         risk_score=risk,

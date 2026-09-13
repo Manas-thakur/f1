@@ -133,6 +133,30 @@ class RaceSession:
                 raise ValueError("lateral target must be within the synthetic corridor")
             self.overrides[car_id] = action
 
+    def set_bms_profile(self, car_id: str, profile: DeploymentProfile | None) -> None:
+        if car_id not in self.bundle.car_configs:
+            raise ValueError("unknown car")
+        if profile is None:
+            self.bms_profiles.pop(car_id, None)
+            return
+        self.bms_profiles[car_id] = profile
+        if self.tyres[car_id].phase != "track":
+            return
+        world = self.simulator.world
+        state = world.cars[car_id]
+        world.active_actions[car_id] = replace(
+            world.active_actions[car_id],
+            profile=profile,
+            issued_at_s=world.race.session_time_s,
+        )
+        for queued in world.action_queues[car_id]:
+            queued.action = replace(queued.action, profile=profile)
+        state.active_profile = profile
+        state.pending_profile = profile if world.action_queues[car_id] else None
+        if profile not in {DeploymentProfile.PUSH, DeploymentProfile.OVERTAKE}:
+            state.boost_active = 0.0
+            state.boost_latched = 0.0
+
     def configure_conditions(self, conditions: RaceConditionPatch) -> None:
         updates = conditions.model_dump(exclude_none=True)
         if not updates:
@@ -197,15 +221,18 @@ class RaceSession:
             if event is not None:
                 self.events.append(event)
         self.lanes[car_id] = action.target_lateral_d_m
-        if tyre.phase == "track":
-            action = replace(action, profile=self.bms_profiles.get(car_id, action.profile))
         return action
 
     def _requested_action(self, observation: Observation) -> DriverAction:
         car_id = observation.car_id
-        if self.tyres[car_id].phase != "track" or car_id not in self.overrides:
-            return self.automatic_action(observation)
-        return self.overrides[car_id]
+        action = (
+            self.overrides[car_id]
+            if self.tyres[car_id].phase == "track" and car_id in self.overrides
+            else self.automatic_action(observation)
+        )
+        if self.tyres[car_id].phase == "track":
+            action = replace(action, profile=self.bms_profiles.get(car_id, action.profile))
+        return action
 
     def _pit_box_s(self, car_id: str) -> float:
         index = int(car_id.rsplit("-", maxsplit=1)[-1]) - 1
