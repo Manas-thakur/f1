@@ -38,21 +38,21 @@ def boost_command(host: str, enabled: bool) -> tuple[str, ...]:
     )
 
 
-def parse_pressed(output: str) -> bool:
+def parse_level(output: str) -> str:
     match = LEVEL_PATTERN.search(output.lower())
     if match is None:
         raise ValueError(f"could not read GPIO level from: {output.strip()}")
-    return match.group(1) == "lo"
+    return match.group(1)
 
 
-def read_pressed(gpio: int) -> bool:
+def read_level(gpio: int) -> str:
     result = subprocess.run(
         ["pinctrl", "get", str(gpio)],
         check=True,
         capture_output=True,
         text=True,
     )
-    return parse_pressed(result.stdout)
+    return parse_level(result.stdout)
 
 
 def configure_gpio(gpio: int) -> None:
@@ -109,20 +109,30 @@ class BoostClient:
 
 def monitor(gpio: int, client: BoostClient, debounce_s: float = 0.05) -> None:
     configure_gpio(gpio)
-    active = False
-    candidate = read_pressed(gpio)
+    idle_level = read_level(gpio)
+    stable_level = idle_level
+    candidate_level = idle_level
     candidate_since = time.monotonic()
-    log_event(logging.INFO, "button_ready", gpio=gpio, initial_pressed=candidate)
+    active = False
+    log_event(logging.INFO, "button_ready", gpio=gpio, idle_level=idle_level)
+    client.send(False)
     try:
         while True:
-            pressed = read_pressed(gpio)
+            level = read_level(gpio)
             now = time.monotonic()
-            if pressed != candidate:
-                candidate = pressed
+            if level != candidate_level:
+                candidate_level = level
                 candidate_since = now
-                log_event(logging.DEBUG, "button_candidate_changed", gpio=gpio, pressed=pressed)
-            elif candidate != active and now - candidate_since >= debounce_s:
-                active = candidate
+                log_event(
+                    logging.DEBUG,
+                    "button_candidate_changed",
+                    gpio=gpio,
+                    gpio_level=level,
+                    pressed=level != idle_level,
+                )
+            elif level != stable_level and now - candidate_since >= debounce_s:
+                stable_level = level
+                active = level != idle_level
                 log_event(logging.INFO, "button_state_changed", gpio=gpio, pressed=active)
                 client.send(active)
             time.sleep(0.02)
