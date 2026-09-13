@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { CarState } from './CarState';
 import { Dial } from './Dial';
 import { lapClock, signedSeconds } from './lapTiming';
@@ -34,16 +36,28 @@ function Gap({ gap, side }: { readonly gap: GapReadout | undefined; readonly sid
   );
 }
 
-export function Dashboard({ carId, controls = true }: {
+export function Dashboard({ carId, controls = true, carIds, onCarChange }: {
   readonly carId: string;
   readonly controls?: boolean;
+  readonly carIds?: readonly string[];
+  readonly onCarChange?: (carId: string) => void;
 }) {
-  const { frame, connected, car, timing, flag, send } = useTelemetry(carId);
+  const { frame, connected, car, timing, flag, send, boost } = useTelemetry(carId);
+  const [boosting, setBoosting] = useState(false);
   useRaceToggleShortcut(controls);
   const running = frame?.status === 'running';
   const startable = connected && frame !== null && !['finished', 'failed', 'truncated'].includes(frame.status);
+  const boostActive = car.mode === 'BOOST';
+  const recommendation = frame?.recommendations[carId];
+  const boostable = connected && running && car.present && !boosting && !boostActive
+    && Boolean(recommendation?.can_apply);
   const lit = Math.round(clamp01(car.lapFraction) * SEGMENTS);
   const delta = timing.delta_s;
+  async function applyBoost() {
+    setBoosting(true);
+    await boost(carId);
+    setBoosting(false);
+  }
   return (
     <div className={styles.dashboard} data-connected={connected} data-status={frame?.status ?? 'offline'}>
       <div className={styles.strip} role="img"
@@ -128,9 +142,18 @@ export function Dashboard({ carId, controls = true }: {
         </footer>
       </section>
 
-      <div className={styles.carTag}>
-        <small>CAR</small>
-        <strong>{carId.replace(/^car-/, '').toUpperCase()}</strong>
+      <div className={styles.carTag} data-selectable={Boolean(onCarChange)}>
+        {onCarChange ? (
+          <label>
+            <small>CAR</small>
+            <select aria-label="Telemetry car" value={carId}
+              onChange={(event) => onCarChange(event.target.value)}>
+              {carIds?.map((id) => <option key={id}>{id}</option>)}
+            </select>
+          </label>
+        ) : (
+          <><small>CAR</small><strong>{carId.replace(/^car-/, '').toUpperCase()}</strong></>
+        )}
       </div>
 
       <section className={styles.gaps} aria-label="Gap to the cars ahead and behind">
@@ -144,14 +167,22 @@ export function Dashboard({ carId, controls = true }: {
         <span className={styles.gapPos}>{car.behind ? `P${car.behind.position}` : '--'}</span>
       </section>
 
-      {controls && (
-        <button type="button" className={styles.start} disabled={!startable}
-          aria-label={running ? 'Pause race' : 'Start race'}
-          aria-keyshortcuts="Space"
-          onClick={() => send(running ? 'pause' : 'start')}>
-          {running ? '❚❚' : '▶'}
+      <div className={styles.dashboardActions}>
+        <button type="button" className={styles.boost} disabled={!boostable}
+          data-active={boostActive}
+          aria-label={`Apply boost to ${carId}`}
+          onClick={() => void applyBoost()}>
+          {boosting ? 'WAIT' : boostActive ? 'BOOST ON' : 'BOOST'}
         </button>
-      )}
+        {controls && (
+          <button type="button" className={styles.start} disabled={!startable}
+            aria-label={running ? 'Pause race' : 'Start race'}
+            aria-keyshortcuts="Space"
+            onClick={() => send(running ? 'pause' : 'start')}>
+            {running ? '❚❚' : '▶'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

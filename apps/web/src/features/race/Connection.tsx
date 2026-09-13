@@ -15,6 +15,7 @@ interface RaceConnection {
   selected: string;
   select: (id: string) => void;
   send: (operation: string, payload?: Record<string, unknown>) => void;
+  boost: (carId: string) => Promise<boolean>;
   history: RaceFrame[];
 }
 
@@ -112,9 +113,24 @@ export function RaceConnectionProvider({ children }: { readonly children: ReactN
       type: 'command', payload: { id: crypto.randomUUID(), operation, ...payload },
     });
   }, []);
+  const boost = useCallback(async (carId: string) => {
+    setError(null);
+    try {
+      const response = await fetch(`/race/boost/${encodeURIComponent(carId)}`, { method: 'POST' });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) {
+        setError(payload.error ?? 'The boost request was rejected.');
+        return false;
+      }
+      return true;
+    } catch {
+      setError('The boost request could not reach the race runtime.');
+      return false;
+    }
+  }, []);
   return (
     <Context.Provider value={{
-      frame, circuits, connected, socketUrl, error, selected, select, send, history,
+      frame, circuits, connected, socketUrl, error, selected, select, send, boost, history,
     }}>
       <div className={styles.root}>
         {children}

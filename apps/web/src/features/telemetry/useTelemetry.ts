@@ -16,10 +16,11 @@ export interface TelemetrySnapshot {
   timing: LapReading;
   flag: FlagReadout;
   send: (operation: string, payload?: Record<string, unknown>) => void;
+  boost: (carId: string) => Promise<boolean>;
 }
 
 export function useTelemetry(carId: string): TelemetrySnapshot {
-  const { frame, connected, send } = useRace();
+  const { frame, connected, send, boost } = useRace();
   const timer = useRef<LapTimer | null>(null);
   timer.current ??= new LapTimer();
   const [timing, setTiming] = useState<LapReading>(emptyLapReading);
@@ -31,5 +32,5 @@ export function useTelemetry(carId: string): TelemetrySnapshot {
   }, [frame, carId]);
   const car = useMemo(() => readout(frame, carId), [frame, carId]);
   const flag = useMemo(() => flagState(frame, car, connected), [frame, car, connected]);
-  return { frame, connected, car, timing, flag, send };
+  return { frame, connected, car, timing, flag, send, boost };
 }

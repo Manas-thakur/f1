@@ -169,6 +169,9 @@ test('the telemetry screen streams one car, scales to the display and starts the
   await page.setViewportSize({ width: 800, height: 480 });
   await page.goto('/tel/car-01');
   await expect(page.getByLabel('Live telemetry for car-01')).toBeVisible();
+  await page.getByRole('combobox', { name: 'Telemetry car', exact: true }).selectOption('car-02');
+  await expect(page).toHaveURL(/\/tel\/car-02$/);
+  await expect(page.getByLabel('Live telemetry for car-02')).toBeVisible();
   await expect(page.getByLabel('Position and lap')).toContainText('/3');
   const stageSize = async () => page.evaluate(() => {
     const box = document.querySelector('[class*="dashboard"]')?.getBoundingClientRect();
@@ -180,6 +183,14 @@ test('the telemetry screen streams one car, scales to the display and starts the
     .toHaveAttribute('aria-keyshortcuts', 'Space');
   await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
+  const boostRequest = page.waitForRequest((request) => (
+    request.method() === 'POST' && new URL(request.url()).pathname === '/race/boost/car-02'
+  ));
+  const boost = page.getByRole('button', { name: 'Apply boost to car-02', exact: true });
+  await expect(boost).toBeEnabled();
+  await boost.click();
+  await boostRequest;
+  await expect(boost).toHaveAttribute('data-active', 'true');
   const speed = page.getByLabel('Speed, electrical power and deployment profile');
   await expect.poll(async () => Number(await speed.locator('strong').nth(1).innerText()))
     .toBeGreaterThan(0);

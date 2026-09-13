@@ -401,13 +401,21 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   const hud = page.getByLabel('Battery and boost', { exact: true });
-  const boost = hud.getByRole('button', { name: 'Apply boost', exact: true });
   await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
+  const boost = page.getByRole('button', { name: 'Apply boost to car-01', exact: true });
   await expect(boost).toBeDisabled();
-  const charge = page.getByRole('progressbar', { name: 'Usable battery charge' });
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
-  await expect(boost).toBeEnabled({ timeout: 60000 });
-  await expect(charge).toHaveAttribute('value', /\d/);
+  const boostRequest = page.waitForRequest((request) => (
+    request.method() === 'POST' && new URL(request.url()).pathname === '/race/boost/car-01'
+  ));
+  await expect(boost).toBeEnabled();
+  await boost.click();
+  await boostRequest;
+  await expect(boost).toHaveAttribute('data-active', 'true');
+  await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  await expect(scene).toHaveAttribute('data-boosting-cars', 'car-01');
+  const charge = hud.locator('progress');
   const initial = Number(await charge.getAttribute('value'));
   await expect.poll(async () => {
     if (await boost.isEnabled()) {
