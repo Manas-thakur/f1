@@ -146,8 +146,8 @@ class RaceServer:
                 continue
             observation = self.session.observations()[car_id]
             recommendation = self.decision_engine.recommend(self.session, observation)
-            if not recommendation.boost_available:
-                self.release_manual_boost(recommendation.reason, car_id)
+            if not recommendation.manual_available:
+                self.release_manual_boost(recommendation.manual_reason, car_id)
 
     def apply(self, command: Command) -> None:
         session = self.session
@@ -197,13 +197,13 @@ class RaceServer:
                 self.select(command.car_id)
             observation = session.observations()[command.car_id]
             recommendation = self.decision_engine.recommend(session, observation)
-            if not recommendation.boost_available:
+            if not recommendation.manual_available:
                 self.log_control(
                     "boost_rejected",
                     car_id=command.car_id,
-                    reason=recommendation.reason,
+                    reason=recommendation.manual_reason,
                 )
-                raise ValueError(f"boost unavailable: {recommendation.reason}")
+                raise ValueError(f"boost unavailable: {recommendation.manual_reason}")
             self.release_manual_boost("replaced")
             session.set_bms_profile(command.car_id, DeploymentProfile.PUSH)
             self.log_control(

@@ -19,7 +19,13 @@ from afterlap_core.simulation.physics import tractive_force
 
 
 def available_boost(mode="push"):
-    recommendation = Mock(boost_available=True, can_apply=mode == "push", mode=mode)
+    recommendation = Mock(
+        manual_available=True,
+        manual_reason="Manual boost is available",
+        boost_available=True,
+        can_apply=mode == "push",
+        mode=mode,
+    )
     recommendation.payload.return_value = {}
     return recommendation
 
@@ -103,7 +109,12 @@ def test_manual_boost_releases_when_the_guard_expires():
     runtime = RaceServer(RaceSettings(cars=2))
     runtime.decision_engine.recommend = Mock(return_value=available_boost())
     runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
-    expired = Mock(boost_available=False, reason="battery energy depleted")
+    expired = Mock(
+        manual_available=False,
+        manual_reason="battery energy depleted",
+        boost_available=False,
+        reason="battery energy depleted",
+    )
     runtime.decision_engine.recommend = Mock(return_value=expired)
     runtime.synchronize_manual_boost()
     assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.HARVEST}
