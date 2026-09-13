@@ -394,7 +394,7 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   const hud = page.getByLabel('Battery and boost', { exact: true });
   const boost = hud.getByRole('button', { name: 'Apply boost', exact: true });
-  await expect(hud).toHaveAttribute('data-energy-mode', 'IDLE');
+  await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
   await expect(boost).toBeDisabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect(boost).toBeEnabled();

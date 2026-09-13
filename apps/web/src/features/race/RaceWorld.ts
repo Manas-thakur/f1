@@ -499,11 +499,13 @@ export class RaceWorld {
 
   private beginInteraction = () => {
     this.interacting = true;
+    this.host.dataset['renderPath'] = 'direct';
     this.atmosphere.setInteractive(true);
   };
 
   private endInteraction = () => {
     this.interacting = false;
+    this.host.dataset['renderPath'] = this.quality === 'ultra' ? 'postprocessed' : 'direct';
     this.atmosphere.setInteractive(false);
     this.interactionTimer = null;
     this.dirty = true;
