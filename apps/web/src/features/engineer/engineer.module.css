@@ -44,7 +44,8 @@
 .sessionMeta strong { font: 750 1.08rem/1 ui-monospace, monospace; }
 .sessionMeta i { color: #56616a; font-style: normal; }
 .carSelect { display: grid; align-content: center; gap: 4px; }
-.carSelect select { min-width: 102px; border: 0; background: transparent; color: var(--text); font: 800 .84rem ui-monospace, monospace; }
+.carSelect select { min-width: 102px; border: 0; background: transparent; color: var(--text); color-scheme: dark; font: 800 .84rem ui-monospace, monospace; }
+.carSelect select option { background: #111820; color: #eef1f3; }
 .quickReadout { display: grid; min-width: 112px; align-content: center; gap: 4px; }
 .quickReadout strong { font: 800 1rem/1 ui-monospace, monospace; white-space: nowrap; }
 .quickReadout small { color: var(--muted); font-size: .62rem; }
