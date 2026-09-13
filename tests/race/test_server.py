@@ -66,6 +66,25 @@ def test_boost_targets_only_the_requested_car():
         runtime.apply(Command(id="missing", operation="boost", car_id="car-03"))
 
 
+def test_manual_boost_releases_when_the_guard_expires():
+    runtime = RaceServer(RaceSettings(cars=2))
+    runtime.decision_engine.recommend = Mock(return_value=available_boost())
+    runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
+    expired = Mock(can_apply=False, reason="battery energy depleted")
+    runtime.decision_engine.recommend = Mock(return_value=expired)
+    runtime.synchronize_manual_boost()
+    assert runtime.session.bms_profiles == {}
+
+
+def test_changing_selection_releases_the_previous_manual_boost():
+    runtime = RaceServer(RaceSettings(cars=2))
+    runtime.decision_engine.recommend = Mock(return_value=available_boost())
+    runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
+    runtime.select("car-02")
+    assert runtime.control_state.selected() == "car-02"
+    assert runtime.session.bms_profiles == {}
+
+
 def test_control_state_persists_the_selected_car(tmp_path):
     path = tmp_path / "control.sqlite3"
     state = ControlState(path)
@@ -151,6 +170,7 @@ async def test_http_boost_endpoint_accepts_post_and_rejects_other_methods():
         port = server.sockets[0].getsockname()[1]
         selection_url = f"http://127.0.0.1:{port}/selection/car-02"
         boost_url = f"http://127.0.0.1:{port}/boost"
+        boost_off_url = f"http://127.0.0.1:{port}/boost/off"
 
         def post(url: str) -> tuple[int, dict[str, str]]:
             request = urllib.request.Request(url, method="POST")
@@ -170,6 +190,11 @@ async def test_http_boost_endpoint_accepts_post_and_rejects_other_methods():
         assert status == 200
         assert payload == {"operation": "boost", "car_id": "car-02", "status": "accepted"}
         assert runtime.session.bms_profiles == {"car-02": "push"}
+
+        off_status, off_payload = await asyncio.to_thread(post, boost_off_url)
+        assert off_status == 200
+        assert off_payload == {"operation": "boost-off", "car_id": "car-02", "status": "accepted"}
+        assert runtime.session.bms_profiles == {}
 
         def get() -> tuple[int, dict[str, str], str]:
             try:
