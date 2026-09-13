@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: vmax
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /race
+    domains:
+      - vmax.pulkit.page
+    envVars:
+      - key: RACE_ORIGIN
+        value: https://vmax.pulkit.page
+    autoDeployTrigger: checksPass
+    numInstances: 1
