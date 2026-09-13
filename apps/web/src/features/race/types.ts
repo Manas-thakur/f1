@@ -96,6 +96,8 @@ export interface BoostRecommendation {
   mode: 'harvest' | 'conserve' | 'neutral' | 'push' | 'overtake';
   source: 'rules_baseline' | 'ppo';
   confidence: number | null;
+  manual_available: boolean;
+  manual_reason: string;
   boost_available: boolean;
   overtake_available: boolean;
   risk_score: number;
@@ -173,6 +175,7 @@ export interface RaceFrame {
   playback_rate?: number;
   has_checkpoint: boolean;
   selected_car_id: string;
+  manual_boost_car_id: string | null;
   circuit_map: CircuitMap;
   events: RaceEvent[];
   boost_evaluation: BoostEvaluation;

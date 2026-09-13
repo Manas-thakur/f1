@@ -27,8 +27,9 @@ function chartPath(points: { x: number; y: number }[]) {
 }
 
 export function DecisionTelemetry() {
-  const { frame, selected, send, boost, connected } = useRace();
+  const { frame, selected, boost, stopBoost, connected } = useRace();
   const recommendation = frame?.recommendations?.[selected];
+  const boostActive = frame?.manual_boost_car_id === selected;
   const metrics = frame?.training_metrics;
   const history = metrics?.history ?? [];
   const rewardPoints = chartPoints(history.map((cycle) => cycle.mean_reward), 300, 75);
@@ -64,15 +65,18 @@ export function DecisionTelemetry() {
     </div>
     <div className={styles.actions}>
       <button type="button" className={styles.primary}
-        disabled={!connected || !recommendation?.can_apply}
+        disabled={!connected || boostActive || !recommendation?.manual_available}
+        aria-label={`Apply boost to ${selected}`}
         onClick={() => void boost()}>
         Apply boost
       </button>
-      <button type="button" disabled={!connected}
-        onClick={() => send('boost', { car_id: selected, enabled: false })}>
-        Return to automatic
+      <button type="button" disabled={!connected || !boostActive}
+        aria-label={`Stop boost for ${selected}`}
+        onClick={() => void stopBoost()}>
+        Stop boost
       </button>
     </div>
+    <p>{recommendation?.manual_reason ?? 'Waiting for manual boost safety telemetry.'}</p>
     <p className={styles.caption}>{recommendation?.regulation_basis}</p>
     <details className={styles.trainingMetrics} open={Boolean(metrics)}>
       <summary>Training cycles and evaluation</summary>

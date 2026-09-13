@@ -42,20 +42,20 @@ export function Dashboard({ carId, controls = true, carIds, onCarChange }: {
   readonly carIds?: readonly string[];
   readonly onCarChange?: (carId: string) => void;
 }) {
-  const { frame, connected, car, timing, flag, send, boost } = useTelemetry(carId);
+  const { frame, connected, car, timing, flag, send, boost, stopBoost } = useTelemetry(carId);
   const [boosting, setBoosting] = useState(false);
   useRaceToggleShortcut(controls);
   const running = frame?.status === 'running';
   const startable = connected && frame !== null && !['finished', 'failed', 'truncated'].includes(frame.status);
-  const boostActive = car.mode === 'BOOST';
+  const boostActive = frame?.manual_boost_car_id === carId;
   const recommendation = frame?.recommendations?.[carId];
   const boostable = connected && running && car.present && !boosting
-    && Boolean(recommendation?.can_apply);
+    && (boostActive || Boolean(recommendation?.manual_available));
   const lit = Math.round(clamp01(car.lapFraction) * SEGMENTS);
   const delta = timing.delta_s;
   async function applyBoost() {
     setBoosting(true);
-    await boost();
+    await (boostActive ? stopBoost() : boost());
     setBoosting(false);
   }
   return (
@@ -170,7 +170,7 @@ export function Dashboard({ carId, controls = true, carIds, onCarChange }: {
       <div className={styles.dashboardActions}>
         <button type="button" className={styles.boost} disabled={!boostable}
           data-active={boostActive}
-          aria-label={`Apply boost to ${carId}`}
+          aria-label={`${boostActive ? 'Stop boost for' : 'Apply boost to'} ${carId}`}
           onClick={() => void applyBoost()}>
           {boosting ? 'WAIT' : boostActive ? 'BOOST ON' : 'BOOST'}
         </button>
