@@ -12,6 +12,6 @@ export function Slide({ index, visual, progress = 1, demo = false }: { index: nu
     <div className="visual">{visual}</div>
     {!demo && <div className="visual-labels">{chapter.labels.map((label) => <span key={label}>{label}</span>)}</div>}
     <div className="caption"><span className="caption-line" /><p>{chapter.caption}</p></div>
-    <footer><span>{demo ? 'LIVE PRODUCT CAPTURE · ORIGINAL PLAYBACK SPEED' : 'IMPLEMENTATION GUIDE · ILLUSTRATIVE 3D'}</span><span>REPEATABLE SCENARIOS / GUARDED ENERGY</span><span>{REVISION}</span></footer>
+    <footer><span>{chapter.visual === 'circuit' ? 'CIRCUIT ARTWORK: JULES ROY · CC BY 4.0 · SCALED' : demo ? 'LIVE PRODUCT CAPTURE · ORIGINAL PLAYBACK SPEED' : 'IMPLEMENTATION GUIDE · ILLUSTRATIVE 3D'}</span><span>REPEATABLE SCENARIOS / GUARDED ENERGY</span><span>{REVISION}</span></footer>
   </article>;
 }

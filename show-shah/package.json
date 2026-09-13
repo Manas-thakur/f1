@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 18940 --strictPort",
     "studio": "remotion studio src/video.tsx --port 18941",
-    "render": "remotion render src/video.tsx ShowShah dist/show-shah.mp4 --crf=18 --concurrency=4 --gl=angle",
+    "render": "remotion render src/video.tsx ShowShah dist/show-shah.mp4 --crf=18 --concurrency=4 --gl=swangle",
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck && bun run build && bun run scripts/check.ts",
     "export": "bun run scripts/export.ts"

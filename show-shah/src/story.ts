@@ -72,9 +72,9 @@ export const chapters = [
   {
     section: 'OPERATOR VIEWS', title: 'One race.\nThree ways to read it.',
     body: 'Watch the 3D race.\nInspect the engineer console.\nFollow one car on telemetry.',
-    caption: 'The views share delayed race observations. Unknown channels remain unavailable rather than becoming invented instruments.',
+    caption: 'Live cameras and telemetry share observations. Prediction and execution cards labeled MOCK remain placeholders.',
     visual: 'screen', labels: ['/race', '/race/engineer', '/tel/{car_id}'],
-    notes: 'The live product capture shows the current race view. The engineer console combines live cameras and telemetry with prediction and execution panels explicitly marked SCENARIO MOCK and MOCK. Those panels are placeholders, not live trained-model outputs. The 800 by 480 telemetry display follows one selected car, and the compact overlay follows the watched car. Speed, energy, power, grip and applied pedals come from delayed sensor channels. Lap times and gaps are browser-side derivations and inherit observation delay and noise. There are no fabricated engine RPM, gearbox or tyre-temperature readouts. Classification, camera selection and manual energy control refer to the same race.',
+    notes: 'This product capture shows the engineer console. The engineer console combines live cameras and telemetry with prediction and execution panels explicitly marked SCENARIO MOCK and MOCK. Those panels are placeholders, not live trained-model outputs. The 800 by 480 telemetry display follows one selected car, and the compact overlay follows the watched car. Speed, energy, power, grip and applied pedals come from delayed sensor channels. Lap times and gaps are browser-side derivations and inherit observation delay and noise. There are no fabricated engine RPM, gearbox or tyre-temperature readouts. Classification, camera selection and manual energy control refer to the same race.',
     sources: ['RACE_SIMULATOR.md', 'apps/web/src/features/engineer/EngineerConsole.tsx', 'apps/web/src/features/telemetry/Screen.tsx'],
   },
   {

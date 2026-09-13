@@ -1,0 +1,90 @@
+{
+  "revision": "dbb00c3",
+  "viewport": [
+    1280,
+    720
+  ],
+  "renderer": "software WebGL",
+  "clips": [
+    {
+      "name": "overview",
+      "route": "/race",
+      "source": "page@245bf3b2420335aaf85ec03068067480.webm",
+      "trimStartSeconds": 33.525274584000016,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "chase",
+      "route": "/race",
+      "source": "page@9bb9c6c6efc8ebc70af16e1bbceed4b7.webm",
+      "trimStartSeconds": 16.328025015999998,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "energy",
+      "route": "/tel/car-01",
+      "source": "page@c5739abfff98fd5a2b67379c19baa50c.webm",
+      "trimStartSeconds": 3.0789365400000244,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "telemetry",
+      "route": "/tel/car-02",
+      "source": "page@3e54b7b4a98f80138bd7d4e276a73e15.webm",
+      "trimStartSeconds": 3.1865166899999893,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "decision",
+      "route": "/race",
+      "source": "page@f04f340bcb2cf4cdbcda48705ed12622.webm",
+      "trimStartSeconds": 69.16706715599997,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "setup",
+      "route": "/race",
+      "source": "page@b51fcbc08c734e488575b51bb066fce4.webm",
+      "trimFromEndSeconds": 12,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "boost",
+      "route": "/tel/car-01",
+      "source": "page@eaf24f7c1319d9b8202a37fa094bec65.webm",
+      "trimFromEndSeconds": 12,
+      "durationSeconds": 12,
+      "playbackRate": 1,
+      "response": {
+        "status": 200,
+        "body": {
+          "operation": "boost",
+          "car_id": "car-01",
+          "status": "accepted"
+        }
+      }
+    },
+    {
+      "name": "cockpit",
+      "route": "/race",
+      "source": "page@3d77781967c91f311d3a5a7616ab18e0.webm",
+      "trimFromEndSeconds": 12,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    },
+    {
+      "name": "engineer",
+      "route": "/race/engineer",
+      "source": "page@aac99584d23844a60ee01940675cf98d.webm",
+      "trimFromEndSeconds": 12,
+      "durationSeconds": 12,
+      "playbackRate": 1
+    }
+  ]
+}

@@ -54,7 +54,7 @@ function Track({ time }: { time: number }) {
 export function Scene({ source, kind, time }: { source: Group; kind: Chapter['visual']; time: number }) {
   const { camera } = useThree();
   const angle = 0.4 + Math.sin(time * 0.08) * 0.12;
-  camera.position.set(12 * Math.sin(angle), kind === 'circuit' ? 15 : 8, kind === 'circuit' ? 12 : 14);
+  camera.position.set(12 * Math.sin(angle), kind === 'circuit' ? 19 : 8, kind === 'circuit' ? 18 : 14);
   camera.lookAt(0, 0.6, 0);
   camera.updateProjectionMatrix();
   const progress = smooth((time - 2) / 6);
@@ -64,10 +64,10 @@ export function Scene({ source, kind, time }: { source: Group; kind: Chapter['vi
     <hemisphereLight args={['#d7f3ff', '#171c24', 2.2]} />
     <directionalLight position={[4, 12, 6]} intensity={3.5} color="#ffffff" />
     <directionalLight position={[-6, 4, -4]} intensity={2.5} color={CYAN} />
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.14, 0]}><circleGeometry args={[10, 96]} /><meshStandardMaterial color="#151d24" roughness={0.9} /></mesh>
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.14, 0]}><circleGeometry args={[7, 96]} /><meshStandardMaterial color="#151d24" roughness={0.9} /></mesh>
     {carScene && <group rotation={[0, kind === 'hero' ? -0.6 + time * 0.025 : -0.25, 0]}>
-      <Block at={[0, -0.05, 0]} size={[10, 0.05, 16]} color="#202b34" />
-      {[-4.6, 4.6].map((x) => <Block key={x} at={[x, 0, 0]} size={[0.06, 0.02, 16]} color={CYAN} />)}
+      <Block at={[0, -0.05, 0]} size={[8, 0.05, 11]} color="#202b34" />
+      {[-3.8, 3.8].map((x) => <Block key={x} at={[x, 0, 0]} size={[0.06, 0.02, 11]} color={CYAN} />)}
       <Car source={source} position={[kind === 'race' ? -1.8 * Math.sin(progress * Math.PI) : 0, 0, kind === 'race' ? 3 - progress * 6 : 0]} />
       {(kind === 'race' || kind === 'motion') && <Car source={source} position={[2.6, 0, -2]} color="#9cabb8" />}
       {kind === 'motion' && [0, 1, 2, 3].map((i) => <Block key={i} at={[-2.6, 0.05, -5 + i * 3]} size={[0.5, 0.05, 0.5]} color={i <= Math.floor(time / 3) ? CYAN : GREY} />)}
