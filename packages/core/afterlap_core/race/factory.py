@@ -6,6 +6,28 @@ from .circuit import assumed, circuit
 from .settings import RaceSettings
 
 
+def _training_grid(
+    settings: RaceSettings, track_length_m: float, streams: StreamRegistry
+) -> tuple[list[int], float]:
+    slots = list(range(settings.cars))
+    origin = 0.0
+    diversity = settings.training_diversity
+    if not diversity.enabled:
+        return slots, origin
+    rng = streams.stream("training-start")
+    if diversity.shuffle_grid:
+        rng.shuffle(slots)
+    if diversity.random_lap_origin:
+        origin = float(rng.uniform(0.0, track_length_m))
+    return slots, origin
+
+
+def _training_energy_j(car_energy_min_j: float, car_energy_max_j: float, offset: float) -> float:
+    lower = car_energy_min_j + 2.0e5
+    upper = car_energy_max_j - 5.0e4
+    return min(upper, max(lower, 3.1e6 + offset))
+
+
 def race_bundle(settings: RaceSettings) -> ScenarioBundle:
     template = load_scenario("oval-low-energy")
     baseline = load_car("synthetic-2026")
@@ -13,6 +35,8 @@ def race_bundle(settings: RaceSettings) -> ScenarioBundle:
     streams = StreamRegistry(settings.seed)
     variation = settings.variability
     scale = variation.strength * variation.vehicle_scale
+    slots, origin = _training_grid(settings, track.length, streams)
+    start_rng = streams.stream("training-start") if settings.training_diversity.enabled else None
     cars = {}
     states = {}
     drivers = {}
@@ -42,10 +66,24 @@ def race_bundle(settings: RaceSettings) -> ScenarioBundle:
             }
         )
         cars[car_id] = car
+        diversity = settings.training_diversity
+        progress_m = origin + 200 - slots[index] * 10
+        energy_j = 3.1e6
+        speed_mps = 14 + float(rng.uniform(-2, 2)) * scale
+        if start_rng is not None:
+            progress_m += float(start_rng.uniform(-diversity.progress_span_m, diversity.progress_span_m))
+            energy_j = _training_energy_j(
+                float(car.battery_energy_min_j.value),
+                float(car.battery_energy_max_j.value),
+                float(start_rng.uniform(-diversity.energy_span_j, diversity.energy_span_j)),
+            )
+            speed_mps = max(
+                8.0, speed_mps + float(start_rng.uniform(-diversity.speed_span_mps, diversity.speed_span_mps))
+            )
         states[car_id] = InitialCarState(
-            progress_m=assumed(200 - index * 10, "m"),
-            speed_mps=assumed(14 + float(rng.uniform(-2, 2)) * scale, "m/s"),
-            energy_j=assumed(3.1e6, "J"),
+            progress_m=assumed(progress_m, "m"),
+            speed_mps=assumed(speed_mps, "m/s"),
+            energy_j=assumed(energy_j, "J"),
             temperature_k=assumed(settings.temperature_k + 5, "K"),
             lateral_d_m=assumed(2.5 if index % 2 else -2.5, "m"),
         )

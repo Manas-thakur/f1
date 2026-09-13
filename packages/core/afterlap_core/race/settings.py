@@ -49,6 +49,27 @@ class RaceConditionPatch(BaseModel):
     wind_mps: float | None = Field(default=None, ge=-20, le=20)
 
 
+class TrainingDiversity(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    enabled: bool = False
+    shuffle_grid: bool = True
+    random_lap_origin: bool = True
+    progress_span_m: float = Field(default=2.5, ge=0, le=4)
+    energy_span_j: float = Field(default=1.2e6, ge=0, le=2.0e6)
+    speed_span_mps: float = Field(default=3.0, ge=0, le=8)
+    wetness_span: float = Field(default=0.2, ge=0, le=0.5)
+    temperature_span_k: float = Field(default=6.0, ge=0, le=15)
+    wind_span_mps: float = Field(default=4.0, ge=0, le=12)
+    circuits: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def known_circuits(self) -> TrainingDiversity:
+        for circuit_id in self.circuits:
+            default_laps(circuit_id)
+        return self
+
+
 class RaceSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
@@ -68,6 +89,7 @@ class RaceSettings(BaseModel):
     variability: Variability = Field(default_factory=Variability)
     storyline: StorylineSettings = Field(default_factory=StorylineSettings)
     racing_line: RacingLineSettings = Field(default_factory=RacingLineSettings)
+    training_diversity: TrainingDiversity = Field(default_factory=TrainingDiversity)
 
     @model_validator(mode="before")
     @classmethod

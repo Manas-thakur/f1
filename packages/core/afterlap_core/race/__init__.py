@@ -1,5 +1,11 @@
 from .session import RaceSession
-from .settings import RaceConditionPatch, RaceSettings, RacingLineSettings, StorylineSettings
+from .settings import (
+    RaceConditionPatch,
+    RaceSettings,
+    RacingLineSettings,
+    StorylineSettings,
+    TrainingDiversity,
+)
 
 __all__ = [
     "RaceConditionPatch",
@@ -7,4 +13,5 @@ __all__ = [
     "RaceSettings",
     "RacingLineSettings",
     "StorylineSettings",
+    "TrainingDiversity",
 ]

@@ -15,6 +15,7 @@ def test_catalogue_and_schema_are_machine_readable(monkeypatch, capsys):
     main()
     schema = json.loads(capsys.readouterr().out)
     assert schema["race_settings"]["properties"]["laps"]["default"] == 52
+    assert schema["race_settings"]["$defs"]["TrainingDiversity"]["properties"]["enabled"]["default"] is False
     assert schema["rl_action"]["fields"] == [
         "driver_mode",
         "deployment_profile",
@@ -103,5 +104,17 @@ def test_generate_accepts_every_top_level_race_setting(monkeypatch, tmp_path):
             "event_duration_max_s": 5.0,
             "pit_stops": True,
             "tyre_wear_scale": 1.0,
+        },
+        "training_diversity": {
+            "enabled": False,
+            "shuffle_grid": True,
+            "random_lap_origin": True,
+            "progress_span_m": 2.5,
+            "energy_span_j": 1.2e6,
+            "speed_span_mps": 3.0,
+            "wetness_span": 0.2,
+            "temperature_span_k": 6.0,
+            "wind_span_mps": 4.0,
+            "circuits": [],
         },
     }
