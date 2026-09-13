@@ -23,9 +23,7 @@ class ControlState:
             "CREATE TABLE IF NOT EXISTS control_state "
             "(id INTEGER PRIMARY KEY CHECK (id = 1), selected_car_id TEXT NOT NULL)"
         )
-        self.sqlite.execute(
-            "INSERT OR IGNORE INTO control_state (id, selected_car_id) VALUES (1, 'car-01')"
-        )
+        self.sqlite.execute("INSERT OR IGNORE INTO control_state (id, selected_car_id) VALUES (1, 'car-01')")
         self.sqlite.commit()
 
     def selected(self) -> str:
