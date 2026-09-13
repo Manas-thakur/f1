@@ -44,6 +44,15 @@ HOST="${HOST:-http://127.0.0.1:18760}"
 curl --fail-with-body --request POST "${HOST%/}/race/boost"
 ```
 
+On a Raspberry Pi with a pull-up button on BCM GPIO 17, run the included helper:
+
+```sh
+HOST="http://10.1.27.93:18760" python3 scripts/button_command.py
+```
+
+The helper sends one POST to `/race/boost` when the button is pressed. `--host` can
+be used instead of `HOST`, and `--gpio` selects a different BCM pin.
+
 For hardware already configured with the race engineer dashboard URL, POST requests to
 `/race/engineer` are forwarded to the same boost API. Browser GET requests still open
 the engineer console.
