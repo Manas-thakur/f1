@@ -9,6 +9,10 @@ on:
     paths: ['show-shah/**', 'bun.lock', 'package.json', '.github/workflows/show-shah.yml']
   workflow_dispatch:
 
+concurrency:
+  group: show-shah-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

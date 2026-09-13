@@ -25,6 +25,7 @@ async function capture(name: string, route: string, prepare: (page: Page) => Pro
   await page.waitForTimeout(4000);
   await actionPromise;
   await page.waitForTimeout(13000);
+  if (route === '/race') await expect(page.getByText('● CONNECTED', { exact: true })).toBeVisible();
   const video = page.video()!;
   await context.close();
   const path = await video.path();
@@ -55,6 +56,9 @@ async function command(page: Page, operation: string, fields: Record<string, unk
 }
 async function race(page: Page) {
   await expect(page.getByRole('application', { name: '3D camera controls' })).toHaveAttribute('data-rendered-frames', /[1-9]/, { timeout: 90000 });
+  await command(page, 'start');
+  await expect(page.getByText('Loading the circuit world…', { exact: true })).toBeHidden({ timeout: 90000 });
+  await expect(page.getByRole('application', { name: '3D camera controls' })).toHaveAttribute('data-followed-position', /.+/, { timeout: 90000 });
 }
 try {
   await capture('setup', '/race', async (page) => {
