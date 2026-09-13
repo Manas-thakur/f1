@@ -12,7 +12,7 @@ from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 from websockets.typing import Origin
 
-from afterlap_core.race import RaceSession, RaceSettings
+from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
 
@@ -21,8 +21,11 @@ class Command(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
     id: str = Field(max_length=100)
-    operation: Literal["reset", "start", "pause", "step", "checkpoint", "restore", "speed", "control"]
+    operation: Literal[
+        "reset", "configure", "start", "pause", "step", "checkpoint", "restore", "speed", "control"
+    ]
     settings: RaceSettings | None = None
+    conditions: RaceConditionPatch | None = None
     speed: float = Field(default=1, ge=0.1, le=8)
     car_id: str = Field(default="car-01", pattern=r"^car-[0-9]{2}$")
     action: DriverControl | None = None
@@ -64,6 +67,10 @@ class RaceServer:
             self.session = RaceSession(command.settings or RaceSettings())
             self.checkpoint = None
             self.generation += 1
+        elif command.operation == "configure":
+            if command.conditions is None:
+                raise ValueError("live conditions are required")
+            session.configure_conditions(command.conditions)
         elif command.operation == "pause":
             if not session.done:
                 session.status = "paused"

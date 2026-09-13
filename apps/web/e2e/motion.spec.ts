@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { RaceMotion, rankedCar } from '../src/features/race/motion';
+import { RaceMotion, rankedCar, separateCarPoses } from '../src/features/race/motion';
 import { ribbon, trackPose } from '../src/features/race/worldGeometry';
 import type { RaceFrame } from '../src/features/race/types';
 
@@ -27,7 +27,8 @@ function frame(time: number, progress: number, status = 'running', generation = 
       qualifying_position: 1, storyline: 'natural', classified: false,
       regulation_status: 'running', points: 0,
       tyres: { compound: 'medium', condition: 1, grip: 1, sidewall: '#f0c438', phase: 'track',
-        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, box_progress_m: 0,
+        release_waiting: false, stops: 0,
         used_compounds: ['medium'], visual_lateral_m: 0 } }],
   };
 }
@@ -102,6 +103,26 @@ test('pausing drains the observation buffer instead of teleporting the view forw
   expect(after.at(-1)).toBeCloseTo(observed * speed);
 });
 
+test('rendered cars keep body clearance until the passing lane is clear', () => {
+  const blocked = separateCarPoses(new Map([
+    ['leader', { progress: 100, lateral: 0 }],
+    ['follower', { progress: 98, lateral: 0.4 }],
+  ]));
+  expect((blocked.get('leader')?.progress ?? 0) - (blocked.get('follower')?.progress ?? 0))
+    .toBeGreaterThanOrEqual(5.4);
+  const passing = separateCarPoses(new Map([
+    ['leader', { progress: 100, lateral: 0 }],
+    ['follower', { progress: 101, lateral: 2.5 }],
+  ]));
+  expect(passing.get('follower')?.progress).toBe(101);
+  const retainedOrder = separateCarPoses(new Map([
+    ['leader', { progress: 99, lateral: 0 }],
+    ['follower', { progress: 101, lateral: 0.4 }],
+  ]), new Map([['leader', 100], ['follower', 98]]));
+  expect((retainedOrder.get('leader')?.progress ?? 0)
+    - (retainedOrder.get('follower')?.progress ?? 0)).toBeGreaterThanOrEqual(5.4);
+});
+
 test('pit phases follow the rendered pit-lane lateral path', () => {
   const motion = new RaceMotion();
   const update = frame(1, 200);
@@ -145,7 +166,8 @@ test('buffer fills before playback and all cars share the same render time', () 
       qualifying_position: 2, storyline: 'natural', classified: false,
       regulation_status: 'running', points: 0,
       tyres: { compound: 'hard', condition: 1, grip: 0.97, sidewall: '#f2f2ed', phase: 'track',
-        requested: false, service_duration_s: 2.5, service_remaining_s: 0, stops: 0,
+        requested: false, service_duration_s: 2.5, service_remaining_s: 0, box_progress_m: 0,
+        release_waiting: false, stops: 0,
         used_compounds: ['hard'], visual_lateral_m: 0 },
       channels: { progress_m: i * 10 - 6, lateral_d_m: 0 } });
     motion.push(update, i * 150);

@@ -30,6 +30,18 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
     setLapChoice(next?.lap_presets[0]?.id ?? 'custom');
     setCustomLaps(next?.lap_presets[0]?.default_laps ?? customLaps);
   }
+  function configure(name: 'weather' | 'wetness' | 'temperature_k' | 'wind_mps', value: string | number) {
+    send('configure', { conditions: { [name]: value } });
+  }
+  function configureNumber(
+    name: 'wetness' | 'temperature_k' | 'wind_mps',
+    input: HTMLInputElement,
+    transform: (value: number) => number = (value) => value,
+  ) {
+    if (input.validity.valid && Number.isFinite(input.valueAsNumber)) {
+      configure(name, transform(input.valueAsNumber));
+    }
+  }
   function reset(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -132,24 +144,32 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
       </label>
       <label>
         Weather
-        <select aria-label="Weather" name="weather" defaultValue={frame.settings.weather}>
+        <select aria-label="Weather" name="weather" defaultValue={frame.settings.weather}
+          onChange={(event) => configure('weather', event.target.value)}>
           <option value="sunny">Sunny</option>
           <option value="rainy">Rainy</option>
         </select>
-        <span>Visual race-day conditions.</span>
+        <span>Applies immediately without restarting the race.</span>
       </label>
       <label>
         Wetness (0 dry, 1 wet)
-        <input name="wetness" type="number" min="0" max="1" step="0.1" defaultValue={frame.settings.wetness} required />
+        <input name="wetness" type="number" min="0" max="1" step="0.1"
+          defaultValue={frame.settings.wetness} required
+          onChange={(event) => configureNumber('wetness', event.currentTarget)} />
       </label>
       <label>
         Ambient (°C)
         <input name="temperature" type="number" min="0" max="50" step="0.1"
-          defaultValue={Number((frame.settings.temperature_k - 273.15).toFixed(1))} required />
+          defaultValue={Number((frame.settings.temperature_k - 273.15).toFixed(1))} required
+          onChange={(event) => configureNumber(
+            'temperature_k', event.currentTarget, (value) => value + 273.15,
+          )} />
       </label>
       <label>
         Wind (m/s)
-        <input name="wind" type="number" min="-20" max="20" step="0.1" defaultValue={frame.settings.wind_mps} required />
+        <input name="wind" type="number" min="-20" max="20" step="0.1"
+          defaultValue={frame.settings.wind_mps} required
+          onChange={(event) => configureNumber('wind_mps', event.currentTarget)} />
       </label>
       <label className={styles.checkbox}>
         <input name="wake" type="checkbox" defaultChecked={frame.settings.wake} />{' '}
@@ -158,8 +178,8 @@ function RaceSetupForm({ frame, circuits, connected, send }: {
       <label>
         Contact handling
         <select name="contact_mode" defaultValue={frame.settings.contact_mode}>
-          <option value="ignore">Ignore overlaps</option>
-          <option value="terminate">End race on contact</option>
+          <option value="ignore">Avoid contact and keep racing</option>
+          <option value="terminate">Stop if contact is detected</option>
         </select>
       </label>
       <label className={styles.checkbox}>

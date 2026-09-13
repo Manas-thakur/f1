@@ -127,7 +127,7 @@ def test_contact_ends_episode_without_a_pass_reward():
     assert session.finishes == {}
 
 
-def test_default_race_ignores_contact_and_completes_overlapping_pass():
+def test_default_race_requires_clear_footprints_before_completing_a_pass():
     session = RaceSession(RaceSettings(cars=2))
     simulator = session.simulator
     a, b = simulator.world.cars.values()
@@ -138,6 +138,10 @@ def test_default_race_ignores_contact_and_completes_overlapping_pass():
         simulator.detect_geometry_events()
     assert session.failure is None
     assert session.status == "paused"
+    assert not any(
+        event.kind == "longitudinal_overlap" and event.overtaking_car_id == a.car_id
+        for event in simulator.world.passes
+    )
     assert any(
         event.kind == "completed_pass" and event.overtaking_car_id == a.car_id
         for event in simulator.world.passes

@@ -3,6 +3,10 @@ import * as THREE from 'three';
 import type { CircuitMap, RaceFrame } from './types';
 import { box, trackPose } from './worldGeometry';
 
+const PIT_BOX_LAST_OFFSET_M = 42;
+const PIT_BOX_SPACING_M = 9;
+const PIT_BOX_LATERAL_M = -15;
+
 interface CrewRig {
   group: THREE.Group;
   mechanics: THREE.Group[];
@@ -85,17 +89,10 @@ export class PitLane extends THREE.Group {
     );
     road.receiveShadow = true;
     this.add(road);
-    const white = new THREE.MeshStandardMaterial({ color: '#f1eee7', roughness: 0.8 });
     const wall = new THREE.MeshStandardMaterial({ color: '#c8c9c2', roughness: 0.7 });
     for (let index = 0; index < 20; index++) {
-      const progress = map.length_m - 42 - index * 5.5;
-      const pose = trackPose(map, progress, -13);
-      const marker = new THREE.Group();
-      marker.position.copy(pose.position);
-      marker.rotation.y = pose.yaw;
-      box(marker, white, [7.5, 0.035, 0.1], [0, 0.06, 0]);
-      box(marker, white, [0.1, 0.035, 5], [3.75, 0.06, 0]);
-      this.add(marker);
+      const progress = map.length_m - PIT_BOX_LAST_OFFSET_M - index * PIT_BOX_SPACING_M;
+      const pose = trackPose(map, progress, PIT_BOX_LATERAL_M);
       const rig = crew(['#d9323b', '#18a99a', '#ef8e24', '#337bd6', '#d7d9d4'][index % 5] ?? '#d9323b');
       rig.group.position.copy(pose.position);
       rig.group.rotation.y = pose.yaw;

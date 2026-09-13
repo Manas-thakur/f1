@@ -13,6 +13,36 @@ interface Sample {
   poses: Map<string, MotionPose>;
 }
 
+const VISUAL_CAR_LENGTH_M = 5.4;
+const VISUAL_CAR_WIDTH_M = 2.35;
+
+export function separateCarPoses(poses: Map<string, MotionPose>, previous = new Map<string, number>()) {
+  const separated = new Map<string, MotionPose>(
+    [...poses].map(([id, pose]): [string, MotionPose] => [id, { ...pose }]),
+  );
+  const entries = [...separated.entries()];
+  for (let aIndex = 0; aIndex < entries.length; aIndex++) {
+    const a = entries[aIndex];
+    if (!a) {
+      continue;
+    }
+    for (let bIndex = aIndex + 1; bIndex < entries.length; bIndex++) {
+      const b = entries[bIndex];
+      if (!b || Math.abs(a[1].lateral - b[1].lateral) >= VISUAL_CAR_WIDTH_M) {
+        continue;
+      }
+      const priorDelta = (previous.get(a[0]) ?? a[1].progress)
+        - (previous.get(b[0]) ?? b[1].progress);
+      const [leader, follower] = priorDelta >= 0 ? [a, b] : [b, a];
+      const gap = leader[1].progress - follower[1].progress;
+      if (gap < VISUAL_CAR_LENGTH_M) {
+        follower[1].progress = leader[1].progress - VISUAL_CAR_LENGTH_M;
+      }
+    }
+  }
+  return separated;
+}
+
 export class RaceMotion {
   private samples: Sample[] = [];
   private generation = -1;
@@ -23,6 +53,7 @@ export class RaceMotion {
   private rate = 1;
   private running = false;
   private length = 1;
+  private visualProgress = new Map<string, number>();
 
   push(frame: RaceFrame, now: number) {
     const running = frame.status === 'running';
@@ -32,6 +63,7 @@ export class RaceMotion {
       this.cursor = -Infinity;
       this.interval = 150;
       this.rate = frame.requested_rate;
+      this.visualProgress.clear();
     }
     this.generation = frame.generation;
     this.running = running;
@@ -99,10 +131,10 @@ export class RaceMotion {
     }
     if (!Number.isFinite(this.cursor)) {
       if (!this.running) {
-        return last.poses;
+        return this.separate(last.poses);
       }
       if (now - first.at < this.delayMs) {
-        return first.poses;
+        return this.separate(first.poses);
       }
       this.cursor = first.time + Math.max(0, now - first.at - this.delayMs) * this.rate / 1000;
     } else {
@@ -118,7 +150,7 @@ export class RaceMotion {
     const b = this.samples[right];
     const a = this.samples[Math.max(0, right - 1)];
     if (!a || !b || a === b) {
-      return b?.poses ?? last.poses;
+      return this.separate(b?.poses ?? last.poses);
     }
     const duration = Math.max(1e-6, b.time - a.time);
     const t = Math.max(0, Math.min(1, (this.cursor - a.time) / duration));
@@ -157,7 +189,15 @@ export class RaceMotion {
         ? undefined : origin.speed + (destination.speed - origin.speed) * t;
       result.set(id, { progress, lateral, lateralRate, ...(speed === undefined ? {} : { speed }) });
     }
-    return result;
+    return this.separate(result);
+  }
+
+  private separate(poses: Map<string, MotionPose>) {
+    const separated = separateCarPoses(poses, this.visualProgress);
+    this.visualProgress = new Map(
+      [...separated].map(([id, pose]) => [id, pose.progress]),
+    );
+    return separated;
   }
 
   get delayMs() {
