@@ -28,7 +28,7 @@ export function BatteryHud() {
     <span className={styles.hudRecommendation}>
       {recommendation?.mode.toUpperCase() ?? 'WAITING'} · {recommendation?.boost_available ? 'READY' : 'HELD'}
     </span>
-    <button type="button" disabled={!connected || !recommendation?.can_apply}
+    <button type="button" disabled={!connected || !recommendation?.boost_available}
       onClick={() => void boost()}>Apply boost</button>
   </div>;
 }

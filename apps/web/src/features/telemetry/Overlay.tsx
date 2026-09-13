@@ -28,7 +28,7 @@ export function TelemetryOverlay({ carId, visible }: {
   const recommendation = frame?.recommendations?.[carId];
   const boostActive = car.mode === 'BOOST';
   const boostable = connected && frame?.status === 'running' && car.present && !boosting
-    && Boolean(recommendation?.can_apply);
+    && Boolean(recommendation?.boost_available);
   async function applyBoost() {
     setBoosting(true);
     await boost();

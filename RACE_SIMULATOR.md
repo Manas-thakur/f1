@@ -37,7 +37,7 @@ The telemetry download contains at most the most recent 200 frames observed by t
 
 `/tel/{car_id}` renders a single car's steering-wheel display for an 800 by 480 panel, for example [car-01](http://127.0.0.1:18760/tel/car-01). The page fits that 800 by 480 artwork to the viewport at a single scale factor and centres it, so a narrower or taller screen letterboxes rather than reflowing. On an exactly 800 by 480 display it renders at scale one. The bottom-right corner of `/race` instead uses a simplified race summary in the same 360 by 216 footprint. It follows the car the camera is watching and prioritizes speed, battery, position, lap, power, throttle and brake. Its full-view link opens that car's `/tel/{car_id}` display in a new tab. The car-switch control remains docked above the summary, and the Telemetry button or `T` key toggles it. The older speed and battery corner readout appears only on views too small to hold the summary. Both displays read the same delayed observations over the existing `/race/socket` connection, so the race summary and the standalone panel show the same car state.
 
-The telemetry display's Boost control applies the guarded recommended battery profile to the car shown on that display. On `/race`, this is the car being watched. On `/tel/{car_id}`, the car dropdown changes the displayed and controlled vehicle. Every selection is stored in SQLite. Applying boost to a different car releases the previous manual boost override, while every other car continues making automatic profile decisions. The same action is available as an HTTP POST through the dashboard host. The request has no car identifier because the server resolves the persisted current car. Set `HOST` to any dashboard origin:
+The telemetry display's Boost control applies a manual `push` profile when the independent battery, thermal, braking, launch and telemetry guard says deployment is safe. It does not wait for the strategy model to recommend `push`. On `/race`, this is the car being watched. On `/tel/{car_id}`, the car dropdown changes the displayed and controlled vehicle. Every selection is stored in SQLite. Applying boost to a different car releases the previous manual boost override, while every other car continues making automatic profile decisions. The same action is available as an HTTP POST through the dashboard host. The request has no car identifier because the server resolves the persisted current car. Set `HOST` to any dashboard origin:
 
 ```sh
 HOST="${HOST:-http://127.0.0.1:18760}"
@@ -50,8 +50,33 @@ On a Raspberry Pi with a pull-up button on BCM GPIO 17, run the included helper:
 HOST="http://10.1.27.93:18760" python3 scripts/button_command.py
 ```
 
-The helper sends one POST to `/race/boost` when the button is pressed. `--host` can
-be used instead of `HOST`, and `--gpio` selects a different BCM pin.
+From a full checkout, the equivalent one-command launcher is:
+
+```sh
+make race-button HOST=http://10.1.27.93:18760 GPIO=17
+```
+
+Button-down sends `POST /race/boost`. Button-up and a clean script shutdown send
+`POST /race/boost/off`. `--host` can be used instead of `HOST`, and `--gpio`
+selects a different BCM pin. The selected car's manual boost is also released if
+the battery, temperature, braking, launch, telemetry or race-state guard expires,
+or if the dashboard selection changes. A held button never retries an expired
+boost. Another boost requires a release followed by a new press. The remaining
+cars continue using their automatic energy profiles throughout.
+
+The button script logs every debounced input transition, URL, HTTP result, response
+body, curl return code and request duration to the console and to
+`scripts/button_command.log`. The log rotates at 2 MB and retains three backups.
+Use `--log-file` or `BOOST_BUTTON_LOG` to change its location, and `--verbose` for
+GPIO candidate-state diagnostics. Follow it live with:
+
+```sh
+tail -f scripts/button_command.log
+```
+
+The race runtime writes boost activation, rejection, automatic expiry, explicit
+release and selected-car changes to `.afterlap/race/runtime.log`. Set
+`RACE_LOG_FILE` and `RACE_LOG_LEVEL` to change the path and verbosity.
 
 For hardware already configured with the race engineer dashboard URL, POST requests to
 `/race/engineer` are forwarded to the same boost API. Browser GET requests still open

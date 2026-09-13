@@ -6,6 +6,9 @@ test('hardware POST to the engineer address reaches the boost API', async ({ req
   expect([200, 409]).toContain(response.status());
   const payload = await response.json();
   expect(payload.operation === 'boost' || typeof payload.error === 'string').toBe(true);
+  const release = await request.post('/race/boost/off');
+  expect(release.status()).toBe(200);
+  await expect(release.json()).resolves.toMatchObject({ operation: 'boost-off', status: 'accepted' });
 });
 
 test('race engineer console presents live evidence and labeled model placeholders', async ({ page }) => {

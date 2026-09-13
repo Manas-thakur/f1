@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import logging
 import re
 import time
 from http import HTTPStatus
@@ -23,6 +24,8 @@ from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
 from afterlap_core.race.decision import BoostDecisionEngine
 from afterlap_core.race.training import load_training_metrics
+
+LOGGER = logging.getLogger("afterlap.race.control")
 
 
 class Command(BaseModel):
@@ -51,6 +54,7 @@ class RaceServer:
         self.session = RaceSession(settings)
         self.control_state = ControlState(control_state_path)
         self.repair_selection()
+        self.hold_selected_car()
         self.decision_engine = BoostDecisionEngine(policy_path)
         self.training_metrics = load_training_metrics(metrics_path)
         self.checkpoint: dict[str, Any] | None = None
@@ -96,13 +100,52 @@ class RaceServer:
     def select(self, car_id: str) -> None:
         if car_id not in self.session.bundle.car_configs:
             raise ValueError("unknown car")
+        previous = self.control_state.selected()
+        if car_id != previous:
+            self.release_manual_boost("selection_changed")
         self.control_state.select(car_id)
+        self.hold_selected_car()
+        self.log_control("selection_changed", car_id=car_id, previous_car_id=previous)
+
+    def hold_selected_car(self) -> None:
+        selected = self.control_state.selected()
+        self.session.bms_profiles.clear()
+        self.session.bms_profiles[selected] = DeploymentProfile.NEUTRAL
+
+    def log_control(self, event: str, **fields: object) -> None:
+        LOGGER.info(json.dumps({"event": event, **fields}, sort_keys=True, separators=(",", ":")))
+
+    def release_manual_boost(self, reason: str, car_id: str | None = None) -> list[str]:
+        targets = list(self.session.bms_profiles) if car_id is None else [car_id]
+        released = []
+        for target in targets:
+            profile = self.session.bms_profiles.pop(target, None)
+            if profile in {DeploymentProfile.PUSH, DeploymentProfile.OVERTAKE}:
+                released.append(target)
+                self.log_control("boost_released", car_id=target, reason=reason)
+        selected = self.control_state.selected()
+        self.session.bms_profiles[selected] = DeploymentProfile.NEUTRAL
+        return released
+
+    def synchronize_manual_boost(self) -> None:
+        boosting = {DeploymentProfile.PUSH, DeploymentProfile.OVERTAKE}
+        for car_id, profile in tuple(self.session.bms_profiles.items()):
+            if profile not in boosting:
+                continue
+            if self.session.done:
+                self.release_manual_boost("session_complete", car_id)
+                continue
+            observation = self.session.observations()[car_id]
+            recommendation = self.decision_engine.recommend(self.session, observation)
+            if not recommendation.boost_available:
+                self.release_manual_boost(recommendation.reason, car_id)
 
     def apply(self, command: Command) -> None:
         session = self.session
         if command.operation == "reset":
             self.session = RaceSession(command.settings or RaceSettings())
             self.repair_selection()
+            self.hold_selected_car()
             self.checkpoint = None
             self.generation += 1
         elif command.operation == "configure":
@@ -126,6 +169,7 @@ class RaceServer:
             if self.checkpoint is None:
                 raise ValueError("no saved checkpoint")
             session.restore(self.checkpoint)
+            self.hold_selected_car()
             if not session.done:
                 session.status = "paused"
             self.generation += 1
@@ -138,14 +182,27 @@ class RaceServer:
             if command.car_id not in session.bundle.car_configs:
                 raise ValueError("unknown car")
             if not command.enabled:
-                session.bms_profiles.pop(command.car_id, None)
+                self.release_manual_boost("button_released", command.car_id)
                 return
+            if command.car_id != self.control_state.selected():
+                self.select(command.car_id)
             observation = session.observations()[command.car_id]
             recommendation = self.decision_engine.recommend(session, observation)
-            if not recommendation.can_apply:
+            if not recommendation.boost_available:
+                self.log_control(
+                    "boost_rejected",
+                    car_id=command.car_id,
+                    reason=recommendation.reason,
+                )
                 raise ValueError(f"boost unavailable: {recommendation.reason}")
-            session.bms_profiles.clear()
-            session.bms_profiles[command.car_id] = DeploymentProfile(recommendation.mode)
+            self.release_manual_boost("replaced")
+            session.bms_profiles[command.car_id] = DeploymentProfile.PUSH
+            self.log_control(
+                "boost_activated",
+                car_id=command.car_id,
+                mode=DeploymentProfile.PUSH.value,
+                observed_at_s=observation.observed_at_s,
+            )
 
     @staticmethod
     def json_response(connection: ServerConnection, status: HTTPStatus, payload: dict[str, str]) -> Response:
@@ -159,7 +216,7 @@ class RaceServer:
         if path == "/" and request.method == "GET":
             return None
         selection = re.fullmatch(r"/selection/(car-[0-9]{2})", path)
-        if path != "/boost" and selection is None:
+        if path not in {"/boost", "/boost/off"} and selection is None:
             return self.json_response(connection, HTTPStatus.NOT_FOUND, {"error": "not found"})
         if request.method != "POST":
             response = self.json_response(
@@ -175,8 +232,9 @@ class RaceServer:
                     operation = "selection"
                 else:
                     car_id = self.control_state.selected()
-                    self.apply(Command(id="http-boost", operation="boost", car_id=car_id))
-                    operation = "boost"
+                    enabled = path == "/boost"
+                    self.apply(Command(id="http-boost", operation="boost", car_id=car_id, enabled=enabled))
+                    operation = "boost" if enabled else "boost-off"
                 self.publish()
         except ValueError as exc:
             status = HTTPStatus.CONFLICT if str(exc).startswith("boost unavailable") else HTTPStatus.NOT_FOUND
@@ -198,6 +256,7 @@ class RaceServer:
                     except Exception as exc:
                         self.session.status = "failed"
                         self.session.failure = f"runtime error: {type(exc).__name__}: {exc}"
+                    self.synchronize_manual_boost()
                     elapsed = self.session.simulator.session_time_s - before
                     self.actual_rate = elapsed / max(time.monotonic() - start, 1e-6)
                     self.publish()

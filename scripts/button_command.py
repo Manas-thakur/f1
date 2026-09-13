@@ -1,24 +1,30 @@
 from __future__ import annotations
 
 import argparse
+import json
+import logging
 import os
 import re
-import signal
 import subprocess
 import time
-from collections.abc import Sequence
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from urllib.parse import urlsplit
 
+LOGGER = logging.getLogger("afterlap.boost_button")
 LEVEL_PATTERN = re.compile(r"\b(hi|lo)\b")
 
 
-def boost_command(host: str) -> tuple[str, ...]:
+def boost_command(host: str, enabled: bool) -> tuple[str, ...]:
     origin = host.rstrip("/")
     parsed = urlsplit(origin)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path:
         raise ValueError("host must be an HTTP origin such as http://10.1.27.93:18760")
+    path = "race/boost" if enabled else "race/boost/off"
     return (
         "curl",
+        "--silent",
+        "--show-error",
         "--fail-with-body",
         "--request",
         "POST",
@@ -26,7 +32,9 @@ def boost_command(host: str) -> tuple[str, ...]:
         "5",
         "--max-time",
         "10",
-        f"{origin}/race/boost",
+        "--write-out",
+        "\n%{http_code}",
+        f"{origin}/{path}",
     )
 
 
@@ -51,43 +59,60 @@ def configure_gpio(gpio: int) -> None:
     subprocess.run(["pinctrl", "set", str(gpio), "ip", "pu"], check=True)
 
 
-class CommandRunner:
-    def __init__(self, command: Sequence[str]) -> None:
-        self.command = tuple(command)
-        self.process: subprocess.Popen[bytes] | None = None
-
-    def start(self) -> None:
-        if self.process is not None:
-            return
-        print(f"BUTTON ON: starting {' '.join(self.command)}", flush=True)
-        self.process = subprocess.Popen(self.command)
-
-    def stop(self) -> None:
-        process = self.process
-        if process is None:
-            return
-        if process.poll() is None:
-            print("BUTTON OFF: stopping request", flush=True)
-            process.send_signal(signal.SIGINT)
-            try:
-                process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                process.terminate()
-                try:
-                    process.wait(timeout=3)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
-        self.process = None
+def log_event(level: int, event: str, **fields: object) -> None:
+    LOGGER.log(level, json.dumps({"event": event, **fields}, sort_keys=True, separators=(",", ":")))
 
 
-def monitor(gpio: int, command: Sequence[str], debounce_s: float = 0.05) -> None:
+def configure_logging(path: Path, verbose: bool) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    file_handler = RotatingFileHandler(path, maxBytes=2_000_000, backupCount=3)
+    file_handler.setFormatter(formatter)
+    LOGGER.handlers.clear()
+    LOGGER.addHandler(console)
+    LOGGER.addHandler(file_handler)
+    LOGGER.setLevel(logging.DEBUG if verbose else logging.INFO)
+    LOGGER.propagate = False
+
+
+class BoostClient:
+    def __init__(self, host: str) -> None:
+        self.host = host
+
+    def send(self, enabled: bool) -> bool:
+        action = "activate" if enabled else "release"
+        command = boost_command(self.host, enabled)
+        started = time.monotonic()
+        log_event(logging.INFO, "boost_request_started", action=action, endpoint=command[-1])
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+        duration_ms = round((time.monotonic() - started) * 1000)
+        body, separator, status = result.stdout.rstrip().rpartition("\n")
+        if not separator:
+            body, status = result.stdout.strip(), "unknown"
+        fields = {
+            "action": action,
+            "duration_ms": duration_ms,
+            "http_status": status,
+            "response": body,
+            "return_code": result.returncode,
+        }
+        if result.stderr.strip():
+            fields["error"] = result.stderr.strip()
+        if result.returncode != 0:
+            log_event(logging.ERROR, "boost_request_failed", **fields)
+            return False
+        log_event(logging.INFO, "boost_request_succeeded", **fields)
+        return True
+
+
+def monitor(gpio: int, client: BoostClient, debounce_s: float = 0.05) -> None:
     configure_gpio(gpio)
-    runner = CommandRunner(command)
     active = False
     candidate = read_pressed(gpio)
     candidate_since = time.monotonic()
-    print(f"READY: watching BCM GPIO {gpio}", flush=True)
+    log_event(logging.INFO, "button_ready", gpio=gpio, initial_pressed=candidate)
     try:
         while True:
             pressed = read_pressed(gpio)
@@ -95,29 +120,46 @@ def monitor(gpio: int, command: Sequence[str], debounce_s: float = 0.05) -> None
             if pressed != candidate:
                 candidate = pressed
                 candidate_since = now
+                log_event(logging.DEBUG, "button_candidate_changed", gpio=gpio, pressed=pressed)
             elif candidate != active and now - candidate_since >= debounce_s:
                 active = candidate
-                if active:
-                    runner.start()
-                else:
-                    runner.stop()
+                log_event(logging.INFO, "button_state_changed", gpio=gpio, pressed=active)
+                client.send(active)
             time.sleep(0.02)
     finally:
-        runner.stop()
+        if active:
+            client.send(False)
+        log_event(logging.INFO, "button_stopped", gpio=gpio)
 
 
 def main() -> None:
+    default_log = Path(__file__).with_suffix(".log")
     parser = argparse.ArgumentParser(description="Apply boost while a pull-up GPIO button is pressed")
-    parser.add_argument("--gpio", type=int, default=17)
+    parser.add_argument("--gpio", type=int, default=int(os.environ.get("BOOST_GPIO", "17")))
     parser.add_argument("--host", default=os.environ.get("HOST", "http://127.0.0.1:18760"))
+    parser.add_argument(
+        "--log-file", type=Path, default=Path(os.environ.get("BOOST_BUTTON_LOG", default_log))
+    )
+    parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
+    configure_logging(args.log_file, args.verbose)
     if not 0 <= args.gpio <= 27:
         parser.error("--gpio must be a BCM number between 0 and 27")
     try:
-        command = boost_command(args.host)
-    except ValueError as exc:
-        parser.error(str(exc))
-    monitor(args.gpio, command)
+        boost_command(args.host, True)
+        log_event(
+            logging.INFO,
+            "button_starting",
+            gpio=args.gpio,
+            host=args.host,
+            log_file=str(args.log_file.resolve()),
+        )
+        monitor(args.gpio, BoostClient(args.host))
+    except KeyboardInterrupt:
+        log_event(logging.INFO, "button_interrupted", gpio=args.gpio)
+    except Exception:
+        LOGGER.exception(json.dumps({"event": "button_failed", "gpio": args.gpio}))
+        raise
 
 
 if __name__ == "__main__":

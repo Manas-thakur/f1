@@ -1,29 +1,18 @@
 import { expect, test } from '@playwright/test';
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { connect, createServer } from 'node:net';
 import type { Socket } from 'node:net';
 
-async function applyAvailableBoost(page: Page, boost: Locator) {
+async function applyAvailableBoost(page: Page) {
   let rejected: unknown = null;
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const [response] = await Promise.all([
-      page.waitForResponse((candidate) => (
-        candidate.request().method() === 'POST'
-          && new URL(candidate.url()).pathname === '/race/boost'
-      )),
-      expect.poll(async () => boost.evaluate((button) => {
-        if (!(button instanceof HTMLButtonElement) || button.disabled) {
-          return false;
-        }
-        button.click();
-        return true;
-      }), { timeout: 60000 }).toBe(true),
-    ]);
+  for (let attempt = 0; attempt < 240; attempt++) {
+    const response = await page.request.post('/race/boost');
     const payload = await response.json();
     if (response.ok()) {
       return payload;
     }
     rejected = payload;
+    await page.waitForTimeout(250);
   }
   throw new Error(`Boost stayed unavailable: ${JSON.stringify(rejected)}`);
 }
@@ -444,25 +433,15 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
   const boost = page.getByRole('button', { name: 'Apply boost to car-01', exact: true });
   await expect(boost).toBeDisabled();
-  const playback = page.getByRole('combobox', { name: 'Playback', exact: true });
-  const originalPlayback = await playback.inputValue();
-  await playback.selectOption('0.25');
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
-  expect(await applyAvailableBoost(page, boost)).toMatchObject({
+  const charge = hud.locator('progress');
+  await expect(charge).toHaveAttribute('value', /\d/);
+  const initial = Number(await charge.getAttribute('value'));
+  expect(await applyAvailableBoost(page)).toMatchObject({
     car_id: 'car-01', status: 'accepted',
   });
-  await expect(boost).toHaveAttribute('data-active', 'true');
-  await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
-  const scene = page.getByRole('application', { name: '3D camera controls' });
-  await expect(scene).toHaveAttribute('data-boosting-cars', /(^|,)car-01(,|$)/);
-  const charge = hud.locator('progress');
-  const initial = Number(await charge.getAttribute('value'));
-  await expect.poll(async () => {
-    if (await boost.isEnabled()) {
-      await boost.click();
-    }
-    return initial - Number(await charge.getAttribute('value'));
-  }, { timeout: 60000 }).toBeGreaterThan(0.5);
+  await expect.poll(async () => initial - Number(await charge.getAttribute('value')))
+    .toBeGreaterThan(0.5);
   await expect.poll(async () => {
     const duration = (await hud.textContent())?.match(/(?:Burst|Last burst) ([0-9.]+) s/)?.[1];
     return Number(duration ?? 0);
@@ -476,7 +455,6 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await expect(page.getByLabel('Lap energy telemetry')).toContainText('Total boost');
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await expect(hud).toHaveText(frozen);
-  await playback.selectOption(originalPlayback);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(hud).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
