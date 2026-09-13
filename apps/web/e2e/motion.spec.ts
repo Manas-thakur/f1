@@ -7,7 +7,8 @@ import type { RaceFrame } from '../src/features/race/types';
 function frame(time: number, progress: number, status = 'running', generation = 1): RaceFrame {
   return {
     type: 'frame', time_s: time, generation, status, steps: 0, failure: null,
-    requested_rate: 1, actual_rate: 1, has_checkpoint: false, selected_car_id: 'car-01', events: [],
+    requested_rate: 1, actual_rate: 1, has_checkpoint: false, selected_car_id: 'car-01',
+    manual_boost_car_id: null, events: [],
     recommendations: {}, training_metrics: null,
     boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
       accuracy: null, precision: null, recall: null },
