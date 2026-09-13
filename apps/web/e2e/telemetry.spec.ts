@@ -188,3 +188,29 @@ test('the telemetry screen streams one car, scales to the display and starts the
   await expect.poll(stageSize).toEqual({ width: 400, height: 240 });
   await page.getByRole('button', { name: 'Pause race', exact: true }).click();
 });
+
+test('the race overlay prioritizes essential telemetry and links to the selected car display', async ({
+  page,
+}) => {
+  await page.goto('/race');
+  const summary = page.getByLabel('Race telemetry for car-01');
+  await expect(summary).toBeVisible();
+  await expect(summary.getByLabel('Current speed')).toContainText('KM/H');
+  await expect(summary.getByLabel('Battery charge')).toContainText('BATTERY');
+  await expect(summary.getByLabel('Race position, lap and power')).toContainText('POSITION');
+  await expect(summary.getByLabel('Throttle and brake')).toContainText('THROTTLE');
+  const fullView = summary.getByRole('link', {
+    name: 'Open full telemetry for car-01 in a new tab',
+  });
+  await expect(fullView).toHaveAttribute('href', '/tel/car-01');
+  await expect(fullView).toHaveAttribute('target', '_blank');
+  await expect(summary).toHaveCSS('width', '360px');
+  await expect(summary).toHaveCSS('height', '216px');
+
+  await page.getByRole('button', { name: 'Watch car behind', exact: true }).click();
+  const nextSummary = page.getByLabel('Race telemetry for car-02');
+  await expect(nextSummary).toBeVisible();
+  await expect(nextSummary.getByRole('link', {
+    name: 'Open full telemetry for car-02 in a new tab',
+  })).toHaveAttribute('href', '/tel/car-02');
+});

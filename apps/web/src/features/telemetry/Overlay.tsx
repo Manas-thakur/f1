@@ -1,19 +1,71 @@
 'use client';
 
-import { Dashboard } from './Dashboard';
-import { TelemetryStage } from './Stage';
+import { clamp01, fixed, ratioPercent } from './readouts';
+import { useTelemetry } from './useTelemetry';
 import styles from './telemetry.module.css';
 
-export function TelemetryOverlay({ carId, visible, scale = 0.45 }: {
-  readonly carId: string;
-  readonly visible: boolean;
-  readonly scale?: number;
+function Pedal({ label, value, tone }: {
+  readonly label: string;
+  readonly value: number | undefined;
+  readonly tone: 'throttle' | 'brake';
 }) {
   return (
-    <div className={styles.overlay} hidden={!visible}>
-      <TelemetryStage scale={scale} label={`Live telemetry for ${carId}`}>
-        <Dashboard carId={carId} controls={false} />
-      </TelemetryStage>
+    <div className={styles.racePedal} data-pedal={tone}>
+      <div><span>{label}</span><strong>{ratioPercent(value)}</strong></div>
+      <div className={styles.racePedalTrack}><i style={{ width: `${clamp01(value) * 100}%` }} /></div>
+    </div>
+  );
+}
+
+export function TelemetryOverlay({ carId, visible }: {
+  readonly carId: string;
+  readonly visible: boolean;
+}) {
+  const { car, flag } = useTelemetry(carId);
+  return (
+    <div className={styles.overlay} hidden={!visible} aria-label={`Race telemetry for ${carId}`}>
+      <header className={styles.raceTelemetryHeader}>
+        <div>
+          <small>RACE TELEMETRY</small>
+          <strong>{carId.toUpperCase()}</strong>
+        </div>
+        <span className={styles.raceFlag} data-tone={flag.tone}>{flag.label}</span>
+        <a href={`/tel/${encodeURIComponent(carId)}`} target="_blank" rel="noreferrer"
+          aria-label={`Open full telemetry for ${carId} in a new tab`}>
+          OPEN FULL VIEW ↗
+        </a>
+      </header>
+
+      <div className={styles.raceTelemetryBody}>
+        <section className={styles.raceSpeed} aria-label="Current speed">
+          <strong>{fixed(car.speed_kph, 0)}</strong>
+          <span>KM/H</span>
+        </section>
+
+        <section className={styles.raceBattery} aria-label="Battery charge">
+          <div><small>BATTERY</small><strong>{ratioPercent(car.energy_percent)}</strong></div>
+          <div className={styles.raceBatteryTrack}>
+            <i style={{ width: `${clamp01(car.energy_percent) * 100}%` }}
+              data-energy-mode={car.mode} />
+          </div>
+          <footer>
+            <span>{fixed(car.energy_mj, 2)} MJ</span>
+            <b data-energy-mode={car.mode}>{car.mode}</b>
+          </footer>
+        </section>
+
+        <section className={styles.raceEssentials} aria-label="Race position, lap and power">
+          <div><small>POSITION</small><strong>{car.position === undefined ? '--' : `P${car.position}`}</strong>
+            <span>OF {car.field || '--'}</span></div>
+          <div><small>LAP</small><strong>{car.lap ?? '--'}</strong><span>OF {car.laps || '--'}</span></div>
+          <div><small>POWER</small><strong>{fixed(car.power_kw, 0)}</strong><span>KW</span></div>
+        </section>
+
+        <section className={styles.racePedals} aria-label="Throttle and brake">
+          <Pedal label="THROTTLE" value={car.throttle} tone="throttle" />
+          <Pedal label="BRAKE" value={car.brake} tone="brake" />
+        </section>
+      </div>
     </div>
   );
 }
