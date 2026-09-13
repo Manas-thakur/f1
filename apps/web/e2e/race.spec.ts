@@ -382,6 +382,17 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
 
 test('electrical boost drains the battery and freezes its observed timer when paused', async ({ page }) => {
   test.slow();
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      this: HTMLCanvasElement, kind: string, ...args: unknown[]
+    ) {
+      if (kind.startsWith('webgl')) {
+        return null;
+      }
+      return Reflect.apply(getContext, this, [kind, ...args]);
+    } as typeof getContext;
+  });
   await page.setViewportSize({ width: 1000, height: 800 });
   await page.goto('/race');
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
