@@ -16,7 +16,7 @@ export interface TelemetrySnapshot {
   timing: LapReading;
   flag: FlagReadout;
   send: (operation: string, payload?: Record<string, unknown>) => void;
-  boost: (carId: string) => Promise<boolean>;
+  boost: () => Promise<boolean>;
 }
 
 export function useTelemetry(carId: string): TelemetrySnapshot {

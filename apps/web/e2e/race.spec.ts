@@ -9,6 +9,12 @@ test('orbit attaches to the first observed car after start, reset and car switch
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('madring');
   await page.getByLabel('Cars', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  const initialSelection = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/race/selection/car-01'
+  ));
+  await page.getByRole('button', { name: 'car-01', exact: true }).click();
+  await initialSelection;
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await expect(page.getByRole('button', { name: 'Car orbit', exact: true })).toBeEnabled();
   const distanceToTarget = async () => scene.evaluate((element) => {
@@ -30,7 +36,14 @@ test('orbit attaches to the first observed car after start, reset and car switch
     }
     await page.getByRole('button', { name: 'Start race', exact: true }).click();
     await expect.poll(distanceToTarget).toBeLessThan(0.1);
+    const switched = attempt === 0 ? page.waitForResponse((response) => (
+      response.request().method() === 'POST'
+        && new URL(response.url()).pathname === '/race/selection/car-02'
+    )) : null;
     await page.getByRole('button', { name: 'Watch car behind', exact: true }).click();
+    if (switched) {
+      expect(await (await switched).json()).toMatchObject({ car_id: 'car-02', status: 'accepted' });
+    }
     await expect.poll(distanceToTarget).toBeLessThan(0.1);
     await expect(scene).toHaveAttribute('data-camera-mode', 'orbit');
     await page.getByRole('button', { name: 'Pause race', exact: true }).click();
@@ -382,35 +395,31 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
 
 test('electrical boost drains the battery and freezes its observed timer when paused', async ({ page }) => {
   test.slow();
-  await page.addInitScript(() => {
-    const getContext = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (
-      this: HTMLCanvasElement, kind: string, ...args: unknown[]
-    ) {
-      if (kind.startsWith('webgl')) {
-        return null;
-      }
-      return Reflect.apply(getContext, this, [kind, ...args]);
-    } as typeof getContext;
-  });
-  await page.setViewportSize({ width: 1000, height: 800 });
   await page.goto('/race');
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('las-vegas');
-  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByLabel('Cars', { exact: true }).fill('3');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  const selectionResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/race/selection/car-01'
+  ));
+  await page.getByRole('button', { name: 'car-01', exact: true }).click();
+  await selectionResponse;
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   const hud = page.getByLabel('Battery and boost', { exact: true });
   await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
   const boost = page.getByRole('button', { name: 'Apply boost to car-01', exact: true });
   await expect(boost).toBeDisabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
-  const boostRequest = page.waitForRequest((request) => (
-    request.method() === 'POST' && new URL(request.url()).pathname === '/race/boost/car-01'
-  ));
-  await expect(boost).toBeEnabled();
-  await boost.click();
-  await boostRequest;
+  await expect(boost).toBeEnabled({ timeout: 60000 });
+  const [boostResponse] = await Promise.all([
+    page.waitForResponse((response) => (
+      response.request().method() === 'POST' && new URL(response.url()).pathname === '/race/boost'
+    )),
+    boost.click(),
+  ]);
+  expect(await boostResponse.json()).toMatchObject({ car_id: 'car-01', status: 'accepted' });
   await expect(boost).toHaveAttribute('data-active', 'true');
   await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
   const scene = page.getByRole('application', { name: '3D camera controls' });

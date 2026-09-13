@@ -15,7 +15,7 @@ interface RaceConnection {
   selected: string;
   select: (id: string) => void;
   send: (operation: string, payload?: Record<string, unknown>) => void;
-  boost: (carId: string) => Promise<boolean>;
+  boost: () => Promise<boolean>;
   history: RaceFrame[];
 }
 
@@ -58,7 +58,9 @@ export function RaceConnectionProvider({ children }: { readonly children: ReactN
   const [circuits, setCircuits] = useState<CircuitSummary[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selected, select] = useState('car-01');
+  const [selected, setSelected] = useState('car-01');
+  const desiredSelection = useRef<string | null>(null);
+  const selectionRequest = useRef<Promise<boolean>>(Promise.resolve(true));
   const [history, setHistory] = useState<RaceFrame[]>([]);
   const worker = useRef<Worker | null>(null);
   const [socketUrl, setSocketUrl] = useState('');
@@ -83,8 +85,18 @@ export function RaceConnectionProvider({ children }: { readonly children: ReactN
         const snapshot = message.frame;
         if (snapshot) {
           setFrame(snapshot);
-          select((current) => snapshot.cars.some((car) => car.id === current)
-            ? current : snapshot.cars[0]?.id ?? 'car-01');
+          setSelected(() => {
+            const desired = desiredSelection.current;
+            if (desired && snapshot.cars.some((car) => car.id === desired)) {
+              if (snapshot.selected_car_id === desired) {
+                desiredSelection.current = null;
+              }
+              return desired;
+            }
+            desiredSelection.current = null;
+            return snapshot.cars.some((car) => car.id === snapshot.selected_car_id)
+              ? snapshot.selected_car_id : snapshot.cars[0]?.id ?? 'car-01';
+          });
           setHistory((old) => {
             const kept = old.at(-1)?.generation === snapshot.generation ? old : [];
             return [...kept.slice(-199), snapshot];
@@ -113,10 +125,40 @@ export function RaceConnectionProvider({ children }: { readonly children: ReactN
       type: 'command', payload: { id: crypto.randomUUID(), operation, ...payload },
     });
   }, []);
-  const boost = useCallback(async (carId: string) => {
+  const select = useCallback((carId: string) => {
     setError(null);
+    setSelected(carId);
+    desiredSelection.current = carId;
+    const request = selectionRequest.current.then(async () => {
+      try {
+        const response = await fetch(`/race/selection/${encodeURIComponent(carId)}`, {
+          method: 'POST',
+        });
+        const payload = await response.json() as { error?: string };
+        if (!response.ok) {
+          setError(payload.error ?? 'The car selection was rejected.');
+          return false;
+        }
+        return true;
+      } catch {
+        setError('The car selection could not reach the race runtime.');
+        return false;
+      }
+    });
+    selectionRequest.current = request;
+    void request.then((accepted) => {
+      if (!accepted && desiredSelection.current === carId) {
+        desiredSelection.current = null;
+      }
+    });
+  }, []);
+  const boost = useCallback(async () => {
+    setError(null);
+    if (!await selectionRequest.current) {
+      return false;
+    }
     try {
-      const response = await fetch(`/race/boost/${encodeURIComponent(carId)}`, { method: 'POST' });
+      const response = await fetch('/race/boost', { method: 'POST' });
       const payload = await response.json() as { error?: string };
       if (!response.ok) {
         setError(payload.error ?? 'The boost request was rejected.');

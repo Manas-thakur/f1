@@ -2,7 +2,7 @@ const CAR_ID = /^car-[0-9]{2}$/;
 
 function upstreamUrl(carId: string) {
   const upstream = process.env['AFTERLAP_RACE_UPSTREAM'] ?? 'http://127.0.0.1:18761';
-  return new URL(`boost/${carId}`, upstream.endsWith('/') ? upstream : `${upstream}/`);
+  return new URL(`selection/${carId}`, upstream.endsWith('/') ? upstream : `${upstream}/`);
 }
 
 export async function POST(
