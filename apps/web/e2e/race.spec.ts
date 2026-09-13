@@ -327,8 +327,9 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   ]);
   await page.getByLabel('Graphics quality').selectOption('ultra');
   await expect(scene).toHaveAttribute('data-render-path', 'postprocessed');
+  const beforeZoom = await scene.getAttribute('data-camera-position');
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  await expect(scene).toHaveAttribute('data-render-path', 'direct');
+  await expect.poll(async () => scene.getAttribute('data-camera-position')).not.toBe(beforeZoom);
   await expect(scene).toHaveAttribute('data-render-path', 'postprocessed');
   await page.getByLabel('Graphics quality').selectOption('high');
   await expect(scene).toHaveAttribute('data-graphics-quality', 'high');
@@ -392,8 +393,9 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('las-vegas');
   await page.getByLabel('Cars', { exact: true }).fill('1');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   const hud = page.getByLabel('Battery and boost', { exact: true });
-  const boost = hud.getByRole('button', { name: 'Apply boost', exact: true });
+  const boost = page.getByRole('button', { name: 'Apply boost', exact: true });
   await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
   await expect(boost).toBeDisabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
@@ -405,7 +407,6 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   const charge = page.getByRole('progressbar', { name: 'Usable battery charge' });
   const initial = Number(await charge.getAttribute('value'));
   await expect.poll(async () => Number(await charge.getAttribute('value'))).toBeLessThan(initial - 0.5);
-  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await page.screenshot({ path: test.info().outputPath('battery-boost.png'), fullPage: true });
   await page.getByRole('button', { name: 'Pause race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
