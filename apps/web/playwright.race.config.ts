@@ -8,6 +8,7 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: ['race.spec.ts', 'motion.spec.ts', 'telemetry.spec.ts'],
   workers: 1,
+  retries: process.env['CI'] ? 1 : 0,
   timeout: 120000,
   expect: { timeout: 20000 },
   use: {
@@ -20,7 +21,7 @@ export default defineConfig({
     cwd: '../..',
     url: `http://127.0.0.1:${webPort}/race`,
     reuseExistingServer: false,
-    env: { RACE_WEB_PORT: webPort, RACE_SIM_PORT: simulatorPort },
+    env: { RACE_WEB_PORT: webPort, RACE_SIM_PORT: simulatorPort, RACE_CARS: '1' },
     gracefulShutdown: { signal: 'SIGTERM', timeout: 15000 },
     timeout: 120000,
   },

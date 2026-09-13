@@ -448,6 +448,8 @@ export class RaceWorld {
   setQuality(quality: GraphicsQuality) {
     this.quality = quality;
     this.configureQuality();
+    this.host.dataset['renderPath'] = quality === 'ultra' && !this.interacting
+      ? 'postprocessed' : 'direct';
     this.resizeCanvas();
   }
 
