@@ -27,6 +27,7 @@ export class Atmosphere extends THREE.Group {
   private readonly night: boolean;
   private quality: 'ultra' | 'high' | 'performance' = 'ultra';
   private lastRainUpdate = 0;
+  private rainFrames = 0;
   private raining = false;
   private interactive = false;
 
@@ -174,12 +175,13 @@ export class Atmosphere extends THREE.Group {
       const limit = Math.min(positions.length, this.rain.geometry.drawRange.count * 3);
       const fall = time * (48 + this.wetness * 42);
       const drift = time * this.wind * 0.65;
+      const floor = Math.max(0, this.cameraPosition.y - 31);
       for (let i = 0; i < limit; i += 6) {
         const baseX = this.rainOrigins[i] ?? 0;
         const baseY = this.rainOrigins[i + 1] ?? 0;
         const baseZ = this.rainOrigins[i + 2] ?? 0;
-        const y = ((baseY - fall) % 62 + 62) % 62;
-        const x = baseX + drift % 180 - 90;
+        const y = floor + ((baseY - fall) % 62 + 62) % 62;
+        const x = ((baseX + drift + 90) % 180 + 180) % 180 - 90;
         positions[i] = this.cameraPosition.x + x;
         positions[i + 1] = y;
         positions[i + 2] = this.cameraPosition.z + baseZ;
@@ -188,9 +190,18 @@ export class Atmosphere extends THREE.Group {
         positions[i + 5] = this.cameraPosition.z + baseZ + 0.12;
       }
       this.rainPositions.needsUpdate = true;
+      this.rainFrames++;
     }
     this.clouds.position.x = Math.sin(time * 0.006) * this.wind * 8;
     this.clouds.position.z = Math.cos(time * 0.004) * this.wind * 5;
+  }
+
+  get animated() {
+    return this.raining;
+  }
+
+  get renderedRainFrames() {
+    return this.rainFrames;
   }
 
   override dispose() {
