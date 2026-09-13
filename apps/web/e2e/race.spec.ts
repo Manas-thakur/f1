@@ -379,6 +379,7 @@ test('camera dragging keeps scenery details visible', async ({ page }) => {
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
   await page.getByLabel('Graphics quality').selectOption('high');
+  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
   const bounds = await scene.boundingBox();
   if (!bounds) {
     throw new Error('3D scene has no visible bounds');

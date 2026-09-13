@@ -482,6 +482,7 @@ export class RaceWorld {
     this.bloom.enabled = this.quality === 'ultra' && this.night;
     this.antialias.enabled = this.quality === 'ultra';
     this.atmosphere.setQuality(this.quality);
+    this.surroundings.setDetailed(this.quality !== 'performance');
   }
 
   get graphicsQuality() {
@@ -668,7 +669,7 @@ export class RaceWorld {
       }
     }
     const time = performance.now() / 1000;
-    this.surroundings.update(time, this.camera.position, this.quality !== 'performance');
+    this.surroundings.update(time, this.camera.position);
     this.atmosphere.update(time, this.camera.position);
     if (this.quality === 'ultra' && !this.interacting) {
       this.composer.render();
