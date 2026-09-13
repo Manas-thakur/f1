@@ -668,7 +668,7 @@ export class RaceWorld {
       }
     }
     const time = performance.now() / 1000;
-    this.surroundings.update(time, this.camera.position);
+    this.surroundings.update(time, this.camera.position, this.quality !== 'performance');
     this.atmosphere.update(time, this.camera.position);
     if (this.quality === 'ultra' && !this.interacting) {
       this.composer.render();

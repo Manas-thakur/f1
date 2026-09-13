@@ -482,16 +482,19 @@ export class Scenery extends THREE.Group {
     }, undefined, () => undefined);
   }
 
-  update(time: number, camera: THREE.Vector3) {
+  update(time: number, camera: THREE.Vector3, detailed: boolean) {
     if (time - this.lastUpdate < 1 / 24) {
       return;
     }
     this.lastUpdate = time;
+    for (const mesh of this.detailMeshes) {
+      mesh.visible = detailed;
+    }
     const nearest = [...this.treePositions].sort((a, b) =>
       a.distanceToSquared(camera) - b.distanceToSquared(camera));
     for (const [i, tree] of this.treePool.entries()) {
       const p = nearest[i];
-      tree.visible = Boolean(p && p.distanceTo(camera) < 180);
+      tree.visible = detailed && Boolean(p && p.distanceTo(camera) < 180);
       if (p) {
         tree.position.copy(p);
         tree.rotation.z = Math.sin(time * 0.85 + i * 1.7) * Math.min(0.075, Math.abs(this.wind) * 0.005);
@@ -499,7 +502,7 @@ export class Scenery extends THREE.Group {
     }
     for (const { group, arms, head, count } of this.crowd) {
       const distance = group.position.distanceTo(camera);
-      head.geometry = distance < 65 && this.detailedHead ? this.detailedHead : this.simpleHead;
+      head.geometry = detailed && distance < 65 && this.detailedHead ? this.detailedHead : this.simpleHead;
       if (distance > 180 && arms.userData['posed']) {
         continue;
       }
