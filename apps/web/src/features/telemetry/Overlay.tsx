@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { clamp01, fixed, ratioPercent } from './readouts';
 import { useTelemetry } from './useTelemetry';
 import styles from './telemetry.module.css';
@@ -21,7 +23,17 @@ export function TelemetryOverlay({ carId, visible }: {
   readonly carId: string;
   readonly visible: boolean;
 }) {
-  const { car, flag } = useTelemetry(carId);
+  const { car, flag, frame, connected, boost } = useTelemetry(carId);
+  const [boosting, setBoosting] = useState(false);
+  const recommendation = frame?.recommendations[carId];
+  const boostActive = car.mode === 'BOOST';
+  const boostable = connected && frame?.status === 'running' && car.present && !boosting
+    && Boolean(recommendation?.can_apply);
+  async function applyBoost() {
+    setBoosting(true);
+    await boost();
+    setBoosting(false);
+  }
   return (
     <div className={styles.overlay} hidden={!visible} aria-label={`Race telemetry for ${carId}`}>
       <header className={styles.raceTelemetryHeader}>
@@ -30,6 +42,11 @@ export function TelemetryOverlay({ carId, visible }: {
           <strong>{carId.toUpperCase()}</strong>
         </div>
         <span className={styles.raceFlag} data-tone={flag.tone}>{flag.label}</span>
+        <button type="button" className={styles.raceBoost} disabled={!boostable}
+          data-active={boostActive} aria-label={`Apply boost to ${carId}`}
+          onClick={() => void applyBoost()}>
+          {boosting ? 'WAIT' : boostActive ? 'BOOST ON' : 'BOOST'}
+        </button>
         <a href={`/tel/${encodeURIComponent(carId)}`} target="_blank" rel="noreferrer"
           aria-label={`Open full telemetry for ${carId} in a new tab`}>
           OPEN IN NEW TAB ↗

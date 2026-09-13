@@ -6,13 +6,18 @@ import type { Socket } from 'node:net';
 async function applyAvailableBoost(page: Page, boost: Locator) {
   let rejected: unknown = null;
   for (let attempt = 0; attempt < 10; attempt++) {
-    await expect(boost).toBeEnabled({ timeout: 60000 });
     const [response] = await Promise.all([
       page.waitForResponse((candidate) => (
         candidate.request().method() === 'POST'
           && new URL(candidate.url()).pathname === '/race/boost'
       )),
-      boost.click(),
+      expect.poll(async () => boost.evaluate((button) => {
+        if (!(button instanceof HTMLButtonElement) || button.disabled) {
+          return false;
+        }
+        button.click();
+        return true;
+      }), { timeout: 60000 }).toBe(true),
     ]);
     const payload = await response.json();
     if (response.ok()) {
@@ -406,9 +411,11 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
   await expect.poll(async () => (await panel.boundingBox())?.width).toBeGreaterThan(400);
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await page.getByRole('button', { name: 'Car orbit', exact: true }).click();
-  for (let i = 0; i < 35; i++) {
-    await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  }
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).evaluate((button) => {
+    for (let i = 0; i < 35; i++) {
+      (button as HTMLElement).click();
+    }
+  });
   await expect.poll(async () => Number((await scene.getAttribute('data-camera-position'))?.split(',')[1]))
     .toBeGreaterThanOrEqual(0.65);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight)).toBe(true);

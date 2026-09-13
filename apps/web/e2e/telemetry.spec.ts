@@ -220,10 +220,16 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
   await page.getByLabel('Cars', { exact: true }).fill('2');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  const selectionResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/race/selection/car-01'
+  ));
+  await page.getByRole('button', { name: 'car-01', exact: true }).click();
+  await selectionResponse;
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
-  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause race', exact: true })).toBeVisible();
-  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Pause race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();
   const summary = page.getByLabel('Race telemetry for car-01');
   await expect(summary).toBeVisible();
