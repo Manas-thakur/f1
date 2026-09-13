@@ -1,0 +1,45 @@
+name: show-shah
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['show-shah/**', 'bun.lock', 'package.json', '.github/workflows/show-shah.yml']
+  push:
+    branches: [main]
+    paths: ['show-shah/**', 'bun.lock', 'package.json', '.github/workflows/show-shah.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  presentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: show-shah
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      - name: Install pinned dependencies
+        run: bun install --frozen-lockfile
+      - name: Check sources, types and build
+        run: bun run check
+      - name: Install browser
+        run: bunx playwright install --with-deps chromium
+      - name: Export and inspect every slide
+        run: |
+          bun run preview &
+          preview_pid=$!
+          trap 'kill "$preview_pid"' EXIT
+          bun run export
+      - name: Render the complete product demo
+        run: bun run render
+      - uses: actions/upload-artifact@v4
+        with:
+          name: show-shah-presentation-and-demo
+          path: show-shah/dist
+          retention-days: 14

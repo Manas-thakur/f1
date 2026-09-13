@@ -74,7 +74,7 @@ export const chapters = [
     body: 'Watch the 3D race.\nInspect the engineer console.\nFollow one car on telemetry.',
     caption: 'The views share delayed race observations. Unknown channels remain unavailable rather than becoming invented instruments.',
     visual: 'screen', labels: ['/race', '/race/engineer', '/tel/{car_id}'],
-    notes: 'The live product capture shows the current race view. The engineer console exposes recommendations and operator context. The 800 by 480 telemetry display follows one selected car, and the compact overlay follows the watched car. Speed, energy, power, grip and applied pedals come from delayed sensor channels. Lap times and gaps are browser-side derivations and inherit observation delay and noise. There are no fabricated engine RPM, gearbox or tyre-temperature readouts. Classification, camera selection and manual energy control refer to the same race.',
+    notes: 'The live product capture shows the current race view. The engineer console combines live cameras and telemetry with prediction and execution panels explicitly marked SCENARIO MOCK and MOCK. Those panels are placeholders, not live trained-model outputs. The 800 by 480 telemetry display follows one selected car, and the compact overlay follows the watched car. Speed, energy, power, grip and applied pedals come from delayed sensor channels. Lap times and gaps are browser-side derivations and inherit observation delay and noise. There are no fabricated engine RPM, gearbox or tyre-temperature readouts. Classification, camera selection and manual energy control refer to the same race.',
     sources: ['RACE_SIMULATOR.md', 'apps/web/src/features/engineer/EngineerConsole.tsx', 'apps/web/src/features/telemetry/Screen.tsx'],
   },
   {
@@ -99,7 +99,7 @@ export const chapters = [
     caption: 'A useful platform for controlled experiments: inspect the assumptions, reproduce the run, and evaluate the outcome.',
     visual: 'hero', labels: ['INVARIANTS', 'INTEGRATION', 'LIMITS'],
     notes: 'Tests check energy balance, power and recharge limits, delayed observations, masking, deterministic restore, control routing and real browser behavior. CI also exercises generation and PPO wiring on the source revision under review. Historical validation reports are revision-specific, not fresh performance claims. Circuit shapes, vehicle coefficients, weather fields, pit timings and opportunity labels are synthetic. No measured lap-time advantage, trained superiority, real-car safety, full FIA compliance, or sim-to-real transfer is established. Full crash dynamics, chemistry, event authorization and measured geometry require additional models and data. The strength of this implementation is an inspectable chain from assumptions to observed consequences.',
-    sources: ['RACE_VALIDATION.md', 'docs/FIA_2026_RULE_COVERAGE.md', 'tests/race', '.github/workflows/simulator.yml'],
+    sources: ['RACE_VALIDATION.md', 'docs/FIA_2026_RULE_COVERAGE.md', 'tests/race', '.github/workflows/ci.yml'],
   },
 ] as const;
 export type Chapter = (typeof chapters)[number];
