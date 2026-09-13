@@ -23,6 +23,7 @@ CYCLES ?= 5
 EVAL_EPISODES ?= 3
 DECISION_CARS ?= 6
 DECISION_DURATION ?= 60
+DECISION_PRESET ?= training
 RACE_LINE_ARGS := --contact-mode $(CONTACT_MODE) --line-randomness $(LINE_RANDOMNESS) --corner-line-strength $(CORNER_LINE_STRENGTH) --line-wander-m $(LINE_WANDER_M) --line-lookahead-m $(LINE_LOOKAHEAD_M) --line-smoothing-m $(LINE_SMOOTHING_M) $(RACING_LINE_FLAGS)
 
 .PHONY: help install dev race race-server race-generate race-train race-train-decision race-evaluate-decision race-status race-boost race-boost-off race-button race-check race-browser-check race-up race-down
@@ -32,7 +33,7 @@ help:
 	@echo "make race-server         Start only the WebSocket simulator"
 	@echo "make race-generate       Write RL transitions as JSONL"
 	@echo "make race-train          Train and save a PPO policy"
-	@echo "make race-train-decision Train the boost recommendation PPO policy"
+	@echo "make race-train-decision Train the boost recommendation PPO policy with episode diversity"
 	@echo "make race-evaluate-decision Evaluate a saved boost policy"
 	@echo "make race-status         Read live recommendation telemetry through Next.js"
 	@echo "make race-boost          Apply the live recommendation through Next.js"
@@ -61,10 +62,10 @@ race-train:
 	uv run --group learning python scripts/race.py train --circuit $(CIRCUIT) --seed $(SEED) --cars $(CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DURATION) $(RACE_LINE_ARGS) --steps $(STEPS) --output .afterlap/race/policy-$(SEED)
 
 race-train-decision:
-	uv run --group learning python scripts/race.py train-decision --circuit $(CIRCUIT) --seed $(SEED) --cars $(DECISION_CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DECISION_DURATION) $(RACE_LINE_ARGS) --steps $(STEPS) --cycles $(CYCLES) --eval-episodes $(EVAL_EPISODES) --output $(TRAINING_OUTPUT)
+	uv run --group learning python scripts/race.py train-decision --circuit $(CIRCUIT) --seed $(SEED) --preset $(DECISION_PRESET) --cars $(DECISION_CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DECISION_DURATION) $(RACE_LINE_ARGS) --steps $(STEPS) --cycles $(CYCLES) --eval-episodes $(EVAL_EPISODES) --output $(TRAINING_OUTPUT)
 
 race-evaluate-decision:
-	uv run --group learning python scripts/race.py evaluate-decision --circuit $(CIRCUIT) --seed $(SEED) --cars $(DECISION_CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DECISION_DURATION) $(RACE_LINE_ARGS) --policy $(if $(strip $(POLICY)),$(POLICY),$(TRAINING_OUTPUT)) --eval-episodes $(EVAL_EPISODES)
+	uv run --group learning python scripts/race.py evaluate-decision --circuit $(CIRCUIT) --seed $(SEED) --preset $(DECISION_PRESET) --cars $(DECISION_CARS) $(if $(strip $(LAPS)),--laps $(LAPS)) --duration $(DECISION_DURATION) $(RACE_LINE_ARGS) --policy $(if $(strip $(POLICY)),$(POLICY),$(TRAINING_OUTPUT)) --eval-episodes $(EVAL_EPISODES)
 
 race-status:
 	$(PYTHON) scripts/race_control.py status

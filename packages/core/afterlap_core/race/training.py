@@ -164,6 +164,8 @@ def train_decision_policy(
         "algorithm": "PPO",
         "seed": settings.seed,
         "circuit": settings.circuit,
+        "training_diversity": settings.training_diversity.model_dump(mode="json"),
+        "episode_sampling": "seeded_reset_stream",
         "total_timesteps": completed_steps,
         "cycles": cycles,
         "evaluation_episodes_per_cycle": evaluation_episodes,

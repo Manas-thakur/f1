@@ -118,3 +118,30 @@ def test_generate_accepts_every_top_level_race_setting(monkeypatch, tmp_path):
             "circuits": [],
         },
     }
+
+
+def test_generate_can_enable_training_diversity(monkeypatch, tmp_path):
+    output = tmp_path / "diverse.jsonl"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "race.py",
+            "generate",
+            "--circuit",
+            "monza",
+            "--cars",
+            "3",
+            "--laps",
+            "1",
+            "--duration",
+            "1",
+            "--diversity",
+            "--output",
+            str(output),
+        ],
+    )
+    main()
+    manifest = json.loads(output.read_text().splitlines()[0])
+    assert manifest["settings"]["training_diversity"]["enabled"] is True
+    assert manifest["settings"]["seed"] == 42

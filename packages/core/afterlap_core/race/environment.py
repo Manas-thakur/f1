@@ -9,6 +9,7 @@ from gymnasium import spaces
 from afterlap_contracts import DeploymentProfile
 
 from .control import DriverControl
+from .diversity import episode_race_settings, next_episode_seed
 from .session import RaceSession
 from .settings import RaceSettings
 
@@ -113,11 +114,15 @@ class RaceEnv(gym.Env):
         options: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed)
-        effective = self.settings.seed if seed is None else seed
-        settings = self.settings.model_copy(update={"seed": effective})
+        episode_seed = next_episode_seed(self.np_random, seed)
+        settings = episode_race_settings(self.settings, episode_seed)
         self.session = RaceSession(settings)
         self.previous_control = None
-        return encode(self.session), {"environment_version": "race-control-v2"}
+        return encode(self.session), {
+            "environment_version": "race-control-v2",
+            "episode_seed": episode_seed,
+            "circuit": settings.circuit,
+        }
 
     def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self.session is None or self.session.done or "car-01" in self.session.finishes:

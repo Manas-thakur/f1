@@ -13,6 +13,7 @@ from gymnasium import spaces
 from afterlap_contracts import DeploymentProfile, Quality
 
 from ..simulation.observation import Observation
+from .diversity import episode_race_settings, next_episode_seed
 from .session import RaceSession
 from .settings import RaceSettings
 
@@ -307,12 +308,17 @@ class BoostDecisionEnv(gym.Env[np.ndarray, int]):
         options: dict[str, Any] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
         super().reset(seed=seed)
-        effective = self.settings.seed if seed is None else seed
-        self.session = RaceSession(self.settings.model_copy(update={"seed": effective}))
+        episode_seed = next_episode_seed(self.np_random, seed)
+        settings = episode_race_settings(self.settings, episode_seed)
+        self.session = RaceSession(settings)
         self.previous_action = None
         self.last_rank = self._rank()
         observation = self.session.observations()["car-01"]
-        return encode_decision(self.session, observation), {"environment_version": "boost-decision-v1"}
+        return encode_decision(self.session, observation), {
+            "environment_version": "boost-decision-v1",
+            "episode_seed": episode_seed,
+            "circuit": settings.circuit,
+        }
 
     def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
         if self.session is None or self.session.done or "car-01" in self.session.finishes:
@@ -371,6 +377,7 @@ class BoostDecisionEnv(gym.Env[np.ndarray, int]):
             "passes": new_passes,
             "failure": session.failure,
             "rank": rank,
+            "episode_seed": session.settings.seed,
         }
         terminated = session.status == "failed" or "car-01" in session.finishes
         return (

@@ -150,7 +150,7 @@ The output is:
 - `boost-policy.manifest.json`, containing the model and environment contract
 - `boost-policy.metrics.json`, containing the rules baseline, cycle history, failure rate, and manual promotion status
 
-Each cycle trains, evaluates on deterministic held-out seeds, compares against the rules baseline, and records whether mean reward improved. Promotion is never automatic. Use multiple seeds, circuits, weather conditions, and variability presets for serious experiments. Keep complete scenario families out of training for evaluation, and report incomplete or failed runs.
+Each cycle trains on a stream of episode seeds, evaluates on deterministic held-out seeds, compares against the rules baseline, and records whether mean reward improved. `train-decision` and `evaluate-decision` turn on start-state diversity by default: grid order, pack origin, battery energy, launch speed, and weather are sampled from the episode seed. Live `serve` stays on the fixed grid and 3.1 MJ start charge. Promotion is never automatic. Use multiple seeds, circuits, weather conditions, and variability presets for serious experiments. Keep complete scenario families out of training for evaluation, and report incomplete or failed runs. Pass `--no-diversity` to restore the fixed start loop.
 
 ## Evaluate and run it
 

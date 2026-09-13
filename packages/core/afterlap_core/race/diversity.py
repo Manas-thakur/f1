@@ -51,3 +51,17 @@ def episode_race_settings(settings: RaceSettings, episode_seed: int) -> RaceSett
         if diversity.circuits:
             updates["circuit"] = str(diversity.circuits[int(rng.integers(0, len(diversity.circuits)))])
     return settings.model_copy(update=updates)
+
+
+def apply_command_diversity(
+    settings: RaceSettings,
+    requested: bool | None,
+    *,
+    default_enabled: bool,
+) -> RaceSettings:
+    if requested is None and not default_enabled:
+        return settings
+    enabled = default_enabled if requested is None else requested
+    return settings.model_copy(
+        update={"training_diversity": settings.training_diversity.model_copy(update={"enabled": enabled})}
+    )

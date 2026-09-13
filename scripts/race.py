@@ -13,6 +13,7 @@ from afterlap_core.race import RaceSettings, RacingLineSettings, StorylineSettin
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
 from afterlap_core.race.decision import decision_schema
+from afterlap_core.race.diversity import apply_command_diversity
 from afterlap_core.race.environment import (
     ACTION_FIELDS,
     ACTION_HIGH,
@@ -85,6 +86,7 @@ def main() -> None:
     parser.add_argument("--cycles", type=int, default=5)
     parser.add_argument("--eval-episodes", type=int, default=3)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
+    parser.add_argument("--diversity", action=argparse.BooleanOptionalAction, default=None)
     parser.add_argument("--metrics", type=Path)
     parser.add_argument("--control-state", type=Path, default=Path(".afterlap/race/control.sqlite3"))
     parser.add_argument(
@@ -154,6 +156,11 @@ def main() -> None:
     settings = RaceSettings.model_validate(settings_payload)
     if args.settings:
         settings = RaceSettings.model_validate_json(args.settings.read_text())
+    settings = apply_command_diversity(
+        settings,
+        args.diversity,
+        default_enabled=args.command in {"train", "train-decision", "evaluate-decision"},
+    )
     if args.command == "serve":
         from afterlap_api.race_server import run_server
 
