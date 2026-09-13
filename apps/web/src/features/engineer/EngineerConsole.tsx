@@ -4,21 +4,29 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRace } from '../race/Connection';
-import type { CameraMode, RaceWorld } from '../race/RaceWorld';
+import type { RaceWorld } from '../race/RaceWorld';
 import type { CircuitMap, RaceCar, RaceFrame } from '../race/types';
 import styles from './engineer.module.css';
 
-const CAMERAS: { label: string; location: string; mode: CameraMode }[] = [
-  { label: 'T12 exit', location: 'Trackside 04', mode: 'orbit' },
-  { label: 'Main straight', location: 'Onboard', mode: 'cockpit' },
-  { label: 'Sector overview', location: 'Helicam', mode: 'track' },
-  { label: 'Rear battle', location: 'Chase', mode: 'chase' },
+const CAMERAS: { label: string; location: string; progress: number; side: -1 | 1 }[] = [
+  { label: 'Start approach', location: 'Trackside 01', progress: 0.02, side: -1 },
+  { label: 'Sector one', location: 'Trackside 02', progress: 0.18, side: 1 },
+  { label: 'High-speed entry', location: 'Trackside 03', progress: 0.35, side: -1 },
+  { label: 'Midfield exit', location: 'Trackside 04', progress: 0.52, side: 1 },
+  { label: 'Sector three', location: 'Trackside 05', progress: 0.69, side: -1 },
+  { label: 'Final approach', location: 'Trackside 06', progress: 0.86, side: 1 },
 ];
 
 const MOCK_PREDICTIONS = [
   { time: '+03s', title: 'Overtake window', detail: 'Close to <0.7 s before the braking zone', tone: 'attack' },
   { time: '+12s', title: 'Harvest window', detail: 'Lift 18 m earlier; protect the next deployment', tone: 'recover' },
   { time: '+34s', title: 'Traffic exposure', detail: 'Rejoin risk increases if the stop is extended', tone: 'watch' },
+];
+
+const MOCK_DECISIONS = [
+  { time: '+03s', action: 'Overtake deployment', response: 'ACKNOWLEDGED', status: 'acted' },
+  { time: '+12s', action: 'Harvest window', response: 'NOT ACTED', status: 'missed' },
+  { time: '+34s', action: 'Hold pit window', response: 'AWAITING', status: 'pending' },
 ];
 
 function available(value: number | undefined, digits = 1) {
@@ -65,11 +73,11 @@ function CameraWall({ frame, selected }: { frame: RaceFrame | null; selected: st
             () => setFailed((old) => CAMERAS.map((_, item) => item === index || Boolean(old[item]))),
             () => undefined);
           worlds.current.push(world);
-          world.setQuality(false);
+          world.setQuality('performance');
           if (latest.current.frame) {
             world.update(latest.current.frame, latest.current.selected);
           }
-          world.setMode(camera.mode);
+          world.setTrackside(camera.progress, camera.side);
         } catch {
           setFailed((old) => CAMERAS.map((_, item) => item === index || Boolean(old[item])));
         }
@@ -90,12 +98,6 @@ function CameraWall({ frame, selected }: { frame: RaceFrame | null; selected: st
       world.update(frame, selected);
     });
   }, [frame, selected]);
-
-  useEffect(() => {
-    worlds.current.forEach((world, index) => {
-      world.setMode(CAMERAS[index]?.mode ?? 'track');
-    });
-  }, [selected]);
 
   return <section className={styles.cameraWall} aria-label="Live camera wall">
     {CAMERAS.map((camera, index) => <figure className={styles.camera} key={camera.location}>
@@ -283,12 +285,15 @@ function DecisionLedger({ car }: { car: RaceCar | undefined }) {
       <div><span>08 / EXECUTION</span><h2>Decision response</h2></div>
       <b className={styles.mockBadge}>MOCK</b>
     </div>
-    <div className={styles.decisionState}><i /> <span>Recommendation acknowledged</span></div>
-    <dl className={styles.decisionList}>
-      <div><dt>Requested</dt><dd>OVERTAKE</dd></div>
-      <div><dt>Delivered profile</dt><dd>{delivered ?? 'UNAVAILABLE'}</dd></div>
-      <div><dt>Driver action</dt><dd>AWAITING INPUT</dd></div>
-    </dl>
+    <div className={styles.decisionState}><span>LIVE PROFILE</span>
+      <strong>{delivered ?? 'UNAVAILABLE'}</strong></div>
+    <ol className={styles.decisionList}>
+      {MOCK_DECISIONS.map((decision) => <li key={decision.time} data-status={decision.status}>
+        <time>{decision.time}</time>
+        <div><strong>{decision.action}</strong><small>Engineer recommendation</small></div>
+        <em>{decision.response}</em>
+      </li>)}
+    </ol>
   </section>;
 }
 
@@ -296,26 +301,24 @@ function Validation({ frame }: { frame: RaceFrame | null }) {
   const counts = frame?.boost_evaluation;
   const latestPass = [...(frame?.events ?? [])]
     .reverse().find((event) => event.kind === 'completed_pass');
-  const outcome = !counts ? 'UNAVAILABLE'
-    : counts.true_positive > 0 ? 'TRUE'
-      : counts.false_positive > 0 ? 'FALSE' : 'PENDING';
+  const outcomes = [
+    { label: 'TRUE', detail: 'Opportunity present · boost used', value: counts?.true_positive },
+    { label: 'FALSE', detail: 'No opportunity · boost used', value: counts?.false_positive },
+    { label: 'MISSED', detail: 'Opportunity present · no boost', value: counts?.false_negative },
+    { label: 'CLEAR', detail: 'No opportunity · no boost', value: counts?.true_negative },
+  ];
   return <section className={`${styles.module} ${styles.validationModule}`} aria-label="Prediction validation">
     <div className={styles.moduleHead}>
       <div><span>09 / VALIDATION</span><h2>Energy attribution</h2></div>
     </div>
-    <div className={styles.truth} data-outcome={outcome.toLowerCase()}>
-      <span>LATEST CLASSIFICATION</span><strong>{outcome}</strong>
-      <p>{outcome === 'TRUE' ? 'Boost matched an observed opportunity.'
-        : outcome === 'FALSE' ? 'Boost was used without an observed opportunity.'
-          : outcome === 'PENDING' ? 'No classified boost opportunity yet.'
-            : 'Waiting for simulator evidence.'}</p>
+    <div className={styles.outcomeList}>
+      {outcomes.map((outcome) => <article key={outcome.label}
+        data-outcome={outcome.label.toLowerCase()}>
+        <strong>{outcome.label}</strong>
+        <span>{outcome.detail}</span>
+        <b>{outcome.value ?? '—'}</b>
+      </article>)}
     </div>
-    <dl className={styles.matrix}>
-      <div><dt>TP</dt><dd>{counts?.true_positive ?? '—'}</dd></div>
-      <div><dt>FP</dt><dd>{counts?.false_positive ?? '—'}</dd></div>
-      <div><dt>FN</dt><dd>{counts?.false_negative ?? '—'}</dd></div>
-      <div><dt>TN</dt><dd>{counts?.true_negative ?? '—'}</dd></div>
-    </dl>
     <div className={styles.lastEvent}>{latestPass
       ? `${latestPass.overtaking_car_id?.toUpperCase()} passed ${latestPass.overtaken_car_id?.toUpperCase()}`
         + ` · ${latestPass.session_time_s.toFixed(1)}s`

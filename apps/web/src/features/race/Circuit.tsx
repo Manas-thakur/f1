@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 
@@ -156,6 +157,9 @@ export function Circuit() {
     <section ref={panel} className={styles.mapPanel} aria-label="Live circuit" data-weather={weather}>
       <div className={styles.sceneWrap} style={{ width: `calc(100% - ${dockWidth}px)` }}>
       <div ref={toolbar} className={styles.mapTools}>
+        <button type="button" aria-label="Race controls" aria-expanded={settings}
+          onClick={() => setSettings(!settings)}>☰</button>
+        <Link className={styles.dashboardLink} href="/race/engineer">Dashboard</Link>
         <span className={styles.circuitName}>{frame?.circuit_map.name.toUpperCase() ?? 'CONNECTING'}</span>
         <span className={styles.connection} data-socket-url={socketUrl}>{connected ? '● CONNECTED' : '○ DISCONNECTED'}</span>
         <div className={styles.cameraTabs} role="group" aria-label="Camera view">
@@ -177,8 +181,6 @@ export function Circuit() {
           <option value="performance">Performance</option>
         </select>
         <button type="button" onClick={() => void fullscreen()}>Fullscreen</button>
-        <button type="button" aria-label="Race controls" aria-expanded={settings}
-          onClick={() => setSettings(!settings)}>☰</button>
         <Transport />
       </div>
         {/* eslint-disable-next-line

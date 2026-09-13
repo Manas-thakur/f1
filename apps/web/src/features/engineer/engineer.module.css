@@ -1,13 +1,13 @@
 .console {
-  --ink: #070a0d;
-  --panel: #0d1217;
-  --panel-raised: #111820;
-  --line: #273039;
-  --muted: #7f8a93;
-  --text: #eef1f3;
-  --lime: #c9ff37;
-  --cyan: #38d6ed;
-  --orange: #ff6932;
+  --ink: #071016;
+  --panel: #111e28;
+  --panel-raised: #17252f;
+  --line: #344550;
+  --muted: #9cafba;
+  --text: #e9f0ef;
+  --lime: #d4ef9a;
+  --cyan: #76dff4;
+  --orange: #ef704d;
   min-height: 100dvh;
   background: var(--ink);
   color: var(--text);
@@ -24,8 +24,9 @@
   min-height: 72px;
   align-items: stretch;
   border-bottom: 1px solid #3a4249;
-  background: #090d11f5;
-  backdrop-filter: blur(18px);
+  background: linear-gradient(115deg, #07131df5, #14232cf2);
+  box-shadow: 0 8px 28px #0005, inset 0 1px #ffffff12;
+  backdrop-filter: blur(18px) saturate(1.25);
 }
 
 .identity, .sessionMeta, .quickReadout, .connectionState, .carSelect {
@@ -36,7 +37,7 @@
 }
 
 .identity { gap: 11px; }
-.identity > b { display: grid; width: 36px; height: 36px; place-items: center; background: var(--lime); color: #071005; font: 900 15px/1 Arial, sans-serif; transform: skewX(-8deg); }
+.identity > b { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 6px; background: var(--lime); color: #071005; font: 900 15px/1 Arial, sans-serif; }
 .identity div, .connectionState div { display: grid; gap: 2px; }
 .identity span, .sessionMeta span, .quickReadout span, .connectionState span, .carSelect { color: var(--muted); font: 700 .68rem/1.2 ui-monospace, monospace; letter-spacing: .12em; }
 .identity strong { font-size: .84rem; letter-spacing: .12em; }
@@ -53,9 +54,9 @@
 .connectionState > i { width: 8px; height: 8px; border-radius: 50%; background: #626b72; box-shadow: 0 0 0 4px #626b721c; }
 .connectionState[data-connected='true'] > i { background: var(--lime); box-shadow: 0 0 0 4px #c9ff3720, 0 0 12px #c9ff37aa; }
 .connectionState strong { font: 800 .75rem ui-monospace, monospace; }
-.transportButton, .trackLink { display: grid; min-width: 76px; place-items: center; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: var(--lime); color: #101606; font: 900 .72rem ui-monospace, monospace; letter-spacing: .1em; cursor: pointer; text-decoration: none; }
+.transportButton, .trackLink { display: grid; min-width: 76px; min-height: 36px; align-self: center; margin: 0 6px; place-items: center; border: 1px solid #dff5ff24; border-radius: 7px; background: var(--lime); color: #101606; font: 900 .72rem ui-monospace, monospace; letter-spacing: .1em; cursor: pointer; text-decoration: none; }
 .transportButton:disabled { opacity: .45; cursor: default; }
-.trackLink { background: #141b21; color: #c4ccd2; padding: 0 16px; }
+.trackLink { background: #1a2b36; color: var(--text); padding: 0 16px; }
 .transportButton:focus-visible, .trackLink:focus-visible, .carSelect select:focus-visible { outline: 2px solid white; outline-offset: -4px; }
 
 .workspace {
@@ -79,7 +80,7 @@
 .mockBadge { border: 1px solid #a85235; padding: 5px 7px; color: #ff9873; font: 800 .58rem ui-monospace, monospace; letter-spacing: .1em; }
 .empty { display: grid; height: 100%; min-height: 120px; place-items: center; color: var(--muted); font: .7rem ui-monospace, monospace; letter-spacing: .07em; text-align: center; }
 
-.cameraWall { grid-area: 1 / 1 / 3 / 3; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1px; min-width: 0; background: var(--line); }
+.cameraWall { grid-area: 1 / 1 / 3 / 3; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 1px; min-width: 0; background: var(--line); }
 .camera { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #10151a; }
 .camera::after { position: absolute; z-index: 3; inset: 0; border: 1px solid #ffffff0c; background: linear-gradient(180deg, transparent 65%, #040608b8), repeating-linear-gradient(0deg, #ffffff06 0, #ffffff06 1px, transparent 1px, transparent 4px); content: ''; pointer-events: none; }
 .cameraViewport { position: absolute; inset: 0; }
@@ -142,25 +143,29 @@
 .energyReadouts small { color: var(--muted); font-size: .58rem; }
 
 .decisionModule { grid-area: 3 / 3 / 4 / 4; }
-.decisionState { display: flex; align-items: center; gap: 9px; margin: 16px; border: 1px solid #314331; background: #111b13; padding: 11px; color: #cce5bc; font: 700 .68rem ui-monospace, monospace; }
+.decisionState { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin: 12px 16px; border: 1px solid #40533d; border-radius: 6px; background: #17261b; padding: 9px 11px; color: #dcebcf; font: 700 .66rem ui-monospace, monospace; }
 .decisionState i { width: 7px; height: 7px; background: var(--lime); transform: rotate(45deg); }
-.decisionList { margin: 0 16px; }
-.decisionList div { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding: 11px 0; }
-.decisionList dt { color: var(--muted); font-size: .74rem; }
-.decisionList dd { margin: 0; font: 800 .67rem ui-monospace, monospace; text-align: right; }
+.decisionState strong { margin-left: auto; color: var(--lime); }
+.decisionList { list-style: none; margin: 0 16px; padding: 0; }
+.decisionList li { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 9px; border-top: 1px solid var(--line); padding: 10px 0; }
+.decisionList time { color: var(--muted); font: 700 .6rem ui-monospace, monospace; }
+.decisionList div { display: grid; min-width: 0; gap: 3px; }
+.decisionList strong { overflow: hidden; font-size: .72rem; letter-spacing: .035em; text-overflow: ellipsis; white-space: nowrap; }
+.decisionList small { color: var(--muted); font-size: .63rem; }
+.decisionList em { border: 1px solid var(--line); border-radius: 999px; padding: 4px 6px; color: var(--muted); font: 800 .54rem ui-monospace, monospace; font-style: normal; }
+.decisionList li[data-status='acted'] em { border-color: #657c47; color: var(--lime); }
+.decisionList li[data-status='missed'] em { border-color: #86523f; color: #ff9873; }
 
 .validationModule { grid-area: 3 / 4 / 4 / 5; }
-.truth { margin: 14px 16px 10px; }
-.truth span { color: var(--muted); font: .58rem ui-monospace, monospace; letter-spacing: .1em; }
-.truth strong { display: block; margin: 3px 0; color: #adb6bc; font-size: 1.65rem; letter-spacing: -.03em; }
-.truth[data-outcome='true'] strong { color: var(--lime); }
-.truth[data-outcome='false'] strong { color: var(--orange); }
-.truth p { color: #929da4; font-size: .7rem; line-height: 1.35; }
-.matrix { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 16px; border: 1px solid var(--line); }
-.matrix div { display: grid; gap: 4px; border-right: 1px solid var(--line); padding: 8px; text-align: center; }
-.matrix div:last-child { border: 0; }
-.matrix dt { color: var(--muted); font: .57rem ui-monospace, monospace; }
-.matrix dd { margin: 0; font: 800 .8rem ui-monospace, monospace; }
+.outcomeList { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 12px 16px 8px; }
+.outcomeList article { display: grid; min-width: 0; gap: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel-raised); padding: 8px 9px; }
+.outcomeList article[data-outcome='true'] { border-color: #607545; }
+.outcomeList article[data-outcome='false'] { border-color: #87513f; }
+.outcomeList strong { color: var(--text); font: 850 .7rem ui-monospace, monospace; }
+.outcomeList article[data-outcome='true'] strong { color: var(--lime); }
+.outcomeList article[data-outcome='false'] strong { color: #ff9873; }
+.outcomeList span { color: var(--muted); font-size: .59rem; line-height: 1.25; }
+.outcomeList b { margin-top: 2px; font: 800 .76rem ui-monospace, monospace; }
 .lastEvent { margin: 10px 16px 0; overflow: hidden; color: #6f7b83; font: .58rem ui-monospace, monospace; text-overflow: ellipsis; white-space: nowrap; }
 .alert { position: fixed; z-index: 40; right: 14px; bottom: 14px; max-width: 420px; border: 1px solid #8b442c; background: #24140fef; padding: 12px 16px; color: #ffac8d; font: .7rem ui-monospace, monospace; }
 
@@ -177,7 +182,7 @@
   .transportButton, .trackLink { min-height: 48px; }
   .workspace { grid-template-columns: 1fr; grid-template-rows: none; min-width: 0; }
   .cameraWall, .predictionModule, .trackModule, .energyModule, .decisionModule, .validationModule { grid-area: auto; }
-  .cameraWall { grid-template-columns: 1fr; grid-template-rows: repeat(4, 230px); }
+  .cameraWall { grid-template-columns: 1fr; grid-template-rows: repeat(6, 230px); }
   .predictionModule { min-height: 500px; }
   .trackModule { min-height: 440px; }
   .energyModule { min-height: 330px; }
