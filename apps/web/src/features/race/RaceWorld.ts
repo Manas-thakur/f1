@@ -10,7 +10,6 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 import { Atmosphere } from './Atmosphere';
-import { energyMode } from './energyStatus';
 import { Branding } from './Branding';
 import { sceneryProfile } from './circuitScenery';
 import { Scenery } from './Scenery';
@@ -341,7 +340,8 @@ export class RaceWorld {
     this.renderer.toneMappingExposure = this.night
       ? THREE.MathUtils.lerp(0.65, 0.56, precipitation)
       : THREE.MathUtils.lerp(0.74, 0.64, precipitation);
-    this.host.dataset['boostingCars'] = frame.cars.filter((car) => energyMode(car) === 'BOOST').map((car) => car.id).join(',');
+    const manualBoostCar = frame.manual_boost_car_id === selected ? selected : null;
+    this.host.dataset['boostingCars'] = manualBoostCar ?? '';
     const ids = new Set(frame.cars.map((car) => car.id));
     for (const [id, model] of this.cars) {
       model.visible = ids.has(id);
@@ -404,7 +404,7 @@ export class RaceWorld {
       }
       const boost = model.getObjectByName('electrical-boost');
       if (boost) {
-        boost.visible = energyMode(car) === 'BOOST' && car.finish_time_s === null;
+        boost.visible = car.id === manualBoostCar && car.finish_time_s === null;
         boost.scale.z = Math.max(0.25, Math.min(1, (car.channels['electrical_power_w'] ?? 0) / 350000));
       }
       model.userData['speedMps'] = car.channels['speed_mps'] ?? 0;

@@ -22,7 +22,7 @@ function frame(time_s: number, cars: RaceCar[], generation = 1): RaceFrame {
   return {
     type: 'frame', time_s, generation, steps: Math.round(time_s * 100), status: 'running',
     failure: null, requested_rate: 1, actual_rate: 1, has_checkpoint: false,
-    selected_car_id: 'car-01', events: [],
+    selected_car_id: 'car-01', manual_boost_car_id: null, events: [],
     flags: ['green'],
     recommendations: {}, training_metrics: null,
     boost_evaluation: { true_positive: 0, false_positive: 0, true_negative: 0, false_negative: 0,
@@ -200,7 +200,11 @@ test('the telemetry screen streams one car, scales to the display and starts the
     boost.click(),
   ]);
   expect(await boostResponse.json()).toMatchObject({ car_id: 'car-02', status: 'accepted' });
-  await expect(boost).toHaveAttribute('data-active', 'true');
+  const stopBoost = page.getByRole('button', { name: 'Stop boost for car-02', exact: true });
+  await expect(stopBoost).toHaveAttribute('data-active', 'true');
+  await stopBoost.click();
+  await expect(page.getByRole('button', { name: 'Apply boost to car-02', exact: true }))
+    .toHaveAttribute('data-active', 'false');
   const speed = page.getByLabel('Speed, electrical power and deployment profile');
   await expect.poll(async () => Number(await speed.locator('strong').nth(1).innerText()))
     .toBeGreaterThan(0);
@@ -257,4 +261,36 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   const telemetryPage = await opened;
   await expect(telemetryPage).toHaveURL(/\/tel\/car-02$/);
   await telemetryPage.close();
+});
+
+test('the race view animates boost only after the selected car button is pressed', async ({ page }) => {
+  test.slow();
+  await page.goto('/race');
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('3');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('button', { name: 'car-02', exact: true }).click();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
+  await page.getByRole('button', { name: 'Start race', exact: true }).click();
+
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  const telemetry = page.getByLabel('Race telemetry for car-02');
+  const applyBoost = telemetry.getByRole('button', { name: 'Apply boost to car-02', exact: true });
+  await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
+  await expect(scene).toHaveAttribute('data-boosting-cars', '');
+  await expect.poll(async () => applyBoost.evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement) || button.disabled) {
+      return false;
+    }
+    button.click();
+    return true;
+  }), { timeout: 60000 }).toBe(true);
+  await expect(telemetry.getByRole('button', { name: 'Stop boost for car-02', exact: true }))
+    .toHaveAttribute('data-active', 'true');
+  await expect(scene).toHaveAttribute('data-boosting-cars', 'car-02');
+
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByRole('button', { name: 'car-03', exact: true }).click();
+  await expect(page.getByLabel('Race telemetry for car-03')).toBeVisible();
+  await expect(scene).toHaveAttribute('data-boosting-cars', '');
 });

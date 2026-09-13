@@ -23,15 +23,15 @@ export function TelemetryOverlay({ carId, visible }: {
   readonly carId: string;
   readonly visible: boolean;
 }) {
-  const { car, flag, frame, connected, boost } = useTelemetry(carId);
+  const { car, flag, frame, connected, boost, stopBoost } = useTelemetry(carId);
   const [boosting, setBoosting] = useState(false);
   const recommendation = frame?.recommendations?.[carId];
-  const boostActive = car.mode === 'BOOST';
+  const boostActive = frame?.manual_boost_car_id === carId;
   const boostable = connected && frame?.status === 'running' && car.present && !boosting
-    && Boolean(recommendation?.can_apply);
+    && (boostActive || Boolean(recommendation?.manual_available));
   async function applyBoost() {
     setBoosting(true);
-    await boost();
+    await (boostActive ? stopBoost() : boost());
     setBoosting(false);
   }
   return (
@@ -43,7 +43,8 @@ export function TelemetryOverlay({ carId, visible }: {
         </div>
         <span className={styles.raceFlag} data-tone={flag.tone}>{flag.label}</span>
         <button type="button" className={styles.raceBoost} disabled={!boostable}
-          data-active={boostActive} aria-label={`Apply boost to ${carId}`}
+          data-active={boostActive}
+          aria-label={`${boostActive ? 'Stop boost for' : 'Apply boost to'} ${carId}`}
           onClick={() => void applyBoost()}>
           {boosting ? 'WAIT' : boostActive ? 'BOOST ON' : 'BOOST'}
         </button>
