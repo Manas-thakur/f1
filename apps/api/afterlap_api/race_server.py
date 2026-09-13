@@ -5,12 +5,15 @@ import contextlib
 import json
 import re
 import time
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import unquote, urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
+from websockets.http11 import Request, Response
 from websockets.typing import Origin
 
 from afterlap_contracts import DeploymentProfile
@@ -117,6 +120,8 @@ class RaceServer:
             action = None if command.action is None else command.action.driver_action()
             session.control(command.car_id, action)
         elif command.operation == "boost":
+            if command.car_id not in session.bundle.car_configs:
+                raise ValueError("unknown car")
             if not command.enabled:
                 session.bms_profiles.pop(command.car_id, None)
                 return
@@ -124,7 +129,41 @@ class RaceServer:
             recommendation = self.decision_engine.recommend(session, observation)
             if not recommendation.can_apply:
                 raise ValueError(f"boost unavailable: {recommendation.reason}")
+            session.bms_profiles.clear()
             session.bms_profiles[command.car_id] = DeploymentProfile(recommendation.mode)
+
+    @staticmethod
+    def json_response(connection: ServerConnection, status: HTTPStatus, payload: dict[str, str]) -> Response:
+        response = connection.respond(status, json.dumps(payload))
+        del response.headers["Content-Type"]
+        response.headers["Content-Type"] = "application/json"
+        return response
+
+    async def process_request(self, connection: ServerConnection, request: Request) -> Response | None:
+        path = urlsplit(request.path).path
+        if path == "/" and request.method == "GET":
+            return None
+        match = re.fullmatch(r"/boost/(car-[0-9]{2})", path)
+        if match is None:
+            return self.json_response(connection, HTTPStatus.NOT_FOUND, {"error": "not found"})
+        if request.method != "POST":
+            response = self.json_response(
+                connection, HTTPStatus.METHOD_NOT_ALLOWED, {"error": "method not allowed"}
+            )
+            response.headers["Allow"] = "POST"
+            return response
+        car_id = unquote(match.group(1))
+        try:
+            async with self.lock:
+                self.apply(Command(id=f"http-boost-{car_id}", operation="boost", car_id=car_id))
+                self.publish()
+        except ValueError as exc:
+            return self.json_response(connection, HTTPStatus.NOT_FOUND, {"error": str(exc)})
+        return self.json_response(
+            connection,
+            HTTPStatus.OK,
+            {"operation": "boost", "car_id": car_id, "status": "accepted"},
+        )
 
     async def tick(self) -> None:
         while True:
@@ -206,7 +245,13 @@ async def run_server(
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
-            runtime.connect, host, port, origins=allowed_origins(origin), max_size=16384, max_queue=16
+            runtime.connect,
+            host,
+            port,
+            origins=allowed_origins(origin),
+            process_request=runtime.process_request,
+            max_size=16384,
+            max_queue=16,
         ):
             await asyncio.Future()
     finally:
