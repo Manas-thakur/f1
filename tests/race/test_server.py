@@ -17,8 +17,8 @@ from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings, Ra
 from afterlap_core.simulation.physics import tractive_force
 
 
-def available_boost():
-    recommendation = Mock(can_apply=True, mode="push")
+def available_boost(mode="push"):
+    recommendation = Mock(boost_available=True, can_apply=mode == "push", mode=mode)
     recommendation.payload.return_value = {}
     return recommendation
 
@@ -67,11 +67,18 @@ def test_boost_targets_only_the_requested_car():
         runtime.apply(Command(id="missing", operation="boost", car_id="car-03"))
 
 
+def test_manual_boost_uses_safety_availability_instead_of_policy_mode():
+    runtime = RaceServer(RaceSettings(cars=1))
+    runtime.decision_engine.recommend = Mock(return_value=available_boost("neutral"))
+    runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
+    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.PUSH}
+
+
 def test_manual_boost_releases_when_the_guard_expires():
     runtime = RaceServer(RaceSettings(cars=2))
     runtime.decision_engine.recommend = Mock(return_value=available_boost())
     runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
-    expired = Mock(can_apply=False, reason="battery energy depleted")
+    expired = Mock(boost_available=False, reason="battery energy depleted")
     runtime.decision_engine.recommend = Mock(return_value=expired)
     runtime.synchronize_manual_boost()
     assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.NEUTRAL}
