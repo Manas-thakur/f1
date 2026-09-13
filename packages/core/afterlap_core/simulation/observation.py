@@ -32,6 +32,7 @@ OWN_CHANNELS: tuple[str, ...] = (
     "last_boost_s",
     "boost_total_s",
     "boost_this_lap_s",
+    "boost_latched",
     "deployed_this_lap_j",
     "deployed_cumulative_j",
 )
