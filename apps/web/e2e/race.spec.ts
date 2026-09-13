@@ -257,6 +257,22 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   await scene.focus();
   await page.keyboard.press('4');
   await expect(scene).toHaveAttribute('data-camera-mode', 'track');
+  await page.getByLabel('Graphics quality').selectOption('high');
+  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
+  await scene.locator('canvas').evaluate((canvas) => {
+    canvas.dispatchEvent(new PointerEvent('pointerdown', {
+      bubbles: true, button: 0, buttons: 1, clientX: 300, clientY: 300, pointerId: 1,
+    }));
+    canvas.dispatchEvent(new PointerEvent('pointermove', {
+      bubbles: true, button: 0, buttons: 1, clientX: 340, clientY: 320, pointerId: 1,
+    }));
+  });
+  await expect(scene).toHaveAttribute('data-render-path', 'direct');
+  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
+  await scene.locator('canvas').dispatchEvent('pointerup', {
+    button: 0, buttons: 0, clientX: 340, clientY: 320, pointerId: 1,
+  });
+  await page.getByLabel('Graphics quality').selectOption('performance');
   await page.getByRole('button', { name: 'Reset view', exact: true }).click();
   await expect(scene).toHaveAttribute('data-camera-mode', 'chase');
   const bounds = await scene.boundingBox();
@@ -373,28 +389,6 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   await page.getByLabel('Graphics quality').selectOption('performance');
   await expect(scene).toHaveAttribute('data-graphics-quality', 'performance');
 });
-
-test('camera dragging keeps scenery details visible', async ({ page }) => {
-  await page.goto('/race');
-  const scene = page.getByRole('application', { name: '3D camera controls' });
-  await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
-  await page.getByLabel('Graphics quality').selectOption('high');
-  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
-  await scene.locator('canvas').evaluate((canvas) => {
-    canvas.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true, button: 0, buttons: 1, clientX: 300, clientY: 300, pointerId: 1,
-    }));
-    canvas.dispatchEvent(new PointerEvent('pointermove', {
-      bubbles: true, button: 0, buttons: 1, clientX: 340, clientY: 320, pointerId: 1,
-    }));
-  });
-  await expect(scene).toHaveAttribute('data-render-path', 'direct');
-  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
-  await scene.locator('canvas').dispatchEvent('pointerup', {
-    button: 0, buttons: 0, clientX: 340, clientY: 320, pointerId: 1,
-  });
-});
-
 
 test('settings dock, float, drag, resize and keep camera above ground', async ({ page }) => {
   await page.goto('/race');
