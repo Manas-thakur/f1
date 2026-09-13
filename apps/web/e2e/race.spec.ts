@@ -444,6 +444,9 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
   const boost = page.getByRole('button', { name: 'Apply boost to car-01', exact: true });
   await expect(boost).toBeDisabled();
+  const playback = page.getByRole('combobox', { name: 'Playback', exact: true });
+  const originalPlayback = await playback.inputValue();
+  await playback.selectOption('0.25');
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   expect(await applyAvailableBoost(page, boost)).toMatchObject({
     car_id: 'car-01', status: 'accepted',
@@ -451,7 +454,7 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await expect(boost).toHaveAttribute('data-active', 'true');
   await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
   const scene = page.getByRole('application', { name: '3D camera controls' });
-  await expect(scene).toHaveAttribute('data-boosting-cars', 'car-01');
+  await expect(scene).toHaveAttribute('data-boosting-cars', /(^|,)car-01(,|$)/);
   const charge = hud.locator('progress');
   const initial = Number(await charge.getAttribute('value'));
   await expect.poll(async () => {
@@ -473,6 +476,7 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await expect(page.getByLabel('Lap energy telemetry')).toContainText('Total boost');
   await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await expect(hud).toHaveText(frozen);
+  await playback.selectOption(originalPlayback);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(hud).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
