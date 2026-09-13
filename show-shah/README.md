@@ -11,7 +11,7 @@ bun install --frozen-lockfile
 bun run show-shah
 ```
 
-Open http://127.0.0.1:18940. Arrow keys change slides, `Esc` opens the overview, `F` enters fullscreen and `S` opens speaker notes. Sources are linked on each slide. Reduced-motion preferences stop the illustrative animation. This is an HTML presentation using reveal.js, not a PowerPoint binary.
+Open http://127.0.0.1:18940. Arrow keys change slides, `Esc` opens the overview, `F` enters fullscreen and `S` opens speaker notes. Sources are linked on each slide. Reduced-motion preferences stop the illustrative animation. The editable source presentation uses reveal.js. A PowerPoint export is included in `exports/show-shah.pptx`. It preserves the slide appearance as full-slide images and includes editable speaker notes and source URLs. Use reveal.js or the MP4 for animations.
 
 From `show-shah`:
 
@@ -27,7 +27,7 @@ bun run export
 bun run render
 ```
 
-`check` builds the portable presentation into `dist/`. `export` writes the PDF, twelve slide images, speaker notes and WebVTT captions there. `render` writes `dist/show-shah.mp4`. Run the build before exporting: another build clears `dist/`. Serve the built folder over HTTP; runtime assets are local and no CDN is required. `bun run studio` opens the editable Remotion timeline on port 18941.
+`check` builds the portable presentation into `dist/`. `export` writes the PDF, PowerPoint, twelve slide images, speaker notes and WebVTT captions there. `render` writes `dist/show-shah.mp4`. Run the build before exporting: another build clears `dist/`. Serve the built folder over HTTP; runtime assets are local and no CDN is required. `bun run studio` opens the editable Remotion timeline on port 18941.
 
 ## What the movie shows
 
@@ -71,4 +71,4 @@ FFmpeg must be on PATH, or set `FFMPEG_PATH` to its executable. The script uses 
 
 `src/story.ts` is the shared chapter, notes and source registry. `src/Scene.tsx` adapts the earlier video project's car cloning/material approach and CC0 GLB. `src/deck.tsx` supplies reveal.js navigation and the current slide's 3D scene. `src/video.tsx` uses Remotion's frame clock, sequences and local video clips. `scripts/export.ts` opens every slide in Chromium before producing the PDF and slide images. `scripts/check.ts` verifies sources and capture completeness.
 
-Read [SOURCES.md](SOURCES.md) for the document review and asset provenance. Generated exports are downloadable from the PR evidence comment and the successful presentation workflow's artifact. `dist/` and raw recordings are not committed.
+Read [SOURCES.md](SOURCES.md) for the document review and asset provenance. The finished video and PowerPoint are committed in `exports/`. Additional generated exports are downloadable from the PR evidence comment and the successful presentation workflow's artifact. `dist/` and raw recordings are not committed.

@@ -1,3 +1,4 @@
+import { exportPowerPoint } from './powerpoint';
 import { chromium, expect } from '@playwright/test';
 import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { chapters, WIDTH, HEIGHT, SECONDS, REVISION } from '../src/story';
@@ -34,5 +35,6 @@ try {
   await writeFile('dist/show-shah.vtt', `WEBVTT\n\n${chapters.map((c, i) => `${i + 1}\n00:${timestamp(i * SECONDS)} --> 00:${timestamp((i + 1) * SECONDS)}\n${c.caption}\n`).join('\n')}`);
   await writeFile('dist/speaker-notes.md', chapters.map((c, i) => `## ${i + 1}. ${c.title.replace('\n', ' ')}\n\n${c.notes}\n\nSources: ${c.sources.map((path) => `[${path}](https://github.com/Manas-thakur/f1/blob/${REVISION}/${path})`).join(', ')}\n`).join('\n'));
   await copyFile('SOURCES.md', 'dist/SOURCES.md');
-  console.log(`Exported ${chapters.length} slides, PDF, captions and speaker notes; no browser errors.`);
+  await exportPowerPoint();
+  console.log(`Exported ${chapters.length} slides, PDF, PowerPoint, captions and speaker notes; no browser errors.`);
 } finally { await browser.close(); }

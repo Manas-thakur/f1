@@ -30,6 +30,7 @@
     "@types/react-dom": "19.2.7",
     "@types/reveal.js": "5.2.2",
     "@types/three": "0.186.0",
+    "pptxgenjs": "4.0.1",
     "typescript": "5.9.3",
     "vite": "6.4.1"
   }
