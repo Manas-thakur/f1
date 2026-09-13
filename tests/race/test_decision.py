@@ -1,3 +1,7 @@
+import json
+from dataclasses import replace
+from types import MappingProxyType
+
 import numpy as np
 from gymnasium.utils.env_checker import check_env
 
@@ -68,3 +72,14 @@ def test_rules_guard_withholds_a_latched_boost_after_energy_recovers():
     assert not recommendation.boost_available
     assert recommendation.mode == "harvest"
     assert "released" in recommendation.reason
+
+
+def test_stopped_car_recommendation_serializes_an_infinite_sensor_gap():
+    session = RaceSession(RaceSettings(cars=2, time_limit_s=3))
+    session.advance(0.2)
+    observation = session.observations()["car-01"]
+    rivals = tuple(MappingProxyType({**rival, "gap_s": float("inf")}) for rival in observation.rivals)
+    stopped = replace(observation, rivals=rivals)
+    payload = assess_boost(session, stopped).payload()
+    assert payload["gap_ahead_s"] is None
+    json.dumps(payload, allow_nan=False)
