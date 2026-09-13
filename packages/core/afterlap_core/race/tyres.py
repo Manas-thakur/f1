@@ -37,7 +37,9 @@ class TyreState:
     requested: bool = False
     service_duration_s: float = 0
     service_remaining_s: float = 0
+    box_progress_m: float = 0
     exit_after_progress_m: float = 0
+    release_waiting: bool = False
     stops: int = 0
     used_compounds: list[TyreCompound] = field(default_factory=list)
 

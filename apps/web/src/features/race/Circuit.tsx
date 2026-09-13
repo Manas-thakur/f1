@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 import { BatteryHud } from './Energy';
 import { rankedCar } from './motion';
@@ -8,7 +9,7 @@ import { Classification, Transport } from './RacePanels';
 import { ControlDrawer } from './ControlDrawer';
 import { TelemetryOverlay } from '../telemetry/Overlay';
 import { useRace } from './Connection';
-import type { CameraMode, RaceWorld } from './RaceWorld';
+import type { CameraMode, GraphicsQuality, RaceWorld } from './RaceWorld';
 import styles from './race.module.css';
 
 const CAMERAS: { id: CameraMode; label: string; key: string }[] = [
@@ -34,12 +35,13 @@ export function Circuit() {
   const latest = useRef({ frame, selected, select });
   latest.current = { frame, selected, select };
   const [mode, setMode] = useState<CameraMode>('chase');
-  const [highQuality, setHighQuality] = useState(true);
+  const [graphicsQuality, setGraphicsQuality] = useState<GraphicsQuality>('ultra');
   const [help, setHelp] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const mapId = frame?.circuit_map.id;
+  const pitCars = frame?.cars.filter((item) => item.tyres.phase !== 'track') ?? [];
 
   useEffect(() => {
     const element = toolbar.current;
@@ -71,7 +73,7 @@ export function Circuit() {
           (id) => latest.current.select(id), setError, setFps);
         world.current = scene;
         scene.setMinimap(minimapCanvas.current);
-        setHighQuality(scene.highQuality);
+        setGraphicsQuality(scene.graphicsQuality);
         if (latest.current.frame) {
           scene.update(latest.current.frame, latest.current.selected);
         }
@@ -142,8 +144,15 @@ export function Circuit() {
   };
   const car = frame?.cars.find((item) => item.id === selected);
   const speed = car?.channels['speed_mps'];
+  const wetness = frame?.settings.wetness ?? 0;
+  const raining = frame?.settings.weather === 'rainy';
+  const weather = raining ? wetness >= 0.7 ? 'HEAVY RAIN' : 'RAIN'
+    : wetness > 0.08 ? 'WET TRACK' : 'DRY';
+  const speedStyle = {
+    '--speed-angle': `${Math.min(290, Math.max(0, (speed ?? 0) * 3.6 / 360 * 290))}deg`,
+  } as CSSProperties;
   return (
-    <section ref={panel} className={styles.mapPanel} aria-label="Live circuit">
+    <section ref={panel} className={styles.mapPanel} aria-label="Live circuit" data-weather={weather}>
       <div className={styles.sceneWrap} style={{ width: `calc(100% - ${dockWidth}px)` }}>
       <div ref={toolbar} className={styles.mapTools}>
         <button type="button" aria-label="Race controls" aria-expanded={settings} onClick={() => setSettings(!settings)}>☰</button>
@@ -157,12 +166,13 @@ export function Circuit() {
             </button>
           ))}
         </div>
-        <select aria-label="Graphics quality" value={highQuality ? 'high' : 'performance'}
+        <select aria-label="Graphics quality" value={graphicsQuality}
           onChange={(event) => {
-            const high = event.target.value === 'high';
-            setHighQuality(high);
-            world.current?.setQuality(high);
+            const quality = event.target.value as GraphicsQuality;
+            setGraphicsQuality(quality);
+            world.current?.setQuality(quality);
           }}>
+          <option value="ultra">Ultra graphics</option>
           <option value="high">High graphics</option>
           <option value="performance">Performance</option>
         </select>
@@ -202,13 +212,36 @@ export function Circuit() {
           <span>PACE {frame?.playback_rate?.toFixed(2) ?? '…'}× · TARGET {frame?.requested_rate ?? 1}×</span>
           <span>{frame?.settings.weather === 'rainy' ? '☂ RAIN' : '☀ SUN'}</span>
         </div>
-        {car && car.tyres.phase !== 'track' && <div className={styles.pitOverlay} role="status">
-          <small>PIT LANE · {car?.tyres.phase.toUpperCase()}</small>
-          <strong>{car?.tyres.phase === 'service'
-            ? `${car.tyres.service_remaining_s.toFixed(1)}s`
-            : car?.tyres.phase === 'entry' ? 'BOX THIS LAP' : 'REJOINING'}</strong>
-          <span>{car?.tyres.compound.toUpperCase()} → {car?.tyres.phase === 'exit'
-            ? car.tyres.compound.toUpperCase() : 'NEW SET'}</span>
+        <div className={styles.weatherStrip}>
+          <span className={styles.weatherPulse} data-wet={wetness > 0.08} />
+          <strong>{weather}</strong>
+          <span>TRACK {Math.round(wetness * 100)}%</span>
+          <span>{frame ? `${(frame.settings.temperature_k - 273.15).toFixed(0)}°C` : 'N/A'}</span>
+          <span>WIND {frame ? Math.abs(frame.settings.wind_mps).toFixed(1) : 'N/A'} M/S</span>
+        </div>
+        {pitCars.length > 0 && <div className={styles.pitOverlay} role="status">
+          <div className={styles.pitHeader}>
+            <small>PIT CONTROL</small>
+            <span>{pitCars.length} ACTIVE</span>
+          </div>
+          <div className={styles.pitStatusList}>
+            {pitCars.slice(0, 5).map((pitCar) => {
+              const boxNumber = Number.parseInt(pitCar.id.split('-').at(-1) ?? '0', 10);
+              const phase = pitCar.tyres.phase === 'entry'
+                ? `BOX ${boxNumber} · APPROACH`
+                : pitCar.tyres.phase === 'service'
+                  ? `${pitCar.tyres.service_remaining_s.toFixed(1)}S · SERVICE`
+                  : pitCar.tyres.release_waiting
+                    ? `BOX ${boxNumber} · HOLD`
+                    : 'PIT EXIT · REJOINING';
+              return <div className={styles.pitStatus} key={pitCar.id}
+                data-selected={pitCar.id === selected}>
+                <strong>{pitCar.id.toUpperCase()}</strong>
+                <span>{phase}</span>
+                <small>{pitCar.tyres.compound.toUpperCase()}</small>
+              </div>;
+            })}
+          </div>
         </div>}
         {classification && <Classification />}
         <TelemetryOverlay carId={selected} visible={showTelemetry} />
@@ -253,7 +286,7 @@ export function Circuit() {
             <span>{car ? `P${(frame?.cars.indexOf(car) ?? 0) + 1}` : 'WAITING'} ·{' '}
               {car?.tyres.phase === 'track' ? frame?.status.toUpperCase() : `PIT ${car?.tyres.phase.toUpperCase()}`}</span>
           </div>
-          <div className={styles.hudSpeed}>
+          <div className={styles.hudSpeed} style={speedStyle}>
             <strong>{speed === undefined ? 'N/A' : (speed * 3.6).toFixed(0)}</strong>
             <small>KM/H</small></div>
           <BatteryHud />

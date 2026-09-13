@@ -102,21 +102,21 @@ class StorylineDirector:
                 action,
                 profile=DeploymentProfile.OVERTAKE,
                 pace_scale=1,
-                acceleration_ceiling_mps2=max(3.5, action.acceleration_ceiling_mps2 or -30),
+                acceleration_ceiling_mps2=min(3.5, action.acceleration_ceiling_mps2 or 3.5),
                 label="storyline_attack",
             )
         elif beat.mode == "push":
             action = replace(
                 action,
                 profile=DeploymentProfile.PUSH,
-                acceleration_ceiling_mps2=max(2, action.acceleration_ceiling_mps2 or -30),
+                acceleration_ceiling_mps2=min(2, action.acceleration_ceiling_mps2 or 2),
                 label="storyline_push",
             )
         elif beat.mode == "surge":
             action = replace(
                 action,
                 pace_scale=min(1, action.pace_scale + 0.04),
-                acceleration_ceiling_mps2=max(3, action.acceleration_ceiling_mps2 or -30),
+                acceleration_ceiling_mps2=min(3, action.acceleration_ceiling_mps2 or 3),
                 label="storyline_surge",
             )
         elif beat.mode == "coast":

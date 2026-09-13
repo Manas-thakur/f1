@@ -83,11 +83,16 @@ function body(material: THREE.Material, sections: [number, number, number, numbe
 export function createCar(index: number) {
   const group = new THREE.Group();
   const paint = new THREE.MeshPhysicalMaterial({
-    color: LIVERIES[index % LIVERIES.length] ?? '#e5383b', metalness: 0.55, roughness: 0.25, clearcoat: 1,
+    color: LIVERIES[index % LIVERIES.length] ?? '#e5383b', metalness: 0.62, roughness: 0.2,
+    clearcoat: 1, clearcoatRoughness: 0.07, sheen: 0.22, sheenColor: '#ffffff', iridescence: 0.08,
   });
-  const carbon = new THREE.MeshStandardMaterial({ color: '#151a20', roughness: 0.65, metalness: 0.25 });
-  const rubber = new THREE.MeshStandardMaterial({ color: '#151619', roughness: 0.92 });
+  const carbon = new THREE.MeshPhysicalMaterial({ color: '#101419', roughness: 0.46, metalness: 0.34,
+    clearcoat: 0.25, clearcoatRoughness: 0.32 });
+  const rubber = new THREE.MeshPhysicalMaterial({ color: '#111214', roughness: 0.88, sheen: 0.12,
+    sheenColor: '#59616a' });
   const alloy = new THREE.MeshStandardMaterial({ color: '#555d66', metalness: 0.95, roughness: 0.27 });
+  const brake = new THREE.MeshStandardMaterial({ color: '#343a3e', metalness: 0.9, roughness: 0.32 });
+  const caliper = new THREE.MeshStandardMaterial({ color: '#d53a24', metalness: 0.55, roughness: 0.28 });
   const tyreRing = new THREE.MeshStandardMaterial({ color: '#e4bb3b', roughness: 0.8 });
   group.userData['tyreRingMaterial'] = tyreRing;
   const stripe = new THREE.MeshStandardMaterial({ color: '#e6e8e7', roughness: 0.35 });
@@ -116,6 +121,11 @@ export function createCar(index: number) {
       hub.rotation.z = Math.PI / 2;
       hub.position.copy(wheel.position);
       group.add(hub);
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.41, 32), brake);
+      disc.rotation.z = Math.PI / 2;
+      disc.position.copy(wheel.position);
+      group.add(disc);
+      box(group, caliper, [0.075, 0.18, 0.1], [side * 1.13, 0.43, z - 0.12]);
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.012, 6, 32),
         tyreRing);
       ring.rotation.y = Math.PI / 2;
@@ -136,8 +146,19 @@ export function createCar(index: number) {
   for (let i = 0; i < 3; i++) {
     box(group, i === 2 ? paint : carbon, [1.96, 0.045, 0.19], [0, 0.2 + i * 0.05, 2.3 - i * 0.2]);
   }
+  for (const side of [-1, 1]) {
+    for (let fin = 0; fin < 2; fin++) {
+      box(group, carbon, [0.025, 0.12, 0.32], [side * (0.31 + fin * 0.22), 0.16, -2.18]);
+    }
+    const mirror = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 10), paint);
+    mirror.scale.set(1.5, 0.65, 0.72);
+    mirror.position.set(side * 0.63, 0.82, 0.06);
+    mirror.castShadow = true;
+    group.add(mirror);
+  }
   box(group, carbon, [1.6, 0.07, 0.62], [0, 1.06, -2.15]);
   box(group, paint, [1.6, 0.08, 0.15], [0, 1.13, -2.42]);
+  box(group, carbon, [1.78, 0.055, 0.2], [0, 0.96, -2.25]);
   box(group, stripe, [0.07, 0.025, 1.25], [0, 0.52, 1.06]);
   const cockpit = new THREE.Mesh(new THREE.SphereGeometry(0.27, 20, 12), carbon);
   cockpit.scale.set(1, 0.5, 1.5);
@@ -149,6 +170,19 @@ export function createCar(index: number) {
   const visor = new THREE.Mesh(new THREE.SphereGeometry(0.174, 24, 12, 0, Math.PI * 2, 1, 0.6), carbon);
   visor.position.copy(helmet.position);
   group.add(visor);
+  const intake = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.055, 8, 24), carbon);
+  intake.rotation.x = Math.PI / 2;
+  intake.position.set(0, 1.02, -0.83);
+  intake.scale.set(0.9, 1, 1.15);
+  group.add(intake);
+  const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.35, 12), alloy);
+  exhaust.rotation.x = Math.PI / 2;
+  exhaust.position.set(0, 0.62, -2.31);
+  group.add(exhaust);
+  const rainLight = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.09, 0.06),
+    new THREE.MeshStandardMaterial({ color: '#ff2338', emissive: '#ff001f', emissiveIntensity: 4 }));
+  rainLight.position.set(0, 0.48, -2.53);
+  group.add(rainLight);
   const numberCanvas = document.createElement('canvas');
   numberCanvas.width = 128;
   numberCanvas.height = 64;
@@ -226,40 +260,94 @@ export function ribbon(map: CircuitMap, inner: number, outer: number, height: nu
 
 export function surfaceTexture(kind: 'asphalt' | 'grass' | 'curb' | 'gravel') {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 256;
+  canvas.width = canvas.height = 1024;
   const context = canvas.getContext('2d');
   if (context) {
-    context.fillStyle = kind === 'asphalt' ? '#303438' : kind === 'grass' ? '#344528'
-      : kind === 'gravel' ? '#978772' : '#ede9dc';
-    context.fillRect(0, 0, 256, 256);
+    const base = kind === 'asphalt' ? '#31363a' : kind === 'grass' ? '#344b2a'
+      : kind === 'gravel' ? '#93816b' : '#eeeae0';
+    context.fillStyle = base;
+    context.fillRect(0, 0, 1024, 1024);
     if (kind === 'curb') {
-      context.fillStyle = '#b92728';
-      context.fillRect(0, 0, 256, 128);
+      for (let y = 0; y < 1024; y += 128) {
+        context.fillStyle = y % 256 ? '#eeeae0' : '#c71f2d';
+        context.fillRect(0, y, 1024, 128);
+      }
+      context.globalAlpha = 0.16;
+      for (let i = 0; i < 1300; i++) {
+        const x = i * 397 % 1024;
+        const y = i * 613 % 1024;
+        context.fillStyle = i % 3 ? '#181b1e' : '#ffffff';
+        context.fillRect(x, y, 2 + i % 6, 2 + i % 3);
+      }
+      context.globalAlpha = 1;
     } else {
       let seed = 42;
-      for (let i = 0; i < 24000; i++) {
+      for (let i = 0; i < 82000; i++) {
         seed = (seed * 1664525 + 1013904223) >>> 0;
-        const x = seed % 256;
-        const y = (seed >>> 8) % 256;
-        const shade = (seed >>> 16) % 120 + 20;
-        context.fillStyle = `rgba(${shade},${shade},${shade},0.18)`;
-        context.fillRect(x, y, kind === 'gravel' ? 2 : 1, kind === 'grass' ? 3 : 1);
+        const x = seed % 1024;
+        const y = (seed >>> 10) % 1024;
+        const shade = (seed >>> 20) % 100 + (kind === 'grass' ? 18 : 45);
+        const green = kind === 'grass' ? shade + 25 : shade;
+        context.fillStyle = `rgba(${shade},${green},${shade},${kind === 'asphalt' ? 0.18 : 0.3})`;
+        const size = kind === 'gravel' ? 2 + seed % 5 : kind === 'grass' ? 1 + seed % 3 : 1 + seed % 2;
+        context.fillRect(x, y, size, kind === 'grass' ? size * 3 : size);
       }
     }
-  }
-  if (kind === 'asphalt' && context) {
-    for (const x of [75, 160]) {
-      const gradient = context.createLinearGradient(x - 20, 0, x + 20, 0);
-      gradient.addColorStop(0, '#12151a00');
-      gradient.addColorStop(0.5, '#12151a44');
-      gradient.addColorStop(1, '#12151a00');
-      context.fillStyle = gradient;
-      context.fillRect(x - 20, 0, 40, 256);
+    if (kind === 'asphalt') {
+      for (const x of [330, 690]) {
+        const rubber = context.createLinearGradient(x - 95, 0, x + 95, 0);
+        rubber.addColorStop(0, '#090b0d00');
+        rubber.addColorStop(0.5, '#090b0d72');
+        rubber.addColorStop(1, '#090b0d00');
+        context.fillStyle = rubber;
+        context.fillRect(x - 95, 0, 190, 1024);
+      }
+      context.strokeStyle = '#12161970';
+      context.lineWidth = 2;
+      for (let i = 0; i < 14; i++) {
+        context.beginPath();
+        context.moveTo(i * 83 % 1024, i * 277 % 1024);
+        for (let segment = 1; segment < 6; segment++) {
+          context.lineTo((i * 83 + segment * 19 + segment % 2 * 13) % 1024,
+            (i * 277 + segment * 42) % 1024);
+        }
+        context.stroke();
+      }
     }
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  return texture;
+}
+
+export function surfaceDetailTexture(
+  kind: 'asphalt' | 'grass' | 'curb' | 'gravel', channel: 'normal' | 'roughness',
+) {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const context = canvas.getContext('2d');
+  if (context) {
+    const roughness = kind === 'asphalt' ? 220 : kind === 'curb' ? 205 : 245;
+    context.fillStyle = channel === 'normal' ? '#8080ff' : `rgb(${roughness},${roughness},${roughness})`;
+    context.fillRect(0, 0, 512, 512);
+    let seed = kind.length * 3109;
+    for (let i = 0; i < 36000; i++) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const x = seed % 512;
+      const y = (seed >>> 9) % 512;
+      const value = (seed >>> 19) % 48 - 24;
+      context.fillStyle = channel === 'normal'
+        ? `rgb(${128 + value},${128 - value},${232 + Math.abs(value)})`
+        : `rgb(${roughness + value},${roughness + value},${roughness + value})`;
+      const size = kind === 'gravel' ? 3 : kind === 'grass' ? 2 : 1;
+      context.fillRect(x, y, size, size);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.colorSpace = THREE.NoColorSpace;
   texture.anisotropy = 8;
   return texture;
 }

@@ -40,6 +40,15 @@ class RacingLineSettings(BaseModel):
     overtake_in_corners: bool = True
 
 
+class RaceConditionPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
+
+    wetness: float | None = Field(default=None, ge=0.0, le=1.0)
+    weather: Literal["sunny", "rainy"] | None = None
+    temperature_k: float | None = Field(default=None, ge=273.15, le=323.15)
+    wind_mps: float | None = Field(default=None, ge=-20, le=20)
+
+
 class RaceSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, allow_inf_nan=False)
 
