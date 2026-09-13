@@ -6,7 +6,7 @@ const simulatorPort = process.env['RACE_SIM_PORT'] ?? '18861';
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['race.spec.ts', 'motion.spec.ts', 'telemetry.spec.ts'],
+  testMatch: ['race.spec.ts', 'motion.spec.ts', 'telemetry.spec.ts', 'engineer.spec.ts'],
   workers: 1,
   timeout: 120000,
   expect: { timeout: 20000 },
