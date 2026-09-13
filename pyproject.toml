@@ -159,6 +159,7 @@ max-statements = 120
 "scripts/race_stack.py" = ["S603"]
 "scripts/check_no_comments.py" = ["C901", "PLR0912", "T201"]
 "scripts/demo.py" = ["PLR0915", "T201"]
+"scripts/button_command.py" = ["S603", "S607"]
 "docs/tools/**/*.py" = ["T201", "S110"]
 "workers/**/*.py" = ["T201"]
 
