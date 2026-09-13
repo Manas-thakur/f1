@@ -19,6 +19,12 @@ interface Sample {
 const VISUAL_CAR_LENGTH_M = 5.4;
 const VISUAL_CAR_WIDTH_M = 2.35;
 
+function visualPlaybackRate(frame: RaceFrame) {
+  const measured = frame.playback_rate && frame.playback_rate > 0
+    ? frame.playback_rate : frame.actual_rate;
+  return measured > 0 ? Math.min(frame.requested_rate, measured) : frame.requested_rate;
+}
+
 export function separateCarPoses(poses: Map<string, MotionPose>, previous = new Map<string, number>()) {
   const separated = new Map<string, MotionPose>(
     [...poses].map(([id, pose]): [string, MotionPose] => [id, { ...pose }]),
@@ -65,13 +71,13 @@ export class RaceMotion {
       this.samples = [];
       this.cursor = -Infinity;
       this.interval = 150;
-      this.rate = frame.requested_rate;
+      this.rate = visualPlaybackRate(frame);
       this.visualProgress.clear();
     }
     this.generation = frame.generation;
     this.running = running;
     this.length = frame.circuit_map.length_m;
-    this.rate = frame.requested_rate;
+    this.rate = visualPlaybackRate(frame);
     if (frame.time_s === this.simulationTime && this.samples.length) {
       return;
     }

@@ -145,15 +145,21 @@ test('pit phases follow the rendered pit-lane lateral path', () => {
   expect(motion.sample(0).get('car-01')?.pitPhase).toBe('service');
 });
 
-test('network arrival delays do not change the requested visual playback rate', () => {
+test('visual playback follows measured production pace when compute is slower than requested', () => {
   const motion = new RaceMotion();
-  const arrivals = [0, 100, 200, 950, 1050, 1150];
+  const arrivals = [0, 250, 500, 750, 1000, 1250];
   for (const [index, arrival] of arrivals.entries()) {
     const update = frame(index * 0.1, index * 5.5);
-    update.requested_rate = 2;
+    update.playback_rate = 0.4;
     motion.push(update, arrival);
   }
-  expect(motion.playbackRate).toBe(2);
+  expect(motion.playbackRate).toBe(0.4);
+  const positions = Array.from({ length: 10 }, (_, index) => (
+    motion.sample(1250 + index * 25).get('car-01')?.progress ?? NaN
+  ));
+  const increments = positions.slice(1).map((position, index) => position - (positions[index] ?? NaN));
+  expect(Math.min(...increments)).toBeGreaterThan(0);
+  expect(Math.max(...increments)).toBeLessThan(1);
 });
 
 test('arrival jitter does not turn constant motion into packet-sized jumps', () => {
