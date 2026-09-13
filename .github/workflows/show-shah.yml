@@ -40,8 +40,14 @@ jobs:
           preview_pid=$!
           trap 'kill "$preview_pid"' EXIT
           bun run export
-      - name: Render the complete product demo
-        run: bun run render
+      - name: Render a representative frame from every chapter
+        run: bunx remotion render src/video.tsx ShowShah dist/chapter-check --frames=180,540,900,1260,1620,1980,2340,2700,3060,3420,3780,4140 --concurrency=2 --gl=swangle
+      - name: Validate committed exports
+        run: |
+          ffmpeg -v error -xerror -i exports/show-shah.mp4 -c:v rawvideo -f null -
+          ffprobe -v error -show_streams -show_format -of json exports/show-shah.mp4 > .build/video-info.json
+          python3 scripts/verify_exports.py
+          cp exports/show-shah.mp4 dist/show-shah.mp4
       - uses: actions/upload-artifact@v4
         with:
           name: show-shah-presentation-and-demo

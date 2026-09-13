@@ -25,9 +25,11 @@ While the preview is running, use another terminal:
 ```sh
 bun run export
 bun run render
+mkdir -p exports
+cp dist/show-shah.mp4 dist/show-shah.pptx exports/
 ```
 
-`check` builds the portable presentation into `dist/`. `export` writes the PDF, PowerPoint, twelve slide images, speaker notes and WebVTT captions there. `render` writes `dist/show-shah.mp4`. Run the build before exporting: another build clears `dist/`. Serve the built folder over HTTP; runtime assets are local and no CDN is required. `bun run studio` opens the editable Remotion timeline on port 18941.
+`check` builds the portable presentation into `dist/`. `export` writes the PDF, PowerPoint, twelve slide images, speaker notes and WebVTT captions there. `render` writes `dist/show-shah.mp4`. Copy both finished files into `exports/` when updating the committed deliverables. Run the build before exporting: another build clears `dist/`. Serve the built folder over HTTP; runtime assets are local and no CDN is required. `bun run studio` opens the editable Remotion timeline on port 18941.
 
 ## What the movie shows
 
@@ -70,5 +72,7 @@ FFmpeg must be on PATH, or set `FFMPEG_PATH` to its executable. The script uses 
 ## Implementation
 
 `src/story.ts` is the shared chapter, notes and source registry. `src/Scene.tsx` adapts the earlier video project's car cloning/material approach and CC0 GLB. `src/deck.tsx` supplies reveal.js navigation and the current slide's 3D scene. `src/video.tsx` uses Remotion's frame clock, sequences and local video clips. `scripts/export.ts` opens every slide in Chromium before producing the PDF and slide images. `scripts/check.ts` verifies sources and capture completeness.
+
+CI regenerates every slide and the PowerPoint, renders a representative frame from every video chapter, decodes the entire committed MP4 and verifies its duration, dimensions and frame count.
 
 Read [SOURCES.md](SOURCES.md) for the document review and asset provenance. The finished video and PowerPoint are committed in `exports/`. Additional generated exports are downloadable from the PR evidence comment and the successful presentation workflow's artifact. `dist/` and raw recordings are not committed.
