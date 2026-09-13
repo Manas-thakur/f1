@@ -8,7 +8,7 @@ export interface Sponsor {
 
 export const SPONSORS: Sponsor[] = [
   { id: 'logo-1', label: 'LOGO 1', image: 'logo-1.jpg', color: '#f5f3ec', accent: '#e02b32' },
-  { id: 'logo-2', label: 'LOGO 2', image: 'logo-2.webp', color: '#f5f3ec', accent: '#2f9be0' },
+  { id: 'logo-2', label: 'LOGO 2', image: 'logo-2.png', color: '#f5f3ec', accent: '#2f9be0' },
   { id: 'logo-3', label: 'LOGO 3', image: 'logo-3.webp', color: '#f5f3ec', accent: '#f0b429' },
   { id: 'v-max', label: 'V MAX', image: null, color: '#f7f6f1', accent: '#d81f34' },
 ];
