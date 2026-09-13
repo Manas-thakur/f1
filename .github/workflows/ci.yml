@@ -2,9 +2,9 @@ name: simulator
 
 on:
   push:
-    branches: [simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
+    branches: [main, simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   pull_request:
-    branches: [simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
+    branches: [main, simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   workflow_dispatch:
 
 concurrency:
@@ -80,3 +80,7 @@ jobs:
         run: make race-generate CIRCUIT=monza CARS=2 LAPS=1 DURATION=5
       - name: Train a policy
         run: make race-train CIRCUIT=monza CARS=1 LAPS=1 DURATION=8 STEPS=128
+      - name: Train and evaluate the energy decision policy
+        run: |
+          make race-train-decision CIRCUIT=monza DECISION_CARS=2 LAPS=1 DECISION_DURATION=2 STEPS=64 CYCLES=1 EVAL_EPISODES=1 TRAINING_OUTPUT=.afterlap/race/boost-smoke
+          make race-evaluate-decision CIRCUIT=monza DECISION_CARS=2 LAPS=1 DECISION_DURATION=2 EVAL_EPISODES=1 POLICY=.afterlap/race/boost-smoke

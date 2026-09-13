@@ -382,16 +382,12 @@ class RaceSession:
                     state.acceleration_mps2 = 0
                     self.drivers[car_id].acceleration = 3
                     self._apply_pit_action(car_id, self._pit_launch_action(car_id))
-                    self.events.append(
-                        {"kind": "pit_release", "car_id": car_id, "session_time_s": now}
-                    )
+                    self.events.append({"kind": "pit_release", "car_id": car_id, "session_time_s": now})
                 elif not tyre.release_waiting and state.progress_m >= tyre.exit_after_progress_m:
                     tyre.phase = "track"
                     if tyre.compound not in tyre.used_compounds:
                         tyre.used_compounds.append(tyre.compound)
-                    self.events.append(
-                        {"kind": "pit_exit", "car_id": car_id, "session_time_s": now}
-                    )
+                    self.events.append({"kind": "pit_exit", "car_id": car_id, "session_time_s": now})
 
             if (
                 tyre.phase == "entry"

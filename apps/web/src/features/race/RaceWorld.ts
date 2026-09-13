@@ -472,7 +472,7 @@ export class RaceWorld {
     if (this.interactionTimer !== null) {
       clearTimeout(this.interactionTimer);
     }
-    this.interactionTimer = setTimeout(this.endInteraction, 180);
+    this.interactionTimer = setTimeout(this.endInteraction, 500);
     this.dirty = true;
     if (this.mode === 'chase' || this.mode === 'cockpit') {
       this.distance = THREE.MathUtils.clamp(this.distance * factor, 0.55, 4);
@@ -499,11 +499,13 @@ export class RaceWorld {
 
   private beginInteraction = () => {
     this.interacting = true;
+    this.host.dataset['renderPath'] = 'direct';
     this.atmosphere.setInteractive(true);
   };
 
   private endInteraction = () => {
     this.interacting = false;
+    this.host.dataset['renderPath'] = this.quality === 'ultra' ? 'postprocessed' : 'direct';
     this.atmosphere.setInteractive(false);
     this.interactionTimer = null;
     this.dirty = true;

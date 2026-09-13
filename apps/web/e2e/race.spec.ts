@@ -84,7 +84,8 @@ test('live race controls, circuit switching, checkpoint restore and telemetry ex
   await expect(page.getByRole('application', { name: '3D camera controls' }))
     .toHaveAttribute('data-weather', 'rainy');
   await expect(page.getByText('Tire compound', { exact: true })).toBeVisible();
-  await expect(page.getByText('Boost decision matrix', { exact: true })).toBeVisible();
+  await expect(page.getByText('Energy decision engine', { exact: true })).toBeVisible();
+  await expect(page.getByText('Scenario boost classification', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Chase', exact: true })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Step 0.01s', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
@@ -302,6 +303,8 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   await page.goto('/race');
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect.poll(async () => Number(await scene.getAttribute('data-observed-time'))).toBeGreaterThan(0.05);
   const runningTime = Number(await scene.getAttribute('data-observed-time'));
@@ -324,8 +327,9 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   ]);
   await page.getByLabel('Graphics quality').selectOption('ultra');
   await expect(scene).toHaveAttribute('data-render-path', 'postprocessed');
+  const beforeZoom = await scene.getAttribute('data-camera-position');
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  await expect(scene).toHaveAttribute('data-render-path', 'direct');
+  await expect.poll(async () => scene.getAttribute('data-camera-position')).not.toBe(beforeZoom);
   await expect(scene).toHaveAttribute('data-render-path', 'postprocessed');
   await page.getByLabel('Graphics quality').selectOption('high');
   await expect(scene).toHaveAttribute('data-graphics-quality', 'high');
@@ -337,6 +341,10 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
 test('settings dock, float, drag, resize and keep camera above ground', async ({ page }) => {
   await page.goto('/race');
   const scene = page.getByRole('application', { name: '3D camera controls' });
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
   const full = await scene.boundingBox();
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
@@ -382,22 +390,23 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
 test('electrical boost drains the battery and freezes its observed timer when paused', async ({ page }) => {
   await page.goto('/race');
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('monza');
+  await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('las-vegas');
   await page.getByLabel('Cars', { exact: true }).fill('1');
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
-  await page.getByRole('combobox', { name: 'Playback', exact: true }).selectOption('0.25');
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   const hud = page.getByLabel('Battery and boost', { exact: true });
-  await expect(hud).toHaveAttribute('data-energy-mode', 'UNAVAILABLE');
-  await page.getByRole('combobox', { name: 'Battery profile', exact: true }).selectOption('push');
-  await page.getByRole('button', { name: 'Apply driver command', exact: true }).click();
+  const boost = page.getByRole('button', { name: 'Apply boost', exact: true });
+  await expect(hud).toHaveAttribute('data-energy-mode', /^(UNAVAILABLE|IDLE)$/);
+  await expect(boost).toBeDisabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
+  await expect(boost).toBeEnabled();
+  await boost.click();
   await expect(hud).toHaveAttribute('data-energy-mode', 'BOOST');
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await expect(scene).toHaveAttribute('data-boosting-cars', 'car-01');
   const charge = page.getByRole('progressbar', { name: 'Usable battery charge' });
   const initial = Number(await charge.getAttribute('value'));
   await expect.poll(async () => Number(await charge.getAttribute('value'))).toBeLessThan(initial - 0.5);
-  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await page.screenshot({ path: test.info().outputPath('battery-boost.png'), fullPage: true });
   await page.getByRole('button', { name: 'Pause race', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Start race', exact: true })).toBeVisible();

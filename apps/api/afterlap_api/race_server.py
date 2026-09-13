@@ -5,6 +5,7 @@ import contextlib
 import json
 import re
 import time
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -12,9 +13,12 @@ from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 from websockets.typing import Origin
 
+from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings
 from afterlap_core.race.circuit import catalogue
 from afterlap_core.race.control import DriverControl
+from afterlap_core.race.decision import BoostDecisionEngine
+from afterlap_core.race.training import load_training_metrics
 
 
 class Command(BaseModel):
@@ -22,18 +26,26 @@ class Command(BaseModel):
 
     id: str = Field(max_length=100)
     operation: Literal[
-        "reset", "configure", "start", "pause", "step", "checkpoint", "restore", "speed", "control"
+        "reset", "configure", "start", "pause", "step", "checkpoint", "restore", "speed", "control", "boost"
     ]
     settings: RaceSettings | None = None
     conditions: RaceConditionPatch | None = None
     speed: float = Field(default=1, ge=0.1, le=8)
     car_id: str = Field(default="car-01", pattern=r"^car-[0-9]{2}$")
     action: DriverControl | None = None
+    enabled: bool = True
 
 
 class RaceServer:
-    def __init__(self, settings: RaceSettings | None = None) -> None:
+    def __init__(
+        self,
+        settings: RaceSettings | None = None,
+        policy_path: Path | None = None,
+        metrics_path: Path | None = None,
+    ) -> None:
         self.session = RaceSession(settings)
+        self.decision_engine = BoostDecisionEngine(policy_path)
+        self.training_metrics = load_training_metrics(metrics_path)
         self.checkpoint: dict[str, Any] | None = None
         self.speed = 1.0
         self.actual_rate = 0.0
@@ -42,14 +54,22 @@ class RaceServer:
         self.clients: set[asyncio.Queue[str]] = set()
 
     def frame(self) -> str:
+        payload = self.session.frame()
+        observations = self.session.observations()
+        recommendations = {
+            car_id: self.decision_engine.recommend(self.session, observation).payload()
+            for car_id, observation in observations.items()
+        }
         return json.dumps(
             {
-                **self.session.frame(),
+                **payload,
                 "generation": self.generation,
                 "circuit_map": self.session.map,
                 "requested_rate": self.speed,
                 "actual_rate": self.actual_rate,
                 "has_checkpoint": self.checkpoint is not None,
+                "recommendations": recommendations,
+                "training_metrics": self.training_metrics,
             },
             allow_nan=False,
         )
@@ -96,6 +116,15 @@ class RaceServer:
         elif command.operation == "control":
             action = None if command.action is None else command.action.driver_action()
             session.control(command.car_id, action)
+        elif command.operation == "boost":
+            if not command.enabled:
+                session.bms_profiles.pop(command.car_id, None)
+                return
+            observation = session.observations()[command.car_id]
+            recommendation = self.decision_engine.recommend(session, observation)
+            if not recommendation.can_apply:
+                raise ValueError(f"boost unavailable: {recommendation.reason}")
+            session.bms_profiles[command.car_id] = DeploymentProfile(recommendation.mode)
 
     async def tick(self) -> None:
         while True:
@@ -170,8 +199,10 @@ async def run_server(
     port: int,
     origin: str,
     settings: RaceSettings | None = None,
+    policy_path: Path | None = None,
+    metrics_path: Path | None = None,
 ) -> None:
-    runtime = RaceServer(settings)
+    runtime = RaceServer(settings, policy_path, metrics_path)
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
