@@ -18,7 +18,7 @@ export function BatteryHud() {
   const percent = energy === undefined || !window || window[1] <= window[0]
     ? undefined : Math.max(0, Math.min(100, (energy - window[0]) / (window[1] - window[0]) * 100));
   const mode = connected ? energyMode(car) : 'UNAVAILABLE';
-  const recommendation = frame?.recommendations[selected];
+  const recommendation = frame?.recommendations?.[selected];
   return <div className={styles.batteryHud} data-energy-mode={mode} aria-label="Battery and boost">
     <small>ENERGY STORE · {value(percent, 1, 0)}%</small>
     <strong>{value(energy, 1e6, 2)} <small>MJ</small></strong>

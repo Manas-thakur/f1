@@ -28,7 +28,7 @@ function chartPath(points: { x: number; y: number }[]) {
 
 export function DecisionTelemetry() {
   const { frame, selected, send, connected } = useRace();
-  const recommendation = frame?.recommendations[selected];
+  const recommendation = frame?.recommendations?.[selected];
   const metrics = frame?.training_metrics;
   const history = metrics?.history ?? [];
   const rewardPoints = chartPoints(history.map((cycle) => cycle.mean_reward), 300, 75);
