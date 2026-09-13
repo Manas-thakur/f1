@@ -8,7 +8,7 @@ import time
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Literal
-from urllib.parse import unquote, urlsplit
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field
 from websockets.asyncio.server import ServerConnection, serve
@@ -16,6 +16,7 @@ from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Request, Response
 from websockets.typing import Origin
 
+from afterlap_api.control_state import ControlState
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings
 from afterlap_core.race.circuit import catalogue
@@ -45,8 +46,11 @@ class RaceServer:
         settings: RaceSettings | None = None,
         policy_path: Path | None = None,
         metrics_path: Path | None = None,
+        control_state_path: Path | None = None,
     ) -> None:
         self.session = RaceSession(settings)
+        self.control_state = ControlState(control_state_path)
+        self.repair_selection()
         self.decision_engine = BoostDecisionEngine(policy_path)
         self.training_metrics = load_training_metrics(metrics_path)
         self.checkpoint: dict[str, Any] | None = None
@@ -71,6 +75,7 @@ class RaceServer:
                 "requested_rate": self.speed,
                 "actual_rate": self.actual_rate,
                 "has_checkpoint": self.checkpoint is not None,
+                "selected_car_id": self.control_state.selected(),
                 "recommendations": recommendations,
                 "training_metrics": self.training_metrics,
             },
@@ -84,10 +89,20 @@ class RaceServer:
                 queue.get_nowait()
             queue.put_nowait(payload)
 
+    def repair_selection(self) -> None:
+        if self.control_state.selected() not in self.session.bundle.car_configs:
+            self.control_state.select(next(iter(self.session.bundle.car_configs)))
+
+    def select(self, car_id: str) -> None:
+        if car_id not in self.session.bundle.car_configs:
+            raise ValueError("unknown car")
+        self.control_state.select(car_id)
+
     def apply(self, command: Command) -> None:
         session = self.session
         if command.operation == "reset":
             self.session = RaceSession(command.settings or RaceSettings())
+            self.repair_selection()
             self.checkpoint = None
             self.generation += 1
         elif command.operation == "configure":
@@ -143,8 +158,8 @@ class RaceServer:
         path = urlsplit(request.path).path
         if path == "/" and request.method == "GET":
             return None
-        match = re.fullmatch(r"/boost/(car-[0-9]{2})", path)
-        if match is None:
+        selection = re.fullmatch(r"/selection/(car-[0-9]{2})", path)
+        if path != "/boost" and selection is None:
             return self.json_response(connection, HTTPStatus.NOT_FOUND, {"error": "not found"})
         if request.method != "POST":
             response = self.json_response(
@@ -152,17 +167,24 @@ class RaceServer:
             )
             response.headers["Allow"] = "POST"
             return response
-        car_id = unquote(match.group(1))
         try:
             async with self.lock:
-                self.apply(Command(id=f"http-boost-{car_id}", operation="boost", car_id=car_id))
+                if selection is not None:
+                    car_id = selection.group(1)
+                    self.select(car_id)
+                    operation = "selection"
+                else:
+                    car_id = self.control_state.selected()
+                    self.apply(Command(id="http-boost", operation="boost", car_id=car_id))
+                    operation = "boost"
                 self.publish()
         except ValueError as exc:
-            return self.json_response(connection, HTTPStatus.NOT_FOUND, {"error": str(exc)})
+            status = HTTPStatus.CONFLICT if str(exc).startswith("boost unavailable") else HTTPStatus.NOT_FOUND
+            return self.json_response(connection, status, {"error": str(exc)})
         return self.json_response(
             connection,
             HTTPStatus.OK,
-            {"operation": "boost", "car_id": car_id, "status": "accepted"},
+            {"operation": operation, "car_id": car_id, "status": "accepted"},
         )
 
     async def tick(self) -> None:
@@ -240,8 +262,9 @@ async def run_server(
     settings: RaceSettings | None = None,
     policy_path: Path | None = None,
     metrics_path: Path | None = None,
+    control_state_path: Path | None = None,
 ) -> None:
-    runtime = RaceServer(settings, policy_path, metrics_path)
+    runtime = RaceServer(settings, policy_path, metrics_path, control_state_path)
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
@@ -258,3 +281,4 @@ async def run_server(
         ticker.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await ticker
+        runtime.control_state.close()

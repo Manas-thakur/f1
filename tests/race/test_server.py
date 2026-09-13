@@ -10,6 +10,7 @@ from websockets.asyncio.client import connect
 from websockets.asyncio.server import serve
 from websockets.exceptions import InvalidStatus
 
+from afterlap_api.control_state import ControlState
 from afterlap_api.race_server import Command, RaceServer, allowed_origins
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings, RacingLineSettings
@@ -63,6 +64,24 @@ def test_boost_targets_only_the_requested_car():
     assert runtime.session.bms_profiles == {"car-02": "push"}
     with pytest.raises(ValueError, match="unknown car"):
         runtime.apply(Command(id="missing", operation="boost", car_id="car-03"))
+
+
+def test_control_state_persists_the_selected_car(tmp_path):
+    path = tmp_path / "control.sqlite3"
+    state = ControlState(path)
+    state.select("car-02")
+    state.close()
+    restored = ControlState(path)
+    assert restored.selected() == "car-02"
+    restored.close()
+
+
+def test_reset_repairs_a_selection_missing_from_the_new_grid():
+    runtime = RaceServer(RaceSettings(cars=20))
+    runtime.select("car-20")
+    runtime.apply(Command(id="reset", operation="reset", settings=RaceSettings(cars=2)))
+    assert runtime.control_state.selected() == "car-01"
+    assert json.loads(runtime.frame())["selected_car_id"] == "car-01"
 
 
 def test_server_starts_with_script_supplied_racing_line_settings():
@@ -130,21 +149,31 @@ async def test_http_boost_endpoint_accepts_post_and_rejects_other_methods():
     runtime.decision_engine.recommend = Mock(return_value=available_boost())
     async with serve(runtime.connect, "127.0.0.1", 0, process_request=runtime.process_request) as server:
         port = server.sockets[0].getsockname()[1]
-        url = f"http://127.0.0.1:{port}/boost/car-02"
+        selection_url = f"http://127.0.0.1:{port}/selection/car-02"
+        boost_url = f"http://127.0.0.1:{port}/boost"
 
-        def post() -> tuple[int, dict[str, str]]:
+        def post(url: str) -> tuple[int, dict[str, str]]:
             request = urllib.request.Request(url, method="POST")
             with urllib.request.urlopen(request) as response:
                 return response.status, json.load(response)
 
-        status, payload = await asyncio.to_thread(post)
+        selection_status, selection_payload = await asyncio.to_thread(post, selection_url)
+        assert selection_status == 200
+        assert selection_payload == {
+            "operation": "selection",
+            "car_id": "car-02",
+            "status": "accepted",
+        }
+        assert runtime.control_state.selected() == "car-02"
+
+        status, payload = await asyncio.to_thread(post, boost_url)
         assert status == 200
         assert payload == {"operation": "boost", "car_id": "car-02", "status": "accepted"}
         assert runtime.session.bms_profiles == {"car-02": "push"}
 
         def get() -> tuple[int, dict[str, str], str]:
             try:
-                urllib.request.urlopen(url)
+                urllib.request.urlopen(boost_url)
             except urllib.error.HTTPError as error:
                 return error.code, json.load(error), error.headers["Allow"]
             raise AssertionError("GET request unexpectedly succeeded")
