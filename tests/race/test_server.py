@@ -46,7 +46,7 @@ def test_boost_command_uses_live_recommendation_guard():
         runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
     runtime.session.bms_profiles["car-01"] = DeploymentProfile.PUSH
     runtime.apply(Command(id="off", operation="boost", car_id="car-01", enabled=False))
-    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.NEUTRAL}
+    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.HARVEST}
 
 
 def test_frame_includes_recommendations_without_simulator_truth():
@@ -91,10 +91,10 @@ def test_selected_car_never_uses_an_automatic_or_driver_override_boost():
     assert other.active_profile == DeploymentProfile.PUSH
     session.status = "running"
     session.advance(0.5)
-    assert state.active_profile == DeploymentProfile.NEUTRAL
+    assert state.active_profile == DeploymentProfile.HARVEST
     assert state.boost_active == 0
     assert all(
-        queued.action.profile == DeploymentProfile.NEUTRAL
+        queued.action.profile == DeploymentProfile.HARVEST
         for queued in session.simulator.world.action_queues["car-01"]
     )
 
@@ -106,7 +106,7 @@ def test_manual_boost_releases_when_the_guard_expires():
     expired = Mock(boost_available=False, reason="battery energy depleted")
     runtime.decision_engine.recommend = Mock(return_value=expired)
     runtime.synchronize_manual_boost()
-    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.NEUTRAL}
+    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.HARVEST}
 
 
 def test_changing_selection_releases_the_previous_manual_boost():
@@ -115,8 +115,8 @@ def test_changing_selection_releases_the_previous_manual_boost():
     runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
     runtime.select("car-02")
     assert runtime.control_state.selected() == "car-02"
-    assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.NEUTRAL}
-    assert runtime.session.simulator.world.cars["car-02"].active_profile == DeploymentProfile.NEUTRAL
+    assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.HARVEST}
+    assert runtime.session.simulator.world.cars["car-02"].active_profile == DeploymentProfile.HARVEST
     assert json.loads(runtime.frame())["manual_boost_car_id"] is None
 
 
@@ -229,7 +229,7 @@ async def test_http_boost_endpoint_accepts_post_and_rejects_other_methods():
         off_status, off_payload = await asyncio.to_thread(post, boost_off_url)
         assert off_status == 200
         assert off_payload == {"operation": "boost-off", "car_id": "car-02", "status": "accepted"}
-        assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.NEUTRAL}
+        assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.HARVEST}
 
         def get() -> tuple[int, dict[str, str], str]:
             try:

@@ -111,7 +111,7 @@ class RaceServer:
     def hold_selected_car(self) -> None:
         selected = self.control_state.selected()
         self.session.bms_profiles.clear()
-        self.session.set_bms_profile(selected, DeploymentProfile.NEUTRAL)
+        self.session.set_bms_profile(selected, DeploymentProfile.HARVEST)
 
     def manual_boost_car_id(self) -> str | None:
         selected = self.control_state.selected()
@@ -133,7 +133,7 @@ class RaceServer:
                 released.append(target)
                 self.log_control("boost_released", car_id=target, reason=reason)
         selected = self.control_state.selected()
-        self.session.set_bms_profile(selected, DeploymentProfile.NEUTRAL)
+        self.session.set_bms_profile(selected, DeploymentProfile.HARVEST)
         return released
 
     def synchronize_manual_boost(self) -> None:
