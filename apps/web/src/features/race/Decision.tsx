@@ -27,7 +27,7 @@ function chartPath(points: { x: number; y: number }[]) {
 }
 
 export function DecisionTelemetry() {
-  const { frame, selected, send, connected } = useRace();
+  const { frame, selected, send, boost, connected } = useRace();
   const recommendation = frame?.recommendations[selected];
   const metrics = frame?.training_metrics;
   const history = metrics?.history ?? [];
@@ -65,7 +65,7 @@ export function DecisionTelemetry() {
     <div className={styles.actions}>
       <button type="button" className={styles.primary}
         disabled={!connected || !recommendation?.can_apply}
-        onClick={() => send('boost', { car_id: selected })}>
+        onClick={() => void boost()}>
         Apply boost
       </button>
       <button type="button" disabled={!connected}

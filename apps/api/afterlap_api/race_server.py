@@ -5,14 +5,18 @@ import contextlib
 import json
 import re
 import time
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
+from websockets.http11 import Request, Response
 from websockets.typing import Origin
 
+from afterlap_api.control_state import ControlState
 from afterlap_contracts import DeploymentProfile
 from afterlap_core.race import RaceConditionPatch, RaceSession, RaceSettings
 from afterlap_core.race.circuit import catalogue
@@ -42,8 +46,11 @@ class RaceServer:
         settings: RaceSettings | None = None,
         policy_path: Path | None = None,
         metrics_path: Path | None = None,
+        control_state_path: Path | None = None,
     ) -> None:
         self.session = RaceSession(settings)
+        self.control_state = ControlState(control_state_path)
+        self.repair_selection()
         self.decision_engine = BoostDecisionEngine(policy_path)
         self.training_metrics = load_training_metrics(metrics_path)
         self.checkpoint: dict[str, Any] | None = None
@@ -68,6 +75,7 @@ class RaceServer:
                 "requested_rate": self.speed,
                 "actual_rate": self.actual_rate,
                 "has_checkpoint": self.checkpoint is not None,
+                "selected_car_id": self.control_state.selected(),
                 "recommendations": recommendations,
                 "training_metrics": self.training_metrics,
             },
@@ -81,10 +89,20 @@ class RaceServer:
                 queue.get_nowait()
             queue.put_nowait(payload)
 
+    def repair_selection(self) -> None:
+        if self.control_state.selected() not in self.session.bundle.car_configs:
+            self.control_state.select(next(iter(self.session.bundle.car_configs)))
+
+    def select(self, car_id: str) -> None:
+        if car_id not in self.session.bundle.car_configs:
+            raise ValueError("unknown car")
+        self.control_state.select(car_id)
+
     def apply(self, command: Command) -> None:
         session = self.session
         if command.operation == "reset":
             self.session = RaceSession(command.settings or RaceSettings())
+            self.repair_selection()
             self.checkpoint = None
             self.generation += 1
         elif command.operation == "configure":
@@ -117,6 +135,8 @@ class RaceServer:
             action = None if command.action is None else command.action.driver_action()
             session.control(command.car_id, action)
         elif command.operation == "boost":
+            if command.car_id not in session.bundle.car_configs:
+                raise ValueError("unknown car")
             if not command.enabled:
                 session.bms_profiles.pop(command.car_id, None)
                 return
@@ -124,7 +144,48 @@ class RaceServer:
             recommendation = self.decision_engine.recommend(session, observation)
             if not recommendation.can_apply:
                 raise ValueError(f"boost unavailable: {recommendation.reason}")
+            session.bms_profiles.clear()
             session.bms_profiles[command.car_id] = DeploymentProfile(recommendation.mode)
+
+    @staticmethod
+    def json_response(connection: ServerConnection, status: HTTPStatus, payload: dict[str, str]) -> Response:
+        response = connection.respond(status, json.dumps(payload))
+        del response.headers["Content-Type"]
+        response.headers["Content-Type"] = "application/json"
+        return response
+
+    async def process_request(self, connection: ServerConnection, request: Request) -> Response | None:
+        path = urlsplit(request.path).path
+        if path == "/" and request.method == "GET":
+            return None
+        selection = re.fullmatch(r"/selection/(car-[0-9]{2})", path)
+        if path != "/boost" and selection is None:
+            return self.json_response(connection, HTTPStatus.NOT_FOUND, {"error": "not found"})
+        if request.method != "POST":
+            response = self.json_response(
+                connection, HTTPStatus.METHOD_NOT_ALLOWED, {"error": "method not allowed"}
+            )
+            response.headers["Allow"] = "POST"
+            return response
+        try:
+            async with self.lock:
+                if selection is not None:
+                    car_id = selection.group(1)
+                    self.select(car_id)
+                    operation = "selection"
+                else:
+                    car_id = self.control_state.selected()
+                    self.apply(Command(id="http-boost", operation="boost", car_id=car_id))
+                    operation = "boost"
+                self.publish()
+        except ValueError as exc:
+            status = HTTPStatus.CONFLICT if str(exc).startswith("boost unavailable") else HTTPStatus.NOT_FOUND
+            return self.json_response(connection, status, {"error": str(exc)})
+        return self.json_response(
+            connection,
+            HTTPStatus.OK,
+            {"operation": operation, "car_id": car_id, "status": "accepted"},
+        )
 
     async def tick(self) -> None:
         while True:
@@ -201,15 +262,23 @@ async def run_server(
     settings: RaceSettings | None = None,
     policy_path: Path | None = None,
     metrics_path: Path | None = None,
+    control_state_path: Path | None = None,
 ) -> None:
-    runtime = RaceServer(settings, policy_path, metrics_path)
+    runtime = RaceServer(settings, policy_path, metrics_path, control_state_path)
     ticker = asyncio.create_task(runtime.tick())
     try:
         async with serve(
-            runtime.connect, host, port, origins=allowed_origins(origin), max_size=16384, max_queue=16
+            runtime.connect,
+            host,
+            port,
+            origins=allowed_origins(origin),
+            process_request=runtime.process_request,
+            max_size=16384,
+            max_queue=16,
         ):
             await asyncio.Future()
     finally:
         ticker.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await ticker
+        runtime.control_state.close()

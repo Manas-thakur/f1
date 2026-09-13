@@ -1,6 +1,6 @@
 # Race simulator
 
-All simulator code is maintained on the `simulator` branch, independently of `main`. Develop in feature branches and open pull requests targeting `simulator`. CI runs on each push and includes the live race and forwarded connection browser checks.
+Simulator changes are developed in feature branches and opened against `main`. CI runs on each push and pull request and includes the live race and forwarded connection browser checks.
 
 The race lab runs a deterministic physics engine with a seeded field of up to 20 cars. A separate Python process owns the race. Next.js and Bun provide the single `/race` view, and receive delayed simulated observations over WebSockets. The browser never advances physics.
 
@@ -17,7 +17,7 @@ Open [the race view](http://127.0.0.1:18760/race). The hamburger opens docked se
 
 Use either native `make race` or Docker, since they share ports. If switching from Docker to native, run `make race-down` first. The native launcher checks both ports before starting either service and reports conflicts without stopping existing processes.
 
-For containers, use `make race-up` and `make race-down`. These create the `afterlap-race` Compose project with loopback ports 18760 and 18761. The race lab does not require a database: episode data is streamed to files and live state stays in the simulation process. Race checkpoints are in memory and are lost when the simulator stops.
+For containers, use `make race-up` and `make race-down`. These create the `afterlap-race` Compose project with loopback ports 18760 and 18761. No external database is required. Episode data is streamed to files, race checkpoints stay in memory, and the current-car selection is stored in `.afterlap/race/control.sqlite3` so hardware commands keep the same target across page reloads and runtime restarts.
 
 `make race-server` starts only the generator's WebSocket runtime. Its defaults accept HTTP and HTTPS browser origins on localhost, 127.0.0.1 and IPv6 loopback at any port, plus local clients without an Origin header. Other browser origins require the explicit `--origin` option. The browser connects to `/race/socket` on the same host and port as the page, using `wss` for HTTPS. Next.js proxies the connection to the simulator, so only the dashboard port needs forwarding. The server-side `AFTERLAP_RACE_UPSTREAM` setting selects the simulator URL during development or production build; Docker builds use `http://simulator:18761`. The local lab has no user accounts or control leases. Commands from connected clients are serialized. It is not a multi-user remote deployment.
 
@@ -36,6 +36,13 @@ The telemetry download contains at most the most recent 200 frames observed by t
 ## Car telemetry display
 
 `/tel/{car_id}` renders a single car's steering-wheel display for an 800 by 480 panel, for example [car-01](http://127.0.0.1:18760/tel/car-01). The page fits that 800 by 480 artwork to the viewport at a single scale factor and centres it, so a narrower or taller screen letterboxes rather than reflowing. On an exactly 800 by 480 display it renders at scale one. The bottom-right corner of `/race` instead uses a simplified race summary in the same 360 by 216 footprint. It follows the car the camera is watching and prioritizes speed, battery, position, lap, power, throttle and brake. Its full-view link opens that car's `/tel/{car_id}` display in a new tab. The car-switch control remains docked above the summary, and the Telemetry button or `T` key toggles it. The older speed and battery corner readout appears only on views too small to hold the summary. Both displays read the same delayed observations over the existing `/race/socket` connection, so the race summary and the standalone panel show the same car state.
+
+The telemetry display's Boost control applies the guarded recommended battery profile to the car shown on that display. On `/race`, this is the car being watched. On `/tel/{car_id}`, the car dropdown changes the displayed and controlled vehicle. Every selection is stored in SQLite. Applying boost to a different car releases the previous manual boost override, while every other car continues making automatic profile decisions. The same action is available as an HTTP POST through the dashboard host. The request has no car identifier because the server resolves the persisted current car. Set `HOST` to any dashboard origin:
+
+```sh
+HOST="${HOST:-http://127.0.0.1:18760}"
+curl --fail-with-body --request POST "${HOST%/}/race/boost"
+```
 
 The display's Start control sends the same start and pause commands as the race transport. It is disabled once the episode is finished, failed or truncated, because a completed race must be reset before it can run again.
 
