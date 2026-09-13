@@ -266,8 +266,6 @@ test('3D cameras, gestures, selection, paused telemetry and circuit reset', asyn
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 350);
   await page.mouse.down();
   await page.mouse.move(bounds.x + bounds.width / 2 + 90, bounds.y + 380, { steps: 8 });
-  await expect(scene).toHaveAttribute('data-render-path', 'direct');
-  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
   await page.mouse.up();
   await expect(scene).toHaveAttribute('data-camera-mode', 'orbit');
   const dragged = await scene.getAttribute('data-camera-position');
@@ -374,6 +372,24 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   await expect(scene).toHaveAttribute('data-graphics-quality', 'high');
   await page.getByLabel('Graphics quality').selectOption('performance');
   await expect(scene).toHaveAttribute('data-graphics-quality', 'performance');
+});
+
+test('camera dragging keeps scenery details visible', async ({ page }) => {
+  await page.goto('/race');
+  const scene = page.getByRole('application', { name: '3D camera controls' });
+  await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
+  await page.getByLabel('Graphics quality').selectOption('high');
+  const bounds = await scene.boundingBox();
+  if (!bounds) {
+    throw new Error('3D scene has no visible bounds');
+  }
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width / 2 + 40, bounds.y + bounds.height / 2 + 20,
+    { steps: 4 });
+  await expect(scene).toHaveAttribute('data-render-path', 'direct');
+  await expect(scene).toHaveAttribute('data-scenery-details', 'visible');
+  await page.mouse.up();
 });
 
 
