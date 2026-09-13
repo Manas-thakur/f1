@@ -204,7 +204,7 @@ The actor receives 76 float32 values: 38 normalized features and 38 availability
 
 The five discrete actions are `harvest`, `conserve`, `neutral`, `push` and `overtake`. A rules baseline and a policy-independent guard calculate boost availability, overtake opportunity, target, reward, risk and reward-to-risk ratio from the same delayed observation. The guard blocks deployment under low-energy, thermal, braking, launch or invalid-telemetry conditions even when PPO selects `push`. `overtake` is not exposed as available without event-specific FIA authorization data, so ordinary `push` is the actionable recommendation in the current simulator.
 
-Train in explicit cycles and evaluate every cycle on the same held-out seed range:
+Train in explicit cycles and evaluate every cycle on the same held-out seed range. Training resets sample a new episode seed, and `train-decision` enables start-state diversity so boost timing is not learned on one pole-sitter loop. The same seed still replays. Live races keep the fixed grid:
 
 ```sh
 make race-train-decision CIRCUIT=monza DECISION_CARS=6 DECISION_DURATION=60 STEPS=10000 CYCLES=5 EVAL_EPISODES=3 TRAINING_OUTPUT=.afterlap/race/boost-policy

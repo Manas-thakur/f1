@@ -15,6 +15,7 @@ def test_catalogue_and_schema_are_machine_readable(monkeypatch, capsys):
     main()
     schema = json.loads(capsys.readouterr().out)
     assert schema["race_settings"]["properties"]["laps"]["default"] == 52
+    assert schema["race_settings"]["$defs"]["TrainingDiversity"]["properties"]["enabled"]["default"] is False
     assert schema["rl_action"]["fields"] == [
         "driver_mode",
         "deployment_profile",
@@ -104,4 +105,43 @@ def test_generate_accepts_every_top_level_race_setting(monkeypatch, tmp_path):
             "pit_stops": True,
             "tyre_wear_scale": 1.0,
         },
+        "training_diversity": {
+            "enabled": False,
+            "shuffle_grid": True,
+            "random_lap_origin": True,
+            "progress_span_m": 2.5,
+            "energy_span_j": 1.2e6,
+            "speed_span_mps": 3.0,
+            "wetness_span": 0.2,
+            "temperature_span_k": 6.0,
+            "wind_span_mps": 4.0,
+            "circuits": [],
+        },
     }
+
+
+def test_generate_can_enable_training_diversity(monkeypatch, tmp_path):
+    output = tmp_path / "diverse.jsonl"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "race.py",
+            "generate",
+            "--circuit",
+            "monza",
+            "--cars",
+            "3",
+            "--laps",
+            "1",
+            "--duration",
+            "1",
+            "--diversity",
+            "--output",
+            str(output),
+        ],
+    )
+    main()
+    manifest = json.loads(output.read_text().splitlines()[0])
+    assert manifest["settings"]["training_diversity"]["enabled"] is True
+    assert manifest["settings"]["seed"] == 42

@@ -100,7 +100,7 @@ There are two separate PPO environments.
 
 Its 76-value observation contains 38 normalized values followed by 38 availability masks. The values cover own battery and motion telemetry, race and weather context, curvature and racing-line lookaheads, and the nearest cars ahead and behind. Missing telemetry remains different from a measured zero.
 
-Its discrete action chooses one of five profiles: `harvest`, `conserve`, `neutral`, `push`, or `overtake`. A decision is held for 0.5 simulated seconds. Reward favors progress, gained positions, and completed passes, while charging for energy use, unsafe boost requests, risk, lost positions, and action churn.
+Its discrete action chooses one of five profiles: `harvest`, `conserve`, `neutral`, `push`, or `overtake`. A decision is held for 0.5 simulated seconds. Reward favors progress, gained positions, completed passes, and a guarded boost on a modeled pass opportunity, while charging for withheld opportunity boosts, energy use, unsafe boost requests, risk, lost positions, and action churn.
 
 The safety and availability guard is independent of PPO. It blocks boost for missing telemetry, low energy, high temperature, braking, launch conditions, and other unavailable states. Public event-specific Overtake authorization is unavailable, so an unsafe or unsupported output is downgraded.
 
@@ -150,7 +150,7 @@ The output is:
 - `boost-policy.manifest.json`, containing the model and environment contract
 - `boost-policy.metrics.json`, containing the rules baseline, cycle history, failure rate, and manual promotion status
 
-Each cycle trains, evaluates on deterministic held-out seeds, compares against the rules baseline, and records whether mean reward improved. Promotion is never automatic. Use multiple seeds, circuits, weather conditions, and variability presets for serious experiments. Keep complete scenario families out of training for evaluation, and report incomplete or failed runs.
+Each cycle trains on a stream of episode seeds, evaluates on deterministic held-out seeds, compares against the rules baseline, and records whether mean reward improved. `train-decision` and `evaluate-decision` turn on start-state diversity by default: grid order, pack origin, battery energy, launch speed, and weather are sampled from the episode seed. Live `serve` stays on the fixed grid and 3.1 MJ start charge. Promotion is never automatic. Use multiple seeds, circuits, weather conditions, and variability presets for serious experiments. Keep complete scenario families out of training for evaluation, and report incomplete or failed runs. Pass `--no-diversity` to restore the fixed start loop.
 
 ## Evaluate and run it
 

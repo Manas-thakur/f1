@@ -7,10 +7,12 @@ from afterlap_core.race.decision import (
     DECISION_PROFILES,
     FEATURE_NAMES,
     OBSERVATION_SIZE,
+    REWARD_VERSION,
     BoostDecisionEngine,
     BoostDecisionEnv,
     assess_boost,
     encode_decision,
+    score_decision,
 )
 
 
@@ -68,3 +70,61 @@ def test_rules_guard_withholds_a_latched_boost_after_energy_recovers():
     assert not recommendation.boost_available
     assert recommendation.mode == "harvest"
     assert "released" in recommendation.reason
+
+
+def test_decision_reward_credits_a_guarded_opportunity_boost():
+    common = {
+        "progress_delta": 20.0,
+        "deployed_j": 80000.0,
+        "positions_gained": 0,
+        "positions_lost": 0,
+        "new_passes": 0,
+        "risk_score": 0.2,
+        "reward_score": 0.6,
+        "opportunity": True,
+        "boost_available": True,
+        "action_changed": False,
+        "failed": False,
+        "finished": False,
+        "rank": 3,
+    }
+    assert score_decision(boosting=True, **common) > score_decision(boosting=False, **common)
+    gained = {**common, "positions_gained": 1}
+    assert score_decision(boosting=True, **gained) > score_decision(boosting=False, **gained)
+
+
+def test_decision_reward_penalizes_unavailable_and_withheld_boosts():
+    held = score_decision(
+        progress_delta=10.0,
+        deployed_j=0.0,
+        positions_gained=0,
+        positions_lost=0,
+        new_passes=0,
+        boosting=False,
+        risk_score=0.3,
+        reward_score=0.5,
+        opportunity=True,
+        boost_available=True,
+        action_changed=False,
+        failed=False,
+        finished=False,
+        rank=2,
+    )
+    unsafe = score_decision(
+        progress_delta=10.0,
+        deployed_j=0.0,
+        positions_gained=0,
+        positions_lost=0,
+        new_passes=0,
+        boosting=True,
+        risk_score=0.3,
+        reward_score=0.5,
+        opportunity=True,
+        boost_available=False,
+        action_changed=False,
+        failed=False,
+        finished=False,
+        rank=2,
+    )
+    assert unsafe < held
+    assert REWARD_VERSION == "boost-risk-reward-v2"
