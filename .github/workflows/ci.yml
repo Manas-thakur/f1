@@ -2,9 +2,9 @@ name: simulator
 
 on:
   push:
-    branches: [simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
+    branches: [main, simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   pull_request:
-    branches: [simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
+    branches: [main, simulator, branding, "codex/battery-includes", "feat/simulator-3d-ui", "feat/race-physics-realism", "feat/simulator-integration"]
   workflow_dispatch:
 
 concurrency:
