@@ -2,7 +2,7 @@ import asyncio
 import json
 import urllib.error
 import urllib.request
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -93,6 +93,23 @@ def test_control_state_persists_the_selected_car(tmp_path):
     restored = ControlState(path)
     assert restored.selected() == "car-02"
     restored.close()
+
+
+def test_control_state_uses_postgres_when_configured():
+    connection = Mock()
+    connection.execute.return_value.fetchone.return_value = ("car-07",)
+    with patch("afterlap_api.control_state.psycopg.connect", return_value=connection) as connect:
+        state = ControlState(database_url="postgresql://database.example/trackshift")
+        assert state.selected() == "car-07"
+        state.select("car-02")
+        state.close()
+    connect.assert_called_once_with("postgresql://database.example/trackshift")
+    connection.execute.assert_any_call(
+        "UPDATE public.control_state SET selected_car_id = %s, updated_at = now() WHERE id = 1",
+        ("car-02",),
+    )
+    connection.commit.assert_called_once_with()
+    connection.close.assert_called_once_with()
 
 
 def test_reset_repairs_a_selection_missing_from_the_new_grid():

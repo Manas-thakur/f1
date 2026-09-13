@@ -16,6 +16,29 @@ make race
 
 For Docker, use `make race-up`. Run `make race-down` before switching to native startup because both modes use the same ports.
 
+## Supabase persistence
+
+Production uses Supabase Postgres for the selected-car control state. Local development falls back to SQLite when `DATABASE_URL` is unset.
+
+```sh
+cp .env.example .env
+supabase start
+supabase db reset
+set -a
+. ./.env
+set +a
+make race
+```
+
+Use the local database URL printed by `supabase status` in `.env`. To deploy schema changes, authenticate and link the project before previewing and applying migrations.
+
+```sh
+supabase login
+supabase link --project-ref cjeytupzcvdqapxviheu
+supabase db push --dry-run
+supabase db push
+```
+
 ## 3D race view
 
 The circuit view opens with a chase camera. Start the race to receive car observations. Until sensors report a position, the scene shows the track without inventing car locations.
