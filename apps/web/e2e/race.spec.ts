@@ -300,6 +300,8 @@ test('unavailable WebGL keeps race controls usable and offers recovery', async (
 });
 
 test('graphics quality and race weather drive the live renderer', async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 960, height: 720 });
   await page.goto('/race');
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
@@ -388,6 +390,7 @@ test('settings dock, float, drag, resize and keep camera above ground', async ({
 });
 
 test('electrical boost drains the battery and freezes its observed timer when paused', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 800 });
   await page.goto('/race');
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
   await page.getByRole('combobox', { name: 'Circuit', exact: true }).selectOption('las-vegas');
