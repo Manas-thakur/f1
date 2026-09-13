@@ -27,7 +27,6 @@ export class Atmosphere extends THREE.Group {
   private readonly night: boolean;
   private quality: 'ultra' | 'high' | 'performance' = 'ultra';
   private lastRainUpdate = 0;
-  private rainFrames = 0;
   private raining = false;
   private interactive = false;
 
@@ -190,18 +189,9 @@ export class Atmosphere extends THREE.Group {
         positions[i + 5] = this.cameraPosition.z + baseZ + 0.12;
       }
       this.rainPositions.needsUpdate = true;
-      this.rainFrames++;
     }
     this.clouds.position.x = Math.sin(time * 0.006) * this.wind * 8;
     this.clouds.position.z = Math.cos(time * 0.004) * this.wind * 5;
-  }
-
-  get animated() {
-    return this.raining;
-  }
-
-  get renderedRainFrames() {
-    return this.rainFrames;
   }
 
   override dispose() {

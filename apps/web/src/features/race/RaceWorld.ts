@@ -69,7 +69,6 @@ export class RaceWorld {
   private readonly onError: (message: string) => void;
   private interacting = false;
   private interactionTimer: ReturnType<typeof setTimeout> | null = null;
-  private lastIdleAnimation = 0;
 
   constructor(
     private readonly host: HTMLElement,
@@ -629,13 +628,8 @@ export class RaceWorld {
         this.camera.position.z = this.center.z + horizontal.y;
       }
     }
-    const idleAnimation = this.atmosphere.animated
-      && animationNow - this.lastIdleAnimation >= 1000 / 12;
-    if (!changed && !this.dirty && this.frame?.status !== 'running' && !idleAnimation) {
+    if (!changed && !this.dirty && this.frame?.status !== 'running') {
       return;
-    }
-    if (this.frame?.status !== 'running' && idleAnimation) {
-      this.lastIdleAnimation = animationNow;
     }
     this.dirty = false;
     for (const model of this.cars.values()) {
@@ -658,7 +652,6 @@ export class RaceWorld {
     this.surroundings.update(time, this.camera.position,
       this.quality !== 'performance' && !this.interacting);
     this.atmosphere.update(time, this.camera.position);
-    this.host.dataset['rainFrames'] = String(this.atmosphere.renderedRainFrames);
     if (this.quality === 'ultra' && !this.interacting) {
       this.composer.render();
     } else {
