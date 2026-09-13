@@ -50,6 +50,11 @@ On a Raspberry Pi with a pull-up button on BCM GPIO 17, run the included helper:
 HOST="http://10.1.27.93:18760" python3 scripts/button_command.py
 ```
 
+Start the script while the button is released. It records the initial GPIO level
+as idle, so normally open and normally closed wiring both work without changing
+the command. Startup sends a safety release and does not activate boost until a
+real debounced transition away from the recorded idle level occurs.
+
 From a full checkout, the equivalent one-command launcher is:
 
 ```sh
