@@ -1,0 +1,33 @@
+:root { color-scheme: dark; font-family: Arial, sans-serif; background: #0b1118; color: #f0f4f6; }
+* { box-sizing: border-box; }
+html, body, #root, .reveal-viewport { width: 100%; height: 100%; margin: 0; background: #0b1118; }
+.reveal { font-family: Arial, sans-serif; }
+.reveal .slides { text-align: left; }
+.reveal .slides > section { padding: 0; height: 100%; }
+.slide-art { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: radial-gradient(ellipse at 78% 45%, #172731 0, #0b1118 55%); font-family: Arial, sans-serif; color: #f0f4f6; }
+.slide-art header { position: absolute; top: 58px; left: 80px; right: 80px; display: flex; align-items: center; justify-content: space-between; font-size: 17px; font-weight: 500; letter-spacing: 3px; color: #8fabb9; }
+.wordmark { display: flex; align-items: center; gap: 14px; font-size: 25px; color: #edf7f8; font-weight: 650; letter-spacing: 6px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #82e8de; }
+.copy { position: absolute; z-index: 2; left: 80px; top: 227px; width: 855px; }
+.slide-art h1 { color: #f0f4f6; font-size: 73px; line-height: 1.12; letter-spacing: -3.5px; font-weight: 500; text-transform: none; white-space: pre-line; margin: 0 0 49px; }
+.slide-art .copy p { color: #9eb1bf; font-size: 31px; line-height: 1.65; white-space: pre-line; margin: 0; letter-spacing: -0.5px; }
+.visual { position: absolute; left: 920px; top: 165px; width: 930px; height: 600px; }
+.visual canvas { display: block; }
+.visual img, .visual video { width: 100%; height: 100%; object-fit: contain; }
+.visual-labels { position: absolute; left: 955px; right: 90px; top: 780px; display: flex; gap: 25px; justify-content: space-between; color: #82e8de; font-size: 13px; letter-spacing: 1.4px; }
+.caption { position: absolute; left: 80px; right: 80px; top: 875px; display: flex; gap: 24px; align-items: flex-start; }
+.caption-line { width: 40px; height: 2px; background: #82e8de; margin-top: 17px; flex-shrink: 0; }
+.slide-art .caption p { margin: 0; color: #b7c6cf; font-size: 27px; line-height: 1.45; max-width: 1620px; }
+.slide-art footer { position: absolute; bottom: 39px; left: 80px; right: 80px; display: flex; justify-content: space-between; border-top: 1px solid #25333f; padding-top: 21px; color: #748b9b; font-size: 12px; letter-spacing: 1.3px; }
+.demo .copy { top: 100px; width: 1740px; }
+.demo h1 { font-size: 32px; line-height: 1.2; white-space: normal; letter-spacing: -1px; margin: 0; }
+.demo h1::first-line { color: #f0f4f6; }
+.demo .copy p { display: block; font-size: 18px; line-height: 1.3; margin-top: 7px; white-space: normal; }
+.demo .visual { left: 80px; top: 175px; width: 1760px; height: 690px; background: #070c10; border: 1px solid #2b3c48; border-radius: 8px; overflow: hidden; }
+.demo .visual img, .demo .visual video { object-fit: contain; }
+.reveal .controls { color: #82e8de; right: 15px; bottom: 6px; transform: scale(0.7); }
+.reveal .progress { color: #82e8de; height: 2px; }
+.reveal .slide-number { display: none; }
+.reveal .source-link { position: absolute; z-index: 5; right: 80px; bottom: 93px; color: #82e8de; font-size: 14px; text-decoration: none; }
+.reveal .pause-overlay { background: #0b1118; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

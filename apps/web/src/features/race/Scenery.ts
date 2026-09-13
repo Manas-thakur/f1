@@ -25,6 +25,7 @@ export class Scenery extends THREE.Group {
   private readonly controller = new AbortController();
   private wind = 0;
   private readonly detailMeshes: THREE.Object3D[] = [];
+  private detailed = true;
 
   constructor(private readonly map: CircuitMap, private readonly profile: SceneryProfile,
     private readonly invalidate: () => void) {
@@ -482,19 +483,16 @@ export class Scenery extends THREE.Group {
     }, undefined, () => undefined);
   }
 
-  update(time: number, camera: THREE.Vector3, high: boolean) {
+  update(time: number, camera: THREE.Vector3) {
     if (time - this.lastUpdate < 1 / 24) {
       return;
     }
     this.lastUpdate = time;
-    for (const mesh of this.detailMeshes) {
-      mesh.visible = high;
-    }
     const nearest = [...this.treePositions].sort((a, b) =>
       a.distanceToSquared(camera) - b.distanceToSquared(camera));
     for (const [i, tree] of this.treePool.entries()) {
       const p = nearest[i];
-      tree.visible = high && Boolean(p && p.distanceTo(camera) < 180);
+      tree.visible = this.detailed && Boolean(p && p.distanceTo(camera) < 180);
       if (p) {
         tree.position.copy(p);
         tree.rotation.z = Math.sin(time * 0.85 + i * 1.7) * Math.min(0.075, Math.abs(this.wind) * 0.005);
@@ -502,7 +500,8 @@ export class Scenery extends THREE.Group {
     }
     for (const { group, arms, head, count } of this.crowd) {
       const distance = group.position.distanceTo(camera);
-      head.geometry = high && distance < 65 && this.detailedHead ? this.detailedHead : this.simpleHead;
+      head.geometry = this.detailed && distance < 65 && this.detailedHead
+        ? this.detailedHead : this.simpleHead;
       if (distance > 180 && arms.userData['posed']) {
         continue;
       }
@@ -523,6 +522,22 @@ export class Scenery extends THREE.Group {
 
   setWind(wind: number) {
     this.wind = wind;
+  }
+
+  setDetailed(detailed: boolean) {
+    this.detailed = detailed;
+    for (const mesh of this.detailMeshes) {
+      mesh.visible = detailed;
+    }
+    if (!detailed) {
+      for (const tree of this.treePool) {
+        tree.visible = false;
+      }
+    }
+  }
+
+  get detailsVisible() {
+    return this.detailMeshes.every((mesh) => mesh.visible);
   }
 
   private disposeTree() {
