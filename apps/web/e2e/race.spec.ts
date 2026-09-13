@@ -303,6 +303,8 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
   await page.goto('/race');
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect.poll(async () => Number(await scene.getAttribute('data-observed-time'))).toBeGreaterThan(0.05);
   const runningTime = Number(await scene.getAttribute('data-observed-time'));
@@ -338,6 +340,10 @@ test('graphics quality and race weather drive the live renderer', async ({ page 
 test('settings dock, float, drag, resize and keep camera above ground', async ({ page }) => {
   await page.goto('/race');
   const scene = page.getByRole('application', { name: '3D camera controls' });
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('1');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   await expect(scene).toHaveAttribute('data-rendered-frames', /\d+/, { timeout: 60000 });
   const full = await scene.boundingBox();
   await page.getByRole('button', { name: 'Race controls', exact: true }).click();
@@ -388,7 +394,7 @@ test('electrical boost drains the battery and freezes its observed timer when pa
   await page.getByRole('button', { name: 'Reset race', exact: true }).click();
   const hud = page.getByLabel('Battery and boost', { exact: true });
   const boost = hud.getByRole('button', { name: 'Apply boost', exact: true });
-  await expect(hud).toHaveAttribute('data-energy-mode', 'UNAVAILABLE');
+  await expect(hud).toHaveAttribute('data-energy-mode', 'IDLE');
   await expect(boost).toBeDisabled();
   await page.getByRole('button', { name: 'Start race', exact: true }).click();
   await expect(boost).toBeEnabled();
