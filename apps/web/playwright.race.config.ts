@@ -21,7 +21,7 @@ export default defineConfig({
     cwd: '../..',
     url: `http://127.0.0.1:${webPort}/race`,
     reuseExistingServer: false,
-    env: { RACE_WEB_PORT: webPort, RACE_SIM_PORT: simulatorPort },
+    env: { RACE_WEB_PORT: webPort, RACE_SIM_PORT: simulatorPort, RACE_CARS: '1' },
     gracefulShutdown: { signal: 'SIGTERM', timeout: 15000 },
     timeout: 120000,
   },

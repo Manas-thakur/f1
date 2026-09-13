@@ -35,6 +35,7 @@ def main() -> None:
         raise RuntimeError("Bun is required")
     web_port = int(os.environ.get("RACE_WEB_PORT", "18760"))
     simulator_port = int(os.environ.get("RACE_SIM_PORT", "18761"))
+    cars = os.environ.get("RACE_CARS")
     policy = os.environ.get("RACE_POLICY")
     metrics = os.environ.get("RACE_METRICS")
     check_ports((web_port, simulator_port))
@@ -45,6 +46,8 @@ def main() -> None:
     signal.signal(signal.SIGTERM, stop)
     try:
         server_command = [sys.executable, "scripts/race.py", "serve", "--port", str(simulator_port)]
+        if cars:
+            server_command.extend(("--cars", cars))
         if policy:
             server_command.extend(("--policy", policy))
         if metrics:
