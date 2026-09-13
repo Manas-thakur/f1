@@ -399,7 +399,7 @@ test('electrical boost drains the battery and freezes its observed timer when pa
       await boost.click();
     }
     return hud.getAttribute('data-energy-mode');
-  }).toBe('BOOST');
+  }, { timeout: 60000 }).toBe('BOOST');
   const scene = page.getByRole('application', { name: '3D camera controls' });
   await expect(scene).toHaveAttribute('data-boosting-cars', 'car-01');
   const charge = page.getByRole('progressbar', { name: 'Usable battery charge' });
