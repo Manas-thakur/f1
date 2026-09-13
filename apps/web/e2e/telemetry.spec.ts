@@ -170,6 +170,7 @@ test('the telemetry screen streams one car, scales to the display and starts the
   await page.setViewportSize({ width: 800, height: 480 });
   await page.goto('/tel/car-01');
   await expect(page.getByLabel('Live telemetry for car-01')).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Pages' })).toHaveCount(0);
   const selectionResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
       && new URL(response.url()).pathname === '/race/selection/car-02'
