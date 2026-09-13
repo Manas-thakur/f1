@@ -17,13 +17,15 @@ OUTPUT ?= .afterlap/race/$(CIRCUIT)-$(SEED).jsonl
 POLICY ?=
 TRAINING_OUTPUT ?= .afterlap/race/boost-policy
 METRICS ?= $(TRAINING_OUTPUT).metrics.json
+HOST ?= http://127.0.0.1:18760
+GPIO ?= 17
 CYCLES ?= 5
 EVAL_EPISODES ?= 3
 DECISION_CARS ?= 6
 DECISION_DURATION ?= 60
 RACE_LINE_ARGS := --contact-mode $(CONTACT_MODE) --line-randomness $(LINE_RANDOMNESS) --corner-line-strength $(CORNER_LINE_STRENGTH) --line-wander-m $(LINE_WANDER_M) --line-lookahead-m $(LINE_LOOKAHEAD_M) --line-smoothing-m $(LINE_SMOOTHING_M) $(RACING_LINE_FLAGS)
 
-.PHONY: help install dev race race-server race-generate race-train race-train-decision race-evaluate-decision race-status race-boost race-boost-off race-check race-browser-check race-up race-down
+.PHONY: help install dev race race-server race-generate race-train race-train-decision race-evaluate-decision race-status race-boost race-boost-off race-button race-check race-browser-check race-up race-down
 help:
 	@echo "make install             Install Python and web dependencies"
 	@echo "make race (or make dev)  Start simulator and dashboard on port 18760"
@@ -35,6 +37,7 @@ help:
 	@echo "make race-status         Read live recommendation telemetry through Next.js"
 	@echo "make race-boost          Apply the live recommendation through Next.js"
 	@echo "make race-boost-off      Return energy deployment to automatic"
+	@echo "make race-button         Run the GPIO boost button with file logging"
 	@echo "make race-check          Run physics tests, lint, and type checks"
 	@echo "make race-browser-check  Test the live dashboard and port forwarding"
 	@echo "make race-up / race-down Start or stop the Docker simulator"
@@ -71,6 +74,9 @@ race-boost:
 
 race-boost-off:
 	$(PYTHON) scripts/race_control.py boost-off
+
+race-button:
+	HOST=$(HOST) BOOST_GPIO=$(GPIO) python3 scripts/button_command.py
 
 race-check:
 	uv run pytest

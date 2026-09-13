@@ -4,6 +4,9 @@ import argparse
 import asyncio
 import contextlib
 import json
+import logging
+import os
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from afterlap_core.race import RaceSettings, RacingLineSettings, StorylineSettings
@@ -20,6 +23,20 @@ from afterlap_core.race.environment import (
 )
 from afterlap_core.race.policy import load_policy, policy_manifest
 from afterlap_core.race.variability import Variability
+
+
+def configure_runtime_logging(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+    console = logging.StreamHandler()
+    console.setFormatter(formatter)
+    file_handler = RotatingFileHandler(path, maxBytes=5_000_000, backupCount=3)
+    file_handler.setFormatter(formatter)
+    logging.basicConfig(
+        level=os.environ.get("RACE_LOG_LEVEL", "INFO").upper(),
+        handlers=[console, file_handler],
+        force=True,
+    )
 
 
 def main() -> None:
@@ -70,6 +87,11 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--metrics", type=Path)
     parser.add_argument("--control-state", type=Path, default=Path(".afterlap/race/control.sqlite3"))
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        default=Path(os.environ.get("RACE_LOG_FILE", ".afterlap/race/runtime.log")),
+    )
     parser.add_argument("--output", type=Path, default=Path(".afterlap/race/transitions.jsonl"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=18761)
@@ -135,6 +157,19 @@ def main() -> None:
     if args.command == "serve":
         from afterlap_api.race_server import run_server
 
+        configure_runtime_logging(args.log_file)
+        logging.getLogger("afterlap.race.control").info(
+            json.dumps(
+                {
+                    "event": "race_server_starting",
+                    "host": args.host,
+                    "port": args.port,
+                    "log_file": str(args.log_file.resolve()),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+        )
         print(f"race websocket: ws://{args.host}:{args.port}", flush=True)
         with contextlib.suppress(KeyboardInterrupt):
             asyncio.run(
