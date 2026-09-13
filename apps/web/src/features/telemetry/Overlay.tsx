@@ -32,7 +32,7 @@ export function TelemetryOverlay({ carId, visible }: {
         <span className={styles.raceFlag} data-tone={flag.tone}>{flag.label}</span>
         <a href={`/tel/${encodeURIComponent(carId)}`} target="_blank" rel="noreferrer"
           aria-label={`Open full telemetry for ${carId} in a new tab`}>
-          OPEN FULL VIEW ↗
+          OPEN IN NEW TAB ↗
         </a>
       </header>
 

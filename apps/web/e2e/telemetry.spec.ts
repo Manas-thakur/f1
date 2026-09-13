@@ -193,6 +193,10 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   page,
 }) => {
   await page.goto('/race');
+  await page.getByRole('button', { name: 'Race controls', exact: true }).click();
+  await page.getByLabel('Cars', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Reset race', exact: true }).click();
+  await page.getByRole('button', { name: 'Close race controls', exact: true }).click();
   const summary = page.getByLabel('Race telemetry for car-01');
   await expect(summary).toBeVisible();
   await expect(summary.getByLabel('Current speed')).toContainText('KM/H');
@@ -210,7 +214,13 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   await page.getByRole('button', { name: 'Watch car behind', exact: true }).click();
   const nextSummary = page.getByLabel('Race telemetry for car-02');
   await expect(nextSummary).toBeVisible();
-  await expect(nextSummary.getByRole('link', {
+  const nextFullView = nextSummary.getByRole('link', {
     name: 'Open full telemetry for car-02 in a new tab',
-  })).toHaveAttribute('href', '/tel/car-02');
+  });
+  await expect(nextFullView).toHaveAttribute('href', '/tel/car-02');
+  const opened = page.context().waitForEvent('page');
+  await nextFullView.click();
+  const telemetryPage = await opened;
+  await expect(telemetryPage).toHaveURL(/\/tel\/car-02$/);
+  await telemetryPage.close();
 });
