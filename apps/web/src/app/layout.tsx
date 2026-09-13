@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Race simulator',
-  description: 'Circuit races, battery controls, and reinforcement learning experiments.',
+  title: 'Afterlap Race Engineer Console',
+  description: 'Live race cameras, circuit position, energy deployment, and decision evidence.',
 };
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
