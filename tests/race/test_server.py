@@ -45,7 +45,7 @@ def test_boost_command_uses_live_recommendation_guard():
         runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
     runtime.session.bms_profiles["car-01"] = DeploymentProfile.PUSH
     runtime.apply(Command(id="off", operation="boost", car_id="car-01", enabled=False))
-    assert "car-01" not in runtime.session.bms_profiles
+    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.NEUTRAL}
 
 
 def test_frame_includes_recommendations_without_simulator_truth():
@@ -62,6 +62,7 @@ def test_boost_targets_only_the_requested_car():
     runtime.session.bms_profiles["car-01"] = DeploymentProfile.OVERTAKE
     runtime.apply(Command(id="boost", operation="boost", car_id="car-02"))
     assert runtime.session.bms_profiles == {"car-02": "push"}
+    assert runtime.control_state.selected() == "car-02"
     with pytest.raises(ValueError, match="unknown car"):
         runtime.apply(Command(id="missing", operation="boost", car_id="car-03"))
 
@@ -73,7 +74,7 @@ def test_manual_boost_releases_when_the_guard_expires():
     expired = Mock(can_apply=False, reason="battery energy depleted")
     runtime.decision_engine.recommend = Mock(return_value=expired)
     runtime.synchronize_manual_boost()
-    assert runtime.session.bms_profiles == {}
+    assert runtime.session.bms_profiles == {"car-01": DeploymentProfile.NEUTRAL}
 
 
 def test_changing_selection_releases_the_previous_manual_boost():
@@ -82,7 +83,7 @@ def test_changing_selection_releases_the_previous_manual_boost():
     runtime.apply(Command(id="boost", operation="boost", car_id="car-01"))
     runtime.select("car-02")
     assert runtime.control_state.selected() == "car-02"
-    assert runtime.session.bms_profiles == {}
+    assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.NEUTRAL}
 
 
 def test_control_state_persists_the_selected_car(tmp_path):
@@ -194,7 +195,7 @@ async def test_http_boost_endpoint_accepts_post_and_rejects_other_methods():
         off_status, off_payload = await asyncio.to_thread(post, boost_off_url)
         assert off_status == 200
         assert off_payload == {"operation": "boost-off", "car_id": "car-02", "status": "accepted"}
-        assert runtime.session.bms_profiles == {}
+        assert runtime.session.bms_profiles == {"car-02": DeploymentProfile.NEUTRAL}
 
         def get() -> tuple[int, dict[str, str], str]:
             try:
