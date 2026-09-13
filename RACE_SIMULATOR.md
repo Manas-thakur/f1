@@ -44,6 +44,10 @@ HOST="${HOST:-http://127.0.0.1:18760}"
 curl --fail-with-body --request POST "${HOST%/}/race/boost"
 ```
 
+For hardware already configured with the race engineer dashboard URL, POST requests to
+`/race/engineer` are forwarded to the same boost API. Browser GET requests still open
+the engineer console.
+
 The display's Start control sends the same start and pause commands as the race transport. It is disabled once the episode is finished, failed or truncated, because a completed race must be reset before it can run again.
 
 Press Space on either `/race` or `/tel/{car_id}` to toggle between running and paused. The shortcut is ignored while a form control, button or link has focus, and key repeat cannot send duplicate commands.

@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+test('hardware POST to the engineer address reaches the boost API', async ({ request }) => {
+  const response = await request.post('/race/engineer');
+  expect(response.headers()['content-type']).toContain('application/json');
+  expect([200, 409]).toContain(response.status());
+  const payload = await response.json();
+  expect(payload.operation === 'boost' || typeof payload.error === 'string').toBe(true);
+});
+
 test('race engineer console presents live evidence and labeled model placeholders', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
