@@ -44,10 +44,9 @@ export function TelemetryOverlay({ carId, visible }: {
 
         <section className={styles.raceBattery} aria-label="Battery charge">
           <div><small>BATTERY</small><strong>{ratioPercent(car.energy_percent)}</strong></div>
-          <div className={styles.raceBatteryTrack}>
-            <i style={{ width: `${clamp01(car.energy_percent) * 100}%` }}
-              data-energy-mode={car.mode} />
-          </div>
+          <progress className={styles.raceBatteryTrack} max={100}
+            value={car.energy_percent === undefined ? undefined : clamp01(car.energy_percent) * 100}
+            data-energy-mode={car.mode} aria-label="Usable battery charge" />
           <footer>
             <span>{fixed(car.energy_mj, 2)} MJ</span>
             <b data-energy-mode={car.mode}>{car.mode}</b>

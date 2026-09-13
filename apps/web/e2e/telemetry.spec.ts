@@ -200,7 +200,7 @@ test('the race overlay prioritizes essential telemetry and links to the selected
   const summary = page.getByLabel('Race telemetry for car-01');
   await expect(summary).toBeVisible();
   await expect(summary.getByLabel('Current speed')).toContainText('KM/H');
-  await expect(summary.getByLabel('Battery charge')).toContainText('BATTERY');
+  await expect(summary.getByLabel('Battery charge', { exact: true })).toContainText('BATTERY');
   await expect(summary.getByLabel('Race position, lap and power')).toContainText('POSITION');
   await expect(summary.getByLabel('Throttle and brake')).toContainText('THROTTLE');
   const fullView = summary.getByRole('link', {
