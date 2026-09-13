@@ -89,3 +89,96 @@ def test_automatic_multi_lap_boost_recovers_and_resumes():
     assert all(0 < lap["recharged_j"] <= 8500000 for lap in state.energy_laps)
     assert 0 <= state.battery_energy_j <= 4000000
     assert abs(session.simulator.energy_close_errors()["car-01"]) < 1e-5
+
+
+def test_held_boost_stays_cut_after_depletion_until_the_driver_rearms_it():
+    session = RaceSession(RaceSettings(cars=1))
+    state = session.simulator.world.cars["car-01"]
+    ledger = session.simulator.world.ledgers["car-01"]
+    state.speed_mps = 40
+    state.battery_energy_j = 80_000
+    ledger.energy_j = 80_000
+    ledger.initial_energy_j = 80_000
+    boost = DriverAction(profile=DeploymentProfile.OVERTAKE, throttle=1, brake=0)
+    session.control("car-01", boost)
+
+    session.advance(1)
+    assert ledger.energy_j == 0
+    assert state.boost_latched == 1
+    assert state.active_profile is DeploymentProfile.HARVEST
+    assert state.deploy_power_dc_w == 0
+
+    held_while_braking = DriverAction(
+        profile=DeploymentProfile.OVERTAKE,
+        throttle=0,
+        brake=1,
+    )
+    session.control("car-01", held_while_braking)
+    session.advance(0.5)
+    recovered = ledger.energy_j
+    assert recovered > 0
+    assert state.boost_latched == 1
+    assert state.active_profile is DeploymentProfile.HARVEST
+
+    session.control("car-01", boost)
+    session.advance(0.3)
+    assert state.deploy_power_dc_w == 0
+    assert state.boost_active == 0
+
+    session.control(
+        "car-01",
+        DriverAction(profile=DeploymentProfile.HARVEST, throttle=0, brake=0),
+    )
+    session.advance(0.3)
+    session.control("car-01", boost)
+    session.advance(0.3)
+    assert state.boost_latched == 0
+    assert state.active_profile is DeploymentProfile.OVERTAKE
+    assert state.deploy_power_dc_w > 0
+
+
+def test_harder_braking_recovers_more_energy_until_the_generator_limit():
+    def recovered(brake: float) -> float:
+        session = RaceSession(RaceSettings(cars=1, variability={"preset": "baseline"}))
+        state = session.simulator.world.cars["car-01"]
+        ledger = session.simulator.world.ledgers["car-01"]
+        state.speed_mps = 40
+        state.battery_energy_j = 1_000_000
+        ledger.energy_j = 1_000_000
+        ledger.initial_energy_j = 1_000_000
+        session.control(
+            "car-01",
+            DriverAction(profile=DeploymentProfile.HARVEST, throttle=0, brake=brake),
+        )
+        before = ledger.harvested_dc_j
+        session.advance(0.5)
+        return ledger.harvested_dc_j - before
+
+    light = recovered(0.1)
+    medium = recovered(0.3)
+    hard = recovered(1.0)
+    assert 0 < light < medium < hard
+    assert hard <= 350_000 * 0.5
+
+
+def test_standstill_boost_does_not_consume_propulsion_energy():
+    session = RaceSession(RaceSettings(cars=1, variability={"preset": "baseline"}))
+    state = session.simulator.world.cars["car-01"]
+    ledger = session.simulator.world.ledgers["car-01"]
+    state.speed_mps = 0
+    session.control(
+        "car-01",
+        DriverAction(profile=DeploymentProfile.OVERTAKE, throttle=1, brake=0),
+    )
+    session.advance(0.5)
+    assert state.deploy_power_dc_w == 0
+    assert ledger.deployed_dc_j == 0
+    assert ledger.auxiliary_j > 0
+
+
+def test_race_start_charge_is_a_fixed_operating_target_not_vehicle_variability():
+    first = RaceSession(RaceSettings(cars=5, seed=11))
+    second = RaceSession(RaceSettings(cars=5, seed=91))
+    first_energy = {state.energy_j.value for state in first.bundle.scenario.initial_states.values()}
+    second_energy = {state.energy_j.value for state in second.bundle.scenario.initial_states.values()}
+    assert first_energy == second_energy == {3_100_000}
